@@ -5,10 +5,14 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 ## Technology Stack
 
-- **Engine**: Babylon.js
+- **Engine**: Babylon.js 9.12.0
 - **Language**: TypeScript
 - **Build System**: Vite
 - **Asset Pipeline**: Vite + Babylon.js Asset Manager
+
+## Engine Version Reference
+
+@docs/engine-reference/babylonjs/VERSION.md
 
 ## Project Structure
 

@@ -26,7 +26,6 @@
         "ASEPRITE_PATH": "{env:ASEPRITE_PATH}"
       }
     },
-
     "babylonjs-nme": {
       "type": "local",
       "command": [
@@ -34,7 +33,7 @@
         "@babylonjs/mcp-servers",
         "nme"
       ],
-      "enabled": false
+      "enabled": true
     },
     "babylonjs-gui": {
       "type": "local",
@@ -43,7 +42,7 @@
         "@babylonjs/mcp-servers",
         "gui"
       ],
-      "enabled": false
+      "enabled": true
     }
   },
   "permission": {
