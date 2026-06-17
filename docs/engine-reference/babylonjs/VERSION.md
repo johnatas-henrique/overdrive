@@ -3,10 +3,10 @@
 | Field | Value |
 |-------|-------|
 | **Engine Version** | 9.12.0 |
-| **Project Pinned** | 2026-06-15 |
+| **Project Pinned** | 2026-06-16 |
 | **LLM Knowledge Cutoff** | May 2025 |
 | **Risk Level** | HIGH — post-cutoff major versions (8.x, 9.x) with breaking changes |
-| **Last Verified** | 2026-06-15 |
+| **Last Verified** | 2026-06-16 |
 
 ## Post-Cutoff Version Timeline
 

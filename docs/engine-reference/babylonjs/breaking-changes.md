@@ -1,6 +1,6 @@
 # Babylon.js Breaking Changes
 
-> Last verified: 2026-06-15
+> Last verified: 2026-06-16
 
 This file documents breaking changes across Babylon.js versions relevant to
 this project (8.x → 9.12.0).

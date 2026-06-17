@@ -1,6 +1,6 @@
 # Babylon.js 9.x — Current Best Practices
 
-> Last verified: 2026-06-15
+> Last verified: 2026-06-16
 
 Practices that changed or emerged since the LLM training cutoff (May 2025).
 Use these over older patterns.

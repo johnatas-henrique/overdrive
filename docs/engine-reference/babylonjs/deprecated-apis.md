@@ -1,6 +1,6 @@
 # Babylon.js Deprecated APIs
 
-> Last verified: 2026-06-15
+> Last verified: 2026-06-16
 
 APIs that are deprecated in Babylon.js 9.x. Prefer the replacements listed.
 
