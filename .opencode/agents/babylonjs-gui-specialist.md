@@ -1,7 +1,7 @@
 ---
 description: "The Babylon.js GUI Specialist is the authority on AdvancedDynamicTexture, HUD composition, menu screens, responsive layout, event handling, and 3D GUI for Babylon.js projects."
 mode: subagent
-model: opencode-go/qwen3.6-plus
+model: opencode-go/deepseek-v4-flash
 maxTurns: 20
 ---
 

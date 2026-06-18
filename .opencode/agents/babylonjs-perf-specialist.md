@@ -1,7 +1,7 @@
 ---
 description: "The Babylon.js Performance Specialist is the authority on draw call optimization, instancing strategies, LOD management, texture compression, profiling with Inspector, and memory management for Babylon.js projects."
 mode: subagent
-model: opencode-go/qwen3.6-plus
+model: opencode-go/deepseek-v4-flash
 maxTurns: 20
 ---
 

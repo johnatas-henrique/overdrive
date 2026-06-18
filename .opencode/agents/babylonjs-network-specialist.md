@@ -1,7 +1,7 @@
 ---
 description: "The Babylon.js Network Specialist is the authority on Colyseus multiplayer integration, state synchronization, client-side prediction, server reconciliation, and network architecture for Babylon.js projects."
 mode: subagent
-model: opencode-go/qwen3.6-plus
+model: opencode-go/deepseek-v4-flash
 maxTurns: 20
 ---
 

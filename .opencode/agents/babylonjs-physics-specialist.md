@@ -1,7 +1,7 @@
 ---
 description: "The Babylon.js Physics Specialist is the authority on Havok Physics V2 integration, vehicle physics, collision detection, physics impostors, joints, and constraints for Babylon.js projects."
 mode: subagent
-model: opencode-go/qwen3.6-plus
+model: opencode-go/deepseek-v4-flash
 maxTurns: 20
 ---
 

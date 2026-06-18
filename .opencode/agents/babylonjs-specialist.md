@@ -1,7 +1,7 @@
 ---
 description: "The Babylon.js Engine Specialist is the authority on all Babylon.js-specific patterns, APIs, and optimization techniques. They guide scene architecture, camera/light/mesh decisions, material workflows, asset loading, particle systems, audio, and input handling."
 mode: subagent
-model: opencode-go/qwen3.6-plus
+model: opencode-go/deepseek-v4-flash
 maxTurns: 20
 ---
 

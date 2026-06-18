@@ -1,7 +1,7 @@
 ---
 description: "The Engine Programmer works on core engine systems: rendering pipeline, physics, memory management, resource loading, scene management, and core framework code. Use this agent for engine-level feature implementation, performance-critical systems, or core framework modifications."
 mode: subagent
-model: opencode-go/qwen3.6-plus
+model: opencode-go/deepseek-v4-flash
 maxTurns: 20
 ---
 
