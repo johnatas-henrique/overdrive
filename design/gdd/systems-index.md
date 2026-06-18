@@ -26,17 +26,17 @@
 
 Built before anything renders on screen. These systems are the architectural backbone — everything in Fase 1 depends on them.
 
-| #   | System                | Category       | Dependencies             | Phase | Status      |
-| --- | --------------------- | -------------- | ------------------------ | ----- | ----------- |
-| 1   | Data & Config Manager | Infrastructure | —                        | 0     | Not Started |
-| 2   | Event Bus             | Infrastructure | —                        | 0     | Not Started |
-| 3   | Game State Machine    | Infrastructure | Event Bus                | 0     | Not Started |
-| 4   | Persistence Interface | Infrastructure | —                        | 0     | Not Started |
-| 5   | Simulation Snapshot   | Infrastructure | —                        | 0     | Not Started |
-| 6   | Asset Manager         | Infrastructure | Data & Config            | 0     | Not Started |
-| 7   | Entity/Car Lifecycle  | Infrastructure | Event Bus, Data & Config | 0     | Not Started |
-| 8   | Dev Tools             | Developer Tool | Event Bus, Data & Config | 0     | Not Started |
-| 9   | Determinism Contract  | Constraint     | —                        | 0     | Not Started |
+| #   | System                | Category       | Dependencies             | Phase | Status   |
+| --- | --------------------- | -------------- | ------------------------ | ----- | -------- |
+| 1   | Data & Config Manager | Infrastructure | —                        | 0     | Designed |
+| 2   | Event Bus             | Infrastructure | —                        | 0     | Designed |
+| 3   | Game State Machine    | Infrastructure | Event Bus                | 0     | Designed |
+| 4   | Persistence Interface | Infrastructure | —                        | 0     | Designed |
+| 5   | Simulation Snapshot   | Infrastructure | —                        | 0     | Designed |
+| 6   | Asset Manager         | Infrastructure | Data & Config            | 0     | Designed |
+| 7   | Entity/Car Lifecycle  | Infrastructure | Event Bus, Data & Config | 0     | Designed |
+| 8   | Dev Tools             | Developer Tool | Event Bus, Data & Config | 0     | Designed |
+| 9   | Determinism Contract  | Constraint     | —                        | 0     | Designed |
 
 **GSM states**: Loading → Menu → PreRace → Racing → PostRace → Menu (loop)
 **Entity scope (Fase 1)**: Player car + AI cars + static track colliders only.
