@@ -3,7 +3,7 @@ name: opencode-review
 on:
   workflow_dispatch:
   pull_request:
-    branches: [master]
+    branches: [main]
 
 jobs:
   review:
