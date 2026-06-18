@@ -1,0 +1,200 @@
+{
+  "meta": {
+    "game": "Overdrive",
+    "version": "1.0",
+    "description": "Single source of truth for all palette colours. No values should be hardcoded in game code — import from this file.",
+    "lastUpdated": "2025-06-18"
+  },
+  "gamePalette": {
+    "raceRed": { "hex": "#E8301A", "use": "Alert, danger, player damage, critical fuel" },
+    "trackBlack": { "hex": "#2A2A2A", "use": "Asphalt base (adjusted per track, ±1 step)" },
+    "kerbWhite": { "hex": "#F0F0F0", "use": "Track edges, start/finish line, UI text" },
+    "asphaltGrey": { "hex": "#4A4A4A", "use": "Runoff areas, secondary track surfaces" },
+    "signalYellow": { "hex": "#F5C800", "use": "Caution, kerbs, flag, highlight" }
+  },
+  "skyPalettes": [
+    {
+      "id": "warm",
+      "name": "Warm / Sunny",
+      "regions": ["Brazil", "Australia", "Italy", "Spain"],
+      "sky": "#3B82D6",
+      "lightQuality": "High contrast, hard shadows"
+    },
+    {
+      "id": "temperate",
+      "name": "Temperate",
+      "regions": ["UK", "France", "Germany"],
+      "sky": "#6B8FA3",
+      "lightQuality": "Soft, overcast, diffuse"
+    },
+    {
+      "id": "rainy",
+      "name": "Rainy / Cold",
+      "regions": ["Belgium", "Netherlands", "Japan"],
+      "sky": "#8B9BB4",
+      "lightQuality": "Flat, low saturation"
+    },
+    {
+      "id": "finale",
+      "name": "Championship Finale",
+      "regions": ["Any track (title decider)"],
+      "sky": "#E8943A",
+      "lightQuality": "Warm, long shadows, bloom permitted"
+    }
+  ],
+  "teams": [
+    {
+      "id": "macklen",
+      "parodyOf": "McLaren",
+      "number": 1,
+      "primary": "#C8102E",
+      "secondary": "#FFFFFF",
+      "accent": null,
+      "notes": "Marlboro-era McLaren",
+      "driver": {
+        "name": "Macklen #1",
+        "referenceDriver": "Senna",
+        "character": "Dominant",
+        "helmet": {
+          "colors": ["#FFD700", "#1A237E", "#1B5E20", "#FFFFFF"],
+          "description": "Yellow crown with navy and dark green bands, white central stripe"
+        }
+      }
+    },
+    {
+      "id": "willard",
+      "parodyOf": "Williams",
+      "number": 5,
+      "primary": "#0051BA",
+      "secondary": "#FFFFFF",
+      "accent": "#FFD700",
+      "notes": "Canon Williams",
+      "driver": {
+        "name": "Willard #5",
+        "referenceDriver": "Mansell",
+        "character": "Lightning bolt",
+        "helmet": {
+          "colors": ["#1565C0", "#FFFFFF", "#FFD700"],
+          "description": "Medium blue with white diagonal band and gold accent"
+        }
+      }
+    },
+    {
+      "id": "ferrell",
+      "parodyOf": "Ferrari",
+      "number": 27,
+      "primary": "#DC0000",
+      "secondary": "#FFD700",
+      "accent": null,
+      "notes": "Scuderia Ferrari",
+      "driver": {
+        "name": "Ferrell #27",
+        "referenceDriver": "Prost",
+        "character": "Technical",
+        "helmet": {
+          "colors": ["#FFFFFF", "#1565C0", "#DC0000", "#006B3F"],
+          "description": "White with blue, red and green bands across the crown"
+        }
+      }
+    },
+    {
+      "id": "bennett",
+      "parodyOf": "Benetton",
+      "number": 20,
+      "primary": "#FFD700",
+      "secondary": "#006B3F",
+      "accent": "#003DA5",
+      "notes": "1991 Benetton",
+      "driver": {
+        "name": "Bennett #20",
+        "referenceDriver": "Piquet",
+        "character": "Consistent",
+        "helmet": {
+          "colors": ["#FFFFFF", "#003DA5", "#DC0000", "#FFD700"],
+          "description": "White with blue and red side stripes, yellow accent"
+        }
+      }
+    },
+    {
+      "id": "jordash",
+      "parodyOf": "Jordan",
+      "number": 33,
+      "primary": "#006B3F",
+      "secondary": "#003DA5",
+      "accent": null,
+      "notes": "7UP Jordan 191",
+      "driver": {
+        "name": "Jordash #33",
+        "referenceDriver": "de Cesaris",
+        "character": "Impulsive",
+        "helmet": {
+          "colors": ["#FFFFFF", "#006B3F", "#003DA5"],
+          "description": "White with inverted-V emerald green and royal blue stripes"
+        }
+      }
+    },
+    {
+      "id": "tyrant",
+      "parodyOf": "Tyrrell",
+      "number": 3,
+      "primary": "#404058",
+      "secondary": "#002060",
+      "accent": "#FFD700",
+      "notes": "019-era Tyrrell",
+      "driver": {
+        "name": "Tyrant #3",
+        "referenceDriver": "Nakajima",
+        "character": "Defensive",
+        "helmet": {
+          "colors": ["#FFFFFF", "#E8301A", "#404058"],
+          "description": "White with red circle on crown and navy details"
+        }
+      }
+    },
+    {
+      "id": "lorris",
+      "parodyOf": "Lotus",
+      "number": 11,
+      "primary": "#E8A800",
+      "secondary": "#181818",
+      "accent": null,
+      "notes": "Camel Lotus 102",
+      "driver": {
+        "name": "Lorris #11",
+        "referenceDriver": "Häkkinen",
+        "character": "Rookie",
+        "helmet": {
+          "colors": ["#E0E0E0", "#1565C0", "#DC0000", "#181818"],
+          "description": "Silver-white with diagonal blue and red bands, black details"
+        }
+      }
+    },
+    {
+      "id": "layton_hall",
+      "parodyOf": "Leyton House",
+      "number": 16,
+      "primary": "#00CED1",
+      "secondary": "#175D52",
+      "accent": null,
+      "notes": "CG911-era Leyton House",
+      "driver": {
+        "name": "Layton Hall #16",
+        "referenceDriver": "Capelli",
+        "character": "Aggressive",
+        "helmet": {
+          "colors": ["#DC0000", "#00CED1", "#FFFFFF"],
+          "description": "Red with horizontal turquoise band and white accent"
+        }
+      }
+    }
+  ],
+  "hudPalette": [
+    { "name": "Pure White", "hex": "#FFFFFF", "use": "Primary text, speed, revs" },
+    { "name": "Alert Red", "hex": "#E8301A", "use": "Critical fuel, warning, low tyres" },
+    { "name": "Fuel Blue", "hex": "#00BFFF", "use": "Fuel gauge" },
+    { "name": "Tach Yellow", "hex": "#F5C800", "use": "Rev limiter zone" },
+    { "name": "Tyre Cyan", "hex": "#00E5FF", "use": "Tyre temperature indicator" },
+    { "name": "Position Ghost", "hex": "#808080", "use": "Ghost car / opponent delta" },
+    { "name": "Overtake Green", "hex": "#00FF66", "use": "Overtake streak, positive delta" }
+  ]
+}
