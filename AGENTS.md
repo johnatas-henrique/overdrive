@@ -37,12 +37,7 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 │   ├── authoring-skills.md      # Skill creation guide
 │   ├── hybrid-workflow.md       # Hybrid workflow reference
 │   └── CONTRIBUTING.md          # Framework contribution guide
-├── tests/
-│   ├── agents/                  # Agent framework validation
-│   │   ├── validate.mjs         # Structural compliance checker
-│   │   ├── validate-gdscript.mjs # GDScript snippet linter
-│   │   └── validation-report.md # Latest audit results
-│   ├── [game-specific tests]
+├── tests/                       # Automated test suites and evidence
 │   └── [spawned by test-setup]
 ├── src/                         # Game source code
 ├── assets/                      # Game assets
@@ -138,6 +133,7 @@ This project supports two workflow modes. Choose the one that fits your team siz
 
 Run `/start` in OpenCode to begin the guided onboarding flow.
 Or jump directly to:
+
 - `/brainstorm` — explore game ideas from scratch
 - `/setup-engine babylonjs` — configure your engine (also: godot, unity, unreal, sfml3, raylib)
 - `/project-stage-detect` — analyze an existing project
@@ -149,18 +145,18 @@ Or jump directly to:
 Type `/` in OpenCode to see all available commands. All 50 commands route to
 corresponding skills in `.opencode/skills/`.
 
-| Category | Commands |
-|----------|----------|
-| **Onboarding** | `/start`, `/help`, `/project-stage-detect`, `/setup-engine`, `/init-template` |
-| **Design** | `/brainstorm`, `/map-systems`, `/design-system`, `/quick-design`, `/design-review`, `/review-all-gdds` |
-| **Architecture** | `/create-architecture`, `/architecture-decision`, `/architecture-review`, `/create-control-manifest` |
-| **Stories** | `/create-epics`, `/create-stories`, `/story-readiness`, `/dev-story`, `/story-done`, `/code-review` |
-| **QA** | `/qa-plan`, `/smoke-check`, `/soak-test`, `/regression-suite`, `/test-setup`, `/test-helpers`, `/test-evidence-review`, `/test-flakiness` |
-| **Prototyping** | `/prototype`, `/reverse-document` |
-| **Team** | `/team-combat`, `/team-narrative`, `/team-ui`, `/team-level`, `/team-audio`, `/team-polish`, `/team-qa`, `/team-release` |
-| **Release** | `/sprint-plan`, `/sprint-status`, `/milestone-review`, `/release-checklist`, `/launch-checklist`, `/retrospective` |
-| **Ops** | `/hotfix`, `/day-one-patch`, `/bug-report`, `/bug-triage`, `/security-audit` |
-| **Other** | `/balance-check`, `/consistency-check`, `/content-audit`, `/asset-audit`, `/perf-profile`, `/scope-check`, `/gate-check`, `/changelog`, `/patch-notes`, `/localize`, `/onboard`, `/tech-debt`, `/propagate-design-change`, `/estimate`, `/art-bible`, `/asset-spec`, `/playtest-report`, `/automated-smoke-test` |
+| Category         | Commands                                                                                                                                                                                                                                                                                                         |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Onboarding**   | `/start`, `/help`, `/project-stage-detect`, `/setup-engine`, `/init-template`                                                                                                                                                                                                                                    |
+| **Design**       | `/brainstorm`, `/map-systems`, `/design-system`, `/quick-design`, `/design-review`, `/review-all-gdds`                                                                                                                                                                                                           |
+| **Architecture** | `/create-architecture`, `/architecture-decision`, `/architecture-review`, `/create-control-manifest`                                                                                                                                                                                                             |
+| **Stories**      | `/create-epics`, `/create-stories`, `/story-readiness`, `/dev-story`, `/story-done`, `/code-review`                                                                                                                                                                                                              |
+| **QA**           | `/qa-plan`, `/smoke-check`, `/soak-test`, `/regression-suite`, `/test-setup`, `/test-helpers`, `/test-evidence-review`, `/test-flakiness`                                                                                                                                                                        |
+| **Prototyping**  | `/prototype`, `/reverse-document`                                                                                                                                                                                                                                                                                |
+| **Team**         | `/team-combat`, `/team-narrative`, `/team-ui`, `/team-level`, `/team-audio`, `/team-polish`, `/team-qa`, `/team-release`                                                                                                                                                                                         |
+| **Release**      | `/sprint-plan`, `/sprint-status`, `/milestone-review`, `/release-checklist`, `/launch-checklist`, `/retrospective`                                                                                                                                                                                               |
+| **Ops**          | `/hotfix`, `/day-one-patch`, `/bug-report`, `/bug-triage`, `/security-audit`                                                                                                                                                                                                                                     |
+| **Other**        | `/balance-check`, `/consistency-check`, `/content-audit`, `/asset-audit`, `/perf-profile`, `/scope-check`, `/gate-check`, `/changelog`, `/patch-notes`, `/localize`, `/onboard`, `/tech-debt`, `/propagate-design-change`, `/estimate`, `/art-bible`, `/asset-spec`, `/playtest-report`, `/automated-smoke-test` |
 
 ## Studio Hierarchy
 
@@ -192,17 +188,6 @@ Tier 3 — Specialists (Subagents)
 - **SFML 3**: `sfml-specialist` (single agent — covers Graphics, Audio, Network, Window, System)
 - **Raylib**: `raylib-specialist` (single agent — covers core, rlgl, raudio, raymath, raygui)
 - **Babylon.js**: `babylonjs-specialist` + `babylonjs-physics-specialist`, `babylonjs-network-specialist`, `babylonjs-gui-specialist`, `babylonjs-perf-specialist`
-
-## Quality Gates
-
-Before merging to `development`, the CI must pass:
-
-- **Agent validation** (`.github/workflows/agent-validation.yml`):
-  - All agent files have required frontmatter and sections
-  - All skill files have valid cross-references to existing agents
-  - All command files reference valid skill directories
-- **Plugin tests** (`node .opencode/plugins/tests/test-*.mjs`):
-  - 11 test suites, 129+ tests covering all hooks
 
 ## Notes
 

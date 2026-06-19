@@ -5,26 +5,33 @@ OpenCode runtime. Each plugin is a self-contained `.ts` file in `.opencode/plugi
 
 ## Available Plugins
 
-| Plugin | Purpose | Hooks |
-|--------|---------|-------|
-| `ccgs-hooks.ts` | Session lifecycle, commit validation, asset checks, agent logging, gap detection | `session.created`, `session.idle`, `experimental.session.compacting`, `experimental.compaction.autocontinue`, `tool.execute.before`, `tool.execute.after` |
-| `drift-detector.ts` | Detects agent/skill/command template drift | `session.created` (scan), `tool.execute.after` (single-file check) |
-| `changelog-generator.ts` | Generates CHANGELOG.md from conventional commits | `session.idle` (preview), `tool.execute.before` (command detection) |
+| Plugin                   | Purpose                                                                          | Hooks                                                                                                                                                     |
+| ------------------------ | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ccgs-hooks.ts`          | Session lifecycle, commit validation, asset checks, agent logging, gap detection | `session.created`, `session.idle`, `experimental.session.compacting`, `experimental.compaction.autocontinue`, `tool.execute.before`, `tool.execute.after` |
+| `drift-detector.ts`      | Detects agent/skill/command template drift                                       | `session.created` (scan), `tool.execute.after` (single-file check)                                                                                        |
+| `changelog-generator.ts` | Generates CHANGELOG.md from conventional commits                                 | `session.idle` (preview), `tool.execute.before` (command detection)                                                                                       |
 
 ## Plugin Structure
 
 Every plugin follows this pattern:
 
 ```typescript
-import type { Plugin } from "@opencode-ai/plugin"
+import type { Plugin } from "@opencode-ai/plugin";
 
-export const MyPlugin: Plugin = async ({ project, client, directory, worktree }) => {
-  const projectRoot = directory || worktree || process.cwd()
+export const MyPlugin: Plugin = async ({
+  project,
+  client,
+  directory,
+  worktree,
+}) => {
+  const projectRoot = directory || worktree || process.cwd();
 
   return {
     // Lifecycle hooks
     event: async ({ event }) => {
-      if (event.type === "session.created") { /* ... */ }
+      if (event.type === "session.created") {
+        /* ... */
+      }
     },
 
     // Tool hooks (before execution)
@@ -41,23 +48,26 @@ export const MyPlugin: Plugin = async ({ project, client, directory, worktree })
     // Compaction hooks
     "experimental.session.compacting": async (input, output) => {
       // Feed context into the compaction event
-      output.context.push("Additional context for the compacted session")
+      output.context.push("Additional context for the compacted session");
     },
 
     "experimental.compaction.autocontinue": async (input, output) => {
       // Add instructions for the auto-continued session
     },
-  }
-}
+  };
+};
 ```
 
 ## Hook Types
 
 ### `event`
+
 Fires on session lifecycle events: `session.created`, `session.idle`, `server.instance.disposed`.
 
 ### `tool.execute.before`
+
 Fires before any tool executes. Use to:
+
 - Validate input parameters
 - Block dangerous operations (push to protected branches)
 - Log agent invocations
@@ -66,13 +76,17 @@ Fires before any tool executes. Use to:
 Throw an Error to prevent the tool from executing.
 
 ### `tool.execute.after`
+
 Fires after tool completion. Use to:
+
 - Validate output/result files
 - Detect file pattern changes (skill modifications)
 - Log agent completions
 
 ### `experimental.session.compacting`
+
 Fires when context compression is about to occur. Use to inject recovery context:
+
 ```typescript
 "experimental.session.compacting": async (input, output) => {
   output.context.push("Current task: implementing player movement system...")
@@ -80,6 +94,7 @@ Fires when context compression is about to occur. Use to inject recovery context
 ```
 
 ### `experimental.compaction.autocontinue`
+
 Fires after compaction when the session auto-continues. Use to guide the session to recover state.
 
 ## Logger Pattern
@@ -89,14 +104,16 @@ All plugins should use a structured logger:
 ```typescript
 function createPluginLogger(client: any, service: string) {
   const log = (level: string, message: string, extra?: any) => {
-    client?.app?.log({ body: { service, level, message, extra } }).catch(() => {})
-  }
+    client?.app
+      ?.log({ body: { service, level, message, extra } })
+      .catch(() => {});
+  };
   return {
     debug: (m: string, x?: any) => log("debug", m, x),
     info: (m: string, x?: any) => log("info", m, x),
     warn: (m: string, x?: any) => log("warn", m, x),
     error: (m: string, x?: any) => log("error", m, x),
-  }
+  };
 }
 ```
 
@@ -105,8 +122,7 @@ function createPluginLogger(client: any, service: string) {
 1. Create `{plugin-name}.ts` in `.opencode/plugins/`
 2. Export a `Plugin` instance (`export const MyPlugin: Plugin = ...`)
 3. Register the plugin in `opencode.json` under the `plugins` array
-4. Write tests in `.opencode/plugins/tests/` following the `test-*.mjs` naming convention
-5. Document the plugin in this README
+4. Document the plugin in this README
 
 ## Error Handling Guidelines
 
@@ -115,18 +131,6 @@ function createPluginLogger(client: any, service: string) {
 - Throw from `tool.execute.before` only to block a tool from executing
 - Use `logAudit()` for persistent audit trail (ccgs-hooks utility)
 - Never throw from `tool.execute.after` (tool already completed)
-
-## Testing
-
-Tests are Node.js ESM scripts in `.opencode/plugins/tests/`. Each test:
-- Imports the plugin's exported functions
-- Passes simulated project context
-- Asserts expected output
-
-Run all plugin tests:
-```bash
-node .opencode/plugins/tests/test-*.mjs
-```
 
 ## Plugin Configuration
 
