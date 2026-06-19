@@ -25,3 +25,6 @@ desktop.ini
 
 # Submodule dependencies
 tools/aseprite-mcp/.venv/
+
+# Scratch files (keep for debugging)
+.opencode/scratch
