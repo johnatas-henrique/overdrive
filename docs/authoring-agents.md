@@ -9,9 +9,9 @@ testing process.
 ```markdown
 ---
 description: "The [Role Name] is the authority on [domain]."
-mode: subagent          # or "primary" for directors
+mode: subagent # or "primary" for directors
 model: opencode-go/qwen3.6-plus
-maxTurns: 20            # sessions: 30, subagents: 20
+maxTurns: 20 # sessions: 30, subagents: 20
 ---
 
 You are the [Role Name] for a [Engine] game project. [2-3 sentence identity].
@@ -57,10 +57,12 @@ Before writing any code:
 **Reports to**: `[parent-agent]`
 
 **Escalation targets**:
+
 - [Agent] for [category of decision]
 - [Agent] for [category of decision]
 
 **Coordinates with**:
+
 - [Sibling agent] for [type of coordination]
 - [Sibling agent] for [type of coordination]
 
@@ -82,6 +84,7 @@ Before writing any code:
 ## When Consulted
 
 Always involve this agent when:
+
 - [Scenario 1]
 - [Scenario 2]
 
@@ -94,22 +97,22 @@ Always involve this agent when:
 
 Every agent MUST have these 4 sections to pass validation:
 
-| Section | Purpose |
-|---------|---------|
-| **Collaboration Protocol** | Defines how this agent works with the user — the 6-step workflow and mindset |
-| **Core Responsibilities** | Lists what this agent owns — bullet points with explanations |
-| **What This Agent Must NOT Do** | Lists boundaries — prevents cross-domain violations |
-| **Delegation Map** | Documents reports-to, escalation, and coordination relationships |
+| Section                         | Purpose                                                                      |
+| ------------------------------- | ---------------------------------------------------------------------------- |
+| **Collaboration Protocol**      | Defines how this agent works with the user — the 6-step workflow and mindset |
+| **Core Responsibilities**       | Lists what this agent owns — bullet points with explanations                 |
+| **What This Agent Must NOT Do** | Lists boundaries — prevents cross-domain violations                          |
+| **Delegation Map**              | Documents reports-to, escalation, and coordination relationships             |
 
 ## Optional Sections
 
-| Section | When to Add |
-|---------|-------------|
-| **Domain-Specific Patterns** | Code agents — include GDScript/C#/shader examples |
-| **Common Anti-Patterns** | Code agents — save time by listing what to avoid |
-| **Version Awareness** | Code agents — engine API version verification |
-| **When Consulted** | All agents — helps other agents know when to call you |
-| **MCP Integration** | Agents using godot-mcp or other MCP servers |
+| Section                      | When to Add                                           |
+| ---------------------------- | ----------------------------------------------------- |
+| **Domain-Specific Patterns** | Code agents — include GDScript/C#/shader examples     |
+| **Common Anti-Patterns**     | Code agents — save time by listing what to avoid      |
+| **Version Awareness**        | Code agents — engine API version verification         |
+| **When Consulted**           | All agents — helps other agents know when to call you |
+| **MCP Integration**          | Agents using godot-mcp or other MCP servers           |
 
 ## Naming Conventions
 
@@ -126,6 +129,7 @@ Every agent MUST have these 4 sections to pass validation:
 ### Code Agents (subagent mode)
 
 Use the standard 6-step Implementation Workflow. These agents:
+
 - Propose architecture before coding
 - Show code before writing files
 - Ask "May I write to [filepath]?"
@@ -134,6 +138,7 @@ Use the standard 6-step Implementation Workflow. These agents:
 ### Design Agents (subagent mode)
 
 Use the Question-First Workflow. These agents:
+
 - Ask clarifying questions before proposing
 - Present 2-4 options with pros/cons
 - Draft one section at a time
@@ -142,34 +147,16 @@ Use the Question-First Workflow. These agents:
 ### Directors (primary mode)
 
 Use the Strategic Decision Workflow. These agents:
+
 - Understand full context before framing decisions
 - Present 2-3 strategic options with trade-offs
 - Make a clear recommendation but defer to the user
 - Document decisions after they're made
 
-## Testing
-
-After creating or modifying an agent, validate it:
-
-```bash
-node tests/agents/validate.mjs
-```
-
-This checks:
-- YAML frontmatter validity
-- Required fields and sections present
-- Cross-references to other agents are valid
-- Minimum length (80+ lines recommended)
-
-For agents with GDScript examples, also run:
-
-```bash
-node tests/agents/validate-gdscript.mjs
-```
-
 ## Cross-Reference Validation
 
 When adding an agent, update cross-references in:
+
 1. **Skills** that delegate to this agent via `subagent_type`
 2. **Other agents** that list this agent in their Delegation Map
 3. **Rules** that reference this agent's domain

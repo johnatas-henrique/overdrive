@@ -16,14 +16,14 @@ The directory name must match the `name` field in the SKILL.md frontmatter.
 
 ## Template
 
-```markdown
+````markdown
 ---
 name: skill-name
 description: "One-sentence description shown in / command menu"
 argument-hint: "[arguments]"
 user-invocable: true
 allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Task, question, TodoWrite
-agent: primary-agent-name      # Optional: default agent for this skill
+agent: primary-agent-name # Optional: default agent for this skill
 ---
 
 ## Phase 1: [Name]
@@ -31,6 +31,7 @@ agent: primary-agent-name      # Optional: default agent for this skill
 [Description of what happens in this phase]
 
 Tool calls and logic:
+
 - Use Glob/Grep to gather context
 - Present findings to user
 
@@ -41,6 +42,7 @@ Tool calls and logic:
 ```gdscript
 # Example code block showing a pattern
 ```
+````
 
 ## ... (continue for each phase)
 
@@ -48,7 +50,8 @@ Tool calls and logic:
 
 - `/related-skill` — what to do after this skill completes
 - `/other-command` — related workflow
-```
+
+````
 
 ## Required Frontmatter
 
@@ -88,10 +91,13 @@ Break skills into numbered phases. Each phase should:
 Use fenced code blocks to show concrete tool invocations:
 
 ```markdown
-```
-Glob pattern="design/gdd/*.md" → find all GDDs
+````
+
+Glob pattern="design/gdd/\*.md" → find all GDDs
 Grep pattern="TODO" path="src/" → find outstanding work
+
 ```
+
 ```
 
 ### User Decisions
@@ -100,6 +106,7 @@ Use `question` for all user-facing decisions. Follow the Explain → Capture pat
 
 ```markdown
 Use `question`:
+
 - "Ready to start designing [system-name]?"
 - Options: "Yes, let's go" / "Show me more context first" / "Design a dependency first"
 ```
@@ -110,6 +117,7 @@ For domains requiring specialist expertise, delegate via `Task`:
 
 ```markdown
 Spawn `systems-designer` via Task:
+
 - Provide: system name, dependency GDD excerpts, formula requirements
 - Ask: propose formulas with variable tables and output ranges
 - Present their output to the user via `question`
@@ -126,8 +134,9 @@ Include structured output formats as fenced code blocks:
 ### Health Summary: [HEALTHY / CONCERNS / CRITICAL]
 
 ### Outliers Detected
+
 | Item | Expected | Actual | Issue |
-|------|----------|--------|-------|
+| ---- | -------- | ------ | ----- |
 ```
 ````
 
@@ -177,6 +186,7 @@ Every skill should handle common failure modes:
 
 ```markdown
 If [file/dependency] is missing:
+
 - Note the gap to the user
 - Offer alternatives: "Do you want to proceed anyway or create the dependency first?"
 - Do not silently invent missing content
@@ -202,9 +212,9 @@ After creating or modifying a skill:
 1. Verify the frontmatter is valid YAML
 2. Check all agent references (`subagent_type:` values) match `.opencode/agents/`
 3. Check all command references match `.opencode/commands/`
-4. Run the framework validator: `node tests/agents/validate.mjs`
 
-The validator checks:
+When validating:
+
 - Required frontmatter fields present
 - Agent references match existing agent files
 - Workflow structure detected (phases or step numbering)
@@ -222,11 +232,13 @@ The validator checks:
 - **Systems index**: `design/gdd/systems-index.md`
 
 ### Tool Pattern
+```
+
+Glob pattern="path/\*_/_.ext" → find relevant files
+Grep pattern="TODO" path="path/" → find pending work
 
 ```
-Glob pattern="path/**/*.ext" → find relevant files
-Grep pattern="TODO" path="path/" → find pending work
-```
+
 ```
 
 ### Approval Gate
@@ -235,6 +247,7 @@ Grep pattern="TODO" path="path/" → find pending work
 ### Gate: [Name]
 
 Use `question`:
+
 - "Approve the [item]?"
 - Options: "Approve — proceed" / "Needs changes — describe" / "Block — stop"
 ```
@@ -252,6 +265,7 @@ Use `question`:
 ## Cross-Reference Checklist
 
 When adding a skill, update:
+
 - [ ] Command file in `.opencode/commands/` (if new skill needs a slash command)
 - [ ] Agent delegation: agents that reference this skill in their domain
 - [ ] Rules that reference this skill's domain

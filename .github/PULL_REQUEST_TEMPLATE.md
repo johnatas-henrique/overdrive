@@ -16,7 +16,6 @@
 
 ## Testing
 
-- [ ] All existing tests pass: `node .opencode/plugins/tests/test-<name>.mjs`
 - [ ] Added/modified tests for this change
 
 ## Checklist
