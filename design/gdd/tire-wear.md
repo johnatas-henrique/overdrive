@@ -217,7 +217,7 @@ All knobs in the `tire.*` namespace.
 | `tire.upgrade_L4`            | 0.7     | —       | Durability at level 4                                                      |
 | `tire.upgrade_L5`            | 0.6     | —       | Durability at level 5                                                      |
 
-Per-track: `TrackConfig.trackAbrasion` — surface roughness multiplier (0.5–2.0).
+Global: `tire.trackAbrasion` — surface roughness multiplier (0.5–2.0). Same value for all cars and tracks; per-team durability upgrades create strategic spread.
 
 ---
 

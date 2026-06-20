@@ -131,7 +131,7 @@ Fuel system exposes `addFuel(carId, amount)`.
 if (refuelActive.has(carId)) {
   const added = pit.refuel_rate * dt;
   fuelSystem.addFuel(carId, added);
-  if (fuelSystem.getFuelLevel(carId) >= trackConfig.maxFuel) {
+  if (fuelSystem.getFuelLevel(carId) >= fuelConfig.max_capacity) {
     refuelActive.delete(carId); // tank full
   }
 }

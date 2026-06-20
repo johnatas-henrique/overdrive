@@ -188,7 +188,7 @@ All knobs are in the `fuel.*` namespace in Data & Config Manager.
 | `fuel.upgrade_L4` | 0.7     | —     | Efficiency at level 4                                               |
 | `fuel.upgrade_L5` | 0.6     | —     | Efficiency at level 5                                               |
 
-Per-track: `TrackConfig.maxFuel` — fuel capacity for the race session.
+Global: `fuel.max_capacity` — fuel capacity for all cars (same tank size; efficiency upgrades create strategic spread per team).
 
 ---
 
@@ -214,4 +214,4 @@ Per-track: `TrackConfig.maxFuel` — fuel capacity for the race session.
 8. ✅ Each car tracks fuel independently (player and AI)
 9. ✅ `base_rate = 0` makes fuel never deplete (dev mode)
 10. ✅ HUD receives fuel_level each frame for fuel bar display
-11. ✅ TrackConfig.maxFuel calibratable per circuit
+11. ✅ fuel.max_capacity is a global constant (same value for all cars; efficiency upgrade creates strategic spread)
