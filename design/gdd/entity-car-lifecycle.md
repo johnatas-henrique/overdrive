@@ -1,8 +1,9 @@
 # Entity / Car Lifecycle
 
-> **Status**: In Design
+> **Status**: Design Complete
 > **Author**: build agent + johnatas-henrique
-> **Last Updated**: 2026-06-18
+> **Last Updated**: 2026-06-20
+> **Last Verified**: 2026-06-20
 > **Implements Pillar**: Foundation — entity creation, pooling, and destruction
 
 ## Overview
@@ -26,7 +27,18 @@ interface CarEntity {
   gridIndex: number; // starting grid position (0 = pole)
   mesh: AbstractMesh; // root node of cloned car
   physicsBody: PhysicsAggregate | null; // null until Physics system attaches it
-  aiDriver?: AIDriver; // undefined for player car
+  aiDriver?: AIDriverRef; // undefined for player car
+}
+
+/**
+ * Lightweight identity reference only — tells which team and driver profile
+ * the AI uses. The AI Driver module owns runtime state (AIController)
+ * in a Map<carId, AIController> and never accesses CarEntity.aiDriver
+ * during gameplay ticks.
+ */
+interface AIDriverRef {
+  readonly teamId: string;
+  readonly driverProfile: string; // key into ai driver profile registry
 }
 ```
 

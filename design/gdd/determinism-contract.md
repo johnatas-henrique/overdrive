@@ -1,8 +1,9 @@
 # Determinism Contract
 
-> **Status**: In Design
+> **Status**: Design Complete
 > **Author**: build agent + johnatas-henrique
-> **Last Updated**: 2026-06-18
+> **Last Updated**: 2026-06-20
+> **Last Verified**: 2026-06-20
 > **Implements Pillar**: Foundation — guarantees that same inputs + same seed → identical simulation output
 
 ## Overview
@@ -73,6 +74,8 @@ The algorithm is Linear Congruential Generator (LCG) — deterministic, ~5ns per
 5.  Fuel           → consume fuel based on throttle
 6.  Tire Wear      → degrade tires based on forces
 7.  Race Management → evaluate lap completions, positions, finish
+8.  [Spatial detection — runs before Physics: off-track spline check, pit entry/exit BoundingBox check]
+    Note: Exact pipeline position defined during architecture. Candidate positions: pre-Physics (position 1, same tick) or post-RaceMgmt (position 8, 1-tick latency).
 ```
 
 This order is defined at startup and enforced every tick. Two ticks with the same inputs + same seed produce identical results because every system reads from the same deterministic world state.

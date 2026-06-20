@@ -1,9 +1,10 @@
 # Dev Tools
 
-> **Status**: In Design
+> **Status**: Design Complete
 > **Author**: build agent + johnatas-henrique
-> **Last Updated**: 2026-06-18
-> **Implements Pillar**: Developer Velocity — visibility into game systems without stopping the game
+> **Last Updated**: 2026-06-20
+> **Last Verified**: 2026-06-20
+> **Implements Pillar**: Foundation — developer visibility tooling
 
 ## Overview
 
@@ -66,10 +67,10 @@ None. Dev Tools reads and displays — it does not compute.
 
 ## Dependencies
 
-- **Event Bus** (#3) — subscribing to all events for the inspector
+- **Event Bus** (#2) — subscribing to all events for the inspector
 - **Config Manager** (#1) — reading namespace values
-- **GSM** (#4) — reading current state and history
-- **Simulation Snapshot** (#6) — reading system hashes
+- **GSM** (#3) — reading current state and history
+- **Simulation Snapshot** (#5) — reading system hashes
 - **Babylon.js** — reading engine stats (FPS, draw calls)
 
 ## Tuning Knobs
