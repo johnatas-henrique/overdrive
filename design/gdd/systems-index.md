@@ -9,12 +9,12 @@
 
 ## Summary
 
-| Tier | Systems | Designed | GDD Written | Implemented | Verified | Description |
-| ---- | ------- | -------- | ----------- | ----------- | -------- | ----------- |
-| **MVP** | 24      | 24       | 24          | 0           | 0        | —           |
-| **Alpha**       | 5       | Championship, progression, economy, damage     |
-| **Full Vision** | 3       | Multiplayer, replay, history mode       |
-| **Total**       | 32      | —                                       |
+| Tier            | Systems | Designed                                   | GDD Written | Implemented | Verified | Description |
+| --------------- | ------- | ------------------------------------------ | ----------- | ----------- | -------- | ----------- |
+| **MVP**         | 24      | 24                                         | 24          | 0           | 0        | —           |
+| **Alpha**       | 5       | Championship, progression, economy, damage |
+| **Full Vision** | 3       | Multiplayer, replay, history mode          |
+| **Total**       | 32      | —                                          |
 
 > **Note on detail level**: The MVP tier is fully specified (all systems, dependencies, and phases documented). Alpha and Full Vision tiers are listed but not expanded — they will be detailed when development reaches those phases. Expanding them now would lock in design decisions before the MVP teaches us what needs to change.
 
@@ -26,17 +26,17 @@
 
 Built before anything renders on screen. These systems are the architectural backbone — everything in Fase 1 depends on them.
 
-| #   | System                | Category       | Dependencies             | Phase | Status   |
-| --- | --------------------- | -------------- | ------------------------ | ----- | -------- |
-| 1   | Data & Config Manager | Infrastructure | —                        | 0     | Designed |
-| 2   | Event Bus             | Infrastructure | —                        | 0     | Designed |
-| 3   | Game State Machine    | Infrastructure | Event Bus                | 0     | Designed |
-| 4   | Persistence Interface | Infrastructure | —                        | 0     | Designed |
-| 5   | Simulation Snapshot   | Infrastructure | —                        | 0     | Designed |
-| 6   | Asset Manager         | Infrastructure | Data & Config            | 0     | Designed |
-| 7   | Entity/Car Lifecycle  | Infrastructure | Event Bus, Data & Config, Asset Manager | 0     | Designed |
+| #   | System                | Category       | Dependencies                                                      | Phase | Status   |
+| --- | --------------------- | -------------- | ----------------------------------------------------------------- | ----- | -------- |
+| 1   | Data & Config Manager | Infrastructure | —                                                                 | 0     | Designed |
+| 2   | Event Bus             | Infrastructure | —                                                                 | 0     | Designed |
+| 3   | Game State Machine    | Infrastructure | Event Bus                                                         | 0     | Designed |
+| 4   | Persistence Interface | Infrastructure | —                                                                 | 0     | Designed |
+| 5   | Simulation Snapshot   | Infrastructure | —                                                                 | 0     | Designed |
+| 6   | Asset Manager         | Infrastructure | Data & Config                                                     | 0     | Designed |
+| 7   | Entity/Car Lifecycle  | Infrastructure | Event Bus, Data & Config, Asset Manager                           | 0     | Designed |
 | 8   | Dev Tools             | Developer Tool | Event Bus, Data & Config, Game State Machine, Simulation Snapshot | 0     | Designed |
-| 9   | Determinism Contract  | Constraint     | —                        | 0     | Designed |
+| 9   | Determinism Contract  | Constraint     | —                                                                 | 0     | Designed |
 
 **GSM states**: Loading → Menu → PreRace → Racing → PostRace → Menu (loop)
 **Entity scope (Fase 1)**: Player car + AI cars + static track colliders only.
@@ -52,13 +52,13 @@ Everything needed for one complete race. Player picks car and track, races 7 AI 
 
 ### Core Racing & Controls
 
-| #   | System            | Category    | Dependencies                                                     | Phase | Status      |
-| --- | ----------------- | ----------- | ---------------------------------------------------------------- | ----- | ----------- |
-| 10  | Input             | Core Racing | —                                                                | 1     | Designed    |
-| 11  | Menu LITE         | UI          | Input, Data & Config, Asset Manager, GSM                         | 1     | Designed    |
-| 12  | Physics/Handling  | Core Racing | Input, Entity/Car Lifecycle, Data & Config, Determinism Contract | 1     | Designed    |
-| 13  | Collision         | Core Racing | Entity/Car Lifecycle                                              | 1     | Designed    |
-| 14  | Camera            | Core Racing | Physics/Handling                                                 | 1     | Designed    |
+| #   | System           | Category    | Dependencies                                                     | Phase | Status   |
+| --- | ---------------- | ----------- | ---------------------------------------------------------------- | ----- | -------- |
+| 10  | Input            | Core Racing | —                                                                | 1     | Designed |
+| 11  | Menu LITE        | UI          | Input, Data & Config, Asset Manager, GSM                         | 1     | Designed |
+| 12  | Physics/Handling | Core Racing | Input, Entity/Car Lifecycle, Data & Config, Determinism Contract | 1     | Designed |
+| 13  | Collision        | Core Racing | Entity/Car Lifecycle                                             | 1     | Designed |
+| 14  | Camera           | Core Racing | Physics/Handling                                                 | 1     | Designed |
 
 **Physics**: Arcade grip (lift-to-turn, no drift, high speed sensation). Not a simulator.
 **Collision**: Car↔car and car↔barrier detection only. Event-driven via Event Bus. Finish line → Race Management (spatial check). Pit entry/exit → Pit Stop (spatial check). **Speed feel**: Screen shake on collision impact, player-only (amplitude proportional to relative velocity).
@@ -67,12 +67,12 @@ Everything needed for one complete race. Player picks car and track, races 7 AI 
 
 ### Track & AI
 
-| #   | System              | Category | Dependencies                                                                                | Phase | Status      |
-| --- | ------------------- | -------- | ------------------------------------------------------------------------------------------- | ----- | ----------- |
-| 15  | Track + Environment | Track    | Asset Manager, Data & Config                                                                | 1     | Design Complete |
-| 16  | Fuel                | Strategy | Physics/Handling, Data & Config                                                             | 1     | Design Complete |
-| 17  | Tire Wear           | Strategy | Physics/Handling, Data & Config                                                             | 1     | Design Complete |
-| 18  | Pit Stop            | Strategy | Fuel, Tire Wear, Race Management, Entity/Car Lifecycle, Event Bus, Track + Env, Physics/Handling | 1     | Design Complete |
+| #   | System              | Category | Dependencies                                                                                             | Phase | Status          |
+| --- | ------------------- | -------- | -------------------------------------------------------------------------------------------------------- | ----- | --------------- |
+| 15  | Track + Environment | Track    | Asset Manager, Data & Config                                                                             | 1     | Design Complete |
+| 16  | Fuel                | Strategy | Physics/Handling, Data & Config                                                                          | 1     | Design Complete |
+| 17  | Tire Wear           | Strategy | Physics/Handling, Data & Config                                                                          | 1     | Design Complete |
+| 18  | Pit Stop            | Strategy | Fuel, Tire Wear, Race Management, Entity/Car Lifecycle, Event Bus, Track + Env, Physics/Handling         | 1     | Design Complete |
 | 19  | AI Driver           | AI       | Physics/Handling, Entity/Car Lifecycle, Data & Config, Track + Env, Collision, Fuel, Tire Wear, Pit Stop | 1     | Design Complete |
 
 **Track geometry**: Includes pit lane from the start — retrofitting later would require remaking the track.
@@ -83,13 +83,13 @@ Everything needed for one complete race. Player picks car and track, races 7 AI 
 
 ### Race Flow & Feedback
 
-| #   | System             | Category       | Dependencies                                                                       | Phase | Status      |
-| --- | ------------------ | -------------- | ---------------------------------------------------------------------------------- | ----- | ----------- |
-| 20  | Race Management    | Race Flow      | Physics/Handling (spline distance), Collision, Data & Config, Event Bus | 1     | Design Complete |
-| 21  | HUD                | UI/Feedback    | Physics/Handling (speed), Fuel, Tire Wear, Race Mgmt (pos, lap), Camera, Event Bus | 1     | Design Complete |
-| 22  | Audio              | UI/Feedback    | Physics/Handling (RPM, speed), Collision (impacts), Event Bus, Asset Manager       | 1     | Design Complete |
-| 23  | Telemetry Recorder | Developer Tool | Event Bus, Physics/Handling, AI Driver, Data & Config                              | 1     | Design Complete |
-| 24  | Single Race        | Race Flow      | Race Management, Data & Config, Game State Machine                                 | 1     | Design Complete |
+| #   | System             | Category       | Dependencies                                                                                                                  | Phase | Status          |
+| --- | ------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----- | --------------- |
+| 20  | Race Management    | Race Flow      | Physics/Handling (spline distance), Collision, Fuel, Tire Wear, Pit Stop, GSM, Entity/Car Lifecycle, Data & Config, Event Bus | 1     | Design Complete |
+| 21  | HUD                | UI/Feedback    | Physics/Handling (speed), Fuel, Tire Wear, Race Mgmt (pos, lap), Camera, Event Bus                                            | 1     | Design Complete |
+| 22  | Audio              | UI/Feedback    | Physics/Handling (RPM, speed), Collision (impacts), Event Bus, Asset Manager                                                  | 1     | Design Complete |
+| 23  | Telemetry Recorder | Developer Tool | Event Bus, Physics/Handling, AI Driver, Data & Config                                                                         | 1     | Design Complete |
+| 24  | Single Race        | Race Flow      | Race Management, Data & Config, Game State Machine                                                                            | 1     | Design Complete |
 
 **Race Management**: Receives `RaceConfiguration` (grid size, lap count, ruleset), publishes `RaceEvent`s. Mode-agnostic — Single Race and Championship are different configurations.
 **HUD**: Modular blocks (speed, lap, pos, fuel, tires, minimap). Rearrangeable layout.
