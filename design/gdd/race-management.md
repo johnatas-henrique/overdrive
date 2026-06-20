@@ -381,7 +381,6 @@ where `fixed_dt = 1/60 s`, `tickCount` starts at GreenFlag, stops at Checkered.
 | ------------------------ | --------------- | -------------------------------------------------------------------------------- |
 | **Physics/Handling**     | Hard            | Provides `splinePosition` per car for position sorting and lap detection.        |
 | **Collision**            | Informational   | Collision events logged but no gameplay action in Phase 1.                       |
-| **AI Driver**            | Hard            | AI reads position grid for overtaking decisions.                                 |
 | **Event Bus**            | Hard            | All I/O with other systems.                                                      |
 | **Data & Config**        | Hard            | Reads `RaceConfiguration` values.                                                |
 | **Fuel**                 | Hard            | Receives `car.fuel_empty` event for DNF detection.                               |
