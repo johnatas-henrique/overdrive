@@ -1,8 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": [
-    "./.opencode/plugins/ccgs-hooks.ts"
-  ],
+  "plugin": ["./.opencode/plugins/ccgs-hooks.ts"],
   "command": {
     "hybrid-prototype": {
       "template": "Run the hybrid-prototype skill: load .opencode/skills/hybrid-prototype/SKILL.md and follow the fast-lane prototype workflow. Concept: $ARGUMENTS",
@@ -28,20 +26,12 @@
     },
     "babylonjs-nme": {
       "type": "local",
-      "command": [
-        "npx",
-        "@babylonjs/mcp-servers",
-        "nme"
-      ],
+      "command": ["npx", "@babylonjs/mcp-servers", "nme"],
       "enabled": true
     },
     "babylonjs-gui": {
       "type": "local",
-      "command": [
-        "npx",
-        "@babylonjs/mcp-servers",
-        "gui"
-      ],
+      "command": ["node", "tools/gui-mcp-wrapper.mjs"],
       "enabled": true
     }
   },
@@ -69,6 +59,7 @@
       "type *.env*": "deny"
     },
     "read": {
+      "~/.config/opencode/*": "allow",
       "**/.env*": "deny"
     }
   }
