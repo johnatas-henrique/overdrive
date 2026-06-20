@@ -1,0 +1,298 @@
+# Camera
+
+> **Status**: Design Complete
+> **Author**: build agent + johnatas-henrique
+> **Last Updated**: 2026-06-20
+> **Last Verified**: 2026-06-20
+> **Implements Pillar**: Speed That Is Felt
+
+---
+
+## Overview
+
+Camera controls what the player sees during the race and between race phases. It provides two views (cockpit and chase), toggled instantly by the player, and reacts to speed, surface, and collisions to reinforce the sense of velocity. In PreRace it acts as a fixed establishing shot of the grid; in PostRace it switches to a free drone view orbiting the player's car.
+
+The camera never affects gameplay — it is purely a presentation layer that consumes data from Physics, Collision, and the Game State Machine.
+
+---
+
+## Player Fantasy
+
+The player forgets the camera exists. During Racing, the view is responsive, predictable, and reinforces speed without ever fighting the player's input or obscuring the track ahead.
+
+- In **cockpit** the player sees the dashboard, steering wheel, and track ahead — they are _in_ the car.
+- In **chase** the player sees the full car from behind and slightly above — they are _the director_ of their own race.
+
+Toggle between them is instant (no lerp), so the player can switch without delay penalty.
+
+---
+
+## Detailed Design
+
+### Core Rules
+
+1. **Two camera modes.** Cockpit (default) and chase. Player toggles via `camera_toggle` digital input with 200ms debounce.
+2. **Instant toggle.** No smooth transitions in MVP — switch happens on the same frame.
+3. **GSM-driven lifecycle.** Camera subscribes to `gsm.state.entered` and configures its mode based on the target state:
+   - `PreRace` → cinematic grid camera
+   - `Racing` → cockpit/chase (player's current toggle preference)
+   - `PostRace` → drone orbit camera
+4. **Follows only the player.** Camera tracks the player's car (`carId === playerCarId`). Rival cars never affect the local camera.
+5. **FOV shifts with speed.** Cockpit and chase have different base FOV values. FOV narrows at high speed, widens at low speed — linear interpolation, no easing in MVP.
+6. **Shake is additive.** Kerb, collision, and off-track shake effects stack additively and decay independently.
+7. **Head bob and lean are cosmetic.** Applied on top of the camera transform, never affect gameplay. Intensity configurable per-knob.
+8. **Camera never clips through geometry.** Chase camera uses a simple raycast backward from the car to prevent wall penetration. If occluded it snaps closer.
+
+### States
+
+| State        | Description                                                               |
+| ------------ | ------------------------------------------------------------------------- |
+| **Inactive** | Camera exists but does not follow any target. Used in Loading/Menu.       |
+| **Grid**     | Fixed camera overlooking the starting grid. PreRace cinematic, skippable. |
+| **Racing**   | Active follow mode — either cockpit or chase based on player preference.  |
+| **Drone**    | Free orbit around the player's car. PostRace celebration.                 |
+
+### Camera Modes Detail
+
+#### Cockpit Camera
+
+| Property        | Value       | Notes                                                  |
+| --------------- | ----------- | ------------------------------------------------------ |
+| Type            | FreeCamera  | Parented to `driver_eye` TransformNode on the car mesh |
+| Base FOV        | 75°         | Wider than chase — gives peripheral sense of speed     |
+| Head bob        | ±0.02 units | Subtle vertical oscillation from acceleration/braking  |
+| Lateral lean    | ±2° roll    | Subtle lean into corners from lateral G                |
+| Shake           | Yes         | Kerb, collision, off-track triggers                    |
+| FOV shift range | 65°–85°     | `baseFOV ± speedFactor × speed_kmh`, clamped           |
+
+The cockpit camera is parented to a `TransformNode` placed at the driver's eye position within the car `.glb` asset. This means it automatically inherits the car's position, rotation, and suspension movement — zero manual sync required.
+
+Head bob and lean are expressed as local offsets on a child `TransformNode` between the parent and the camera, allowing them to be disabled independently without breaking the camera hierarchy.
+
+#### Chase Camera
+
+| Property         | Value        | Notes                                        |
+| ---------------- | ------------ | -------------------------------------------- |
+| Type             | FollowCamera | Babylon.js native chase camera               |
+| Base FOV         | 60°          | Narrower than cockpit — cinematic framing    |
+| Follow distance  | 6m           | Distance behind the car (knob)               |
+| Follow height    | 3m           | Height above the car (knob)                  |
+| Follow offset    | 0.5m         | Lateral offset to the right (knob)           |
+| Spring stiffness | 0.90         | Near-rigid spring (Horizon Chase style)      |
+| Shake            | Yes          | Kerb, collision, off-track triggers          |
+| FOV shift range  | 52°–68°      | `baseFOV ± speedFactor × speed_kmh`, clamped |
+
+The chase camera uses Babylon.js `FollowCamera` with a high spring stiffness value (0.90 out of 0–1) — nearly rigid. This means the camera follows the car with minimal lag, matching Horizon Chase's responsive feel. The value is a knob and can be reduced in playtesting if the camera feels too stiff.
+
+Camera position is validated with a simple raycast from the car backward. If the line of sight is blocked (wall, another car), the camera snaps to the closest unoccluded position along the backward ray.
+
+#### Grid Camera (PreRace)
+
+A static camera placed above and ahead of the starting grid, framing all cars and a portion of the track ahead. The player can skip to Racing by pressing ENTER / START. Default duration: 0.5 seconds before becoming skippable.
+
+| Property     | Value                                         |
+| ------------ | --------------------------------------------- |
+| Position     | 30m above track centerline, 40m ahead of grid |
+| Look-at      | Center of the grid (grid position 10 of 20)   |
+| FOV          | 70°                                           |
+| Skippable    | After 0.5s or on any input                    |
+| Duration max | 8s (auto-skip to Racing)                      |
+
+#### Drone Camera (PostRace)
+
+A free-orbit camera that circles the player's car at a fixed distance, allowing the player to see their car and the result position. The player can skip to Results screen by pressing ENTER / START.
+
+| Property    | Value                      |
+| ----------- | -------------------------- |
+| Type        | ArcRotateCamera            |
+| Distance    | 8m from car center         |
+| Orbit speed | 15°/s                      |
+| Look-at     | Player car center          |
+| Skippable   | After 0.5s or on any input |
+| FOV         | 65°                        |
+
+---
+
+### Interactions with Other Systems
+
+| System                   | Data Flow                                                                                    | Direction            |
+| ------------------------ | -------------------------------------------------------------------------------------------- | -------------------- |
+| **GSM**                  | `gsm.state.entered` → Camera switches mode (Grid/Racing/Drone)                               | GSM → Camera         |
+| **Input**                | `camera_toggle` pulse → Camera swaps cockpit/chase                                           | Input → Camera       |
+| **Physics**              | `speed_kmh, lateral_g, accel_g, kerb_hit, off_track` → Camera applies FOV shift, lean, shake | Physics → Camera     |
+| **Collision**            | `collision.impact` → Camera shakes (player-only, amp ∝ impulse)                              | Collision → Camera   |
+| **Entity/Car Lifecycle** | `entity.spawned` → Camera finds player car by `carId` → sets follow target                   | Lifecycle → Camera   |
+| **HUD**                  | —                                                                                            | No direct dependency |
+
+---
+
+### Formulas
+
+#### FOV Shift
+
+```
+FOV = baseFOV + speedFactor × speed_kmh
+
+speedFactor: configurable constant, default 0.05 (degrees per km/h)
+Result clamped to [FOV_min, FOV_max]
+```
+
+Cockpit: `baseFOV=75, FOV_min=65, FOV_max=85`
+Chase: `baseFOV=60, FOV_min=52, FOV_max=68`
+
+#### Camera Shake
+
+Shake is a 3D positional offset applied to a shake `TransformNode` between the camera and its parent. Decays exponentially.
+
+```
+shake_offset(t) = initial_intensity × e^(-decay × t) × random_unit_vector()
+
+Where:
+  initial_intensity = shake_intensity (from event) + previously_active_shakes
+  decay = configurable per shake type (higher = faster decay)
+  random_unit_vector() = new random direction each frame
+```
+
+| Shake Type | Default Intensity | Default Decay | Duration (until < 5% intensity) |
+| ---------- | ----------------- | ------------- | ------------------------------- |
+| Kerb hit   | 0.03 units        | 6.0/s         | ~0.5s                           |
+| Collision  | impulse × 0.001   | 4.0/s         | ~0.75s at impulse=1000          |
+| Off-track  | 0.02 units        | 5.0/s         | ~0.6s                           |
+
+All shake values are tuning knobs.
+
+---
+
+### States & Transitions
+
+```
+Inactive → Grid (on gsm.state.entered: PreRace)
+Grid → Racing (on gsm.state.entered: Racing)
+Racing → Drone (on gsm.state.entered: PostRace)
+Drone → Inactive (on gsm.state.entered: Menu/Loading)
+```
+
+Within Racing state, the user toggle switches between sub-modes:
+
+```
+Racing.Cockpit ←toggle→ Racing.Chase
+```
+
+Transition to Racing preserves the player's last toggle choice (was cockpit → stays cockpit, was chase → stays chase).
+
+---
+
+### Edge Cases
+
+| Edge Case                       | Handling                                                                                                                                                                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Toggle spam**                 | Debounced at Input level (200ms window). Camera never receives more than 1 toggle per window.                                                                                                                      |
+| **Car destroyed (DNF)**         | Camera continues following the car normally. Fuel-empty DNF triggers only when car stops (velocity ≈ 0). Tire blowout does not trigger DNF — the car can still drive with reduced grip, camera continues normally. |
+| **Car off-track**               | Off-track shake triggers briefly. Camera continues following normally — no special behaviour.                                                                                                                      |
+| **Chase camera wall occlusion** | Raycast backward from car centre. If occluded, snap to closest unoccluded point along the ray.                                                                                                                     |
+| **Very low speed**              | FOV widens to FOV_max. No special handling needed — the linear formula handles it.                                                                                                                                 |
+| **Collision during kerb shake** | Shake effects stack additively and decay independently. Both shakes run simultaneously.                                                                                                                            |
+| **Player disconnects mid-race** | Camera freezes at last position for 2s, then fades to black → GSM transition to PostRace.                                                                                                                          |
+| **PostRace skip**               | If player skips drone before 0.5s, camera snaps to Inactive for Results screen.                                                                                                                                    |
+| **Loading state**               | Camera inactive. Loading screen is handled by Menu LITE.                                                                                                                                                           |
+
+---
+
+### Dependencies
+
+| Dependency                  | Type     | Notes                                  |
+| --------------------------- | -------- | -------------------------------------- |
+| **GSM**                     | Upstream | Camera subscribes to state transitions |
+| **Input**                   | Upstream | Receives `camera_toggle` pulse         |
+| **Physics/Handling**        | Upstream | Consumes telemetry data                |
+| **Collision**               | Upstream | Consumes `collision.impact`            |
+| **Entity/Car Lifecycle**    | Upstream | Finds player car follow target         |
+| **Babylon.js FollowCamera** | Engine   | Chase camera mode                      |
+| **Babylon.js FreeCamera**   | Engine   | Cockpit camera mode                    |
+
+---
+
+### Tuning Knobs
+
+All values in `camera.*` namespace, runtime-configurable via Data & Config Manager with HMR hot-reload.
+
+| Knob                       | Default | Range  | Description                                |
+| -------------------------- | ------- | ------ | ------------------------------------------ |
+| `cockpit.fov`              | 75      | 50–100 | Cockpit base FOV (degrees)                 |
+| `cockpit.fov_min`          | 65      | 40–90  | Cockpit narrow FOV at max speed            |
+| `cockpit.fov_max`          | 85      | 60–120 | Cockpit wide FOV at zero speed             |
+| `chase.fov`                | 60      | 40–90  | Chase base FOV (degrees)                   |
+| `chase.fov_min`            | 52      | 35–80  | Chase narrow FOV at max speed              |
+| `chase.fov_max`            | 68      | 45–95  | Chase wide FOV at zero speed               |
+| `speed_factor`             | 0.05    | 0–0.2  | Degrees per km/h applied to base FOV       |
+| `chase.distance`           | 6       | 3–15   | Chase camera distance behind car (m)       |
+| `chase.height`             | 3       | 1–8    | Chase camera height above car (m)          |
+| `chase.offset`             | 0.5     | -2–2   | Chase lateral offset (m, + = right)        |
+| `chase.stiffness`          | 0.9     | 0–1    | Chase spring stiffness (1 = rigid)         |
+| `head_bob.intensity`       | 0.02    | 0–0.1  | Head bob amplitude (units)                 |
+| `head_bob.frequency`       | 2.0     | 0–5    | Head bob oscillation frequency             |
+| `lean.intensity`           | 2.0     | 0–10   | Lateral lean amplitude (degrees)           |
+| `shake.kerb_intensity`     | 0.03    | 0–0.2  | Kerb hit shake amplitude (units)           |
+| `shake.kerb_decay`         | 6.0     | 1–20   | Kerb shake decay rate (per second)         |
+| `shake.collision_factor`   | 0.001   | 0–0.01 | Impulse → shake amplitude multiplier       |
+| `shake.collision_decay`    | 4.0     | 1–20   | Collision shake decay rate (per second)    |
+| `shake.offtrack_intensity` | 0.02    | 0–0.2  | Off-track shake amplitude (units)          |
+| `shake.offtrack_decay`     | 5.0     | 1–20   | Off-track shake decay rate (per second)    |
+| `grid.duration`            | 0.5     | 0–15   | Seconds before PreRace grid is skippable   |
+| `grid.auto_skip`           | 8       | 5–30   | Auto-skip grid after N seconds             |
+| `drone.distance`           | 8       | 4–20   | PostRace drone orbit distance (m)          |
+| `drone.speed`              | 15      | 5–45   | Drone orbit speed (°/s)                    |
+| `drone.skip_delay`         | 0.5     | 0–5    | Seconds before PostRace drone is skippable |
+| `drone.fov`                | 65      | 40–90  | Drone camera FOV (degrees)                 |
+
+---
+
+### Visual/Audio Requirements
+
+**Visual:**
+
+- Cockpit camera expects a `driver_eye` TransformNode in every car `.glb` asset
+- Chase camera raycast uses track barrier collision layer; no special visual indicator
+- Grid camera is a static Babylon.js camera — no UI overlay, just pure scene framing
+- Drone camera uses `ArcRotateCamera` with no user input (orbit is automatic)
+
+**Audio:**
+
+- Camera has no direct audio output. Audio system listens to Physics/Collision events independently
+
+---
+
+### UI Requirements
+
+None. Camera has no UI elements.
+
+---
+
+### Acceptance Criteria
+
+1. Player starts Race with cockpit camera (default view)
+2. Pressing camera toggle switches between cockpit and chase instantly (no lerp)
+3. FOV narrows as car speeds up, widens as car slows — linear, visible within 2s of acceleration
+4. Running over a kerb triggers a brief camera shake (< 1s, decays exponentially)
+5. Collision triggers camera shake proportional to impact impulse, player car only
+6. Driving off-track triggers brief camera shake
+7. PreRace shows a static grid camera framing all cars on the starting line
+8. PreRace grid can be skipped after 0.5s (or immediately on ENTER/START after 0.5s)
+9. PostRace transitions to a drone camera orbiting the player's car
+10. PostRace drone can be skipped after 0.5s (or immediately on ENTER/START)
+11. Chase camera does not clip through walls (snaps closer when occluded)
+12. Cockpit camera correctly inherits car position/rotation via `driver_eye` node
+13. Head bob and lateral lean are active in cockpit mode, configurable to zero
+14. All 27 tuning knobs accept runtime changes via ConfigManager HMR
+15. Camera toggle choice persists across GSM transitions (P→R→P: last toggle wins)
+16. Head bob and lean are purely cosmetic — zero impact on car position, physics determinism is preserved
+17. On fuel-empty DNF, camera continues following the coasting car during coast-to-stop. Drone activates on PostRace transition (gsm.state.entered: PostRace), not at exact stop moment — timing difference is < 1s. Tire blowout does not trigger DNF.
+
+---
+
+### Open Questions
+
+- **Head bob and lean**: initial values are guesses. Will be calibrated during the first playtest session against the FW14B onboard reference footage.
+- **Chase stiffness**: 0.90 is a starting point. If the camera feels too rigid (no sense of car movement), reduce toward 0.7. If too loose (drifting behind), increase toward 1.0.
+- **Drone orbit speed**: 15°/s provides a full circle in ~24s. If PostRace feels too slow, increase. Too frantic, decrease.
+- **Grid camera composition**: exact position/angle will be tuned once we have a track mesh placeholder. The GDD specifies intent — the concrete values will be set during scene assembly.
