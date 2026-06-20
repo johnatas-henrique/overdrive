@@ -1,8 +1,9 @@
 # Game State Machine
 
-> **Status**: In Design
+> **Status**: Design Complete
 > **Author**: build agent + johnatas-henrique
-> **Last Updated**: 2026-06-18
+> **Last Updated**: 2026-06-20
+> **Last Verified**: 2026-06-20
 > **Implements Pillar**: Foundation — orchestrates the entire game flow
 
 ## Overview
@@ -35,7 +36,8 @@ The developer declares states and valid transitions in a single configuration ob
 
 ```
 Loading → Menu → PreRace → Racing → PostRace ──→ Menu
-                                      (championship next race ──→ PreRace)
+                                       │
+                                       └──→ PreRace (Race Again — preserved config)
 ```
 
 | State        | Purpose                                                         | Duration      | onEnter                                       | onExit                 |
@@ -48,14 +50,14 @@ Loading → Menu → PreRace → Racing → PostRace ──→ Menu
 
 **Valid transitions (enforced by transition table):**
 
-| From     | To       | Trigger                                                      |
-| -------- | -------- | ------------------------------------------------------------ |
-| Loading  | Menu     | Assets loaded, systems initialized                           |
-| Menu     | PreRace  | Player selected Single Race (future: Championship)           |
-| PreRace  | Racing   | Countdown finished or start signal                           |
-| Racing   | PostRace | Checkered flag triggered (all AI finished or player DNF)     |
-| PostRace | Menu     | Player dismissed results (future: auto-advance to next race) |
-| PostRace | PreRace  | _(future — championship mode, next race auto-advance)_       |
+| From     | To       | Trigger                                                                      |
+| -------- | -------- | ---------------------------------------------------------------------------- |
+| Loading  | Menu     | Assets loaded, systems initialized                                           |
+| Menu     | PreRace  | Player selected Single Race (future: Championship)                           |
+| PreRace  | Racing   | Countdown finished or start signal                                           |
+| Racing   | PostRace | Checkered flag triggered (player finished all laps or DNF)                   |
+| PostRace | Menu     | Player dismissed results (future: auto-advance to next race)                 |
+| PostRace | PreRace  | Player selects 'Race Again' — RaceConfiguration preserved from previous race |
 
 **Rejected transitions (throw GameStateError):**
 

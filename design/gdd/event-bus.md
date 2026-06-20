@@ -1,8 +1,9 @@
 # Event Bus
 
-> **Status**: In Design
+> **Status**: Design Complete
 > **Author**: build agent + johnatas-henrique
-> **Last Updated**: 2026-06-18
+> **Last Updated**: 2026-06-20
+> **Last Verified**: 2026-06-20
 > **Implements Pillar**: Foundation — communication backbone for all systems
 
 ## Overview
@@ -59,7 +60,7 @@ The Event Bus itself has zero knowledge of any system. It neither knows who publ
 - Race Management → HUD: `'race.start'`, `'race.finish'`, `'race.lap.completed'`
 - Race Management → All: `'race.position.changed'`
 - Entity/Car Lifecycle → All: `'entity.spawned'`, `'entity.despawned'`
-- Pit Stop → HUD + Race Management: `'pit.entry'`, `'pit.exit'`, `'pit.completed'`
+- Pit Stop → HUD + Race Management: `'pit.entry'`, `'pit.exit'`, `'pit.status'`
 - Input → Physics/Handling: `'input.steer'`, `'input.throttle'`, `'input.brake'`
 
 ## Formulas
