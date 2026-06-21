@@ -28,7 +28,7 @@ The player is in the paddock — or rather, its essence. The title screen says "
 - **Title screen**: shows game logo, version number, and "Press ENTER to start." No menu options. The only valid input is `enter` or `start` (gamepad), which pushes Car Select.
 - **Car Select**: grid of 8 teams, one per cell. Each cell shows: team colour swatch, car number, team name. Selecting a team highlights it and enables the "Confirm" / "Next" button. Player can change selection any number of times before confirming.
 - **Track Select**: 4 track cards, one per Phase 1 track (Spa, Monza, Interlagos, Monaco — parody names TBD). Each card shows track name and a static silhouette/thumbnail. Selecting a track highlights it.
-- **Race Settings**: lap count selector (3, 5, 10, 20 — default 3) and difficulty selector (Easy, Medium, Hard — default Medium). Both are horizontal button groups. Player confirms to proceed to Loading.
+- **Race Settings**: lap count selector (3, 5, 10, 20 — default 5) and difficulty selector (Very Easy, Easy, Medium, Hard, Very Hard — default Medium). Both are horizontal button groups. Player confirms to proceed to Loading.
 - **Loading screen**: shown after race settings confirm. Displays track name + a single random tip (e.g. "Brake early into La Source — the inside line is tighter than it looks"). No progress bar in Phase 1 — assets load in sequence; the screen stays for a fixed minimum duration (2s) or until load completes, whichever is longer.
 - **Results screen**: triggered by GSM `PostRace` entry. Shows: final position (big number, animated), total race time, fastest lap (if player), and a one-line rival reaction based on personality + position. A "Race Again" button goes back to Track Select (preserving all selections); "Main Menu" goes to Title.
 - **Back navigation**: ESC or B (gamepad) pops the current screen. At Title, ESC is ignored (no accidental exit).
@@ -64,16 +64,16 @@ Title ──ENTER──▶ Car Select ──CONFIRM──▶ Track Select ──
 
 ### Interactions with Other Systems
 
-| System        | Data Out                                                    | Data In                                              | Direction            |
-| ------------- | ----------------------------------------------------------- | ---------------------------------------------------- | -------------------- |
-| Input         | nav controls (up/down/confirm/cancel/enter)                 | —                                                    | Input → Menu         |
-| GSM           | —                                                           | `current_state` (to know when Menu/PreRace/PostRace) | GSM → Menu (read)    |
-| GSM           | `request_transition(Menu→PreRace)`                          | —                                                    | Menu → GSM           |
-| Asset Manager | —                                                           | track/team assets loading request                    | Menu → Asset Manager |
-| Data & Config | —                                                           | team data, track list, loading tips                  | Menu → Data & Config |
-| Single Race   | `RaceConfiguration` (selected car, track, laps, difficulty) | —                                                    | Menu → Single Race   |
+| System        | Data Out                                                    | Data In                                                                  | Direction            |
+| ------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------- |
+| Input         | nav controls (up/down/confirm/cancel/enter)                 | —                                                                        | Input → Menu         |
+| GSM           | `requestTransition(Menu→PreRace)`                           | —                                                                        | Menu → GSM           |
+| Event Bus     | —                                                           | `gsm.state.entered`, `gsm.state.exited` (Menu LITE maintains local copy) | Event Bus → Menu     |
+| Asset Manager | —                                                           | track/team assets loading request                                        | Menu → Asset Manager |
+| Data & Config | —                                                           | team data, track list, loading tips                                      | Menu → Data & Config |
+| Single Race   | `RaceConfiguration` (selected car, track, laps, difficulty) | —                                                                        | Menu → Single Race   |
 
-The Single Race system receives the player's choices as a `RaceConfiguration` payload after Race Settings confirm. The GSM handles the `Menu → PreRace` transition; Menu LITE triggers it via `request_transition` when loading completes.
+The Single Race system receives the player's choices as a `RaceConfiguration` payload after Race Settings confirm. The GSM handles the `Menu → PreRace` transition; Menu LITE triggers it via `requestTransition` when loading completes.
 
 ## Formulas
 
@@ -92,19 +92,19 @@ Menu LITE has no formulas. All data is display-only: team names, track names, re
 
 ## Dependencies
 
-| Dependency         | Type     | Notes                                                          |
-| ------------------ | -------- | -------------------------------------------------------------- |
-| Babylon.js 9.12.0  | Platform | GUI via AdvancedDynamicTexture for all screens                 |
-| Input              | Upstream | Menu navigation (up/down/confirm/cancel)                       |
-| Data & Config Mgmt | Upstream | Team roster, track list, loading tip pool                      |
-| Asset Manager      | Upstream | Loads track + car assets before race                           |
-| GSM                | Upstream | `current_state` to detect Menu/PostRace; triggers Menu→PreRace |
+| Dependency         | Type     | Notes                                                         |
+| ------------------ | -------- | ------------------------------------------------------------- |
+| Babylon.js 9.12.0  | Platform | GUI via AdvancedDynamicTexture for all screens                |
+| Input              | Upstream | Menu navigation (up/down/confirm/cancel)                      |
+| Data & Config Mgmt | Upstream | Team roster, track list, loading tip pool                     |
+| Asset Manager      | Upstream | Loads track + car assets before race                          |
+| GSM                | Upstream | `currentState` to detect Menu/PostRace; triggers Menu→PreRace |
 
 ## Tuning Knobs
 
-| Knob                | Namespace              | Default | Range    | Description                         |
-| ------------------- | ---------------------- | ------- | -------- | ----------------------------------- |
-| Minimum load screen | menu.min_load_duration | 2000    | 500-5000 | Minimum ms the loading screen shows |
+| Knob                | Namespace            | Default | Range    | Description                         |
+| ------------------- | -------------------- | ------- | -------- | ----------------------------------- |
+| Minimum load screen | menu.minLoadDuration | 2000    | 500-5000 | Minimum ms the loading screen shows |
 
 All knobs read from Data & Config Manager.
 
@@ -119,7 +119,7 @@ All knobs read from Data & Config Manager.
 - **Track Select cards**: thumbnail with track name overlay. Thumbnail is a simplified top-down map silhouette (not a 3D render).
 - **Loading screen**: track name (large, center), loading tip (smaller, below). Optional: an ambient engine loop playing beneath the silence — brief taste of the car the player chose.
 - **Results screen**: finish position (large animated number, count-up effect), total time (monospace), fastest lap (conditional), rival reaction text (italic, one line).
-- **Audio**: menu navigation tick on confirm/back. No BGM in Phase 1 — the silence is the paddock. Results screen can play a short podium fanfare (3–5s loop) if assets permit.
+- **Audio**: menu music (synthwave, see Audio GDD §Menu Music) plays during Title/Car/Track/Race Settings screens. Navigation tick on confirm/back. Post-MVP: audio settings (music/sfx volume sliders) in a settings screen. Results screen can play a short podium fanfare (3–5s loop) if assets permit.
 
 ## UI Requirements
 
@@ -141,7 +141,7 @@ All knobs read from Data & Config Manager.
 7. ESC on Track Select returns to Car Select with previous selection preserved
 8. CONFIRM on Track Select pushes Loading screen (minimum 2s display)
 9. Loading screen shows track name + one random tip from the config pool
-10. GSM receives `request_transition(Menu→PreRace)` when loading completes
+10. GSM receives `requestTransition(Menu→PreRace)` when loading completes
 11. GSM `PostRace` entry triggers Results screen with position, time, rival reaction
 12. "Race Again" on Results triggers GSM transition to PreRace (selections preserved)
 13. "Main Menu" on Results returns to Title

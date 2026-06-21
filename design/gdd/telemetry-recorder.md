@@ -101,10 +101,10 @@ Two methods:
 | System               | Read                                                                         | Write |
 | -------------------- | ---------------------------------------------------------------------------- | ----- |
 | **Physics/Handling** | speed, rpm, throttle, brake, steer, gear, lateralG                           | None  |
-| **Fuel**             | fuel_level                                                                   | None  |
-| **Tire Wear**        | tire_condition                                                               | None  |
-| **AI Driver**        | ai_state (Normal/Following/Passing)                                          | None  |
-| **Race Management**  | spline_position, elapsed_time, current_lap                                   | None  |
+| **Fuel**             | fuelLevel                                                                    | None  |
+| **Tire Wear**        | tireCondition                                                                | None  |
+| **AI Driver**        | aiState (Normal/Following/Passing)                                           | None  |
+| **Race Management**  | splinePosition, elapsedTime, currentLap                                      | None  |
 | **Event Bus**        | Subscribes to `race.started` (reset), `gsm.state.entered(PostRace)` (export) | None  |
 
 ---
@@ -148,9 +148,9 @@ Two methods:
 
 ## Tuning Knobs
 
-| Key                         | Default | Range  | Description                           |
-| --------------------------- | ------- | ------ | ------------------------------------- |
-| `telemetry.sample_interval` | 3       | 1–10   | Ticks between samples (3 = 20 Hz)     |
-| `telemetry.log_interval`    | 300     | 60–600 | Ticks between console logs (300 = 5s) |
+| Key                        | Default | Range  | Description                           |
+| -------------------------- | ------- | ------ | ------------------------------------- |
+| `telemetry.sampleInterval` | 3       | 1–10   | Ticks between samples (3 = 20 Hz)     |
+| `telemetry.logInterval`    | 300     | 60–600 | Ticks between console logs (300 = 5s) |
 
 **Total**: 2 tuning knobs.
