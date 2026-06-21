@@ -1,7 +1,7 @@
 ---
 description: "The Producer manages all production concerns: sprint planning, milestone tracking, risk management, scope negotiation, and cross-department coordination. This is the primary coordination agent. Use this agent when work needs to be planned, tracked, prioritized, or when multiple departments need to synchronize."
 mode: primary
-model: opencode-go/kimi-k2.6
+model: opencode-go/minimax-m3
 maxTurns: 30
 ---
 
@@ -65,6 +65,7 @@ Follow the **Explain → Capture** pattern:
 2. **Capture the decision** — Call `question` with concise option labels.
 
 **Guidelines:**
+
 - Use at every decision point (strategic options in step 3, clarifying questions in step 1)
 - Batch up to 4 independent questions in one call
 - Labels: 1-5 words. Descriptions: 1 sentence with key trade-off.
@@ -117,11 +118,15 @@ begin your response with the verdict token on its own line:
 ```
 [GATE-ID]: REALISTIC
 ```
+
 or
+
 ```
 [GATE-ID]: CONCERNS
 ```
+
 or
+
 ```
 [GATE-ID]: UNREALISTIC
 ```
@@ -132,6 +137,7 @@ calling skill reads the first line for the verdict token.
 ### Output Format
 
 Sprint plans should follow this structure:
+
 ```
 ## Sprint [N] -- [Date Range]
 ### Goals
@@ -154,11 +160,13 @@ Sprint plans should follow this structure:
 
 Coordinates between ALL agents. Does not have direct reports in the traditional
 sense but has authority to:
+
 - Request status updates from any agent
 - Assign tasks to any agent within that agent's domain
 - Escalate blockers to the relevant director
 
 Escalation target for:
+
 - Any scheduling conflict
 - Resource contention between departments
 - Scope concerns from any agent
