@@ -50,7 +50,7 @@ Each `SoundTrack` has independent volume control. All tracks mix through the Web
 
 ```
 Pitch formula:
-  basePitch = 0.6 + (RPM / maxRPM) × 0.9    // 0.6x at idle, 1.5x at redline
+  basePitch = 0.6 + (RPM / maxRpm) × 0.9    // 0.6x at idle, 1.5x at redline
   vibrato = sin(time × RPM × 0.01) × 0.02    // ±2% oscillation
   finalPitch = basePitch + vibrato
 ```
@@ -83,9 +83,9 @@ squealVolume = clamp((abs(lateralG) - squealThreshold) / (maxLateralG - squealTh
 **Wear modifier**: As tire condition drops, squeal onset threshold decreases (squeals earlier = more noise when tires are worn).
 
 ```
-effectiveThreshold = squealThreshold × (0.5 + tire_condition × 0.5)
-// tire_condition 1.0 → threshold unchanged
-// tire_condition 0.3 → threshold halved (squeals much earlier)
+effectiveThreshold = squealThreshold × (0.5 + tireCondition × 0.5)
+// tireCondition 1.0 → threshold unchanged
+// tireCondition 0.3 → threshold at 65% of base (squeals earlier as condition drops)
 ```
 
 **Sound**: Single looping WAV with pitch variance. Volume fades in/out smoothly (50ms attack, 100ms release) to prevent popping.
@@ -115,6 +115,7 @@ rivalVolume = baseVolume × clamp(1 - (distance / 30), 0, 1) × 0.3
 | Event             | Sound                          | Duration        | Volume |
 | ----------------- | ------------------------------ | --------------- | ------ |
 | Pit entry zone    | Pit lane ambient (loop)        | Continuous      | 0.4    |
+| Pit entry zone    | Whoosh/Doppler (one-shot)      | ~0.5s           | 0.5    |
 | Refuel start      | Low pump hum (loop)            | Refuel duration | 0.6    |
 | Tire change start | Impact wrench burst (one-shot) | ~2s             | 0.8    |
 | Pit exit zone     | Ambient fades out              | 1s fade         | —      |
@@ -131,7 +132,7 @@ Camera does not change during pit stop (confirmed in Camera GDD). Audio stays co
 
 **Source**: CC0 track from Pixabay Audio / Freesound, or agent-generated placeholder. Content is replaceable — Asset Manager loads any `.mp3` at `assets/audio/music/menu.mp3`.
 
-**Volume**: 0.5 default, fades to 0.3 when menu has interactive elements (configurable via `audio.music_volume`).
+**Volume**: 0.5 default, fades to 0.3 when menu has interactive elements (configurable via `audio.musicVolume`).
 
 ### Wind Noise
 
@@ -155,13 +156,14 @@ One-shot sample triggered when `physics.gear` changes.
 
 ### GSM-Driven Track Switching
 
-| GSM State | Audio Behavior                                   |
-| --------- | ------------------------------------------------ |
-| Loading   | Silence (loading screen)                         |
-| Menu      | Menu music loop, ambient UI sounds               |
-| PreRace   | Menu music fades out, engine idle fades in       |
-| Racing    | Full engine + tire + wind + collision sounds     |
-| PostRace  | Race sounds fade out, results fanfare plays once |
+| GSM State | Audio Behavior                                                               |
+| --------- | ---------------------------------------------------------------------------- |
+| Loading   | Silence (loading screen)                                                     |
+| Menu      | Menu music loop, ambient UI sounds                                           |
+| PreRace   | Menu music fades out, engine idle fades in                                   |
+| Racing    | Full engine + tire + wind + collision sounds                                 |
+| Paused    | Race sounds fade to low ambient (muffled). UI sounds (pause menu) reactivate |
+| PostRace  | Race sounds fade out, results fanfare plays once                             |
 
 Transition: 500ms crossfade between states (no abrupt cuts).
 
@@ -171,10 +173,10 @@ Transition: 500ms crossfade between states (no abrupt cuts).
 
 | Formula                   | Expression                                                          | Description                        |
 | ------------------------- | ------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------- | ---------------------------- |
-| Engine pitch              | `0.6 + (RPM / maxRPM) × 0.9 + vibrato`                              | Hybrid sample + procedural overlay |
+| Engine pitch              | `0.6 + (RPM / maxRpm) × 0.9 + vibrato`                              | Hybrid sample + procedural overlay |
 | Engine volume             | `baseVolume × (0.6 + throttle × 0.4)`                               | Quieter when coasting              |
 | Tire squeal volume        | `clamp((                                                            | lateralG                           | - threshold) / (maxG - threshold), 0, 1)` | Proportional to lateral load |
-| Tire squeal threshold     | `baseThreshold × (0.5 + tire_condition × 0.5)`                      | Worn tires squeal earlier          |
+| Tire squeal threshold     | `baseThreshold × (0.5 + tireCondition × 0.5)`                       | Worn tires squeal earlier          |
 | Collision volume (player) | `baseVolume × clamp(impulse / maxImpulse, 0, 1)`                    | Proportional to impact             |
 | Collision volume (rival)  | `baseVolume × (1 - distance/30) × 0.3`                              | Fades with distance, muted         |
 | Wind volume               | `clamp((speed - onset) / (maxSpeed - onset), 0, 1) × maxWindVolume` | Proportional to speed              |
@@ -269,26 +271,26 @@ Uninitialized → Initialized → Running
 
 All values in `audio.*` namespace, runtime-configurable via ConfigManager.
 
-| Key                              | Default | Range      | Description                             |
-| -------------------------------- | ------- | ---------- | --------------------------------------- |
-| `audio.master_volume`            | 0.8     | 0.0 – 1.0  | Master volume                           |
-| `audio.music_volume`             | 0.5     | 0.0 – 1.0  | Music track volume                      |
-| `audio.sfx_volume`               | 0.7     | 0.0 – 1.0  | SFX track volume                        |
-| `audio.ui_volume`                | 0.6     | 0.0 – 1.0  | UI sounds volume                        |
-| `audio.ambient_volume`           | 0.4     | 0.0 – 1.0  | Ambient track volume                    |
-| `audio.engine_base_volume`       | 0.8     | 0.3 – 1.0  | Engine idle volume                      |
-| `audio.engine_coast_ratio`       | 0.6     | 0.3 – 0.8  | Engine volume multiplier when coasting  |
-| `audio.vibrato_depth`            | 0.02    | 0.0 – 0.05 | Procedural vibrato amplitude            |
-| `audio.squeal_threshold`         | 0.8     | 0.5 – 1.2  | LateralG threshold for tire squeal      |
-| `audio.squeal_max_volume`        | 0.6     | 0.3 – 0.9  | Maximum tire squeal volume              |
-| `audio.wind_onset_speed`         | 100     | 50 – 150   | Speed (km/h) where wind becomes audible |
-| `audio.wind_max_volume`          | 0.3     | 0.1 – 0.5  | Maximum wind volume                     |
-| `audio.collision_max_concurrent` | 5       | 3 – 10     | Max simultaneous collision sounds       |
-| `audio.collision_rival_ratio`    | 0.3     | 0.1 – 0.5  | Rival collision volume vs player        |
-| `audio.collision_radius`         | 30      | 10 – 50    | Distance (m) for rival collision sound  |
-| `audio.crossfade_duration`       | 500     | 200 – 1000 | Crossfade between GSM states (ms)       |
-| `audio.rpm_ramp_ticks`           | 3       | 1 – 10     | Ticks to interpolate RPM pitch changes  |
-| `audio.gear_shift_volume`        | 0.7     | 0.3 – 1.0  | Gear shift sound volume                 |
+| Key                            | Default | Range      | Description                             |
+| ------------------------------ | ------- | ---------- | --------------------------------------- |
+| `audio.masterVolume`           | 0.8     | 0.0 – 1.0  | Master volume                           |
+| `audio.musicVolume`            | 0.5     | 0.0 – 1.0  | Music track volume                      |
+| `audio.sfxVolume`              | 0.7     | 0.0 – 1.0  | SFX track volume                        |
+| `audio.uiVolume`               | 0.6     | 0.0 – 1.0  | UI sounds volume                        |
+| `audio.ambientVolume`          | 0.4     | 0.0 – 1.0  | Ambient track volume                    |
+| `audio.engineBaseVolume`       | 0.8     | 0.3 – 1.0  | Engine idle volume                      |
+| `audio.engineCoastRatio`       | 0.6     | 0.3 – 0.8  | Engine volume multiplier when coasting  |
+| `audio.vibratoDepth`           | 0.02    | 0.0 – 0.05 | Procedural vibrato amplitude            |
+| `audio.squealThreshold`        | 0.8     | 0.5 – 1.2  | LateralG threshold for tire squeal      |
+| `audio.squealMaxVolume`        | 0.6     | 0.3 – 0.9  | Maximum tire squeal volume              |
+| `audio.windOnsetSpeed`         | 100     | 50 – 150   | Speed (km/h) where wind becomes audible |
+| `audio.windMaxVolume`          | 0.3     | 0.1 – 0.5  | Maximum wind volume                     |
+| `audio.collisionMaxConcurrent` | 5       | 3 – 10     | Max simultaneous collision sounds       |
+| `audio.collisionRivalRatio`    | 0.3     | 0.1 – 0.5  | Rival collision volume vs player        |
+| `audio.collisionRadius`        | 30      | 10 – 50    | Distance (m) for rival collision sound  |
+| `audio.crossfadeDuration`      | 500     | 200 – 1000 | Crossfade between GSM states (ms)       |
+| `audio.rpmRampTicks`           | 3       | 1 – 10     | Ticks to interpolate RPM pitch changes  |
+| `audio.gearShiftVolume`        | 0.7     | 0.3 – 1.0  | Gear shift sound volume                 |
 
 **Total**: 18 tuning knobs.
 
@@ -328,8 +330,8 @@ All values in `audio.*` namespace, runtime-configurable via ConfigManager.
 
 ## Open Questions
 
-| #   | Question                                                  | Status |
-| --- | --------------------------------------------------------- | ------ |
-| 1   | Should gear shift sample vary per car class or be shared? | Decide |
-| 2   | Menu music CC0 source — Pixabay or agent-generated?       | Decide |
-| 3   | Engine sample duration — 2s loop vs 4s loop?              | Decide |
+| #   | Question                                                  | Status                                                                                |
+| --- | --------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 1   | Should gear shift sample vary per car class or be shared? | Decide                                                                                |
+| 2   | Menu music CC0 source — Pixabay or agent-generated?       | Resolved — body §Menu Music specifies CC0 from Pixabay/Freesound or agent placeholder |
+| 3   | Engine sample duration — 2s loop vs 4s loop?              | Decide                                                                                |

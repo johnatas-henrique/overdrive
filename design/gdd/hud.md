@@ -39,7 +39,7 @@ The player glances at the HUD and instantly knows everything they need: speed, h
 - Refuel progress bar (filled from `pit.fuel_status` events)
 - Tire change indicator (from `pit.tire_status` events)
 - Speed limiter status (80 km/h active)
-- Ready-to-exit prompt (press EXIT key)
+- Ready-to-exit prompt (press confirm)
 
 The pit overlay has its own Babylon.js GUI layer that hides the main HUD blocks (speed, position, lap, fuel/tire bars are replaced by the pit-specific display, since the car is in semi-autonomous pit lane mode).
 
@@ -53,6 +53,8 @@ HudContainer (AdvancedDynamicTexture, idealWidth=1920)
   │   ├── LeftZone     ── MinimapBlock
   │   ├── CenterZone   ── StackPanel[ SpeedBlock, LapBlock, PositionBlock ]
   │   └── RightZone    ── StackPanel[ ResourcesBlock ]
+  │
+  ├── CountdownBlock     — 5 red → 1 → GREEN lights sequence (above CenterZone)
   │
   ├── PitOverlayBlock     — replaces zone contents in pit state
   ├── DNFOverlay          — screen darkens, "DNF" text, results on PostRace
@@ -83,23 +85,26 @@ function init(config: HudConfig): void {
 // Menu → GSM enter Menu → HUD deactivates (no race HUD)
 // Menu → GSM enter PreRace → no HUD (camera-only)
 // PreRace → GSM enter Racing → HUD init
+// Racing → GSM enter Paused → HUD adds pause overlay (semi-transparent, on top of race HUD)
+// Paused → GSM enter Racing → HUD removes pause overlay, resumes full race HUD
 // Racing → GSM enter PostRace → HUD deactivates (results shown by PostRace)
 ```
 
 ### Event Subscriptions
 
-| Event                      | Block            | Reaction                                                                                                                                 |
-| -------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `race.green.flag`          | All              | Enable all race HUD blocks. Start speed display.                                                                                         |
-| `car.lap.completed`        | LapBlock         | Update lap counter: "Lap 3/4". Trigger mechanical flip animation.                                                                        |
-| `position.changed`         | PositionBlock    | Update position number. Show ▲N/▼N indicator for 1.5s then fade.                                                                         |
-| `car.dnf`                  | DNFOverlay       | If player: screen darkens, "DNF" shown. If rival: position grid grays out their entry.                                                   |
-| `race.checkered`           | CheckeredOverlay | Show animated checkered flag. Display top 3 + player position.                                                                           |
-| `race.completed`           | All              | HUD deactivates. Results handled by PostRace system.                                                                                     |
-| `pit.status`               | PitOverlayBlock  | If status is `pitStopped`: swap HUD to pit overlay (fuel bar, tire icons, EXIT prompt). When status returns to `idle`: restore race HUD. |
-| `pit.fuel_status`          | PitOverlayBlock  | Update fuel progress bar in pit overlay.                                                                                                 |
-| `pit.tire_status`          | PitOverlayBlock  | Update tire change icons. Show check marks as each tire is done.                                                                         |
-| — (tick data from Physics) | SpeedBlock       | Speed value from Physics car state, read every frame — see Core Rule #1 exception.                                                       |
+| Event                      | Block            | Reaction                                                                                                                                    |
+| -------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `race.starting`            | CountdownBlock   | Show 5 red lights. React to `race.light.countdown` — each event turns off one light (5→4→…→1→0). On `race.green.flag`, remove the block.    |
+| `race.green.flag`          | All              | Enable all race HUD blocks. Start speed display (if not already started by countdown timer expiry).                                         |
+| `car.lap.completed`        | LapBlock         | Update lap counter: "Lap 3/4". Trigger mechanical flip animation.                                                                           |
+| `position.changed`         | PositionBlock    | Update position number. Show ▲N/▼N indicator for 1.5s then fade.                                                                            |
+| `car.dnf`                  | DNFOverlay       | If player: screen darkens, "DNF" shown. If rival: position grid grays out their entry.                                                      |
+| `race.checkered`           | CheckeredOverlay | Show animated checkered flag. Display top 3 + player position.                                                                              |
+| `race.completed`           | All              | HUD deactivates. Results handled by PostRace system.                                                                                        |
+| `pit.status`               | PitOverlayBlock  | If status is `pitStopped`: swap HUD to pit overlay (fuel bar, tire icons, confirm prompt). When status returns to `idle`: restore race HUD. |
+| `pit.fuel_status`          | PitOverlayBlock  | Update fuel progress bar in pit overlay.                                                                                                    |
+| `pit.tire_status`          | PitOverlayBlock  | Update tire change icons. Show check marks as each tire is done.                                                                            |
+| — (tick data from Physics) | SpeedBlock       | Speed value from Physics car state, read every frame — see Core Rule #1 exception.                                                          |
 
 ### Block Details
 
@@ -157,10 +162,10 @@ The minimap is the most expensive HUD block. If performance profiling shows it i
 
 - Replaces the main HUD blocks when pit.status transitions to active
 - Layout: simplified, positioned for pit lane awareness
-- Refuel progress bar: fills from 0% to 100%, animated smoothly (the only non-mechanical animation exception — fuel level changes at `pit.refuel_rate` per tick)
+- Refuel progress bar: fills from 0% to 100%, animated smoothly (the only non-mechanical animation exception — fuel level changes at `pit.refuelRate` per tick)
 - Tire change: 4 tire icons (top-left, top-right, bottom-left, bottom-right in square layout), filled with check mark as each completes
 - Speed: shows "80 km/h" (pit limiter active) — it's not the variable player speed
-- Exit prompt: "Press [EXIT] to leave pit" appears after tire change is complete and refuel is in progress
+- Exit prompt: "Press [confirm] to leave pit" appears after tire change is complete and refuel is in progress
 - Returns to race HUD when pit.status returns to idle (car has left pit exit zone)
 
 #### DNFOverlay
@@ -177,7 +182,7 @@ The minimap is the most expensive HUD block. If performance profiling shows it i
 - Triggered by `race.checkered` — payload includes results
 - Brief animated checkered flag overlay (0.3s per art bible 7.6)
 - Displays top 3: "P1 · TeamName", "P2 · TeamName", "P3 · TeamName" in bold, ~8% vh
-- If player is in top 3, shows only top 3 (player highlighted). If player is P4–P8, shows top 3 + "P(X) · Você" at bottom.
+- If player is in top 3, shows only top 3 (player highlighted). If player is P4–P8, shows top 3 + "P(X) · You" at bottom.
 - Remains visible until GSM transitions to PostRace
 - Slow-motion entry effect (0.3s of 50% perceived speed, then freeze)
 
@@ -259,13 +264,13 @@ Config-driven via Data & Config Manager under the `hud.*` namespace. HMR applies
 
 ## States & Transitions
 
-| State          | Description                                                                                   |
-| -------------- | --------------------------------------------------------------------------------------------- |
-| **Inactive**   | No HUD visible. Default for Menu, Loading, PreRace.                                           |
-| **Active**     | Race HUD visible. Entered when GSM transitions to Racing sub-state Racing (GreenFlag+).       |
-| **PitOverlay** | Pit overlay replaces race HUD. Entered when pit state is not idle. Returns to Active on idle. |
-| **DNF**        | DNF overlay shown. Entered on player DNF.                                                     |
-| **Checkered**  | Checkered overlay shown. Entered on race.checkered.                                           |
+| State          | Description                                                                                                                                                                                  |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Inactive**   | No HUD visible. Default for Menu, Loading, PreRace.                                                                                                                                          |
+| **Active**     | Race HUD visible. HUD initializes when GSM enters Racing. CountdownBlock shows during Countdown sub-state. Full race blocks (speed, lap, position, resources) activate on `race.green.flag`. |
+| **PitOverlay** | Pit overlay replaces race HUD. Entered when pit state is not idle. Returns to Active on idle.                                                                                                |
+| **DNF**        | DNF overlay shown. Entered on player DNF.                                                                                                                                                    |
+| **Checkered**  | Checkered overlay shown. Entered on race.checkered.                                                                                                                                          |
 
 Transition flow:
 
@@ -300,7 +305,7 @@ Any → Inactive (GSM → PostRace)
 | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Player DNF and checkered in same frame**                 | Impossible — player DNF ends race immediately. The leader cannot checker in the same tick the player DNF.                                                             |
 | **Pit overlay during DNF**                                 | If player DNF while in pit (stalled), DNF overlay overrides pit overlay. Pit overlay events stop firing.                                                              |
-| **Speed display at 0 km/h (grid)**                         | SpeedBlock shows "0" during Showing Grid and Countdown sub-states. Normal operation.                                                                                  |
+| **Speed display at 0 km/h (grid)**                         | SpeedBlock shows "0" during PreRace (grid cinematic) and Countdown sub-state. Normal operation.                                                                       |
 | **Position jumps (multiple position changes in one tick)** | PositionBlock only reacts to the final state. `position.changed` fires sequentially — HUD reads the latest value. Change indicator shows net gain/loss between ticks. |
 | **HUD toggled off mid-race**                               | HudConfig with no blocks → HUD renders nothing but remains Active. Blocks reactivate on config change.                                                                |
 | **Minimap track outline not available**                    | MinimapBlock detects missing polyline at init → renders empty dark container with "MAP" label (subdued) — indicates missing data, not a bug.                          |
@@ -336,7 +341,7 @@ Any → Inactive (GSM → PostRace)
 | `hud.layout.position.visible`   | true    | Position block visible               |
 | `hud.layout.resources.visible`  | true    | Resources block visible              |
 | `hud.anim.speed`                | 1.0     | Animation duration multiplier        |
-| `hud.resources.update_interval` | 10      | Ticks between resource bar refreshes |
+| `hud.resources.updateInterval`  | 10      | Ticks between resource bar refreshes |
 
 All values in the `hud.*` namespace, config-driven via Data & Config Manager, HMR supported.
 
