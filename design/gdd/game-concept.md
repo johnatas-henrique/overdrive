@@ -1,8 +1,8 @@
 # Game Concept: Overdrive
 
-*Created: 2026-06-16*
-*Updated: 2026-06-17 (SMGP-style single championship, team-based upgrade ceiling)*
-*Status: Draft*
+_Created: 2026-06-16_
+_Updated: 2026-06-17 (SMGP-style single championship, team-based upgrade ceiling)_
+_Status: Design Complete_
 
 ---
 
@@ -14,17 +14,17 @@
 
 ## Core Identity
 
-| Field | Value |
-|---|---|
-| **Working Title** | Overdrive |
-| **Genre** | Arcade Racing-RPG Hybrid |
-| **Engine** | Babylon.js 9.12.0 |
-| **Target Platform** | Web (primary), PC via Tauri (stretch: consoles) |
-| **Player Count** | Single-player (multiplayer planned for Tier 2) |
-| **Estimated Scope** | Large (18–24 months, solo dev) |
-| **Target Release Model** | Steam Early Access → Full 1.0 → Expansion |
-| **Development Approach** | **F1 only:** single category. Content released in tiers (4, 8, 16 races), forming a single championship that the player races across multiple seasons until they win and defend the title. |
-| **Progression Model** | Each team has a unique car with inherent base stats (top speed, cornering, acceleration, fuel efficiency, tire wear). Part upgrades modify these base stats. Backmarker teams (Lorris) have lower base stats AND a lower upgrade ceiling (level 3) — top teams (Macklen, Willard, Ferrell) have higher base stats AND a higher ceiling (level 5). Switching teams means getting a new car with a different character. |
+| Field                    | Value                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Working Title**        | Overdrive                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Genre**                | Arcade Racing-RPG Hybrid                                                                                                                                                                                                                                                                                                                                                                                              |
+| **Engine**               | Babylon.js 9.12.0                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **Target Platform**      | Web (primary), PC via Tauri (stretch: consoles)                                                                                                                                                                                                                                                                                                                                                                       |
+| **Player Count**         | Single-player (multiplayer planned for Tier 2)                                                                                                                                                                                                                                                                                                                                                                        |
+| **Estimated Scope**      | Large (18–24 months, solo dev)                                                                                                                                                                                                                                                                                                                                                                                        |
+| **Target Release Model** | Steam Early Access → Full 1.0 → Expansion                                                                                                                                                                                                                                                                                                                                                                             |
+| **Development Approach** | **F1 only:** single category. Content released in tiers (4, 8, 16 races), forming a single championship that the player races across multiple seasons until they win and defend the title.                                                                                                                                                                                                                            |
+| **Progression Model**    | Each team has a unique car with inherent base stats (top speed, cornering, acceleration, fuel efficiency, tire wear). Part upgrades modify these base stats. Backmarker teams (Lorris) have lower base stats AND a lower upgrade ceiling (level 3) — top teams (Macklen, Willard, Ferrell) have higher base stats AND a higher ceiling (level 5). Switching teams means getting a new car with a different character. |
 
 ---
 
@@ -48,20 +48,22 @@
 
 #### Department Implications
 
-| Department | This Pillar Says... | Example |
-|---|---|---|
+| Department      | This Pillar Says...                                                                                                                                      | Example                                                                      |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | **Game Design** | Physics prioritises grip → lift-to-turn over braking; no weight transfer simulation; speedometer is prominent; tracks have straights that reward courage | Monza-style long straight where lift-off at the right moment defines the lap |
-| **Art** | Cockpit dashboard is detailed; trackside objects blur past convincingly; particle effects at high speed (tarmac texture, light trails) | Speed lines on straightaways, subtle FOV shift at high velocity |
-| **Audio** | Engine pitch rises with RPM; wind noise increases with speed; tyre squeal begins at the edge of grip | Distinct gear-shift sound per car class; Doppler effect on trackside objects |
-| **Engineering** | Fixed-step physics at minimum 60 Hz; camera system with automatic FOV adjustment based on speed; zero input lag | Physics update decoupled from render frame rate |
+| **Art**         | Cockpit dashboard is detailed; trackside objects blur past convincingly; particle effects at high speed (tarmac texture, light trails)                   | Speed lines on straightaways, subtle FOV shift at high velocity              |
+| **Audio**       | Engine pitch rises with RPM; wind noise increases with speed; tyre squeal begins at the edge of grip                                                     | Distinct gear-shift sound per car class; Doppler effect on trackside objects |
+| **Engineering** | Fixed-step physics at minimum 60 Hz; camera system with automatic FOV adjustment based on speed; zero input lag                                          | Physics update decoupled from render frame rate                              |
 
 #### Serving This Pillar
+
 - Cockpit camera as default view (toggle to chase)
 - Arcade-grip handling model — car does not drift; lift-off oversteer is the primary turning technique
 - Sense-of-speed effects: FOV pulse, camera shake on kerbs, speed lines, particle trails
 - F1 reference for speed sensation (1992 Williams FW14B onboard footage as benchmark)
 
 #### Violating This Pillar
+
 - Simulation weight transfer, tire temperature, or ERS management
 - Drift-focused handling model (initial release — revisit only if gameplay testing demands it)
 
@@ -77,19 +79,21 @@
 
 #### Department Implications
 
-| Department | This Pillar Says... | Example |
-|---|---|---|
+| Department      | This Pillar Says...                                                                                            | Example                                                                                     |
+| --------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | **Game Design** | Two strategic resources (fuel + tires); conservative vs aggressive pit window; no tyre compound choice, no ERS | 5-lap race where you decide: pit lap 2 for fresh tires OR stretch to lap 4 with worn rubber |
-| **Art** | Visual tire wear (tread pattern fading); fuel gauge on HUD; pit stop animation shows crew | Dashboard fuel bar decreases; visible tire deformation at low grip |
-| **Audio** | Tire screech intensifies as wear increases; engine note changes under fuel load | Distinct "graining" sound vs fresh tire grip |
-| **Engineering** | Tire model with grip vs wear decoupled; fuel consumption per lap consistent per track per setup | Wear accumulates per corner based on lateral load |
+| **Art**         | Visual tire wear (tread pattern fading); fuel gauge on HUD; pit stop animation shows crew                      | Dashboard fuel bar decreases; visible tire deformation at low grip                          |
+| **Audio**       | Tire screech intensifies as wear increases; engine note changes under fuel load                                | Distinct "graining" sound vs fresh tire grip                                                |
+| **Engineering** | Tire model with grip vs wear decoupled; fuel consumption per lap consistent per track per setup                | Wear accumulates per corner based on lateral load                                           |
 
 #### Serving This Pillar
+
 - Fuel: conservative = fewer stops, slower laps vs aggressive = more stops, faster laps
 - Tires: wear affects cornering grip; pushing costs 0.5s/lap but buys track position
 - Pit delta: pit lane time penalty large enough that 2-stop vs 3-stop is a real trade-off
 
 #### Violating This Pillar
+
 - Tire temperature simulation, compound choice, or tyre blankets
 - ERS harvesting/deployment modes
 - Suspension tuning, camber, or gear ratios
@@ -106,19 +110,21 @@
 
 #### Department Implications
 
-| Department | This Pillar Says... | Example |
-|---|---|---|
-| **Game Design** | Dual economy: Credits → car parts (motor/aero/brakes/gearbox, each 1-5), XP → crew (pit speed, engineer, strategist); no pilot stats (player controls the car) | Win = 500cr + 200xp, upgrade motor to level 2 costs 1200cr + 300xp |
-| **Art** | Crew shown in pit lane UI; upgrades are stat-only — car design is fixed per team and changes only when the player switches teams | Team livery consistency across all upgrade levels; stat bars in dashboard show upgrade level instead of visual car parts |
-| **Narrative** | Championship standing is the story; History mode (Tier 3) layers narrative on top of progression | Rising from backmarker to champion across multiple seasons creates a natural story arc |
-| **Engineering** | Data-driven stat tables for parts; save/load championship state between sessions; XP/credit balance as JSON config | Upgrade costs, XP gains, stat curves externalised to config files |
+| Department      | This Pillar Says...                                                                                                                                            | Example                                                                                                                  |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Game Design** | Dual economy: Credits → car parts (motor/aero/brakes/gearbox, each 1-5), XP → crew (pit speed, engineer, strategist); no pilot stats (player controls the car) | Win = 500cr + 200xp, upgrade motor to level 2 costs 1200cr + 300xp                                                       |
+| **Art**         | Crew shown in pit lane UI; upgrades are stat-only — car design is fixed per team and changes only when the player switches teams                               | Team livery consistency across all upgrade levels; stat bars in dashboard show upgrade level instead of visual car parts |
+| **Narrative**   | Championship standing is the story; History mode (Tier 3) layers narrative on top of progression                                                               | Rising from backmarker to champion across multiple seasons creates a natural story arc                                   |
+| **Engineering** | Data-driven stat tables for parts; save/load championship state between sessions; XP/credit balance as JSON config                                             | Upgrade costs, XP gains, stat curves externalised to config files                                                        |
 
 #### Serving This Pillar
+
 - Car parts: Motor (top speed), Aero (cornering grip), Brakes (stopping power), Gearbox (acceleration)
 - Crew upgrades: Faster pit stops (3.5s → 1.5s), Race engineer (fuel consumption optimisation), Strategist (pit window recommendations)
 - Every race pays out credits + XP proportional to finishing position and AI difficulty
 
 #### Violating This Pillar
+
 - Pilot stat upgrades (reflex, consistency, overtaking) — player controls the car, not a character sheet
 - Cosmetic-only upgrades that don't affect performance
 - Grind walls where the only way forward is repeating the same race
@@ -135,20 +141,22 @@
 
 #### Department Implications
 
-| Department | This Pillar Says... | Example |
-|---|---|---|
+| Department      | This Pillar Says...                                                                                                                                    | Example                                                                                                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Game Design** | AI behaviour matrix: aggressiveness (0-1), consistency (0-1), defensive-ness (0-1), error rate (0-1) per rival; overtaking difficulty varies per rival | Macklen (Senna): dominant, reference of the grid. Willard (Mansell): as fast as Macklen but makes errors. Jordash (de Cesaris): fastest corner speed but spins under pressure |
-| **Art** | Team livery + helmet design + car number identify each driver at 300 km/h | Driver recognised by helmet colour silhouette in cockpit, not face or unique car |
-| **Narrative** | Pre-race flavour text hints at rival's mood/strategy; post-race rival reactions vary by personality; paddock dialogue (Tier 3) | "Willard was fastest in practice — watch his rear wing under braking" |
-| **Engineering** | AI driving line with per-corner aggression modifier; error injection system for mistakes (brake too late, miss apex) | Rival AI uses same physics model as player with different parameter profiles |
+| **Art**         | Team livery + helmet design + car number identify each driver at 300 km/h                                                                              | Driver recognised by helmet colour silhouette in cockpit, not face or unique car                                                                                              |
+| **Narrative**   | Pre-race flavour text hints at rival's mood/strategy; post-race rival reactions vary by personality; paddock dialogue (Tier 3)                         | "Willard was fastest in practice — watch his rear wing under braking"                                                                                                         |
+| **Engineering** | AI driving line with per-corner aggression modifier; error injection system for mistakes (brake too late, miss apex)                                   | Rival AI uses same physics model as player with different parameter profiles                                                                                                  |
 
 #### Serving This Pillar
+
 - 8 teams (1 driver each for launch), each with a distinct personality-driver-style pairing
 - Driver identity = helmet + number + behaviour (not unique car per driver)
 - Car identity = team livery (two drivers from same team share identical car colours)
 - Post-race results screen shows rival reaction text based on personality + finishing position
 
 #### Violating This Pillar
+
 - Rivals that are just "same AI, different car colour"
 - Rivals that rubber-band (catch-up logic in place of personality)
 - Generic driver names without personality context
@@ -166,12 +174,12 @@
 
 ## Pillar Conflict Resolution
 
-| Priority | Pillar | Rationale |
-|---|---|---|
-| 1 | Speed That Is Felt | The sensory promise is the reason anyone buys the game. All other pillars serve this one ultimately. |
-| 2 | Racing Is Progression | Without meaningful growth, the game has no longevity. Must be in tension with Speed (faster car = easier to win). |
-| 3 | Simple Strategy, Real Decisions | Strategic depth separates this from pure arcade. But never at the cost of feel — a strategy screen that breaks flow is worse than no strategy. |
-| 4 | Grid of Personalities | The human layer that makes rival encounters memorable. Can be partially sacrificed for launch scope (7 rivals minimum). |
+| Priority | Pillar                          | Rationale                                                                                                                                      |
+| -------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1        | Speed That Is Felt              | The sensory promise is the reason anyone buys the game. All other pillars serve this one ultimately.                                           |
+| 2        | Racing Is Progression           | Without meaningful growth, the game has no longevity. Must be in tension with Speed (faster car = easier to win).                              |
+| 3        | Simple Strategy, Real Decisions | Strategic depth separates this from pure arcade. But never at the cost of feel — a strategy screen that breaks flow is worse than no strategy. |
+| 4        | Grid of Personalities           | The human layer that makes rival encounters memorable. Can be partially sacrificed for launch scope (7 rivals minimum).                        |
 
 ---
 
@@ -217,11 +225,11 @@
 
 ## Player Motivation Profile
 
-| Need | Served By | How |
-|---|---|---|
-| **Autonomy** | Simple Strategy pillar | Choose aggressive vs conservative pit strategy; choose which part to upgrade; choose which championship event to run next |
-| **Competence** | Speed That Is Felt + Racing Is Progression | Mastery of the grip physics shows in lap times; visible upgrade progression; skill ceiling in finding the perfect line per car per track |
-| **Relatedness** | Grid of Personalities | Rival personalities create a social layer even in single-player; you learn who to respect, who to fear, who to bait into a mistake |
+| Need            | Served By                                  | How                                                                                                                                      |
+| --------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **Autonomy**    | Simple Strategy pillar                     | Choose aggressive vs conservative pit strategy; choose which part to upgrade; choose which championship event to run next                |
+| **Competence**  | Speed That Is Felt + Racing Is Progression | Mastery of the grip physics shows in lap times; visible upgrade progression; skill ceiling in finding the perfect line per car per track |
+| **Relatedness** | Grid of Personalities                      | Rival personalities create a social layer even in single-player; you learn who to respect, who to fear, who to bait into a mistake       |
 
 ### Bartle Type
 
@@ -238,6 +246,7 @@
 **One-Line Visual Rule**: Everything is colourful, stylized, and conveys speed at a glance — no realism, no grit, no bloom-overdose.
 
 **Supporting Visual Principles**:
+
 - Bold, saturated colour palette with high contrast between track, sky, and car
 - Cockpit as primary view (detailed dash) with optional chase camera
 - Environment stylisation: simplified architecture, geometric trees, gradient skies (4PGP / Horizon Chase style)
@@ -250,10 +259,10 @@
 
 ## Progression Economy
 
-| Resource | Earned By | Spent On | Granularity |
-|---|---|---|---|
-| Credits | Race payout (position-based) | Car parts (motor, aero, brakes, gearbox) | 500-5000cr per race |
-| XP | Race completion + position bonus | Crew upgrades (pit speed, engineer, strategist) | 100-500xp per race |
+| Resource | Earned By                        | Spent On                                        | Granularity         |
+| -------- | -------------------------------- | ----------------------------------------------- | ------------------- |
+| Credits  | Race payout (position-based)     | Car parts (motor, aero, brakes, gearbox)        | 500-5000cr per race |
+| XP       | Race completion + position bonus | Crew upgrades (pit speed, engineer, strategist) | 100-500xp per race  |
 
 - Car parts: Levels 1-5, each level costs more credits + requires higher XP
 - Crew: Pit speed (3.5s → 1.5s in 4 tiers), Engineer (fuel efficiency +5% per tier), Strategist (pit window recommendations unlock)
@@ -264,16 +273,16 @@
 
 The game's 8-team grid is inspired by the 1991 F1 season. These 8 teams form the entire roster.
 
-| Team (Parody) | Reference | Car № | Helmet Inspiration | Driving Personality |
-|---|---|---|---|---|
-| **Macklen** | McLaren 1991 | #1 | Senna — yellow + navy + green | Dominant — reference of the grid, does not make unforced errors |
-| **Willard** | Williams 1991 | #5 | Mansell — blue + white diagonal | Lightning bolt — as fast as #1 but error-prone |
-| **Ferrell** | Ferrari 1991 | #27 | Prost — white + multi-colour bands | Technical — smooth inputs, fast corner entry, rarefies errors |
-| **Bennett** | Benetton 1991 | #20 | Piquet — white + blue/red stripes | Consistent — clean line, hard to pass, no gifts |
-| **Jordash** | Jordan 1991 | #33 | de Cesaris — white + green/blue V | Impulsive — fastest in corners, spins under pressure |
-| **Tyrant** | Tyrrell 1991 | #3 | Nakajima — white + red circle | Defensive — stubborn line blocker, not a win threat |
-| **Lorris** 🎮 | Lotus 1991 | #11 | Häkkinen — silver/white + diagonal bands | Rookie — fast when confident, erratic when not |
-| **Layton Hall** | Leyton House 1991 | #16 | Capelli — red + turquoise band | Aggressive — limit driver, 50% brilliant, 50% contact |
+| Team (Parody)   | Reference         | Car № | Helmet Inspiration                       | Driving Personality                                             |
+| --------------- | ----------------- | ----- | ---------------------------------------- | --------------------------------------------------------------- |
+| **Macklen**     | McLaren 1991      | #1    | Senna — yellow + navy + green            | Dominant — reference of the grid, does not make unforced errors |
+| **Willard**     | Williams 1991     | #5    | Mansell — blue + white diagonal          | Lightning bolt — as fast as #1 but error-prone                  |
+| **Ferrell**     | Ferrari 1991      | #27   | Prost — white + multi-colour bands       | Technical — smooth inputs, fast corner entry, rarefies errors   |
+| **Bennett**     | Benetton 1991     | #20   | Piquet — white + blue/red stripes        | Consistent — clean line, hard to pass, no gifts                 |
+| **Jordash**     | Jordan 1991       | #33   | de Cesaris — white + green/blue V        | Impulsive — fastest in corners, spins under pressure            |
+| **Tyrant**      | Tyrrell 1991      | #3    | Nakajima — white + red circle            | Defensive — stubborn line blocker, not a win threat             |
+| **Lorris** 🎮   | Lotus 1991        | #11   | Häkkinen — silver/white + diagonal bands | Rookie — fast when confident, erratic when not                  |
+| **Layton Hall** | Leyton House 1991 | #16   | Capelli — red + turquoise band           | Aggressive — limit driver, 50% brilliant, 50% contact           |
 
 > 🎮 = Player team in Phase 1. The player occupies the #11 Lorris seat as the team's sole driver. The #11 car on track is always the player. No AI drives #11.
 
@@ -303,13 +312,13 @@ The game's 8-team grid is inspired by the 1991 F1 season. These 8 teams form the
 
 Each team has a unique car with inherent base stats AND a maximum upgrade level. A Macklen is faster than a Lorris even with zero upgrades — the ceiling difference means you can never fully close that gap by upgrading alone. You must earn the seat.
 
-| Team Tier | Teams | Base Stat Character | Max Part Level | Max Crew Level |
-|-----------|-------|-------------------|----------------|----------------|
-| **Backmarker** | Lorris | Low in all areas, forgiving handling | 3 | 3 |
-| **Midfield** | Bennett, Jordash, Tyrant, Layton Hall | Medium stats, each with one strength (e.g. Jordash corners well, Bennett is fuel-efficient) | 4 | 4 |
-| **Top** | Macklen, Willard, Ferrell | High in all areas, each with a distinct edge (Macklen balanced, Willard top speed, Ferrell cornering) | 5 | 5 |
+| Team Tier      | Teams                                 | Base Stat Character                                                                                   | Max Part Level | Max Crew Level |
+| -------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------------- | -------------- |
+| **Backmarker** | Lorris                                | Low in all areas, forgiving handling                                                                  | 3              | 3              |
+| **Midfield**   | Bennett, Jordash, Tyrant, Layton Hall | Medium stats, each with one strength (e.g. Jordash corners well, Bennett is fuel-efficient)           | 4              | 4              |
+| **Top**        | Macklen, Willard, Ferrell             | High in all areas, each with a distinct edge (Macklen balanced, Willard top speed, Ferrell cornering) | 5              | 5              |
 
-*A player at Lorris can upgrade, but the Lorris car will never match a Macklen. To build a championship-winning machine, you need a top-team seat — and to earn it, you must outperform the current driver.*
+_A player at Lorris can upgrade, but the Lorris car will never match a Macklen. To build a championship-winning machine, you need a top-team seat — and to earn it, you must outperform the current driver._
 
 ### Team Switching
 
@@ -355,11 +364,11 @@ Each team has a unique car with inherent base stats AND a maximum upgrade level.
 
 ## Scope Tiers
 
-| Tier | Grid | Content | Platform |
-|---|---|---|---|
-| **Tier 1 — Early Access** | 8 cars (7 AI + player at Lorris) | 4-race F1 championship, 4 tracks, car parts 1-3 (Lorris ceiling), fuel/tires/pits, 7 rival personalities, save/load, 3 difficulty levels (AI speed). Multiplayer architecture in place (backend offline). | Steam Early Access, Web demo |
-| **Tier 2 — 1.0** | 16 cars (15 AI + player choice of 3 cars) | 8-race championship (4 new tracks = 8 total), upgrades 1-5 + crew, rain/night, **team switching**, upgrade ceilings per team, new driver per team, **online multiplayer**, leaderboards | Steam full launch |
-| **Tier 3 — Expansion** | 16 cars + History | 16-race championship (8 new tracks = 16 total — full 1991 season), History mode (narrative campaign), replay system, workshop, "Defend the Title" victory condition | Steam DLC |
+| Tier                      | Grid                                      | Content                                                                                                                                                                                                                               | Platform                     |
+| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| **Tier 1 — Early Access** | 8 cars (7 AI + player at Lorris)          | 4-race F1 championship, 4 tracks, car parts 1-3 (Lorris ceiling), fuel/tires/pits, 7 rival personalities, save/load, 5 difficulty levels (AI speed: 75%/87.5%/100%/112.5%/125%). Multiplayer architecture in place (backend offline). | Steam Early Access, Web demo |
+| **Tier 2 — 1.0**          | 16 cars (15 AI + player choice of 3 cars) | 8-race championship (4 new tracks = 8 total), upgrades 1-5 + crew, rain/night, **team switching**, upgrade ceilings per team, new driver per team, **online multiplayer**, leaderboards                                               | Steam full launch            |
+| **Tier 3 — Expansion**    | 16 cars + History                         | 16-race championship (8 new tracks = 16 total — full 1991 season), History mode (narrative campaign), replay system, workshop, "Defend the Title" victory condition                                                                   | Steam DLC                    |
 
 ---
 
@@ -378,7 +387,7 @@ Milestone 2 — Early Access Build (4-race championship)
   └── 7 AI rival personalities (Macklen → Layton Hall)
   └── Championship mode, multi-season (keep racing until win)
   └── Save/load between races
-  └── 3 difficulty levels (AI speed: 80%/100%/120%)
+  └── 5 difficulty levels (AI speed: 75%/87.5%/100%/112.5%/125%)
   └── Multiplayer architecture in place (backend offline)
   └── Steam Early Access launch
 
@@ -418,58 +427,58 @@ The minimum build to test "is the core loop fun?"
 - Upgrade 1 part to level 2
 - Cockpit camera + chase camera toggle
 - Save/exit between races
-- 3 difficulty levels: Easy (AI at 80% speed), Normal (100%), Hard (120%)
+- 5 difficulty levels: Very Easy (AI at 75% speed), Easy (87.5%), Normal (100%), Hard (112.5%), Very Hard (125%)
 
 **Difficulty Philosophy**: AI speed scales with difficulty, not AI error rate. On Easy, the player catches up because rivals are slower — not because they make more mistakes. This keeps the driving experience authentic (AI drives like AI, just at different pace) and lets the player feel progression through speed.
 
-**Validation Criteria**: The player enjoys 5 consecutive races *without* an external goal telling them to. The "one more race" feeling appears naturally.
+**Validation Criteria**: The player enjoys 5 consecutive races _without_ an external goal telling them to. The "one more race" feeling appears naturally.
 
 ---
 
 ## Biggest Risks
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| **Physics feel** — arcade grip is hard to tune: too sticky = boring, too slidey = frustrating | HIGH — core loop invalid | Iterate in prototype before any content production; test with 5 external players |
-| **AI personalities** — same-engine AI may produce same-looking behaviour despite different params | HIGH — pillar 4 invalid | Build AI testing tool: record rival telemetry per personality, visualise deviation. If variance < 20%, redesign AI system |
-| **Art pipeline** — 3D stylized still requires modelling, texturing, track building per circuit | MEDIUM — scope delay | Procedural track layout tool (spline-based); reuse modular environment assets across tracks; palette-swap liveries |
-| **Multiplayer architecture** — adding after single-player is complete is a rewrite | MEDIUM — Tier 2 risk | Netcode layer from day 0: state container separates simulation from rendering; entity ownership model; replay system doubles as network sync validation |
-| **F1 scope creep** — richest references may tempt feature bloat | MEDIUM — timeline risk | Strict pillar test: "Does this F1 feature serve an arcade racer or a simulator?" If simulator, cut. |
+| Risk                                                                                              | Impact                   | Mitigation                                                                                                                                              |
+| ------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Physics feel** — arcade grip is hard to tune: too sticky = boring, too slidey = frustrating     | HIGH — core loop invalid | Iterate in prototype before any content production; test with 5 external players                                                                        |
+| **AI personalities** — same-engine AI may produce same-looking behaviour despite different params | HIGH — pillar 4 invalid  | Build AI testing tool: record rival telemetry per personality, visualise deviation. If variance < 20%, redesign AI system                               |
+| **Art pipeline** — 3D stylized still requires modelling, texturing, track building per circuit    | MEDIUM — scope delay     | Procedural track layout tool (spline-based); reuse modular environment assets across tracks; palette-swap liveries                                      |
+| **Multiplayer architecture** — adding after single-player is complete is a rewrite                | MEDIUM — Tier 2 risk     | Netcode layer from day 0: state container separates simulation from rendering; entity ownership model; replay system doubles as network sync validation |
+| **F1 scope creep** — richest references may tempt feature bloat                                   | MEDIUM — timeline risk   | Strict pillar test: "Does this F1 feature serve an arcade racer or a simulator?" If simulator, cut.                                                     |
 
 ---
 
 ## MDA Aesthetics Ranking
 
-| Rank | Aesthetic | How Overdrive Delivers It |
-|---|---|---|
-| 1 | **Sensation** | Cockpit camera + speed effects + engine audio + arcade grip — the primary "feel" is the product |
-| 2 | **Challenge** | Overtaking 7 unique rivals, managing fuel/tires, pit window decisions, learning each track-car combo |
-| 3 | **Fantasy** | Rising from backmarker to F1 champion; rival personalities create a living world feeling |
-| 4 | **Narrative** | Championship standing is the default story; History mode (Tier 3) adds scripted narrative |
-| 5 | **Discovery** | Learning each rival's AI pattern, finding the optimal setup per track, uncovering tuning synergies |
-| — | Expression | Car upgrade choices express play style (top speed vs cornering vs acceleration) |
-| — | Fellowship | Multiplayer in Tier 2 adds shared experience |
-| — | Submission | Not targeted — game demands active attention |
+| Rank | Aesthetic     | How Overdrive Delivers It                                                                            |
+| ---- | ------------- | ---------------------------------------------------------------------------------------------------- |
+| 1    | **Sensation** | Cockpit camera + speed effects + engine audio + arcade grip — the primary "feel" is the product      |
+| 2    | **Challenge** | Overtaking 7 unique rivals, managing fuel/tires, pit window decisions, learning each track-car combo |
+| 3    | **Fantasy**   | Rising from backmarker to F1 champion; rival personalities create a living world feeling             |
+| 4    | **Narrative** | Championship standing is the default story; History mode (Tier 3) adds scripted narrative            |
+| 5    | **Discovery** | Learning each rival's AI pattern, finding the optimal setup per track, uncovering tuning synergies   |
+| —    | Expression    | Car upgrade choices express play style (top speed vs cornering vs acceleration)                      |
+| —    | Fellowship    | Multiplayer in Tier 2 adds shared experience                                                         |
+| —    | Submission    | Not targeted — game demands active attention                                                         |
 
 ---
 
 ## Reference Games
 
-| Game | What We Take | Our Twist | Validates Pillar |
-|---|---|---|---|
-| **Grand Prix 2** | Reward feeling of a perfect lap; race strategy depth | Modernised UI, shorter races, grip physics | Speed That Is Felt, Simple Strategy |
-| **Horizon Chase Turbo — Senna Forever** | Camera duality (cockpit + chase), sense of speed, vibrant palette | Rival personalities, deeper progression, pit strategy | Speed That Is Felt, Grid of Personalities |
-| **4PGP** | Cockpit-focused arcade grip, retro 90s 3D feel | Fuel/tires, crew upgrades, championship tiers | Speed That Is Felt, Racing Is Progression |
-| **Top Gear (SNES)** | Fuel management as strategic element; accessible arcade racing | Individual rival AI per driver, not just pack behaviour | Simple Strategy |
-| **Super Monaco GP** | Career mode structure; parody team names with recognisable references | No quali — inverted grid from previous result keeps racing focus | Racing Is Progression |
-| **Fire Emblem 4 / Warcraft 3** | Emotional weight of character-driven story beats | Translation: rivals + championship drama create emotional stakes (Tier 3 History mode) | Grid of Personalities |
+| Game                                    | What We Take                                                          | Our Twist                                                                              | Validates Pillar                          |
+| --------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------- |
+| **Grand Prix 2**                        | Reward feeling of a perfect lap; race strategy depth                  | Modernised UI, shorter races, grip physics                                             | Speed That Is Felt, Simple Strategy       |
+| **Horizon Chase Turbo — Senna Forever** | Camera duality (cockpit + chase), sense of speed, vibrant palette     | Rival personalities, deeper progression, pit strategy                                  | Speed That Is Felt, Grid of Personalities |
+| **4PGP**                                | Cockpit-focused arcade grip, retro 90s 3D feel                        | Fuel/tires, crew upgrades, championship tiers                                          | Speed That Is Felt, Racing Is Progression |
+| **Top Gear (SNES)**                     | Fuel management as strategic element; accessible arcade racing        | Individual rival AI per driver, not just pack behaviour                                | Simple Strategy                           |
+| **Super Monaco GP**                     | Career mode structure; parody team names with recognisable references | No quali — inverted grid from previous result keeps racing focus                       | Racing Is Progression                     |
+| **Fire Emblem 4 / Warcraft 3**          | Emotional weight of character-driven story beats                      | Translation: rivals + championship drama create emotional stakes (Tier 3 History mode) | Grid of Personalities                     |
 
 ---
 
 ## Suggested Next Steps
 
 1. **Complete the Art Bible** — finish Sections 6-9 (Environment, UI/HUD, Asset Standards, Reference Catalog).
-2. Run `/design-review design/gdd/game-concept.md` to validate concept completeness.
+2. ~~Run `/design-review design/gdd/game-concept.md` to validate concept completeness.~~ **Done — reviewed and approved 2026-06-20.**
 3. Decompose into individual systems with `/map-systems` — maps dependencies and priorities.
 4. Author per-system GDDs with `/design-system` — guided, section-by-section GDD writing.
 5. Plan the technical architecture with `/create-architecture`.

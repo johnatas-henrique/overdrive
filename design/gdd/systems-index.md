@@ -28,15 +28,15 @@ Built before anything renders on screen. These systems are the architectural bac
 
 | #   | System                | Category       | Dependencies                                                      | Phase | Status   |
 | --- | --------------------- | -------------- | ----------------------------------------------------------------- | ----- | -------- |
-| 1   | Data & Config Manager | Infrastructure | —                                                                 | 0     | Designed |
-| 2   | Event Bus             | Infrastructure | —                                                                 | 0     | Designed |
-| 3   | Game State Machine    | Infrastructure | Event Bus                                                         | 0     | Designed |
-| 4   | Persistence Interface | Infrastructure | —                                                                 | 0     | Designed |
-| 5   | Simulation Snapshot   | Infrastructure | —                                                                 | 0     | Designed |
-| 6   | Asset Manager         | Infrastructure | Data & Config                                                     | 0     | Designed |
-| 7   | Entity/Car Lifecycle  | Infrastructure | Event Bus, Data & Config, Asset Manager                           | 0     | Designed |
-| 8   | Dev Tools             | Developer Tool | Event Bus, Data & Config, Game State Machine, Simulation Snapshot | 0     | Designed |
-| 9   | Determinism Contract  | Constraint     | —                                                                 | 0     | Designed |
+| 1   | Data & Config Manager | Infrastructure | —                                                                 | 0     | Approved |
+| 2   | Event Bus             | Infrastructure | —                                                                 | 0     | Approved |
+| 3   | Game State Machine    | Infrastructure | Event Bus                                                         | 0     | Approved |
+| 4   | Persistence Interface | Infrastructure | —                                                                 | 0     | Approved |
+| 5   | Simulation Snapshot   | Infrastructure | —                                                                 | 0     | Approved |
+| 9   | Asset Manager         | Infrastructure | Data & Config, Event Bus                                          | 0     | Approved |
+| 7   | Entity/Car Lifecycle  | Infrastructure | Event Bus, Data & Config, Asset Manager                           | 0     | Approved |
+| 8   | Dev Tools             | Developer Tool | Event Bus, Data & Config, Game State Machine, Simulation Snapshot | 0     | Approved |
+| 9   | Determinism Contract  | Constraint     | —                                                                 | 0     | Approved |
 
 **GSM states**: Loading → Menu → PreRace → Racing → PostRace → Menu (loop)
 **Entity scope (Fase 1)**: Player car + AI cars + static track colliders only.
@@ -54,30 +54,30 @@ Everything needed for one complete race. Player picks car and track, races 7 AI 
 
 | #   | System           | Category    | Dependencies                                                     | Phase | Status   |
 | --- | ---------------- | ----------- | ---------------------------------------------------------------- | ----- | -------- |
-| 10  | Input            | Core Racing | —                                                                | 1     | Designed |
-| 11  | Menu LITE        | UI          | Input, Data & Config, Asset Manager, GSM                         | 1     | Designed |
-| 12  | Physics/Handling | Core Racing | Input, Entity/Car Lifecycle, Data & Config, Determinism Contract | 1     | Designed |
-| 13  | Collision        | Core Racing | Entity/Car Lifecycle                                             | 1     | Designed |
-| 14  | Camera           | Core Racing | Physics/Handling                                                 | 1     | Designed |
+| 10  | Input            | Core Racing | Data & Config, Event Bus                                         | 2     | Approved |
+| 11  | Menu LITE        | UI          | Input, Data & Config, Asset Manager, Event Bus, GSM              | 1     | Approved |
+| 12  | Physics/Handling | Core Racing | Input, Entity/Car Lifecycle, Data & Config, Determinism Contract | 1     | Approved |
+| 13  | Collision        | Core Racing | Entity/Car Lifecycle                                             | 1     | Approved |
+| 14  | Camera           | Core Racing | Physics/Handling                                                 | 1     | Approved |
 
 **Physics**: Arcade grip (lift-to-turn, no drift, high speed sensation). Not a simulator.
-**Collision**: Car↔car and car↔barrier detection only. Event-driven via Event Bus. Finish line → Race Management (spatial check). Pit entry/exit → Pit Stop (spatial check). **Speed feel**: Screen shake on collision impact, player-only (amplitude proportional to relative velocity).
-**Camera**: Cockpit default + chase toggle. No smooth transitions in MVP. **Speed feel**: FOV shift proportional to speed (narrows at high speed, widens at low speed) — linear interpolation, no easing curve needed in MVP.
+**Collision**: Car↔car and car↔barrier detection only. Event-driven via Event Bus. Finish line → Race Management (spatial check within its pipeline slot). Pit entry/exit → Pit Stop (spatial check via BoundingBox, event-driven). These are per-system spatial queries, not a standalone "spatial detection" system — no pipeline slot needed. **Speed feel**: Screen shake on collision impact, player-only (amplitude proportional to relative velocity).
+**Camera**: Cockpit default + chase toggle. No smooth transitions in MVP. **Speed feel**: FOV shift proportional to speed (widens at high speed, narrows at low speed) — linear interpolation, no easing curve needed in MVP.
 **Menu LITE**: Title screen, Single Race button, car/track selection, results screen. Full menu and 3D paddock deferred to Alpha (`menu-full.md`, `paddock.md`).
 
 ### Track & AI
 
 | #   | System              | Category | Dependencies                                                                                             | Phase | Status          |
 | --- | ------------------- | -------- | -------------------------------------------------------------------------------------------------------- | ----- | --------------- |
-| 15  | Track + Environment | Track    | Asset Manager, Data & Config                                                                             | 1     | Design Complete |
-| 16  | Fuel                | Strategy | Physics/Handling, Data & Config                                                                          | 1     | Design Complete |
-| 17  | Tire Wear           | Strategy | Physics/Handling, Data & Config                                                                          | 1     | Design Complete |
-| 18  | Pit Stop            | Strategy | Fuel, Tire Wear, Race Management, Entity/Car Lifecycle, Event Bus, Track + Env, Physics/Handling         | 1     | Design Complete |
+| 15  | Track + Environment | Track    | Asset Manager, Data & Config                                                                             | 1     | Approved        |
+| 16  | Fuel                | Strategy | Physics/Handling, Data & Config                                                                          | 1     | Approved        |
+| 17  | Tire Wear           | Strategy | Physics/Handling, Data & Config                                                                          | 1     | Approved        |
+| 18  | Pit Stop            | Strategy | Fuel, Tire Wear, Race Management, Entity/Car Lifecycle, Event Bus, Track + Env, Physics/Handling         | 1     | Approved        |
 | 19  | AI Driver           | AI       | Physics/Handling, Entity/Car Lifecycle, Data & Config, Track + Env, Collision, Fuel, Tire Wear, Pit Stop | 1     | Design Complete |
 
 **Track geometry**: Includes pit lane from the start — retrofitting later would require remaking the track.
-**Fuel**: Consumption per tick from throttle avg. Lift-and-coast to conserve — no driving mode toggle. Runtime data flow with Physics is bidirectional (reads throttle_avg via getter, writes fuel_mult via setter). Module dependency is one-way: Fuel → Physics — no circular dependency.
-**Tire Wear**: Lateral + longitudinal load model. Degradation driven by driving aggression — smooth = slow wear, aggressive = fast wear. Track abrasion and off-track multipliers are global constants (not per-track); per-team durability upgrades create the strategic spread. Same pattern as Fuel: reads load data from Physics (getter), writes tire_condition back (setter). Module dependency is one-way: Tire Wear → Physics — no circular dependency.
+**Fuel**: Consumption per tick from throttle avg. Lift-and-coast to conserve — no driving mode toggle. Runtime data flow with Physics is bidirectional (reads throttleAvg via getter, writes fuelMult via setter). Module dependency is one-way: Fuel → Physics — no circular dependency.
+**Tire Wear**: Lateral + longitudinal load model. Degradation driven by driving aggression — smooth = slow wear, aggressive = fast wear. Track abrasion and off-track multipliers are global constants (not per-track); per-team durability upgrades create the strategic spread. Same pattern as Fuel: reads load data from Physics (getter), writes tireCondition back (setter). Module dependency is one-way: Tire Wear → Physics — no circular dependency.
 **Pit Stop**: Physical pit lane with spline guidance. Refuel (progressive, player can exit early) + tire change (fixed delay). Merge check at garage exit (200ms interval).
 **AI Driver**: 7 rivals with distinct personality profiles, difficulty speed multiplier (80%/100%/120%).
 
@@ -85,11 +85,11 @@ Everything needed for one complete race. Player picks car and track, races 7 AI 
 
 | #   | System             | Category       | Dependencies                                                                                                                  | Phase | Status          |
 | --- | ------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----- | --------------- |
-| 20  | Race Management    | Race Flow      | Physics/Handling (spline distance), Collision, Fuel, Tire Wear, Pit Stop, GSM, Entity/Car Lifecycle, Data & Config, Event Bus | 1     | Design Complete |
-| 21  | HUD                | UI/Feedback    | Physics/Handling (speed), Fuel, Tire Wear, Race Mgmt (pos, lap), Camera, Event Bus                                            | 1     | Design Complete |
-| 22  | Audio              | UI/Feedback    | Physics/Handling (RPM, speed), Collision (impacts), Event Bus, Asset Manager                                                  | 1     | Design Complete |
+| 20  | Race Management    | Race Flow      | Physics/Handling (spline distance), Collision, Fuel, Tire Wear, Pit Stop, GSM, Entity/Car Lifecycle, Data & Config, Event Bus | 1     | Approved        |
+| 21  | HUD                | UI/Feedback    | Physics/Handling (speed), Fuel, Tire Wear, Race Mgmt (pos, lap), Camera, Event Bus                                            | 1     | Approved        |
+| 22  | Audio              | UI/Feedback    | Physics/Handling (RPM, speed), Collision (impacts), Event Bus, Asset Manager                                                  | 1     | Approved        |
 | 23  | Telemetry Recorder | Developer Tool | Event Bus, Physics/Handling, AI Driver, Data & Config                                                                         | 1     | Design Complete |
-| 24  | Single Race        | Race Flow      | Race Management, Data & Config, Game State Machine                                                                            | 1     | Design Complete |
+| 24  | Single Race        | Race Flow      | Race Management, Data & Config, Game State Machine                                                                            | 1     | Approved        |
 
 **Race Management**: Receives `RaceConfiguration` (grid size, lap count, ruleset), publishes `RaceEvent`s. Mode-agnostic — Single Race and Championship are different configurations.
 **HUD**: Modular blocks (speed, lap, pos, fuel, tires, minimap). Rearrangeable layout.
@@ -185,7 +185,7 @@ All systems are **Not Started**.
 
 | Tier            | Systems | Designed | GDD Written | Implemented | Verified |
 | --------------- | ------- | -------- | ----------- | ----------- | -------- |
-| **MVP**         | 24      | 24       | 0           | 0           | 0        |
-| **Alpha**       | 5       | 0        | 0           | 0           | 0        |
-| **Full Vision** | 3       | 0        | 0           | 0           | 0        |
-| **Total**       | 32      | 24       | 0           | 0           | 0        |
+| **MVP**         | 24      | 24       | 24          | 0           | 0        |
+| **Alpha**       | 5       | 5        | 0           | 0           | 0        |
+| **Full Vision** | 3       | 3        | 0           | 0           | 0        |
+| **Total**       | 32      | 32       | 24          | 0           | 0        |
