@@ -7,8 +7,8 @@ const MODEL_RE = /^(model:\s*).+/m;
 
 function usage() {
   console.log(`
-Usage:  node utils/assign-models.js --map <json>   [--dry-run]
-        node utils/assign-models.js --config <file> [--dry-run]
+Usage:  node utils/assign-models.cjs --map <json>   [--dry-run]
+        node utils/assign-models.cjs --config <file> [--dry-run]
 
 Map 49 agent models to your preferred providers in one shot.
 
@@ -18,13 +18,13 @@ Options:
   --dry-run         Preview changes without writing files
 
 Examples:
-  node utils/assign-models.js --dry-run --map '{
+  node utils/assign-models.cjs --dry-run --map '{
     "opencode-go/kimi-k2.6":         "anthropic/claude-opus-4",
     "opencode-go/qwen3.6-plus":      "openai/gpt-4o",
     "opencode-go/deepseek-v4-flash": "ollama/llama3.2"
   }'
 
-  node utils/assign-models.js --config my-models.json
+  node utils/assign-models.cjs --config my-models.json
 `);
   process.exit(0);
 }
@@ -45,10 +45,16 @@ function parseArgs() {
 
   if (mapIdx !== -1) {
     raw = args[mapIdx + 1];
-    if (!raw) { console.error("error: --map requires a JSON argument"); process.exit(1); }
+    if (!raw) {
+      console.error("error: --map requires a JSON argument");
+      process.exit(1);
+    }
   } else if (cfgIdx !== -1) {
     const cfgPath = args[cfgIdx + 1];
-    if (!cfgPath) { console.error("error: --config requires a file path"); process.exit(1); }
+    if (!cfgPath) {
+      console.error("error: --config requires a file path");
+      process.exit(1);
+    }
     raw = fs.readFileSync(path.resolve(cfgPath), "utf8");
   } else {
     console.error("error: provide --map or --config");
@@ -56,7 +62,9 @@ function parseArgs() {
   }
 
   let mapping;
-  try { mapping = JSON.parse(raw); } catch {
+  try {
+    mapping = JSON.parse(raw);
+  } catch {
     console.error("error: invalid JSON");
     process.exit(1);
   }
@@ -65,7 +73,7 @@ function parseArgs() {
 }
 
 function readAgentFiles() {
-  const files = fs.readdirSync(AGENTS_DIR).filter(f => f.endsWith(".md"));
+  const files = fs.readdirSync(AGENTS_DIR).filter((f) => f.endsWith(".md"));
   const agents = [];
 
   for (const file of files) {
@@ -102,7 +110,7 @@ function applyMapping(agents, mapping, dryRun) {
     changes.push({
       file: agent.file,
       old: agent.model,
-      new: newModel
+      new: newModel,
     });
 
     if (!dryRun) {
@@ -134,19 +142,24 @@ function main() {
 
   if (changes.length === 0) {
     console.log("\nNo changes — mapping keys don't match any current models.");
-    console.log("Current models:", [...new Set(agents.map(a => a.model))].join(", "));
+    console.log(
+      "Current models:",
+      [...new Set(agents.map((a) => a.model))].join(", ")
+    );
     return;
   }
 
-  console.log(`\n${dryRun ? "[DRY RUN] " : ""}Changes (${changes.length} files):`);
+  console.log(
+    `\n${dryRun ? "[DRY RUN] " : ""}Changes (${changes.length} files):`
+  );
   for (const c of changes) {
     console.log(`  ${c.file.padEnd(32)} ${c.old.padEnd(35)} →  ${c.new}`);
   }
 
   const after = groupByModel(
-    agents.map(a => ({
+    agents.map((a) => ({
       ...a,
-      model: mapping[a.model] || a.model
+      model: mapping[a.model] || a.model,
     }))
   );
   console.log("\nAfter:");
