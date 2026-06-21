@@ -8,13 +8,15 @@
 
 ## Overview
 
-Race Management is the central authority for all race-state data during a live race. It owns the current position grid, lap counters, DNF registry, race timing, and the internal race sub-state machine (Showing Grid → Countdown → GreenFlag → Racing → Checkered). It does NOT own race configuration (lap count, grid size, track id) — that is provided by the calling mode (Single Race, Championship) via `RaceConfiguration`.
+Race Management is the central authority for all race-state data during a live race. It owns the current position grid, lap counters, DNF registry, race timing, and the internal race sub-state machine (Countdown → GreenFlag → Racing → Checkered). It does NOT own race configuration (lap count, grid size, track id) — that is provided by the calling mode (Single Race, Championship) via `RaceConfiguration`.
 
 The system is **mode-agnostic**: it accepts a `RaceConfiguration`, publishes `RaceEvent`s via the Event Bus, and exposes `getResults()` at the end. Single Race and Championship are different configurations, not different code paths. The GSM remains in `Racing` throughout all sub-states; Race Management handles sub-state transitions internally.
 
 ---
 
-## Developer Fantasy
+## Player Fantasy
+
+> _For infrastructure systems, the "player" is the developer using this API._
 
 The developer calls `raceManager.init(config)` and `raceManager.startRace()`. From that point, Race Management manages every aspect of race progression — lap counting, position sorting, DNF detection, and final results — all through its fixed pipeline tick. A new track or race format requires a new config, not new race logic.
 
@@ -36,30 +38,35 @@ The debug overlay shows current race sub-state, the live position grid (updated 
 
 **5. Fail-fast on misconfiguration.** An invalid `RaceConfiguration` (lapCount = 0, gridSize > available positions, unknown trackId) throws `ConfigError` at init. A race never starts with bad configuration.
 
+**6. Seed propagation.** `RaceConfiguration.seed` is passed to `SeededRandom` at init. All simulation RNG (AI Driver variance, Camera shake direction) draws from this single seeded instance. Same seed + same inputs → identical race outcome (Determinism Contract AC #5).
+
 ### Race State Machine
 
 ```
 GSM: Racing
   └── Race Management sub-states:
 
-      Showing Grid ──→ Countdown ──→ GreenFlag ──→ Racing ──→ Checkered
-           │                                                   │
-           │   (auto-skip 10s)                                  │
-           └────────────────────────────────────────────────────┘
-                      (player finishes all laps or DNF)
+      Countdown ──→ GreenFlag ──→ Racing ──→ Checkered
+                                              │
+                                              └── (player finishes all laps or DNF)
 ```
 
-| Sub-state        | Description                                                                                                                                                                                                   |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Showing Grid** | Camera is in Grid mode (ArcRotateCamera, 30m above, 40m ahead). Race Management orders grid positions from `RaceConfiguration`, locks all cars to their grid positions. Player acclimates to the grid layout. |
-| **Countdown**    | Camera switches to player's default (cockpit or chase). Car locked at 0 km/h, steering wheel animates. Lights sequence: 5 red → 4 → 3 → 2 → 1 → GREEN.                                                        |
-| **GreenFlag**    | All cars unlocked. Race timer starts. Normal racing physics active for all cars.                                                                                                                              |
-| **Racing**       | Race is live. Position grid updates every tick, lap counting active, DNF monitoring active.                                                                                                                   |
-| **Checkered**    | Player completed all laps OR player DNF. Results computed for all 8 cars from total distance at checkered moment. Race timer stops. `endRace()` called → GSM transition to `PostRace`.                        |
+| Sub-state     | Description                                                                                                                                                                            |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Countdown** | Race Management orders grid positions from `RaceConfiguration`, locks all cars. Camera in player's default (cockpit or chase). Lights sequence: 5 red → 4 → 3 → 2 → 1 → GREEN.         |
+| **GreenFlag** | All cars unlocked. Race timer starts. Normal racing physics active for all cars. Grid cinematic already played during GSM PreRace.                                                     |
+| **Racing**    | Race is live. Position grid updates every tick, lap counting active, DNF monitoring active.                                                                                            |
+| **Checkered** | Player completed all laps OR player DNF. Results computed for all 8 cars from total distance at checkered moment. Race timer stops. `endRace()` called → GSM transition to `PostRace`. |
 
-**Transitions:**
+**PreRace grid timer:**
 
-- `Showing Grid → Countdown`: Player presses SKIP button (or auto-skip after 10s).
+- On `gsm.state.entered(to=PreRace)`: Race Management starts an 8-second timer.
+- Player presses **confirm** input → calls `gsm.transition('Racing')` immediately.
+- Timer expires (8s) → calls `gsm.transition('Racing')`.
+- Both triggers produce the same result: GSM enters `Racing`, Race Management begins `Countdown`.
+
+**Race sub-state transitions:**
+
 - `Countdown → GreenFlag`: Lights sequence completes (GREEN). All cars unlocked.
 - `GreenFlag → Racing`: Immediate (first tick after GREEN).
 - `Racing → Checkered`: Player lap count equals `RaceConfiguration.lapCount` OR player DNF detected.
@@ -72,20 +79,35 @@ GSM: Racing
 ```typescript
 function updatePositions(): void {
   const trackLength = trackConfig.spline.length; // total meters
+  const hysteresis = configManager.get("race.position.hysteresisThreshold"); // default 0.5m
 
   const sorted = activeCars
     .filter((c) => !dnfRegistry.has(c.id))
     .map((c) => {
       const lap = lapCount.get(c.id) ?? 0;
       const splinePos = c.physics.splinePosition; // 0..trackLength from Physics
+      splinePositions.set(c.id, splinePos); // store for buildResults
       const totalDist = lap * trackLength + splinePos;
       return { carId: c.id, totalDist, lap, splinePos };
     })
     .sort((a, b) => b.totalDist - a.totalDist); // descending = most distance first
 
-  sorted.forEach((entry, index) => {
-    positionGrid.set(entry.carId, index + 1); // 1-based position
-  });
+  // Hysteresis: compare against previous position. Only swap if
+  // |delta| > hysteresisThreshold — prevents flicker when cars are side-by-side.
+  for (const entry of sorted) {
+    const prevPos = positionGrid.get(entry.carId) ?? sorted.length;
+    const newPos = sorted.indexOf(entry) + 1; // 1-based
+    if (newPos === prevPos) continue;
+
+    // For adjacent swaps, check distance delta against threshold
+    if (Math.abs(newPos - prevPos) === 1) {
+      const neighbor = sorted[newPos - 1]; // the car at the new position
+      const distanceDelta = Math.abs(entry.totalDist - neighbor.totalDist);
+      if (distanceDelta < hysteresis) continue; // too close — hold position
+    }
+
+    positionGrid.set(entry.carId, newPos);
+  }
 }
 ```
 
@@ -136,7 +158,7 @@ function updateLaps(carId: string): void {
 
 ```typescript
 // Runtime state (module-level Maps and Sets):
-//   lapCount, positionGrid, dnfRegistry, pendingDNF, prevSplinePos,
+//   lapCount, positionGrid, dnfRegistry, pendingDNF, prevSplinePos, splinePositions,
 //   bestLaps, pitStopCount (Map<string, number>), pitTotalTime (Map<string, number>)
 // All initialized in init().
 
@@ -151,20 +173,16 @@ eventBus.on("car.fuel_empty", (event) => {
 });
 
 eventBus.on("car.stopped", (event) => {
-  // Physics emits car.stopped when velocity ≈ 0 for a car with no engine power
+  // Physics emits car.stopped when velocity ≈ 0 for a car with no engine power.
+  if (subState === "Checkered") return; // race already ended — no DNF after checkered
+
   if (pendingDNF.has(event.carId)) {
-    // Check exceptions before marking DNF
     const car = cars.get(event.carId);
 
-    // Exception 1: Car is in pit entry zone (can still coast to garage → refuel)
+    // Exception: Car is in pit entry zone (can still coast to garage → refuel)
+    // Direct geometric query: reads car's current position against TrackConfig.pitEntryZone BoundingBox.
+    // Not a cached flag — works regardless of spatial detection pipeline position.
     if (isInPitEntryZone(car)) return;
-
-    // Exception 2: Car is on last lap and finish line is ahead
-    const currentLap = lapCount.get(event.carId) ?? 0;
-    const remaining = raceConfig.lapCount - currentLap;
-    if (remaining <= 1 && distanceToFinishLine(car) < currentSpeed(car) * 5) {
-      return; // let the car coast to the line
-    }
 
     // No exception applies → DNF
     registerDNF(event.carId, "fuel_empty");
@@ -187,7 +205,7 @@ eventBus.on("pit.exit", (event) => {
   const carId = event.carId;
   pitStopCount.set(carId, (pitStopCount.get(carId) ?? 0) + 1);
   if (event.totalTimeMs !== undefined) {
-    pitTotalTime.set(carId, event.totalTimeMs);
+    pitTotalTime.set(carId, (pitTotalTime.get(carId) ?? 0) + event.totalTimeMs);
   }
 });
 ```
@@ -233,30 +251,42 @@ function endRace(): void {
 }
 ```
 
-On player DNF (condition 2): positions are calculated for ALL 8 cars based on their total distance at the moment the checkered flag fires. The player's car is placed last among non-DNF cars, or if all cars have more distance, the player is P8.
+On player DNF (condition 2): positions for ALL 8 cars are computed from total distance. DNF cars are placed after all finishers, sorted by distance achieved before retirement. The player's car is placed last among non-DNF cars, or if all cars have more distance, the player is P8.
 
 ```typescript
 function buildResults(): RaceResult[] {
   const trackLength = trackConfig.spline.length;
 
-  return allCarIds
-    .map((carId) => {
-      const lap = lapCount.get(carId) ?? 0;
-      const dnf = dnfRegistry.get(carId);
-      return {
-        carId,
-        teamId: cars.get(carId).teamId,
-        finalPosition: positionGrid.get(carId) ?? 8,
-        totalTime: raceTime, // ms since GreenFlag
-        bestLapTime: bestLaps.get(carId) ?? 0,
-        lapCount: lap,
-        dnf: !!dnf,
-        dnfReason: dnf ?? undefined,
-        pitStops: pitStopCount.get(carId) ?? 0,
-        pitTotalTime: pitTotalTime.get(carId) ?? 0,
-      };
-    })
-    .sort((a, b) => a.finalPosition - b.finalPosition);
+  // Compute total distance per car (lap × trackLength + spline position)
+  const entries = allCarIds.map((carId) => {
+    const lap = lapCount.get(carId) ?? 0;
+    const splinePos = splinePositions.get(carId) ?? 0;
+    const dnf = dnfRegistry.get(carId);
+    return {
+      carId,
+      teamId: cars.get(carId).teamId,
+      totalDistance: lap * trackLength + splinePos,
+      totalTime: raceTime,
+      bestLapTime: bestLaps.get(carId) ?? 0,
+      lapCount: lap,
+      dnf: !!dnf,
+      dnfReason: dnf ?? undefined,
+      pitStops: pitStopCount.get(carId) ?? 0,
+      pitTotalTime: pitTotalTime.get(carId) ?? 0,
+    };
+  });
+
+  // Sort: all finishers (DNF=false) by totalDistance descending, then DNF cars by totalDistance descending
+  entries.sort((a, b) => {
+    if (a.dnf !== b.dnf) return a.dnf ? 1 : -1;
+    return b.totalDistance - a.totalDistance;
+  });
+
+  // Assign final positions from sorted order (1-based)
+  return entries.map((entry, index) => ({
+    ...entry,
+    finalPosition: index + 1,
+  }));
 }
 ```
 
@@ -273,26 +303,29 @@ Results are read-only after endRace(). `RaceManagement.getResults()` returns the
 
 Race Management subscribes to:
 
-| Event                           | Emitter   | Reaction                                                 |
-| ------------------------------- | --------- | -------------------------------------------------------- |
-| `gsm.state.entered` (to=Racing) | GSM       | `init()` config → set sub-state to Showing Grid          |
-| `car.fuel_empty`                | Fuel      | Mark car for pending DNF (coasting)                      |
-| `car.stopped`                   | Physics   | If pending DNF → check exceptions → register DNF or skip |
-| `car.stalled_in_pit`            | Pit Stop  | Register DNF with reason `stalled_in_pit`                |
-| `car.tire_blown`                | Tire Wear | Log only — no DNF action                                 |
-| `pit.exit`                      | Pit Stop  | Increment pit stop counter, record total pit time        |
+| Event                            | Emitter   | Reaction                                                                                                                                                                                                                                        |
+| -------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gsm.state.entered` (to=PreRace) | GSM       | Start grid timer (8s). Lock all cars via `physics.setLocked(carId, true)`.                                                                                                                                                                      |
+| `gsm.state.entered` (to=Racing)  | GSM       | `init()` config → set sub-state to Countdown. Cancel grid timer if still running. Cars remain locked until `race.green.flag`. `race.starting` is emitted on the first pipeline tick after Countdown begins (not synchronously during dispatch). |
+| `car.fuel_empty`                 | Fuel      | Mark car for pending DNF (coasting)                                                                                                                                                                                                             |
+| `car.stopped`                    | Physics   | If pending DNF → check exceptions → register DNF or skip                                                                                                                                                                                        |
+| `pit.status` (status=pitStopped) | Pit Stop  | Clear `pendingDNF[carId]` — car is being serviced; fuel-empty condition is resolved                                                                                                                                                             |
+| `car.stalled_in_pit`             | Pit Stop  | Register DNF with reason `stalled_in_pit`                                                                                                                                                                                                       |
+| `car.tire_blown`                 | Tire Wear | Log only — no DNF action                                                                                                                                                                                                                        |
+| `pit.exit`                       | Pit Stop  | Increment pit stop counter, record total pit time                                                                                                                                                                                               |
 
 Race Management emits:
 
-| Event               | Payload                                 | Consumers                                                        |
-| ------------------- | --------------------------------------- | ---------------------------------------------------------------- |
-| `race.starting`     | `{ trackId, lapCount, gridSize }`       | Menu, HUD                                                        |
-| `race.green.flag`   | `{ raceId, timestamp }`                 | HUD (start timer), Camera (unlock), AI (go)                      |
-| `car.lap.completed` | `{ carId, lap, lapTime }`               | HUD (lap counter), Audio (lap trigger)                           |
-| `race.checkered`    | `{ carId, lap, results: RaceResult[] }` | HUD (top 3 + player), Camera (drone transition), Audio (fanfare) |
-| `race.completed`    | `{ results: RaceResult[] }`             | PostRace, Single Race, Telemetry Recorder                        |
-| `car.dnf`           | `{ carId, reason }`                     | HUD (gray out), Audio (announcement), AI (ignore car)            |
-| `position.changed`  | `{ carId, oldPos, newPos }`             | HUD (position indicator), Audio (overtake sound)                 |
+| Event                  | Payload                                 | Consumers                                                                                                            |
+| ---------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `race.starting`        | `{ trackId, lapCount, gridSize }`       | Menu, HUD (deferred — emitted on first pipeline tick after Countdown start, not synchronously during event dispatch) |
+| `race.light.countdown` | `{ lightsRemaining: number }`           | HUD (CountdownBlock: update displayed lights) — emitted each time a light turns off (5→4→…→1→0)                      |
+| `race.green.flag`      | `{ raceId, timestamp }`                 | HUD (start timer), Camera (unlock), AI (go), Physics → `setLocked(false)`                                            |
+| `car.lap.completed`    | `{ carId, lap, lapTime }`               | HUD (lap counter), Audio (lap trigger)                                                                               |
+| `race.checkered`       | `{ carId, lap, results: RaceResult[] }` | HUD (top 3 + player), Camera (drone transition), Audio (fanfare)                                                     |
+| `race.completed`       | `{ results: RaceResult[] }`             | PostRace, Single Race, Telemetry Recorder                                                                            |
+| `car.dnf`              | `{ carId, reason }`                     | HUD (gray out), Audio (announcement), AI (ignore car)                                                                |
+| `position.changed`     | `{ carId, oldPos, newPos }`             | HUD (position indicator), Audio (overtake sound)                                                                     |
 
 The `position.changed` event is throttled: emitted only when a car's position changes, not every tick. Useful for HUD updates and audio cues without flooding the Event Bus.
 
@@ -300,12 +333,12 @@ The `position.changed` event is throttled: emitted only when a car's position ch
 
 ## States & Transitions
 
-| State        | Description                                                                                |
-| ------------ | ------------------------------------------------------------------------------------------ |
-| **Inactive** | No race configured.                                                                        |
-| **Ready**    | `RaceConfiguration` loaded, awaiting `startRace()`.                                        |
-| **Racing**   | Race sub-state machine active (Showing Grid → Countdown → GreenFlag → Racing → Checkered). |
-| **Complete** | Results computed. `getResults()` available. Ready for PostRace.                            |
+| State        | Description                                                                 |
+| ------------ | --------------------------------------------------------------------------- |
+| **Inactive** | No race configured.                                                         |
+| **Ready**    | `RaceConfiguration` loaded, awaiting `startRace()`.                         |
+| **Racing**   | Race sub-state machine active (Countdown → GreenFlag → Racing → Checkered). |
+| **Complete** | Results computed. `getResults()` available. Ready for PostRace.             |
 
 Transition flow: `Inactive → Ready` (on `init(config)`) → `Ready → Racing` (on `startRace()`) → `Racing → Complete` (on `endRace()`).
 
@@ -372,6 +405,7 @@ where `fixed_dt = 1/60 s`, `tickCount` starts at GreenFlag, stops at Checkered.
 | **Pit stop merges at race end**                        | If merge check is active when checkered fires, car's position is frozen at current spline position. No special pit-end interaction needed.                                                          |
 | **Lap count crosses threshold mid-tick**               | All lap checks happen in the same tick pipeline. Player completes lap N → `setSubState('Checkered')` → pipeline continues for remaining cars → next tick starts in Checkered (no more lap updates). |
 | **Fuel empty in pit entry zone (coasting)**            | Pit Stop detects car entered pit entry BoundingBox. If car reaches garage → refuel. If car stops before garage → `car.stalled_in_pit` → DNF.                                                        |
+| **Tie at finish line (same totalDistance)**            | Academic — never happened in 70+ years of F1. Tiebreaker: grid position (whoever started ahead wins). Guarantees deterministic results without affecting normal race outcomes.                      |
 
 ---
 
@@ -395,12 +429,13 @@ where `fixed_dt = 1/60 s`, `tickCount` starts at GreenFlag, stops at Checkered.
 
 No gameplay tuning knobs in Phase 1. Race parameters (lap count, grid size) are part of `RaceConfiguration`, not global config. The following are config-driven but per-race, not per-system:
 
-| Parameter               | Location           | Description                                                                |
-| ----------------------- | ------------------ | -------------------------------------------------------------------------- |
-| `raceConfig.lapCount`   | RaceConfiguration  | Number of laps to complete                                                 |
-| `raceConfig.gridSize`   | RaceConfiguration  | Number of cars on grid (Phase 1: 8)                                        |
-| `raceConfig.difficulty` | RaceConfiguration  | Difficulty multiplier (easy=0.8, medium=1.0, hard=1.2) — used by AI Driver |
-| `trackLength`           | TrackConfig.spline | Total meters of one lap (from Track + Environment)                         |
+| Parameter                           | Location           | Description                                                                                                                        |
+| ----------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `raceConfig.lapCount`               | RaceConfiguration  | Number of laps to complete                                                                                                         |
+| `raceConfig.gridSize`               | RaceConfiguration  | Number of cars on grid (Phase 1: 8)                                                                                                |
+| `raceConfig.difficulty`             | RaceConfiguration  | Difficulty multiplier (easy=0.8, medium=1.0, hard=1.2) — used by AI Driver                                                         |
+| `race.position.hysteresisThreshold` | race.\*            | Minimum totalDistance delta (m) to register a position change (default: 0.5). Prevents position flicker during side-by-side racing |
+| `trackLength`                       | TrackConfig.spline | Total meters of one lap (from Track + Environment)                                                                                 |
 
 If future playtesting reveals a need for global race parameters (e.g., minimum lap count enforcement, time limit), they would be added to the `race.*` namespace in ConfigManager.
 
@@ -410,7 +445,7 @@ If future playtesting reveals a need for global race parameters (e.g., minimum l
 
 | Element                | Requirement                                                                                                                          |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **Grid display**       | Showing Grid uses existing ArcRotateCamera (Camera GDD). No additional visual elements.                                              |
+| **Grid display**       | Grid cinematic runs during GSM PreRace using existing ArcRotateCamera (Camera GDD). No additional visual elements.                   |
 | **Lights sequence**    | 5 red lights above the start line (3D model in track geometry). Countdown visual: lights turn off one by one. GREEN: all lights off. |
 | **Lap counter**        | HUD displays current lap / total laps.                                                                                               |
 | **Position indicator** | HUD displays current position (P1–P8) and change indicator (↑/↓/—).                                                                  |
@@ -424,22 +459,20 @@ If future playtesting reveals a need for global race parameters (e.g., minimum l
 
 1. Race Management initializes cleanly with a valid `RaceConfiguration`
 2. Invalid configuration (0 laps, unknown track) throws `ConfigError`
-3. `startRace()` begins Showing Grid sub-state with cars locked at correct grid positions
-4. Player SKIP transitions from Showing Grid to Countdown
-5. Auto-skip fires after 10s if player does not press SKIP
-6. Countdown plays 5-light sequence (5→4→3→2→1→GREEN) and unlocks all cars
-7. Position grid updates every tick and reflects correct order by `lap × trackLength + splinePosition`
-8. Lap counter increments correctly when car crosses start/finish line
-9. Crossing finish line backward does not increment lap counter
-10. Player completing all laps triggers Checkered → `endRace()` → GSM PostRace transition
-11. Player DNF (fuel empty + coast to stop, not near pit, not near finish) transitions to Checkered
-12. Fuel-empty coast to stop is NOT DNF if car reaches pit entry zone before stopping
-13. Fuel-empty coast to stop is NOT DNF if car is on last lap near finish line
-14. Stalled in pit (entered zone but stopped before garage) registers DNF with correct reason
-15. Tire blowout does NOT trigger DNF under any circumstance
-16. `getResults()` returns correct final positions, best lap, pit stops, and DNF status
-17. `position.changed` event fires only when a car's position changes (not every tick)
-18. `car.dnf` event fires with correct reason code
-19. Race can run to completion with 7 AI cars + player with no errors
-20. Race can run to completion with all 8 cars DNFing (player last) without hanging
-21. `endRace()` can only be called once — subsequent calls return cached results
+3. `startRace()` begins Countdown sub-state with cars locked at correct grid positions
+4. Countdown plays 5-light sequence (5→4→3→2→1→GREEN) and unlocks all cars
+5. Position grid updates every tick and reflects correct order by `lap × trackLength + splinePosition`
+6. Lap counter increments correctly when car crosses start/finish line
+7. Crossing finish line backward does not increment lap counter
+8. Player completing all laps triggers Checkered → `endRace()` → GSM PostRace transition
+9. Player DNF (fuel empty + coast to stop, not near pit, not near finish) transitions to Checkered
+10. Fuel-empty coast to stop is NOT DNF if car reaches pit entry zone before stopping
+11. Fuel-empty coast to stop is NOT DNF if car is on last lap near finish line
+12. Stalled in pit (entered zone but stopped before garage) registers DNF with correct reason
+13. Tire blowout does NOT trigger DNF under any circumstance
+14. `getResults()` returns correct final positions, best lap, pit stops, and DNF status
+15. `position.changed` event fires only when a car's position changes (not every tick)
+16. `car.dnf` event fires with correct reason code
+17. Race can run to completion with 7 AI cars + player with no errors
+18. Race can run to completion with all 8 cars DNFing (player last) without hanging
+19. `endRace()` can only be called once — subsequent calls return cached results
