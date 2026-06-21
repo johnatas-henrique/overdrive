@@ -49,15 +49,27 @@ Input has no complex state machine: it's always active while the game runs, and 
 
 ### Interactions with Other Systems
 
-| System           | Data Out                                                           | Data In                                           | Direction           |
-| ---------------- | ------------------------------------------------------------------ | ------------------------------------------------- | ------------------- |
-| Physics/Handling | steer (-1..1), throttle (0..1), brake (0..1), gear_delta (-1/0/+1) | —                                                 | Input → Physics     |
-| GSM              | pause_toggle pulse                                                 | current_state (to block input during transitions) | Input → GSM → Input |
-| Menu/Paddock     | nav_up/down/confirm/cancel                                         | —                                                 | Input → Menu        |
-| Camera           | camera_toggle pulse                                                | —                                                 | Input → Camera      |
-| Dev Tools        | toggle_F1, config_reload_F2                                        | —                                                 | Input → Dev Tools   |
+| System           | Data Out                                                          | Data In                             | Direction         |
+| ---------------- | ----------------------------------------------------------------- | ----------------------------------- | ----------------- |
+| Physics/Handling | steer (-1..1), throttle (0..1), brake (0..1), gearDelta (-1/0/+1) | —                                   | Input → Physics   |
+| GSM              | pauseToggle pulse                                                 | —                                   | Input → GSM       |
+| Menu/Paddock     | nav_up/down/cancel                                                | —                                   | Input → Menu      |
+| Camera           | cameraToggle pulse                                                | —                                   | Input → Camera    |
+| Dev Tools        | toggle_F1, config_reload_F2                                       | —                                   | Input → Dev Tools |
+| Event Bus        | —                                                                 | gsm.state.entered, gsm.state.exited | Event Bus → Input |
 
-Blocks input during GSM transitions (Loading → Menu, Racing → PostRace) to prevent stale inputs from triggering actions in the wrong state.
+Input subscribes to `gsm.state.entered` and `gsm.state.exited` on the Event Bus during init and maintains a local `currentState` copy — it never calls `gsm.getCurrent()`. Between `exited` and `entered` (transition window), all inputs are blocked to prevent stale actions in the wrong state. The `confirm` action is routed per local state:
+
+- **PreRace** → Race Management: skips grid cinematic (`gsm.transition('Racing')`)
+- **Racing (pitStopped)** → Pit Stop: starts departing sequence (EXIT)
+- **PostRace** → Menu LITE PostRace overlay: dispatches to the currently focused button (Race Again → PreRace or Main Menu → Menu). The overlay handles routing; Input only delivers the pulse.
+- **Menu** → Menu (already listed above): confirms selection
+
+The `pauseToggle` pulse is routed to GSM:
+
+- **Racing** → `gsm.transition('Paused')` — suspends simulation
+- **Paused** → `gsm.transition('Racing')` — resumes simulation
+- All other states → silently ignored (pause only meaningful mid-race)
 
 ## Formulas
 
@@ -90,21 +102,21 @@ The dead zone formula is applied to all analog inputs (steering, throttle, brake
 
 ## Dependencies
 
-| Dependency         | Type     | Notes                                                |
-| ------------------ | -------- | ---------------------------------------------------- |
-| Babylon.js 9.12.0  | Platform | DeviceSourceManager + GamepadManager + keyboard obs. |
-| Data & Config Mgmt | Upstream | Reads `input.dead_zone` and `input.camera_debounce`  |
-| GSM                | Upstream | Receives `current_state` to block input on trans.    |
+| Dependency         | Type     | Notes                                                        |
+| ------------------ | -------- | ------------------------------------------------------------ |
+| Babylon.js 9.12.0  | Platform | DeviceSourceManager + GamepadManager + keyboard obs.         |
+| Data & Config Mgmt | Upstream | Reads `input.deadZone` and `input.cameraDebounce`            |
+| Event Bus          | Upstream | Subscribes `gsm.state.entered`/`exited` for local state copy |
 
 Input has no upstream game systems — it sits at the root of the Core Racing layer.
 Downstream consumers: Physics/Handling, GSM, Menu/Paddock LITE, Camera, Dev Tools.
 
 ## Tuning Knobs
 
-| Knob                          | Namespace             | Default | Range  | Description                       |
-| ----------------------------- | --------------------- | ------- | ------ | --------------------------------- |
-| Analog dead zone threshold    | input.dead_zone       | 0.15    | 0-0.5  | Values below this snap to zero    |
-| Camera toggle debounce window | input.camera_debounce | 200     | 50-500 | Minimum ms between camera toggles |
+| Knob                          | Namespace            | Default | Range  | Description                       |
+| ----------------------------- | -------------------- | ------- | ------ | --------------------------------- |
+| Analog dead zone threshold    | input.deadZone       | 0.15    | 0-0.5  | Values below this snap to zero    |
+| Camera toggle debounce window | input.cameraDebounce | 200     | 50-500 | Minimum ms between camera toggles |
 
 All knobs read from Data & Config Manager and support HMR — changing values in debug overlay updates behavior live.
 
@@ -116,7 +128,7 @@ All knobs read from Data & Config Manager and support HMR — changing values in
 ## UI Requirements
 
 - **Control hints**: the HUD must display context-sensitive control hints (keyboard or gamepad) based on which device last sent meaningful input. No overlay during races — hints belong in loading screens or pause menu.
-- **Menu navigation**: Input must route up/down/confirm/cancel to the active menu screen regardless of whether the input source is keyboard or gamepad. The menu layer does not distinguish between devices.
+- **Menu navigation**: Input must route up/down/cancel to the active menu screen regardless of whether the input source is keyboard or gamepad. `confirm` is global (routed per GSM state, see routing table above). The menu layer does not distinguish between devices.
 
 ## Acceptance Criteria
 

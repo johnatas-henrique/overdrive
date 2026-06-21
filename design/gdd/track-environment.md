@@ -138,18 +138,36 @@ The pit lane includes:
 
 Pit speed limit (80 km/h) is enforced by Physics/Handling when `pit.active === true`. Pit Stop activates this per-car via direct API call on entry and deactivates on exit — Physics does not subscribe to Event Bus events for pit speed control.
 
+**Validation**: The pit exit spline endpoint must lie within the `pitExitZone` bounding box. If misaligned, the car exits one detection before the other — causing duplicate `pit.exit` events or a car that leaves the pit but is still considered in Pit Lane by the spline.
+
+### Track Width Query
+
+Track + Environment exposes the track half-width at any spline position for spatial checks (e.g., AI overtaking feasibility):
+
+```typescript
+function getTrackHalfWidth(splinePosition: number): number {
+  const segment = spline.findAtPosition(splinePosition);
+  return segment.width / 2;
+}
+```
+
 ### Off-Track Detection
 
-Physics/Handling checks off-track status each tick:
+Physics/Handling checks off-track status each tick via forward scan from the car's last-known segment:
 
 ```
-trackConfig.spline.forEach(segment => {
-  const dist = distance(car.position, segment.point);
-  if (dist > segment.width / 2) {
-    car.offTrack = true;
+// Forward scan from last-known segment (O(1) average — car advances ~1-2 segments/tick)
+let seg = lastSegmentIndex[carId];
+while (seg !== -1) {
+  const s = spline[seg];
+  if (distance(car.position, s.point) <= s.width / 2) {
+    car.offTrack = false;
+    lastSegmentIndex[carId] = seg;
     return;
   }
-});
+  seg = s.next;
+}
+car.offTrack = true;
 ```
 
 The spline is the same data structure used by AI Driver. Only Physics/Handling reads it for off-track. Performance: O(1) search per car per tick (last-known segment index with forward scan — splines are linear by lap order).
@@ -171,7 +189,7 @@ Each track references a fixed sky palette from `palette.json`. The sky is a sing
 
 Transition flow: `Inactive → Loading → Ready → Disposed → Inactive`.
 
-- `load(trackId)`: If Ready, asks caller to unload first.
+- `load(trackId)`: Throws `ConfigError` if already in Ready state — caller must `dispose()` first.
 - `dispose()`: Removes all track meshes from scene, frees physics impostors, clears references.
 
 ---
@@ -254,17 +272,17 @@ All triangle and texture budgets are in the art bible (Section 8), not duplicate
 
 ## Acceptance Criteria
 
-1. ✅ `trackEnvironment.load("monza")` instantiates all track meshes in the scene
-2. ✅ `trackEnvironment.dispose()` removes all track meshes and frees impostors
-3. ✅ Loading unknown track ID throws `ConfigError`
-4. ✅ Grid positions array has exactly 26 entries per track config
-5. ✅ First 8 grid positions are used in Phase 1 grid start
-6. ✅ Pit entry zone detects car crossing into pit lane
-7. ✅ Pit exit zone detects car leaving pit lane
-8. ✅ Spline provides AI Driver with trajectory waypoints
-9. ✅ Physics/Handling can query off-track status via spline distance
-10. ✅ Sky texture loads and applies on skydome per track
-11. ✅ Race restart does not reload assets (cached by Asset Manager)
-12. ✅ Asset load failure prevents Ready state and emits error via Event Bus
-13. ✅ Two tracks referencing the same asset key load the file once (Asset Manager cache)
-14. ✅ Dual `load()` without `dispose()` returns config error
+1. `trackEnvironment.load("monza")` instantiates all track meshes in the scene
+2. `trackEnvironment.dispose()` removes all track meshes and frees impostors
+3. Loading unknown track ID throws `ConfigError`
+4. Grid positions array has exactly 26 entries per track config
+5. First 8 grid positions are used in Phase 1 grid start
+6. Pit entry zone detects car crossing into pit lane
+7. Pit exit zone detects car leaving pit lane
+8. Spline provides AI Driver with trajectory waypoints
+9. Physics/Handling can query off-track status via spline distance
+10. Sky texture loads and applies on skydome per track
+11. Race restart does not reload assets (cached by Asset Manager)
+12. Asset load failure prevents Ready state and emits error via Event Bus
+13. Two tracks referencing the same asset key load the file once (Asset Manager cache)
+14. Dual `load()` without `dispose()` returns config error

@@ -39,7 +39,7 @@ The player never thinks about Collision. When they clip a rival's rear wheel at 
 
 **6. Audio reacts to player and nearby collisions.** Audio plays thud/scrape for the player's own collisions (`carId === playerCarId`). For non-player collisions, Audio plays a muffled/distant impact sound if `relativePosition < proximityThreshold` (default 30m). This gives the player spatial awareness of crashes happening around them without visual camera shake.
 
-**7. FixedUpdatePipeline step 4.** Collision runs after Physics resolves the tick's contacts. Pipeline order: Input → Physics/Handling → AI Driver → Collision → Fuel → Tire Wear → Race Management.
+**7. FixedUpdatePipeline step 4.** Collision runs after Physics resolves the tick's contacts. Pipeline order: Input → Physics/Handling → AI Driver → Collision → Fuel → Tire Wear → Race Management → Pit Stop.
 
 > **Alpha expansion**: A `Damage` system (Phase 2, Alpha) will consume `collision.impact` with `impulse > damageThreshold` to trigger mechanical failure — suspension damage, gearbox degradation, aero loss. Collision already emits the event with full impulse data in Phase 1. The Damage system is a new consumer only — no changes to Collision itself.
 
@@ -98,11 +98,11 @@ collision.impact {
 
 ## Tuning Knobs
 
-| Knob                     | Namespace                   | Default | Range | Description                                                 |
-| ------------------------ | --------------------------- | ------- | ----- | ----------------------------------------------------------- |
-| Shake impulse threshold  | collision.shake_min_impulse | 1.0     | 0–10  | Minimum impulse (N·s) to emit a collision.impact event      |
-| Grazing angle threshold  | collision.graze_angle_deg   | 5.0     | 1–30  | Angle (°) below which barrier contact is "grazing"          |
-| Graze suppression frames | collision.graze_suppress    | 3       | 0–10  | Frames to wait before re-emitting for same car+barrier pair |
+| Knob                     | Namespace                 | Default | Range | Description                                                 |
+| ------------------------ | ------------------------- | ------- | ----- | ----------------------------------------------------------- |
+| Shake impulse threshold  | collision.shakeMinImpulse | 1.0     | 0–10  | Minimum impulse (N·s) to emit a collision.impact event      |
+| Grazing angle threshold  | collision.grazeAngleDeg   | 5.0     | 1–30  | Angle (°) below which barrier contact is "grazing"          |
+| Graze suppression frames | collision.grazeSuppress   | 3       | 0–10  | Frames to wait before re-emitting for same car+barrier pair |
 
 ## Acceptance Criteria
 
@@ -110,7 +110,7 @@ collision.impact {
 2. Car↔barrier contact emits `collision.impact` with otherId = 'barrier'
 3. Collision registers/unregisters with Havok on PreRace/PostRace GSM transitions
 4. Multiple simultaneous contacts each produce individual events
-5. Grazing barrier contact suppresses repeated events within `graze_suppress` frames
+5. Grazing barrier contact suppresses repeated events within `grazeSuppress` frames
 6. No damage, deformation, or mechanical consequence from any collision event in Phase 1
 7. Camera shake is triggered only when `carId === playerCarId` — AI/opponent collisions never shake the player's camera
 8. Audio plays thud/scrape for player collisions, and a muffled impact for non-player collisions within 30m proximity
