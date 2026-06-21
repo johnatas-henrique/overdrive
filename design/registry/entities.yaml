@@ -1,4 +1,3 @@
-
 # Game World Entity Registry
 #
 # PURPOSE: Single source of truth for all named game-world facts that appear
@@ -41,15 +40,88 @@ version: 1
 last_updated: ""
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
-# Named game-world objects: enemies, NPCs, characters, factions, bosses.
-# Register an entity here when it appears in more than one GDD — e.g., an
-# enemy defined in combat.md that also drops items listed in inventory.md.
-#
-# Required fields: name, status, source, referenced_by, added
-# Attribute fields: any key stats that could appear in another GDD
-#   (health, damage, drops, faction, etc.)
+# Named game-world objects: teams, drivers, tracks.
 
-entities: []
+entities:
+  - name: macklen
+    status: active
+    source: design/gdd/ai-driver.md
+    referenced_by:
+      - design/gdd/ai-driver.md
+    team_performance: 1.00
+    tier: Front-runner
+    added: 2026-06-20
+    revised: ""
+
+  - name: willard
+    status: active
+    source: design/gdd/ai-driver.md
+    referenced_by:
+      - design/gdd/ai-driver.md
+    team_performance: 0.95
+    tier: Front-runner
+    added: 2026-06-20
+    revised: ""
+
+  - name: ferrell
+    status: active
+    source: design/gdd/ai-driver.md
+    referenced_by:
+      - design/gdd/ai-driver.md
+    team_performance: 0.63
+    tier: Podium threat
+    added: 2026-06-20
+    revised: ""
+
+  - name: bennett
+    status: active
+    source: design/gdd/ai-driver.md
+    referenced_by:
+      - design/gdd/ai-driver.md
+    team_performance: 0.53
+    tier: Midfield
+    added: 2026-06-20
+    revised: ""
+
+  - name: jordash
+    status: active
+    source: design/gdd/ai-driver.md
+    referenced_by:
+      - design/gdd/ai-driver.md
+    team_performance: 0.31
+    tier: Midfield
+    added: 2026-06-20
+    revised: ""
+
+  - name: tyrant
+    status: active
+    source: design/gdd/ai-driver.md
+    referenced_by:
+      - design/gdd/ai-driver.md
+    team_performance: 0.29
+    tier: Midfield
+    added: 2026-06-20
+    revised: ""
+
+  - name: lorris
+    status: active
+    source: design/gdd/ai-driver.md
+    referenced_by:
+      - design/gdd/ai-driver.md
+    team_performance: 0.15
+    tier: Backmarker
+    added: 2026-06-20
+    revised: ""
+
+  - name: laytonHall
+    status: active
+    source: design/gdd/ai-driver.md
+    referenced_by:
+      - design/gdd/ai-driver.md
+    team_performance: 0.08
+    tier: Backmarker
+    added: 2026-06-20
+    revised: ""
 
 # Example (remove when first real entry is added):
 #
@@ -68,7 +140,6 @@ entities: []
 #         drop_rate: 0.8          # 0.0–1.0
 #     added: 2026-03-26
 #     revised: ""
-
 
 # ─── ITEMS ───────────────────────────────────────────────────────────────────
 # Named collectables, equipment, consumables, crafting materials, currency.
@@ -96,7 +167,6 @@ items: []
 #     category: crafting_material
 #     added: 2026-03-26
 #     revised: ""
-
 
 # ─── FORMULAS ────────────────────────────────────────────────────────────────
 # Named calculations with defined variables and output ranges.
@@ -131,7 +201,6 @@ formulas: []
 #     added: 2026-03-26
 #     revised: ""
 
-
 # ─── CONSTANTS ───────────────────────────────────────────────────────────────
 # Named numerical values referenced across multiple systems.
 # Register a constant when it is defined in one GDD but another GDD must
@@ -140,7 +209,18 @@ formulas: []
 #
 # Required fields: name, status, source, referenced_by, value, unit, added
 
-constants: []
+constants:
+  - name: physics.pitSpeedLimit
+    status: active
+    source: design/gdd/physics-handling.md
+    referenced_by:
+      - design/gdd/physics-handling.md
+      - design/gdd/pit-stop.md
+      - design/gdd/track-environment.md
+    value: 80
+    unit: km/h
+    added: 2026-06-20
+    revised: ""
 
 # Example:
 #
