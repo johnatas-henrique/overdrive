@@ -12,7 +12,9 @@ The Simulation Snapshot defines the `ISnapshotable` interface and the orchestrat
 
 The schema of each system's payload is not designed here — it emerges in Fase 1 when each system is implemented. This GDD defines the interface and the orchestration, not the data.
 
-## Developer Fantasy
+## Player Fantasy
+
+_For infrastructure systems, the "player" is the developer using this API._
 
 The developer implements three methods on their system — `serialize()`, `deserialize()`, `hash()` — and registers it with `SimulationSnapshot.register()`. From that moment, the system's state is captured in every snapshot, replayed in every replay, and verified in every determinism check. Adding snapshot support costs one registration call and three short methods. The debug overlay shows whether each system's snapshot hash matches the expected value — a single mismatched hash points directly to the buggy system.
 

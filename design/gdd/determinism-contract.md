@@ -10,7 +10,9 @@
 
 The Determinism Contract defines four rules that guarantee reproducible simulation: fixed timestep (1/60s), seeded PRNG, fixed system update order, and cross-platform determinism. It is not a runtime system — it is a set of constraints enforced by architecture review and unit tests. Every system that participates in SimulationSnapshot agrees to these rules. If a system breaks determinism, replay desyncs and multiplayer diverges — the contract is the foundation that makes those features possible.
 
-## Developer Fantasy
+## Player Fantasy
+
+_For infrastructure systems, the "player" is the developer using this API._
 
 The developer implements `update(deltaTime)` for their system using the provided `SeededRandom` instance instead of `Math.random()`. Their system runs in a fixed order after Physics, before AI, guaranteed every tick. They write a test: run the same seed + same sequence of inputs through their system twice — the output is byte-identical both times. They commit knowing replay will work.
 
@@ -74,8 +76,9 @@ The algorithm is Linear Congruential Generator (LCG) — deterministic, ~5ns per
 5.  Fuel           → consume fuel based on throttle
 6.  Tire Wear      → degrade tires based on forces
 7.  Race Management → evaluate lap completions, positions, finish
-8.  [Spatial detection — runs before Physics: off-track spline check, pit entry/exit BoundingBox check]
-    Note: Exact pipeline position defined during architecture. Candidate positions: pre-Physics (position 1, same tick) or post-RaceMgmt (position 8, 1-tick latency).
+8.  Pit Stop      → manage pit state machine, spline follower position, refuel/tire change
+9.  [Spatial detection — runs before Physics: off-track spline check, pit entry/exit BoundingBox check]
+    Note: Exact pipeline position defined during architecture. Candidate position: pre-Physics (slot 1, reading snapshot from previous tick).
 ```
 
 This order is defined at startup and enforced every tick. Two ticks with the same inputs + same seed produce identical results because every system reads from the same deterministic world state.

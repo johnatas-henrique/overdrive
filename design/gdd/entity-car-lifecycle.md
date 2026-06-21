@@ -10,7 +10,9 @@
 
 The Entity/Car Lifecycle manages the creation and destruction of all game entities — primarily cars, and in Fase 1 also static track colliders. It owns the `CarEntity` data structure that holds the physical identity of a car (mesh reference, physics body, AI driver link) but NOT its runtime state. Runtime state (fuel, tire wear, damage) lives in the respective owner systems, indexed by `carId` — the lifecycle does not share or manage that data. Cars are spawned from cached AssetContainer clones at PreRace entry and destroyed at PostRace exit. No object pooling — profiles guide that decision later if needed.
 
-## Developer Fantasy
+## Player Fantasy
+
+_For infrastructure systems, the "player" is the developer using this API._
 
 The developer defines a team-based grid configuration. At PreRace, they call `entityLifecycle.spawnGrid(teams, playerTeamId)`. Eight cars appear on the track — meshes cloned, physics bodies attached, AI drivers assigned. At PostRace, they call `entityLifecycle.destroyAll()`. Every car is removed, every physics body cleaned up, every reference released. Between those two calls, `entityLifecycle.getEntity(carId)` returns the `CarEntity` with mesh, position, and physics body — ready for Physics to simulate and AI to decide.
 

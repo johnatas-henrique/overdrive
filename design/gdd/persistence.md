@@ -10,9 +10,11 @@
 
 The Persistence Interface is a thin abstraction over browser storage APIs (localStorage for MVP). It provides `save(key, data)` and `load<T>(key)` that all systems use instead of calling `localStorage.setItem()` directly. The interface is async even though the underlying implementation uses synchronous localStorage — this prevents blocking the main thread when IndexedDB or a remote save backend is added later. Schema versioning is built in from day 0: each saved payload carries a version number, and the interface provides a `migrate()` hook so old saves can be upgraded on load.
 
-## Developer Fantasy
+## Player Fantasy
 
-The developer calls `save('settings', { audio: 0.8, invertY: true })` and the data is persisted. They call `load<Settings>('settings')` and get a typed object back. When the Settings schema gains a field in a new version, they add a `migrate(fromVersion, toVersion)` function — old saves are upgraded automatically on first load with the new binary. Serialization format, storage backend, and compression are all invisible to the caller.
+_For infrastructure systems, the "player" is the developer using this API._
+
+The developer calls `save('settings', { audio: 0.8, invertY: true })` and the data is persisted. They call `load<Settings>('settings')` and get a typed object back. When the Settings schema gains a field in a new version, they add a `migrate(fromVersion, toVersion)` function — old saves are upgraded automatically on first load with the new build. Serialization format, storage backend, and compression are all invisible to the caller.
 
 ## Detailed Design
 

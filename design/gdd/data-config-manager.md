@@ -10,7 +10,9 @@
 
 The Data & Config Manager is the central registry for all static game data. Every system publishes its configuration as a typed TypeScript module (`src/config/[system].ts`) and registers it at application startup. The Config Manager provides a `get<T>(key: string): T` interface — all config reads across the entire game go through this single method. It handles loading, caching, hot-reload (via Vite HMR), environment overrides, and access logging. It does not own any schema or business logic; validation is the responsibility of each publishing system via the type system. The Config Manager itself has zero dependencies on Babylon.js.
 
-## Developer Fantasy
+## Player Fantasy
+
+_For infrastructure systems, the "player" is the developer using this API._
 
 The developer edits a config file, saves it, and the game responds instantly without restart — hot-reload via Vite HMR. Every config access is logged, traceable, and inspectable through the debug overlay. Environment overrides (dev, staging, production) apply transparently — the same code picks up secrets in CI and local values in development without branches or .env switching. When something feels wrong in the game (AI too fast, fuel too cheap), the first debugging step is opening the Config Manager overlay and reading the live values. No guessing, no restarts.
 
@@ -56,7 +58,7 @@ The Data & Config Manager has the simplest interaction pattern in the game: it i
 
 There is no reverse dependency — the Config Manager never calls into any system. It does not emit events, it does not mutate state. Hot-reload is driven by the module system (Vite HMR), not by configuration changes.
 
-**Known consumers (all 30 other systems):**
+**Known consumers (all other systems):**
 
 - Every system reads at least its own config during initialization
 - Systems like AI Driver, Fuel, Tire Wear, Economy will read cross-system configs (e.g. fuel efficiency from TeamConfig)
@@ -71,7 +73,7 @@ None. The Config Manager stores, resolves, and retrieves values — it does not 
 1. **Duplicate namespace.** `register('teams', ...)` called twice → throws `ConfigError('Namespace already registered: teams')`. This is a programming error — two systems trying to own the same namespace.
 2. **HMR with invalid payload.** If the hot-reloaded module exports a format that does not match the expected shape, the Config Manager logs the error and preserves the stale cache. The game never runs with partial or corrupted config.
 3. **Empty env var key.** `OVERDRIVE__=3` (empty namespace) → ignored with a console warning. `OVERDRIVE_______TEAMS__MOTOR=3` (excessive underscores) → parsed as nested path with empty intermediate segments, ignored with warning.
-4. **Cross-config init race.** System A calls `get('B.key')` during B's `register()` call — B may or may not have registered yet. The caller is responsible for initialization ordering. Config Manager does not defer or queue.
+4. **Cross-config init race.** System A calls `get('B.key')` during B's `register()` call — B may or may not have registered yet. The caller is responsible for initialization ordering. Config Manager does not defer or queue. If a `get()` fails during initialization because the target namespace is not yet registered, the error includes a `ConfigError('Possible init ordering issue — namespace not yet registered: ...')` hint to reduce debugging time.
 5. **Unlimited key depth.** `get('a.b.c.d.e.f')` traverses without an arbitrary depth limit — though practical configs are expected to be at most 4 levels deep (namespace.group.field.subfield).
 
 ## Dependencies

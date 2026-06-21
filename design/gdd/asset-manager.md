@@ -10,7 +10,9 @@
 
 The Asset Manager orchestrates loading, caching, and lifecycle of all game assets — 3D models, textures, environment maps, and audio files. It uses Babylon.js's `SceneLoader.LoadAssetContainerAsync()` as its loading primitive, wrapping the result in `AssetContainer` objects that can be added to and removed from scenes without reloading files from disk. The manifest is a TypeScript data module (no Babylon imports) that maps logical IDs to file paths. At Loading state, all car models are preloaded. At Menu→PreRace, only the track GLB loads. At PostRace→Menu, the race scene is disposed and containers are detached — ready for the next race with zero I/O.
 
-## Developer Fantasy
+## Player Fantasy
+
+_For infrastructure systems, the "player" is the developer using this API._
 
 The developer declares a manifest in `src/config/assets/tracks/spa.ts` — a pure data object with paths for the track GLB, skybox, and textures. At runtime, `assetManager.load('spa')` resolves the manifest, calls `LoadAssetContainerAsync`, caches the result, and adds it to the scene. Calling `assetManager.load('spa')` a second time is instant — the cached `AssetContainer` is re-added with no file access. When the GSM leaves the race state, `assetManager.unloadAll()` detaches all containers from the scene. The developer never touches Babylon.js loaders directly.
 

@@ -10,7 +10,9 @@
 
 Dev Tools is a set of developer-only utilities active only in development builds (`__DEV__` compile flag). It contains four features: a Debug Overlay (HTML — F1 toggle) showing FPS, physics step time, draw calls, and system registry; an AI Telemetry Visualizer showing real-time traces of every AI car; a Parameter Hot-Reload indicator showing config changes as they happen via Vite HMR; and a State Inspector showing the Config Manager value tree and SimulationSnapshot per-system hashes. All code inside `if (__DEV__)` blocks is tree-shaken from production builds — zero bytes shipped to players.
 
-## Developer Fantasy
+## Player Fantasy
+
+_For infrastructure systems, the "player" is the developer using this API._
 
 The developer presses F1. An overlay appears on top of the game — FPS counter in the corner, a collapsible tree of all registered config values, a table of AI car states (speed, position, current behavior), and the last 20 GSM transitions. They press F2 and the overlay disappears. They edit `teams.ts` in their editor, save, and the overlay flashes "config reloaded — macklen.motor: 3 → 4". The game never paused. No restart. No guesswork.
 
@@ -42,14 +44,14 @@ The developer presses F1. An overlay appears on top of the game — FPS counter 
 
 ### Interactions with Other Systems
 
-| System                    | Read                                                     | Write |
-| ------------------------- | -------------------------------------------------------- | ----- |
-| **Config Manager**        | Reads all registered namespaces and their current values | None  |
-| **Event Bus**             | Subscribes to all events for the event inspector         | None  |
-| **Simulation Snapshot**   | Reads per-system hashes, last snapshot timestamp         | None  |
-| **GSM**                   | Reads current state and transition history               | None  |
-| **Game Engine**           | Reads FPS, draw calls, mesh count                        | None  |
-| **Fuel / Tire / Physics** | Reads per-car state via `getEntity(carId)` chain         | None  |
+| System                    | Read                                                                                | Write |
+| ------------------------- | ----------------------------------------------------------------------------------- | ----- |
+| **Config Manager**        | Reads all registered namespaces and their current values                            | None  |
+| **Event Bus**             | Subscribes to all events for the event inspector                                    | None  |
+| **Simulation Snapshot**   | Reads per-system hashes, last snapshot timestamp                                    | None  |
+| **GSM**                   | Reads current state and transition history                                          | None  |
+| **Game Engine**           | Reads FPS, draw calls, mesh count                                                   | None  |
+| **Fuel / Tire / Physics** | Reads per-car state from owner system maps (fuel level, tire wear, speed, position) | None  |
 
 Dev Tools is read-only on all systems. It never pushes state.
 

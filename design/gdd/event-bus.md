@@ -10,9 +10,11 @@
 
 The Event Bus is a typed publish-subscribe system. Every event is defined as a property on a global `EventMap` interface — adding a new event is a type declaration, nothing more. Subscribers register typed handlers (`on<EventType>(handler)`) and publishers dispatch (`emit(event)`). Dispatch is synchronous: by the time `emit()` returns, all subscribers have executed. The bus provides `once()` for one-shot subscriptions, `off()` for explicit cleanup, and a built-in leak detector that warns when a system disposes without unregistering its handlers. No wildcard subscriptions (`on('*')`) are allowed — event types must always be explicit.
 
-## Developer Fantasy
+## Player Fantasy
 
-Every system communicates without knowing the others exist. Fuel doesn't know about HUD — it just emits `{ type: 'fuel-low', data: { lap: 3 } }`. The HUD team adds a new indicator by subscribing, not by modifying Fuel's code. When something breaks, the event inspector shows exactly which events fired and who was listening. New features are wired by adding a subscriber — zero changes to existing systems.
+_For infrastructure systems, the "player" is the developer using this API._
+
+Every system communicates without knowing the others exist. Fuel doesn't know about HUD — it just emits `{ type: 'fuel.low', data: { lap: 3 } }`. The HUD team adds a new indicator by subscribing, not by modifying Fuel's code. When something breaks, the event inspector shows exactly which events fired and who was listening. New features are wired by adding a subscriber — zero changes to existing systems.
 
 ## Detailed Design
 
@@ -54,14 +56,14 @@ The Event Bus itself has zero knowledge of any system. It neither knows who publ
 
 **Known interactions (non-exhaustive — grows with each new system):**
 
-- Fuel → HUD: `'fuel.low'`, `'fuel.critical'`, `'tire.worn'`
-- Collision → Camera: `'collision.impact'`
-- AI → Race Management: `'ai.overtake'`, `'ai.spin'`
-- Race Management → HUD: `'race.start'`, `'race.finish'`, `'race.lap.completed'`
-- Race Management → All: `'race.position.changed'`
+- Fuel → All: `'car.fuel_empty'`
+- Tire Wear → All: `'car.tire_blown'`
+- Physics/Handling → All: `'car.stopped'`
+- Collision → All: `'collision.impact'`
+- Race Management → All: `'race.starting'`, `'race.light.countdown'`, `'race.green.flag'`, `'race.checkered'`, `'race.completed'`, `'car.lap.completed'`, `'car.dnf'`, `'position.changed'`
+- Pit Stop → All: `'pit.entry'`, `'pit.exit'`, `'pit.status'`, `'pit.fuel_status'`, `'pit.tire_status'`, `'car.stalled_in_pit'`
+- GSM → All: `'gsm.state.entered'`, `'gsm.state.exited'`
 - Entity/Car Lifecycle → All: `'entity.spawned'`, `'entity.despawned'`
-- Pit Stop → HUD + Race Management: `'pit.entry'`, `'pit.exit'`, `'pit.status'`
-- Input → Physics/Handling: `'input.steer'`, `'input.throttle'`, `'input.brake'`
 
 ## Formulas
 
