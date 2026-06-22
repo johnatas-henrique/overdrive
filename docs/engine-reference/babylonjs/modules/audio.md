@@ -1,108 +1,189 @@
 # Babylon.js Audio — Quick Reference
 
-Last verified: 2026-06-14 | Engine: Babylon.js 9.10.1
+Engine: Babylon.js 9.12.0 | Audio Engine V2 (default since v7.52)
+
+> ⚠️ **Important**: This project uses **Audio Engine V2** exclusively. The legacy `Sound` class (`@babylonjs/core/Audio/sound`) is **deprecated since v8.0** and must not be used. See `docs/architecture/adr-0020-audio-engine.md` for the architectural decision.
 
 ## What Changed Since LLM Cutoff (~May 2025)
 
 ### v9.x Changes
+
 - Audio Engine V2 is the default (v9 — legacy audio is opt-in)
 - Audio Engine V2 added waveform analyzer data support (v9.11)
 - Audio Engine V2 added distance-only spatial mode (v9.8)
 
 ### v8.x / Previous
-- Legacy audio engine deprecated (v7.52) but still available via engine constructor flag
-- Audio Engine V2 introduced as the new standard
 
-## Current API Patterns
+- Legacy audio engine deprecated (v7.52)
+- Audio Engine V2 introduced (v7.52)
 
-### Audio Engine V2 (Default — v9.x)
+## Audio Engine V2 Architecture
 
-Audio Engine V2 is automatically available in Babylon.js 9.x. No special setup
-is needed. It uses the Web Audio API directly for better performance and
-spatial audio support.
+Audio Engine V2 uses Web Audio API natively. The key concepts:
 
-### Sound Class (Works with both engines)
+- **AudioEngineV2** — created once per app via `CreateAudioEngineAsync()`
+- **AudioBus** — named mix bus with independent volume (replaces `SoundTrack`)
+- **StaticSound** — short-to-medium audio loaded from URL (supports `playbackRate`)
+- **StreamingSound** — long audio stream (no `playbackRate` support)
+- **SoundSource** — wraps a raw Web Audio `AudioNode` into the Babylon pipeine
+
+## Setup
 
 ```typescript
-import { Sound } from "@babylonjs/core/Audio/sound";
+import { CreateAudioEngineAsync } from "@babylonjs/core/AudioV2/audioEngine";
 
-// Background music (non-spatial)
-const music = new Sound("music", "audio/theme.mp3", scene, null, {
+// Create the audio engine (called once during app init)
+const audioEngine = await CreateAudioEngineAsync();
+
+// Resume on user interaction (browser policy)
+await audioEngine.resume();
+```
+
+Or use the convenience method on scene:
+
+```typescript
+const audioEngine = await scene.createAudioEngineAsync();
+```
+
+## Creating Audio Buses (Mix Groups)
+
+Buses replace `SoundTrack`. Create one per logical channel:
+
+```typescript
+import { CreateAudioBusAsync } from "@babylonjs/core/AudioV2/audioBus";
+
+const musicBus = await CreateAudioBusAsync("music", { volume: 0.5 });
+const sfxBus = await CreateAudioBusAsync("sfx", { volume: 1.0 });
+const uiBus = await CreateAudioBusAsync("ui", { volume: 1.0 });
+const ambientBus = await CreateAudioBusAsync("ambient", { volume: 0.7 });
+
+// Set volume at any time
+musicBus.setVolume(0.3, 500); // 500ms linear crossfade
+```
+
+Overdrive uses 4 buses: `music`, `sfx`, `ui`, `ambient` (see ADR-0020).
+
+## Loading and Playing Sounds
+
+### Short Sounds (Static — supports playbackRate)
+
+```typescript
+import { CreateSoundAsync } from "@babylonjs/core/AudioV2/staticSound";
+
+// Create a WAV loop for engine sound (2-4s recommended for pitch shifting)
+const engineLoop = await CreateSoundAsync("engine", "audio/engine.wav", {
   loop: true,
-  autoplay: true,
-  volume: 0.5,
+  autoPlay: false,
+  maxInstances: 8, // native — no manual pool needed
 });
 
-// Spatial SFX (3D positioned)
-const engineSound = new Sound("engine", "audio/engine.wav", scene, null, {
-  loop: true,
-  autoplay: false,
-  volume: 0.8,
-  spatialSound: true,
-  maxDistance: 100,
-});
-engineSound.setPosition(new Vector3(0, 0, 0));
+// Connect to a bus
+engineLoop.connectToBus(sfxBus);
+
+// Pitch shift (alter speed without changing pitch)
+engineLoop.playbackRate = 1.2; // 20% faster
 
 // One-shot SFX
-const crashSound = new Sound("crash", "audio/crash.wav", scene);
-crashSound.play();
-```
-
-### SoundTrack (Layered Audio)
-
-```typescript
-import { SoundTrack } from "@babylonjs/core/Audio/soundTrack";
-
-// Main track (music)
-const musicTrack = new SoundTrack(scene, { volume: 1.0 });
-musicTrack.addSound(music);
-
-// SFX track (sound effects)
-const sfxTrack = new SoundTrack(scene, { volume: 1.0 });
-sfxTrack.addSound(engineSound);
-sfxTrack.addSound(crashSound);
-
-// Set volume per track
-musicTrack.setVolume(0.5);
-sfxTrack.setVolume(1.0);
-```
-
-### Spatial Audio Configuration
-
-```typescript
-const spatialSound = new Sound("engine", "audio/engine.wav", scene, null, {
-  spatialSound: true,
-  maxDistance: 200,
-  distanceModel: "linear", // "linear" | "exponential" | "inverse"
-  rolloffFactor: 1.0,
-  loop: true,
+const crashSfx = await CreateSoundAsync("crash", "audio/crash.wav", {
+  maxInstances: 5,
 });
 
-// Directional cone (e.g., car exhaust)
-spatialSound.setDirectionalCone(90, 180, 0); // inner angle, outer angle, outer volume
+// Spatial audio: attach to mesh in 3D scene
+import { CreateSpatialAudioProps } from "@babylonjs/core/AudioV2/spatialAudio";
 
-// Attach to a mesh (follows automatically)
-spatialSound.attachToMesh(carMesh);
-
-// Update position manually (for non-attached)
-spatialSound.setPosition(worldPosition);
+crashSfx.connectToBus(sfxBus);
+// Spatial properties set during creation
 ```
 
-### Legacy Audio Engine (Opt-in — NOT recommended)
+### Long Audio (Streaming — no playbackRate)
 
 ```typescript
-// Only if you need the legacy engine for backward compatibility:
-const engine = new Engine(canvas, true, { audioEngine: true }, true);
+import { CreateStreamingSoundAsync } from "@babylonjs/core/AudioV2/streamingSound";
+
+const music = await CreateStreamingSoundAsync("music", "audio/theme.mp3");
+music.connectToBus(musicBus);
+music.play();
+```
+
+### Wrapping a Raw AudioNode
+
+```typescript
+import { CreateSoundSourceAsync } from "@babylonjs/core/AudioV2/soundSource";
+
+// Create an oscillator as an overlay on an existing bus
+const oscillatorCtx = new AudioContext();
+const oscillator = oscillatorCtx.createOscillator();
+oscillator.type = "sawtooth";
+oscillator.frequency.value = 220;
+
+const source = await CreateSoundSourceAsync("oscOverlay", {
+  source: oscillator,
+});
+source.connectToBus(sfxBus);
+```
+
+## Spatial Audio
+
+```typescript
+// Positional sound (attached to 3D mesh)
+const engineSound = await CreateSoundAsync("engine", "audio/engine.wav", {
+  loop: true,
+  spatial: true,
+  maxDistance: 100,
+});
+
+// Attach to a mesh (follows automatically)
+engineSound.attachToMesh(carMesh);
+
+// Directional cone (e.g., car exhaust)
+engineSound.setDirectionalCone(90, 180, 0);
+```
+
+## Audio Context Unlock
+
+Mobile/desktop browsers require user interaction before audio can play:
+
+```typescript
+// Automatic — set during init
+audioEngine.resumeOnInteraction = true;
+
+// Or manual
+await audioEngine.unlockAsync();
+```
+
+## Volume Transitions (Crossfade)
+
+```typescript
+bus.setVolume(targetVolume, transitionDurationMs);
+// Example: crossfade between GSM states in 500ms
+musicBus.setVolume(0.0, 500); // fade out
+ambientBus.setVolume(0.8, 500); // fade in
+```
+
+## Real-Time Reads
+
+For audio that responds to game state (engine RPM, speed), read physics data directly each tick:
+
+```typescript
+// Audio reads from Physics each tick (60 Hz)
+const rpm = physics.getEngineRPM(carId);
+const speed = physics.getSpeed(carId);
+const throttle = physics.getThrottle(carId);
+const lateralG = physics.getLateralG(carId);
+const gear = physics.getGear(carId);
+
+// Map RPM to playbackRate
+engineSound.playbackRate = 0.8 + (rpm / maxRpm) * 0.6;
 ```
 
 ## Important Notes
 
-- Audio Engine V2 is the default in v9 — no special setup required
-- Legacy audio engine was removed as default in v7.52 — do not opt back in
+- Audio Engine V2 is default in v9 — no special setup or flag needed
+- Legacy `Sound` class is deprecated (v8.0) — TypeScript shows deprecation warnings, do not use
+- `SoundTrack` does not exist in V2 — use `CreateAudioBusAsync` instead
+- `StaticSound.playbackRate` supports pitch shift (WAV loops only, not MP3)
+- `CreateStreamingSoundAsync` (MP3) does NOT support `playbackRate`
+- Engine sound: use 2-4s WAV loop + `playbackRate` for pitch shifting
+- `maxInstances` is native in V2 — no manual collision pool needed
 - Always call `sound.dispose()` when cleaning up a scene
-- Use `SoundTrack` for organizing audio into logical groups (music, SFX, UI)
-- For racing: attach engine sound to car mesh with `spatialSound: true` and
-  use `setDirectionalCone` for realistic directionality
 - Monitor audio performance via browser DevTools (Web Audio tab)
-- Mobile browsers may require user interaction before playing audio — use
-  `scene.onPointerDown` to unlock audio context

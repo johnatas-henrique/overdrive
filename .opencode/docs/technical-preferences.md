@@ -50,14 +50,22 @@
 ## Forbidden Patterns
 
 <!-- Add patterns that should never appear in this project's codebase -->
+
 - `import * as BABYLON from "@babylonjs/core"` — barrel import breaks tree-shaking
 - Singletons for game systems — use dependency injection via constructor parameters
 - Hardcoded gameplay values — must be data-driven from config files
 - Direct DOM manipulation — use Babylon.js GUI for UI
+- `Sound` class (legacy) — use `CreateSoundAsync` + Audio Engine V2
+- `SceneLoader.Load`, `Append`, `ImportMesh` (sync variants) — use `*Async` equivalents
+- Webpack — use Vite
+- Jest — use Vitest
+- ts-patch — TypeScript 6.0+ native, no patch needed
+- WebVR — use WebXR
 
 ## Allowed Libraries / Addons
 
 <!-- Add approved third-party dependencies here -->
+
 - `@babylonjs/core` — engine
 - `@babylonjs/gui` — HUD and menus
 - `@babylonjs/havok` — physics
@@ -68,6 +76,7 @@
 ## Architecture Decisions Log
 
 <!-- Quick reference linking to full ADRs in docs/architecture/ -->
+
 - [No ADRs yet — use /architecture-decision to create one]
 
 ## Engine Specialists
@@ -85,13 +94,13 @@
 
 ### File Extension Routing
 
-| File Extension / Type | Specialist to Spawn |
-|-----------------------|---------------------|
-| Game code (.ts files) | babylonjs-specialist |
-| Scene/level files (.ts scene setup) | babylonjs-specialist |
-| Shader files (.fx, custom shader code) | babylonjs-perf-specialist |
-| UI / screen files (.ts ADT setup) | babylonjs-gui-specialist |
-| Physics / vehicle files (.ts physics) | babylonjs-physics-specialist |
+| File Extension / Type                     | Specialist to Spawn          |
+| ----------------------------------------- | ---------------------------- |
+| Game code (.ts files)                     | babylonjs-specialist         |
+| Scene/level files (.ts scene setup)       | babylonjs-specialist         |
+| Shader files (.fx, custom shader code)    | babylonjs-perf-specialist    |
+| UI / screen files (.ts ADT setup)         | babylonjs-gui-specialist     |
+| Physics / vehicle files (.ts physics)     | babylonjs-physics-specialist |
 | Network / multiplayer files (.ts network) | babylonjs-network-specialist |
-| Configuration / data (.json) | babylonjs-specialist |
-| General architecture review | babylonjs-specialist |
+| Configuration / data (.json)              | babylonjs-specialist         |
+| General architecture review               | babylonjs-specialist         |
