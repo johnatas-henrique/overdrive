@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: ""
+last_updated: "2026-06-21"
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -43,7 +43,72 @@ last_updated: ""
 # interface: how other systems access this state (read-only property, method call,
 #   signal, shared resource, etc.) — this is the contract other ADRs depend on.
 
-state_ownership: []
+state_ownership:
+  - state: car_entity_identity
+    status: active
+    owner_system: entity-car-lifecycle
+    adr: docs/architecture/adr-0005-entity-car-lifecycle.md
+    interface: >
+      getEntity(carId) → CarEntity | undefined.
+      CarEntity identity fields (mesh, physicsBody, aiDriver) are read-only.
+    write_access: entity-car-lifecycle-only
+    referenced_by:
+      - docs/architecture/adr-0005-entity-car-lifecycle.md
+    added: 2026-06-21
+    revised: ""
+
+  - state: pit_state
+    status: active
+    owner_system: pit-stop
+    adr: docs/architecture/adr-0014-pit-stop-flow.md
+    interface: >
+      getPitState(carId) → 'onTrack' | 'pitEntry' | 'pitStopped' | 'departing'.
+      Pit Stop is the sole authority. Race Management reads for DNF guard,
+      HUD reads for pit overlay visibility, Audio reads for pit lane SFX.
+    write_access: pit-stop-only
+    referenced_by:
+      - docs/architecture/adr-0014-pit-stop-flow.md
+    added: 2026-06-21
+    revised: ""
+
+  - state: position_grid
+    status: active
+    owner_system: race-management
+    adr: docs/architecture/adr-0015-race-management.md
+    interface: >
+      getPositions() → Map<string, number>. Position is 1-based grid rank,
+      computed every tick from totalDistance. Race Management is sole authority.
+    write_access: race-management-only
+    referenced_by:
+      - docs/architecture/adr-0015-race-management.md
+    added: 2026-06-21
+    revised: ""
+
+  - state: lap_count
+    status: active
+    owner_system: race-management
+    adr: docs/architecture/adr-0015-race-management.md
+    interface: >
+      Per-car lap count, incremented on spline wrap-around detection.
+      Read by HUD (lap counter), Audio (lap trigger), AI (overtaking).
+    write_access: race-management-only
+    referenced_by:
+      - docs/architecture/adr-0015-race-management.md
+    added: 2026-06-21
+    revised: ""
+
+  - state: dnf_status
+    status: active
+    owner_system: race-management
+    adr: docs/architecture/adr-0015-race-management.md
+    interface: >
+      Per-car DNF registration and reason. Race Management is sole authority.
+      HUD reads for display, AI reads to ignore DNF cars.
+    write_access: race-management-only
+    referenced_by:
+      - docs/architecture/adr-0015-race-management.md
+    added: 2026-06-21
+    revised: ""
 
 # Example:
 #
@@ -61,7 +126,6 @@ state_ownership: []
 #     added: 2026-03-26
 #     revised: ""
 
-
 # ─── INTERFACE CONTRACTS ──────────────────────────────────────────────────────
 # How systems are required to communicate with each other.
 # Conflicts: one ADR expects signal, another expects direct call = integration bug.
@@ -71,9 +135,127 @@ state_ownership: []
 #
 # pattern options: signal | direct_call | event_bus | shared_resource | rpc | none
 
-interfaces: []
+interfaces:
+  - contract: cross_system_communication
+    status: active
+    pattern: event_bus
+    description: >
+      Systems communicate state changes via typed Event Bus (on/emit/off).
+      Never via direct imports between unrelated systems.
+      See EventMap for all 20+ typed events.
+    adr: docs/architecture/adr-0001-event-bus-architecture.md
+    signal_signature: >
+      IEventBus.on(event, handler), IEventBus.emit(event, payload).
+      Typed via EventMap — wrong payload shape = compile error.
+    referenced_by:
+      - docs/architecture/adr-0001-event-bus-architecture.md
+    added: 2026-06-21
+    revised: ""
 
-# Example:
+  - purpose: asset_container_scene_binding
+    status: active
+    api: |
+      LoadAssetContainerAsync(url, null, null, raceScene) for race assets
+      then removeAllFromScene() — source meshes cached but invisible.
+      instantiateModelsToScene() creates clones in the bound scene (raceScene).
+    not: |
+      Loading race assets against menuScene then trying to
+      instantiateModelsToScene(raceScene) — instantiateModelsToScene()
+      does NOT accept a scene parameter.
+    adr: docs/architecture/adr-0003-two-scene-architecture.md
+    reason: >
+      AssetContainers are scene-bound. Meshes, materials, and textures bear a
+      _scene reference to the scene passed during LoadAssetContainerAsync.
+      instantiateModelsToScene() always clones into the container's bound scene.
+    referenced_by:
+      - docs/architecture/adr-0003-two-scene-architecture.md
+    added: 2026-06-21
+    revised: ""
+
+  - contract: input_state
+    status: active
+    pattern: direct_call
+    description: >
+      InputState is produced by IInput.getState() every tick (pipeline slot #1).
+      Physics slot #2 consumes it without branching on player vs AI.
+      AI Driver produces the same shape via AIDriverInput.
+    producer: input-system / ai-driver
+    consumers:
+      - physics-handling # consumes steer/throttle/brake/gearDelta every tick
+      - gsm # receives pauseToggle pulse
+      - camera # receives cameraToggle pulse
+      - menu-lite # receives navUp/navDown/confirm/cancel
+      - race-management # receives confirm (PreRace skip)
+      - pit-stop # receives confirm (depart pit)
+      - dev-tools # receives F3-toggle (from keyboard mapping)
+    adr: docs/architecture/adr-0006-input-abstraction.md
+    signal_signature: "InputState { steer, throttle, brake, gearDelta, confirm, pauseToggle, cameraToggle, cancel, navUp, navDown }"
+    referenced_by:
+      - docs/architecture/adr-0006-input-abstraction.md
+    added: 2026-06-21
+    revised: ""
+
+  - contract: dev_tools_f1_f2
+    status: active
+    pattern: input_pulse
+    description: >
+      F1 toggles Dev Tools overlay (visible/hidden). F2 triggers manual config
+      reload. Input system (ADR-0006) must consume these keys with
+      event.preventDefault() when Dev Tools is active — they must not reach
+      gameplay.
+    producer: input-system
+    consumers:
+      - dev-tools # receives F1 for toggle, F2 for config reload
+    adr: docs/architecture/adr-0009-dev-tools.md
+    signal_signature: "InputState (F1, F2 as digital pulses, consumed with preventDefault)"
+    referenced_by:
+      - docs/architecture/adr-0009-dev-tools.md
+    added: 2026-06-21
+    revised: ""
+
+  - contract: entity_spawned
+    status: active
+    pattern: event_bus
+    description: >
+      Emitted by Entity/Car Lifecycle during spawnGrid() per car.
+      All systems initialize per-car state upon receiving this event.
+    producer: entity-car-lifecycle
+    consumers:
+      - physics-handling # attaches vehicle constraints and suspension
+      - ai-driver # starts behavior tree (AI cars only)
+      - fuel # initializes per-car fuel level Map
+      - tire-wear # initializes per-car tire condition Map
+      - race-management # initializes lap/position/totalDistance per car
+      - camera # sets follow target if car is player
+      - audio # allocates per-car audio channels
+    adr: docs/architecture/adr-0005-entity-car-lifecycle.md
+    signal_signature: "entity.spawned(carId: string, teamId: string, gridIndex: number)"
+    referenced_by:
+      - docs/architecture/adr-0005-entity-car-lifecycle.md
+    added: 2026-06-21
+    revised: ""
+
+  - contract: entity_despawned
+    status: active
+    pattern: event_bus
+    description: >
+      Emitted by Entity/Car Lifecycle during destroyAll() per car.
+      All systems clean up per-car state upon receiving this event.
+    producer: entity-car-lifecycle
+    consumers:
+      - physics-handling # disposes vehicle constraints
+      - ai-driver # stops behavior tree
+      - fuel # clears per-car fuel level Map entry
+      - tire-wear # clears per-car tire condition Map entry
+      - race-management # clears lap/position/totalDistance entry
+      - camera # removes follow target if car is player
+      - audio # frees per-car audio channels
+    adr: docs/architecture/adr-0005-entity-car-lifecycle.md
+    signal_signature: "entity.despawned(carId: string)"
+    referenced_by:
+      - docs/architecture/adr-0005-entity-car-lifecycle.md
+    added: 2026-06-21
+    revised: ""
 #
 # interfaces:
 #   - contract: damage_delivery
@@ -92,7 +274,6 @@ interfaces: []
 #     added: 2026-03-26
 #     revised: ""
 
-
 # ─── PERFORMANCE BUDGETS ──────────────────────────────────────────────────────
 # Frame time allocations per system, against a defined total frame budget.
 # Conflicts: allocations that sum to more than the total budget = unshippable.
@@ -100,7 +281,16 @@ interfaces: []
 # Register a budget when an ADR explicitly claims a frame time allocation.
 # The registry lets /architecture-review verify the total doesn't exceed the target.
 
-performance_budgets: []
+performance_budgets:
+  - system: physics_handling
+    status: active
+    budget_ms: 0.06
+    adr: docs/architecture/adr-0008-vehicle-physics.md
+    notes: "8 DYNAMIC bodies, 0 joints. Three-phase pipeline (arcade model + Havok step + velocity override). Well under 16.6ms budget."
+    referenced_by:
+      - docs/architecture/adr-0008-vehicle-physics.md
+    added: 2026-06-21
+    revised: ""
 
 # Example:
 #
@@ -122,7 +312,6 @@ performance_budgets: []
 #     added: 2026-03-26
 #     revised: ""
 
-
 # ─── API DECISIONS ───────────────────────────────────────────────────────────
 # Which engine APIs are chosen for which purpose across the project.
 # Conflicts: two ADRs using different APIs for the same purpose = inconsistent
@@ -131,7 +320,664 @@ performance_budgets: []
 # Register an API decision when the choice is non-obvious and other ADRs might
 # make a different choice for the same purpose without knowing this was decided.
 
-api_decisions: []
+api_decisions:
+  - purpose: havok_physics_integration
+    status: active
+    api: >-
+      scene.enablePhysics(gravity, plugin) + override
+      _advancePhysicsEngineStep. Pipeline drives executeStep via
+      fixedDt.
+    not: >-
+      Do NOT skip scene.enablePhysics(). PhysicsBody constructors require
+      getPhysicsEngine() to be non-null.
+    adr: docs/architecture/adr-0002-fixed-timestep-determinism.md
+    reason: >
+      PhysicsBody requires a registered engine. After enablePhysics, scene.render()
+      auto-steps — the override prevents double-stepping.
+    referenced_by:
+      - docs/architecture/adr-0002-fixed-timestep-determinism.md
+      - docs/architecture/adr-0005-entity-car-lifecycle.md
+    added: 2026-06-21
+    revised: 2026-06-21
+
+  - purpose: car_physics_body_creation
+    status: active
+    api: |
+      PhysicsAggregate(rootOrChassisMesh, CONVEX_HULL, { mass: 800, mesh: chassisMesh? })
+      during spawnGrid(). If root TransformNode has no geometry, pass chassis Mesh
+      via options.mesh.
+    not: |
+      Do NOT create PhysicsBody directly — PhysicsAggregate handles shape + body +
+      node observer registration in one call.
+    adr: docs/architecture/adr-0005-entity-car-lifecycle.md
+    reason: >
+      PhysicsAggregate is the idiomatic Babylon.js API for attaching physics to
+      a mesh. It handles shape creation, body registration, and node lifecycle
+      observer wiring automatically. PhysicsBody directly would require manual
+      management of all three.
+    referenced_by:
+      - docs/architecture/adr-0005-entity-car-lifecycle.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: camera_type_selection
+    status: active
+    api: |
+      FreeCamera (cockpit/Grid), FollowCamera (chase), ArcRotateCamera (drone).
+      All cameras: camera.inputs.clear(), inertia = 0, NEVER attachControl().
+      ArcRotateCamera also clears v9.8+ Input Mapping System:
+        (drone as any).movement.input.inputMap.length = 0
+    not: |
+      Do NOT use UniversalCamera (carries unnecessary input mapping).
+      Do NOT call attachControl() on any camera — camera control is
+      purely programmatic via ICameraManager.update().
+    adr: docs/architecture/adr-0007-camera-architecture.md
+    reason: >
+      Each camera type serves its mode optimally: FreeCamera for cockpit
+      parenting (driver_eye), FollowCamera for native chase behavior,
+      ArcRotateCamera for drone orbit. Clearing inputs prevents double-read
+      with ADR-0006 Input Abstraction. inertia=0 prevents drift during
+      dormant frames (when not activeCamera).
+    referenced_by:
+      - docs/architecture/adr-0007-camera-architecture.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: dev_tools_overlay
+    status: active
+    api: |
+      HTML overlay (<div> sibling of canvas, pointer-events: none).
+      SceneInstrumentation for FPS/draw-calls/physics-time.
+      engine.onEndFrameObservable for frame-synced refresh.
+      Lazy init on first F1 press. All code behind if (__DEV__).
+    not: |
+      Do NOT use Babylon Inspector (30MB+ React deps, interactive, write-capable).
+      Do NOT use AdvancedDynamicTexture (intercepts canvas input, no pointer-events:none).
+    adr: docs/architecture/adr-0009-dev-tools.md
+    reason: >
+      HTML overlay is the established Babylon.js community pattern for non-interactive
+      debug HUDs. Inspector v2 extensibility exists but carries 30MB+ transitive deps
+      and is designed for read+write interaction — wrong fit for a read-only debug overlay.
+      SceneInstrumentation + onEndFrameObservable provide frame-accurate Babylon.js
+      integration without fighting the render pipeline.
+    referenced_by:
+      - docs/architecture/adr-0009-dev-tools.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: pit_guidance_velocity_driven
+    status: active
+    api: |
+      Pit Stop calls physics.setPitVelocity(carId, velocity, heading) each tick
+      during pitEntry and departing. Physics Fase 3 uses this velocity directly
+      (skips arcade model for this car). Pit Stop never calls setPosition().
+    not: |
+      Do NOT override body.position directly during pit lane transit — Havok
+      DYNAMIC body integration fights the override, creating 60 Hz oscillation.
+      Do NOT have Physics read pit lane spline geometry — layering violation.
+    adr: docs/architecture/adr-0014-pit-stop-flow.md
+    reason: >
+      Velocity-driven approach: Pit Stop controls what velocity Havok integrates.
+      Havok moves the car naturally — no oscillation. Physics does not need
+      spline data. Pit Stop stays pure TypeScript.
+    referenced_by:
+      - docs/architecture/adr-0014-pit-stop-flow.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: pit_confirm_gating
+    status: active
+    api: |
+      Pit Stop stores playerCarId from RaceConfiguration. The global confirm
+      pulse (ADR-0006) is gated: only processed when pitState[playerCarId] ===
+      'pitStopped' AND tiresDone[playerCarId] === true. confirm during pitEntry,
+      departing, or onTrack is silently ignored.
+    not: |
+      Do NOT expect the Input system to carry carId in the confirm event.
+      Do NOT gate confirm by anything other than pitStopped + tiresDone.
+    adr: docs/architecture/adr-0014-pit-stop-flow.md
+    reason: >
+      Input confirm event is a global pulse (no carId). Pit Stop stores the
+      player's car ID from RaceConfiguration. Tire gating prevents leaving
+      with half-changed tires (binary operation).
+    referenced_by:
+      - docs/architecture/adr-0014-pit-stop-flow.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: collision_observable_pattern
+    status: active
+    api: |
+      Subscribes to havokPlugin.onCollisionObservable (not collisionEndedObservable).
+      Barrier detection via Set<PhysicsBody> (registerBarrier), not filterMembershipMask.
+      Filtered to COLLISION_STARTED only (skip COLLISION_CONTINUED).
+    not: |
+      Do NOT use collisionEndedObservable for impact data — it carries no impulse field.
+      Do NOT use getCollisionGroup() — PhysicsBody has no such method in Havok V2.
+      Do NOT use filterMembershipMask for barrier detection — shape null-check
+      chain is fragile. Use barrier Set.
+    adr: docs/architecture/adr-0010-collision-model.md
+    reason: >
+      onCollisionObservable provides IPhysicsCollisionEvent with real impulse data.
+      Barrier Set is simpler than shape filter mask API. COLLISION_STARTED filter
+      prevents event spam from sustained contacts.
+    referenced_by:
+      - docs/architecture/adr-0010-collision-model.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: arcade_dynamic_physics
+    status: active
+    api: |
+      PhysicsBody DYNAMIC (1 per car, convex hull, 800 kg). Three-phase pipeline:
+        Phase 1: arcadeModel (gripMax, targetSpeed, targetYawRate from GDD formulas)
+        Phase 2: havokPlugin.executeStep(dt, bodies) — collision resolution
+        Phase 3: setLinearVelocity(targetVelocity) — override post-collision
+      No wheel bodies, no suspension joints, no vehicle constraints.
+      Ground tracking: Y-velocity correction from spline elevation (Y-up physics world).
+    not: |
+      Do NOT use kinematic bodies (no collision impulse data).
+      Do NOT use SixDofJoint/HingeJoint (no suspension, no wheel bodies).
+      Do NOT call scene.enablePhysics() (Havok manual step per ADR-0002).
+    adr: docs/architecture/adr-0008-vehicle-physics.md
+    reason: >
+      Arcade Dynamic (C+) gives real collision impulse data (DYNAMIC × DYNAMIC)
+      while letting the arcade grip model control velocity directly.
+      Three-phase pipeline: arcade math (deterministic) → Havok collision (real) →
+      velocity override (arcade reasserts control). Zero suspension complexity
+      aligns with GDD design intent.
+    referenced_by:
+      - docs/architecture/adr-0008-vehicle-physics.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: input_polling_pattern
+    status: active
+    api: |
+      DeviceSourceManager (keyboard) + GamepadManager (gamepad) → IInput.getState().
+      Polling per tick at pipeline slot #1. Dead zone formula applied to analog inputs.
+      AI Driver implements same IInput interface.
+    not: |
+      Do NOT use Babylon Observables for input (event-driven). Do NOT read device
+      sources directly from Physics (slot #2 must call IInput.getState(), never
+      DeviceSourceManager or GamepadManager).
+    adr: docs/architecture/adr-0006-input-abstraction.md
+    reason: >
+      Polling guarantees Physics receives the exact current-frame values.
+      IInput abstraction prevents Physics from branching on player vs AI.
+      DeviceSourceManager + GamepadManager is the idiomatic Babylon.js 9.12
+      input stack.
+    referenced_by:
+      - docs/architecture/adr-0006-input-abstraction.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: persistence_async_first
+    status: active
+    api: |
+      All IPersistence methods return Promise<T>. LocalStorageAdapter wraps
+      localStorage in microtask. Future adapters (IndexedDB, remote) implement
+      same async interface.
+    not: |
+      Do NOT call localStorage.setItem()/getItem() directly from any game system.
+      All storage must go through IPersistence.
+    adr: docs/architecture/adr-0016-persistence.md
+    reason: >
+      Async-first allows transparent backend swap (IndexedDB, remote, Tauri store)
+      without refactoring consumers. Microtask wrapping of localStorage is the
+      standard web pattern for sync→async adaption.
+    referenced_by:
+      - docs/architecture/adr-0016-persistence.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: snapshot_two_tier_hashing
+    status: active
+    api: |
+      FNV-1a 64-bit for per-tick determinism checks (in-system hash()).
+      SHA-256 via crypto.subtle.digest for sync integrity (manager).
+    not: |
+      Do NOT use Math.random, Date.now, or any non-deterministic source in hash().
+      Do NOT use third-party hash libraries — FNV-1a in pure TS is 20 lines.
+    adr: docs/architecture/adr-0017-simulation-snapshot.md
+    reason: >
+      FNV-1a is ~50ns — fast enough for tick-level checks across 5 systems.
+      SHA-256 via Web Crypto is the cross-platform standard (browser, Node, Tauri,
+      Electron). Zero dependency cost for Foundation layer.
+    referenced_by:
+      - docs/architecture/adr-0017-simulation-snapshot.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: telemetry_dev_only
+    status: active
+    api: |
+      20hz sample rate, reads from CarEntity directly. Console log every 5s.
+      JSON export via Dev Tools F3 or window.__telemetry.export(). Zero bytes
+      in production via __DEV__ guard.
+    not: |
+      Do NOT use in production builds. Do NOT write to Event Bus or game state.
+    adr: docs/architecture/adr-0022-telemetry-recorder.md
+    reason: >
+      Dev-only tooling for AI behavior analysis. Pure TypeScript, zero Babylon
+      imports. Compile-time guard eliminates all code from production.
+    referenced_by:
+      - docs/architecture/adr-0022-telemetry-recorder.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: single_race_thin_adapter
+    status: active
+    api: |
+      Single Race is a pure TypeScript function (buildConfig → RaceConfiguration).
+      Zero Babylon.js imports. Called immediately before RM.init(config).
+      No config cache — RM stores config from init() call.
+    not: |
+      Do NOT add state, tick, Event Bus, or Babylon.js imports to Single Race.
+      Do NOT use a separate "config cache" layer between buildConfig and RM.init.
+    adr: docs/architecture/adr-0021-single-race-adapter.md
+    reason: >
+      Mode adapter pattern ensures testability (vitest, zero Babylon bootstrap),
+      isolation (delegates to Core systems), and extensibility (Championship and
+      Story modes follow same contract).
+    referenced_by:
+      - docs/architecture/adr-0021-single-race-adapter.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: audio_bus_hierarchy
+    status: active
+    api: |
+      Audio Engine V2 with 4 AudioBus instances (music/sfx/ui/ambient).
+      All sounds route through a bus via outBus. Bus volumes are independent.
+    not: |
+      Do NOT use legacy SoundTrack (Audio V1 API). Do NOT use raw Web Audio
+      paths that bypass Babylon's audio pipeline.
+    adr: docs/architecture/adr-0020-audio-engine.md
+    reason: >
+      AudioBus is the Audio Engine V2 replacement for SoundTrack. Same topology
+      (independent volume groups), V2-compatible API.
+    referenced_by:
+      - docs/architecture/adr-0020-audio-engine.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: audio_engine_hybrid_createsoundsourceasync
+    status: active
+    api: |
+      Engine sound uses CreateSoundAsync (WAV base) + CreateSoundSourceAsync
+      (OscillatorNode overlay), both on same sfxBus. No raw Web Audio path.
+      Pitch via StaticSound.playbackRate (60hz).
+    not: |
+      Do NOT use create OscillatorNode without CreateSoundSourceAsync (creates
+      separate volume/crossfade path). Do NOT use legacy Sound.playbackRate.
+    adr: docs/architecture/adr-0020-audio-engine.md
+    reason: >
+      CreateSoundSourceAsync connects any AudioNode through Babylon's pipeline —
+      same bus, same volume, same crossfade. Eliminates dual-path concern.
+    referenced_by:
+      - docs/architecture/adr-0020-audio-engine.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: audio_collision_maxinstances
+    status: active
+    api: |
+      Collision sounds use maxInstances: 5 on CreateSoundAsync. No custom
+      pooling. >5 concurrent → oldest auto-stopped.
+    not: |
+      Do NOT implement manual sound pooling or queue/drop logic.
+    adr: docs/architecture/adr-0020-audio-engine.md
+    reason: >
+      Audio Engine V2 provides native maxInstances. Custom pooling duplicates
+      engine functionality.
+    referenced_by:
+      - docs/architecture/adr-0020-audio-engine.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: menu_screen_stack_precreate
+    status: active
+    api: |
+      All 6 menu screens pre-created at init (~300 controls). Navigation pushes/pops
+      by toggling isVisible. Never create or destroy controls at runtime.
+    not: |
+      Do NOT create controls on push (triggers layout recompute).
+      Do NOT use HTML overlay or separate ADT for menu screens.
+    adr: docs/architecture/adr-0019-menu-lite.md
+    reason: >
+      Pre-creating avoids repeated layout recompute and GC pressure during navigation.
+      Consistent with ADR-0018 control lifecycle pattern.
+    referenced_by:
+      - docs/architecture/adr-0019-menu-lite.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: menu_input_via_iinput
+    status: active
+    api: |
+      Menu reads confirm/cancel/navUp/navDown from IInput.getState() (ADR-0006).
+      Not from scene.onKeyboardObservable or DeviceSourceManager directly.
+    not: |
+      Do NOT read keyboard events from Babylon.js scene observables — risk of
+      duplicate handling when GUI has focus. Do NOT access DeviceSourceManager
+      directly from Menu LITE.
+    adr: docs/architecture/adr-0019-menu-lite.md
+    reason: >
+      ADR-0006 already defines menu actions in InputState. Keeping menu input
+      in the same pipeline prevents duplicate handling and keeps device abstraction
+      in one place.
+    referenced_by:
+      - docs/architecture/adr-0019-menu-lite.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: hud_speed_throttled_event
+    status: active
+    api: |
+      Speed updates at 20hz via Event Bus (every 3 ticks). Physics emits
+      'speed.changed: { carId, speedKmh }' at throttle-controlled rate.
+      Not direct CarEntity read.
+    not: |
+      Do NOT read playerCar.physics.speedKmh directly from HudBlock.
+      Do NOT emit speed events every frame (60hz — unnecessary).
+    adr: docs/architecture/adr-0018-hud-layout-blocks.md
+    reason: >
+      Consistent event-driven architecture across all blocks. 20hz throttle
+      is sufficient for a numeric speed display. Fallback path to direct read
+      if playtesting shows jitter.
+    referenced_by:
+      - docs/architecture/adr-0018-hud-layout-blocks.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: config_env_override
+    status: active
+    api: >
+      OVERDRIVE__NAMESPACE__KEY=value. Double-underscore path separator.
+      Leaf values only (strings, numbers). Env > local override > default.
+      Precedence: env var > local override file > registered default.
+    not: |
+      Do NOT use dot env (VITE_) for runtime overrides — VITE_ is build-time.
+      Do NOT override entire objects from env vars.
+    adr: docs/architecture/adr-0023-data-config-manager.md
+    reason: >
+      Runtime env vars (process.env.OVERDRIVE__*) are more flexible for CI/CD
+      than .env files. Leaf-only override prevents partial object corruption.
+    referenced_by:
+      - docs/architecture/adr-0023-data-config-manager.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: config_hmr_invalidation
+    status: active
+    api: >
+      Vite HMR invalidates entire namespace cache. Next get() re-reads
+      registered config with env overrides. Granularity: per-namespace,
+      not per-key.
+    not: |
+      Do NOT implement per-key invalidation (diff logic). Do NOT clear
+      all namespaces on single HMR event (too broad).
+    adr: docs/architecture/adr-0023-data-config-manager.md
+    reason: >
+      Namespace-level invalidation is simple and correct (~100 keys per
+      namespace). Per-key diff is unnecessary complexity.
+    referenced_by:
+      - docs/architecture/adr-0023-data-config-manager.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: config_type_get
+    status: active
+    api: >
+      get<T>(key) returns T if key exists, throws ConfigError if missing.
+      Never returns undefined. No default fallback in the getter.
+    not: |
+      Do NOT return T | undefined. Do NOT implement silent fallback.
+    adr: docs/architecture/adr-0023-data-config-manager.md
+    reason: >
+      Missing config is a programming error. Silent recovery hides bugs.
+    referenced_by:
+      - docs/architecture/adr-0023-data-config-manager.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: gsm_flat_fsm
+    status: active
+    api: >
+      Record<State, State[]> transition table. Illegal transition throws
+      GameStateError. Max 1 transition per tick — subsequent calls queued.
+      onEnter/onExit hooks, async-capable with rollback on rejection.
+    not: |
+      Do NOT use stack-based FSM (no nested states in MVP).
+      Do NOT allow >1 transition per tick.
+    adr: docs/architecture/adr-0024-game-state-machine.md
+    reason: >
+      6 states with simple transitions — flat FSM prevents state combination
+      bugs and is self-documenting as a data structure.
+    referenced_by:
+      - docs/architecture/adr-0024-game-state-machine.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: gsm_event_emission
+    status: active
+    api: >
+      Every transition emits two events: gsm.state.exited (from) then
+      gsm.state.entered (from, to). Systems subscribe to events — never
+      call gsm.getCurrent().
+    not: |
+      Do NOT provide a public getCurrent() method. Callers must use
+      event subscription.
+    adr: docs/architecture/adr-0024-game-state-machine.md
+    reason: >
+      Event subscription decouples state consumers from GSM implementation.
+      No polling means no mid-tick inconsistencies.
+    referenced_by:
+      - docs/architecture/adr-0024-game-state-machine.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: gsm_state_history
+    status: active
+    api: >
+      Ring buffer of last 20 transitions (from, to, timestamp, duration).
+      Readable by Dev Tools overlay. No public getter for individual entries.
+    not: |
+      Do NOT expose the ring buffer as a public array — read via getter only.
+    adr: docs/architecture/adr-0024-game-state-machine.md
+    reason: >
+      Ring buffer provides debug visibility without coupling Dev Tools to
+      GSM internals. 20 entries is sufficient for debugging.
+    referenced_by:
+      - docs/architecture/adr-0024-game-state-machine.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: track_config_interface
+    status: active
+    api: >
+      TrackConfig TypeScript in src/config/tracks/{id}.ts. Pure data
+      (zero Babylon imports). SplineSegment[] with point, width, next.
+      Per-track BoundingBox zones, Vec3[] grid and garage positions.
+    not: |
+      Do NOT embed Babylon types (Vector3, Mesh) in track config files.
+      Do NOT use JSON for track config — TypeScript enables type checking
+      and HMR.
+    adr: docs/architecture/adr-0025-track-environment.md
+    reason: >
+      Custom SplineSegment array carries game-specific data (width, next)
+      that Babylon curve types don't support. Config-driven approach
+      allows new circuits with zero code changes.
+    referenced_by:
+      - docs/architecture/adr-0025-track-environment.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: track_static_colliders_merged
+    status: active
+    api: >
+      3-5 merged STATIC PhysicsAggregate MESH bodies per track (one per
+      category: barriers, track surface, kerbs, buildings). Meshes merged
+      per category. Physics attached after instantiateModelsToScene() on
+      scene meshes, not container meshes.
+    not: |
+      Do NOT create individual PhysicsAggregate per barrier segment.
+      Do NOT attach physics to container meshes (wrong transforms).
+    adr: docs/architecture/adr-0025-track-environment.md
+    reason: >
+      3-5 bodies per track is negligible for Havok. DYNAMIC×MESH is
+      Havok's most optimized collision pair. Compound shapes can be
+      adopted for 300+ segment tracks in Alpha.
+    referenced_by:
+      - docs/architecture/adr-0025-track-environment.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: track_pit_zone_inline_check
+    status: active
+    api: >
+      Inline XZ point-in-box: x >= xMin && x <= xMax && z >= zMin && z <= zMax.
+      6 float comparisons per car per zone. Zero allocations.
+    not: |
+      Do NOT use BABYLON.BoundingBox for hot-path checks (allocates Vector3).
+      Do NOT use Havok trigger volumes for pit zones.
+    adr: docs/architecture/adr-0025-track-environment.md
+    reason: >
+      Inline check is ~0.00001ms/frame for 8 cars × 2 zones. BoundingBox
+      adds GC pressure. Trigger volumes add Havok overhead for no benefit.
+    referenced_by:
+      - docs/architecture/adr-0025-track-environment.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: track_garage_logical_positions
+    status: active
+    api: >
+      pitGarageSlots is Vec3[16] (logical positions, 8 active in MVP).
+      No collider bays. Spline follower guides car to assigned position.
+      Arcade model prevents drift.
+    not: |
+      Do NOT create individual garage bay colliders (catches car at wrong
+      angle). Do NOT use Havok trigger volumes for garage detection.
+    adr: docs/architecture/adr-0025-track-environment.md
+    reason: >
+      Without bay walls, cars guided by spline follower will not drift away.
+      Bay colliders create edge cases with angled approach.
+    referenced_by:
+      - docs/architecture/adr-0025-track-environment.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: hud_grid_proportional_fractions
+    status: active
+    api: |
+      Grid columns use proportional fractions that sum to 1.0 (left=0.20,
+      center=0.58, right=0.22). Babylon.js Grid does NOT support
+      ParameterType.Star.
+    not: |
+      Do NOT use 'star' sizing in Babylon.js Grid — the API does not exist.
+      All zone widthFraction values must sum to 1.0 ± 0.001.
+    adr: docs/architecture/adr-0018-hud-layout-blocks.md
+    reason: >
+      Babylon.js ColumnDefinition uses fractional (0.0–1.0) or pixel values.
+      No 'fill remaining' semantics. 0.58 = 100 - 20 - 22 in the default layout.
+    referenced_by:
+      - docs/architecture/adr-0018-hud-layout-blocks.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: snapshot_hashing_tier
+    status: active
+    api: |
+      FNV-1a 64-bit for per-tick determinism checks (in-system hash()).
+      SHA-256 via crypto.subtle.digest for sync integrity (manager).
+    not: |
+      Do NOT use Math.random, Date.now, or any non-deterministic source in hash().
+      Do NOT use third-party hash libraries — FNV-1a in pure TS is 20 lines.
+    adr: docs/architecture/adr-0017-simulation-snapshot.md
+    reason: >
+      FNV-1a is ~50ns — fast enough for tick-level checks across 5 systems.
+      SHA-256 via Web Crypto is the cross-platform standard (browser, Node, Tauri,
+      Electron). Zero dependency cost for Foundation layer.
+    referenced_by:
+      - docs/architecture/adr-0017-simulation-snapshot.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: persistence_async_interface
+    status: active
+    api: |
+      All IPersistence methods return Promise<T>. LocalStorageAdapter wraps
+      localStorage in microtask. Future adapters (IndexedDB, remote) implement
+      same async interface.
+    not: |
+      Do NOT call localStorage.setItem()/getItem() directly from any game system.
+      All storage must go through IPersistence.
+    adr: docs/architecture/adr-0016-persistence.md
+    reason: >
+      Async-first allows transparent backend swap (IndexedDB, remote, Tauri store)
+      without refactoring consumers. Microtask wrapping of localStorage is the
+      standard web pattern for sync→async adaption.
+    referenced_by:
+      - docs/architecture/adr-0016-persistence.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: lap_detection_via_spline_wrap
+    status: active
+    api: |
+      prevSplinePos > 0.9 × trackLength AND currentSplinePos < 0.1 × trackLength
+      → lap increment. No collision trigger, no Havok, no bounding box.
+    not: |
+      Do NOT use Havok trigger volume or collision callbacks for lap detection.
+    adr: docs/architecture/adr-0015-race-management.md
+    reason: >
+      Spline wrap-around is O(1), deterministic, and has zero engine coupling.
+      No false positives from grid spawn, no Havok event overhead.
+    referenced_by:
+      - docs/architecture/adr-0015-race-management.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: race_end_conditions
+    status: active
+    api: |
+      3 conditions checked in priority: (1) player completes lap N,
+      (2) player is last and car ahead finishes, (3) leader finishes and
+      player is ≥1 lap behind. All evaluated inside pipeline tick.
+    not: |
+      Do NOT end race on leader's final lap (F1 style). Player-centric ending
+      ensures player always sees race completion.
+    adr: docs/architecture/adr-0015-race-management.md
+    reason: >
+      Player-centric race end (3 conditions) avoids abrupt mid-lap stop and
+      handles P8-if-penultimate-finishes elegantly.
+    referenced_by:
+      - docs/architecture/adr-0015-race-management.md
+    added: 2026-06-21
+    revised: ""
+
+  - purpose: input_polling_pattern
+    status: active
+    api: |
+      DeviceSourceManager (keyboard) + GamepadManager (gamepad) → IInput.getState().
+      Polling per tick at pipeline slot #1. Dead zone formula applied to analog inputs.
+      AI Driver implements same IInput interface.
+    not: |
+      Do NOT use Babylon Observables for input (event-driven). Do NOT read device
+      sources directly from Physics (slot #2 must call IInput.getState(), never
+      DeviceSourceManager or GamepadManager).
+    adr: docs/architecture/adr-0006-input-abstraction.md
+    reason: >
+      Polling guarantees Physics receives the exact current-frame values.
+      IInput abstraction prevents Physics from branching on player vs AI.
+      DeviceSourceManager + GamepadManager is the idiomatic Babylon.js 9.12
+      input stack.
+    referenced_by:
+      - docs/architecture/adr-0006-input-abstraction.md
+    added: 2026-06-21
+    revised: ""
 
 # Example:
 #
@@ -148,7 +994,6 @@ api_decisions: []
 #     added: 2026-03-26
 #     revised: ""
 
-
 # ─── FORBIDDEN PATTERNS ──────────────────────────────────────────────────────
 # Architecture anti-patterns explicitly banned by accepted ADRs.
 # When writing a new ADR, check this list — if the proposed approach matches
@@ -157,7 +1002,70 @@ api_decisions: []
 # Register a pattern when an ADR explicitly bans it AND other ADRs might
 # unknowingly use it (i.e., it's a tempting but wrong approach for this project).
 
-forbidden_patterns: []
+forbidden_patterns:
+  - pattern: variable_timestep_simulation
+    status: active
+    description: >
+      Simulation systems must never use variable timestep. All physics, AI,
+      fuel, tire, and race management computations must run at fixed 1/60s
+      via the FixedUpdatePipeline.
+    why: >
+      Variable timestep breaks determinism, replay, and future multiplayer
+      lockstep. Same seed must produce identical simulation regardless of
+      frame rate.
+    adr: docs/architecture/adr-0002-fixed-timestep-determinism.md
+    added: 2026-06-21
+
+  - pattern: static_dev_infra_import
+    status: active
+    description: >
+      Dev Infra modules must never be statically imported from production code.
+      Only dynamic import() behind import.meta.env.DEV is allowed.
+    why: >
+      Static imports defeat tree-shaking. Dev Infra that imports Babylon.js
+      types would bloat the production bundle. Dynamic import() guarantees
+      zero bytes in production.
+    adr: docs/architecture/adr-0004-module-boundary-rules.md
+    added: 2026-06-21
+
+  - pattern: direct_device_read_from_simulation
+    status: active
+    description: >
+      Simulation systems (Physics, Fuel, Tire, AI) must never read input devices
+      directly (DeviceSourceManager, GamepadManager). All input must arrive via
+      IInput.getState() at pipeline slot #1.
+    why: >
+      Direct device reads bypass the input abstraction, breaking the AI/player
+      interchangeability and introducing timing non-determinism (device may be
+      polled mid-tick at different pipeline positions).
+    adr: docs/architecture/adr-0006-input-abstraction.md
+    added: 2026-06-21
+
+  - pattern: camera_attaches_control
+    status: active
+    description: >
+      Cameras must NEVER call attachControl(). All camera control is purely
+      programmatic via ICameraManager.update() each frame.
+    why: >
+      attachControl() enables the v9.8+ Camera Input Mapping System, which
+      would read gamepad/input devices directly — conflicting with ADR-0006
+      (only Input Abstraction reads devices). The dual-read would produce
+      unpredictable camera movement.
+    adr: docs/architecture/adr-0007-camera-architecture.md
+    added: 2026-06-21
+
+  - pattern: dev_tools_writes
+    status: active
+    description: >
+      Dev Tools must never write to any system state. It reads data sources
+      via registered reader callbacks but must never call emit(), set(), or
+      modify game objects.
+    why: >
+      Dev Tools is a debugging aid — if it can write, a developer-made change
+      during debugging could affect game behavior, invalidating the debugging
+      session. Enforced at interface level: IDevTools has no write methods.
+    adr: docs/architecture/adr-0009-dev-tools.md
+    added: 2026-06-21
 
 # Example:
 #
