@@ -4,7 +4,7 @@
 > **Author**: build agent + johnatas-henrique
 > **Last Updated**: 2026-06-20
 > **Last Verified**: 2026-06-20
-> **Implements Pillar**: Foundation — entity creation, pooling, and destruction
+> **Implements Pillar**: Core — entity creation, pooling, and destruction
 
 ## Overview
 
@@ -28,7 +28,7 @@ interface CarEntity {
   teamId: string; // 'macklen', 'willard', ...
   gridIndex: number; // starting grid position (0 = pole)
   mesh: AbstractMesh; // root node of cloned car
-  physicsBody: PhysicsAggregate | null; // null until Physics system attaches it
+  physicsBody: PhysicsAggregate; // convex hull, 800 kg — created during spawnGrid()
   aiDriver?: AIDriverRef; // undefined for player car
 }
 

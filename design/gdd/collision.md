@@ -10,7 +10,7 @@
 
 Collision is the detection layer between the physics engine's collision resolution and the game's event-driven systems. It does not simulate damage, deformation, or car durability. Its single responsibility is: something touched something else → publish what happened.
 
-Havok Physics (via Babylon.js) resolves all contact physics — bouncing off barriers, pushing cars apart, friction. Collision listens to Havok's contact callbacks and translates raw physics contacts into named game events that Camera and Audio consume. This keeps the physics engine pure and lets game-feel systems react to contact without knowing anything about Havok internals.
+Havok Physics (via Babylon.js) resolves all contact physics — bouncing off barriers, pushing cars apart, friction. Collision subscribes to Havok's `onCollisionObservable` (not `collisionEndedObservable` — see ADR-0008 §Collision GDD Compatibility). The `onCollisionObservable` provides `IPhysicsCollisionEvent` with real impulse, point, and normal data.
 
 In Phase 1 (MVP), Collision handles two detection types: car↔car contact and car↔barrier contact. Finish line detection moves to Race Management (spatial check — car position crosses finish plane). Pit entry/exit detection moves to Pit Stop (spatial check — car enters/exits pit bounding box). No damage, no deformation, no mechanical consequences from collision (tire blowout and fuel starvation come from Tire Wear and Fuel systems, not collision).
 

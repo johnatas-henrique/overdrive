@@ -71,18 +71,19 @@ Head bob and lean are expressed as local offsets on a child `TransformNode` betw
 
 #### Chase Camera
 
-| Property         | Value        | Notes                                        |
-| ---------------- | ------------ | -------------------------------------------- |
-| Type             | FollowCamera | Babylon.js native chase camera               |
-| Base FOV         | 60°          | Narrower than cockpit — cinematic framing    |
-| Follow distance  | 6m           | Distance behind the car (knob)               |
-| Follow height    | 3m           | Height above the car (knob)                  |
-| Follow offset    | 0.5m         | Lateral offset to the right (knob)           |
-| Spring stiffness | 0.90         | Near-rigid spring (Horizon Chase style)      |
-| Shake            | Yes          | Kerb, collision, off-track triggers          |
-| FOV shift range  | 52°–68°      | `baseFOV ± speedFactor × speed_kmh`, clamped |
+| Property            | Value        | Notes                                                |
+| ------------------- | ------------ | ---------------------------------------------------- |
+| Type                | FollowCamera | Babylon.js native chase camera                       |
+| Base FOV            | 60°          | Narrower than cockpit — cinematic framing            |
+| Follow distance     | 6m           | Distance behind the car (knob)                       |
+| Follow height       | 3m           | Height above the car (knob)                          |
+| Follow offset       | 0.5m         | Lateral offset to the right (knob)                   |
+| Spring acceleration | 0.005        | Acceleration toward target (FollowCamera native API) |
+| Max spring speed    | 10           | Max approach speed (FollowCamera native API)         |
+| Shake               | Yes          | Kerb, collision, off-track triggers                  |
+| FOV shift range     | 52°–68°      | `baseFOV ± speedFactor × speed_kmh`, clamped         |
 
-The chase camera uses Babylon.js `FollowCamera` with a high spring stiffness value (0.90 out of 0–1) — nearly rigid. This means the camera follows the car with minimal lag, matching Horizon Chase's responsive feel. The value is a knob and can be reduced in playtesting if the camera feels too stiff.
+The chase camera uses Babylon.js `FollowCamera` with `cameraAcceleration` and `maxCameraSpeed` parameters. Higher acceleration + higher max speed produces a stiffer follow response (Horizon Chase style). The values are tuning knobs and can be adjusted in playtesting. Note: FollowCamera does NOT use a spring/damper model — the GDD's original `stiffness` concept was corrected during architecture to match the actual Babylon.js API.
 
 Camera position is validated with a simple raycast from the car backward. If the line of sight is blocked (wall, another car), the camera snaps to the closest unoccluded position along the backward ray.
 
@@ -214,32 +215,33 @@ Transition to Racing preserves the player's last toggle choice (was cockpit → 
 
 All values in `camera.*` namespace, runtime-configurable via Data & Config Manager with HMR hot-reload.
 
-| Knob                      | Default | Range  | Description                                                                              |
-| ------------------------- | ------- | ------ | ---------------------------------------------------------------------------------------- |
-| `cockpit.fov`             | 75      | 50–100 | Cockpit base FOV (degrees)                                                               |
-| `cockpit.fovMin`          | 65      | 40–90  | Cockpit FOV floor — minimum allowed FOV                                                  |
-| `cockpit.fovMax`          | 85      | 60–120 | Cockpit FOV ceiling — maximum allowed FOV (applies at high speed, FOV widens with speed) |
-| `chase.fov`               | 60      | 40–90  | Chase base FOV (degrees)                                                                 |
-| `chase.fovMin`            | 52      | 35–80  | Chase FOV floor — minimum allowed FOV                                                    |
-| `chase.fovMax`            | 68      | 45–95  | Chase FOV ceiling — maximum allowed FOV (applies at high speed, FOV widens with speed)   |
-| `speedFactor`             | 0.05    | 0–0.2  | Degrees per km/h applied to base FOV                                                     |
-| `chase.distance`          | 6       | 3–15   | Chase camera distance behind car (m)                                                     |
-| `chase.height`            | 3       | 1–8    | Chase camera height above car (m)                                                        |
-| `chase.offset`            | 0.5     | -2–2   | Chase lateral offset (m, + = right)                                                      |
-| `chase.stiffness`         | 0.9     | 0–1    | Chase spring stiffness (1 = rigid)                                                       |
-| `headBob.intensity`       | 0.02    | 0–0.1  | Head bob amplitude (units)                                                               |
-| `headBob.frequency`       | 2.0     | 0–5    | Head bob oscillation frequency                                                           |
-| `lean.intensity`          | 2.0     | 0–10   | Lateral lean amplitude (degrees)                                                         |
-| `shake.kerbIntensity`     | 0.03    | 0–0.2  | Kerb hit shake amplitude (units)                                                         |
-| `shake.kerbDecay`         | 6.0     | 1–20   | Kerb shake decay rate (per second)                                                       |
-| `shake.collisionFactor`   | 0.001   | 0–0.01 | Impulse → shake amplitude multiplier                                                     |
-| `shake.collisionDecay`    | 4.0     | 1–20   | Collision shake decay rate (per second)                                                  |
-| `shake.offtrackIntensity` | 0.02    | 0–0.2  | Off-track shake amplitude (units)                                                        |
-| `shake.offtrackDecay`     | 5.0     | 1–20   | Off-track shake decay rate (per second)                                                  |
-| `drone.distance`          | 8       | 4–20   | PostRace drone orbit distance (m)                                                        |
-| `drone.speed`             | 15      | 5–45   | Drone orbit speed (°/s)                                                                  |
-| `drone.skipDelay`         | 0.5     | 0–5    | Seconds before PostRace drone is skippable                                               |
-| `drone.fov`               | 65      | 40–90  | Drone camera FOV (degrees)                                                               |
+| Knob                       | Default | Range      | Description                                                                              |
+| -------------------------- | ------- | ---------- | ---------------------------------------------------------------------------------------- |
+| `cockpit.fov`              | 75      | 50–100     | Cockpit base FOV (degrees)                                                               |
+| `cockpit.fovMin`           | 65      | 40–90      | Cockpit FOV floor — minimum allowed FOV                                                  |
+| `cockpit.fovMax`           | 85      | 60–120     | Cockpit FOV ceiling — maximum allowed FOV (applies at high speed, FOV widens with speed) |
+| `chase.fov`                | 60      | 40–90      | Chase base FOV (degrees)                                                                 |
+| `chase.fovMin`             | 52      | 35–80      | Chase FOV floor — minimum allowed FOV                                                    |
+| `chase.fovMax`             | 68      | 45–95      | Chase FOV ceiling — maximum allowed FOV (applies at high speed, FOV widens with speed)   |
+| `speedFactor`              | 0.05    | 0–0.2      | Degrees per km/h applied to base FOV                                                     |
+| `chase.distance`           | 6       | 3–15       | Chase camera distance behind car (m)                                                     |
+| `chase.height`             | 3       | 1–8        | Chase camera height above car (m)                                                        |
+| `chase.offset`             | 0.5     | -2–2       | Chase lateral offset (m, + = right)                                                      |
+| `chase.cameraAcceleration` | 0.005   | 0.001–0.05 | FollowCamera acceleration toward target (native API)                                     |
+| `chase.maxCameraSpeed`     | 10      | 1–30       | FollowCamera max approach speed (higher = stiffer)                                       |
+| `headBob.intensity`        | 0.02    | 0–0.1      | Head bob amplitude (units)                                                               |
+| `headBob.frequency`        | 2.0     | 0–5        | Head bob oscillation frequency                                                           |
+| `lean.intensity`           | 2.0     | 0–10       | Lateral lean amplitude (degrees)                                                         |
+| `shake.kerbIntensity`      | 0.03    | 0–0.2      | Kerb hit shake amplitude (units)                                                         |
+| `shake.kerbDecay`          | 6.0     | 1–20       | Kerb shake decay rate (per second)                                                       |
+| `shake.collisionFactor`    | 0.001   | 0–0.01     | Impulse → shake amplitude multiplier                                                     |
+| `shake.collisionDecay`     | 4.0     | 1–20       | Collision shake decay rate (per second)                                                  |
+| `shake.offtrackIntensity`  | 0.02    | 0–0.2      | Off-track shake amplitude (units)                                                        |
+| `shake.offtrackDecay`      | 5.0     | 1–20       | Off-track shake decay rate (per second)                                                  |
+| `drone.distance`           | 8       | 4–20       | PostRace drone orbit distance (m)                                                        |
+| `drone.speed`              | 15      | 5–45       | Drone orbit speed (°/s)                                                                  |
+| `drone.skipDelay`          | 0.5     | 0–5        | Seconds before PostRace drone is skippable                                               |
+| `drone.fov`                | 65      | 40–90      | Drone camera FOV (degrees)                                                               |
 
 ---
 
@@ -289,6 +291,6 @@ None. Camera has no UI elements.
 ### Open Questions
 
 - **Head bob and lean**: initial values are guesses. Will be calibrated during the first playtest session against the FW14B onboard reference footage.
-- **Chase stiffness**: 0.90 is a starting point. If the camera feels too rigid (no sense of car movement), reduce toward 0.7. If too loose (drifting behind), increase toward 1.0.
+- **Chase acceleration/maxSpeed**: `cameraAcceleration` = 0.005, `maxCameraSpeed` = 10 are starting points. These map to the FollowCamera's native acceleration-limited velocity model — not a spring/damper. If the camera feels too loose, increase both proportionally. Too rigid, decrease both.
 - **Drone orbit speed**: 15°/s provides a full circle in ~24s. If PostRace feels too slow, increase. Too frantic, decrease.
 - **Grid camera composition**: exact position/angle will be tuned once we have a track mesh placeholder. The GDD specifies intent — the concrete values will be set during scene assembly.

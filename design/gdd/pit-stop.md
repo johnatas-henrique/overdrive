@@ -16,7 +16,7 @@ Phase 1 pit stops include refuelling (progressive fill, player can leave early) 
 
 ## Player Fantasy
 
-The player sees the pit entry cone approaching, passes the bounding box, and feels the car decelerate smoothly to 80 km/h as steering is taken over. The car guides itself along the pit lane, stopping exactly at the team garage. An overlay appears: a fuel bar filling in real time, a tire change indicator, and a flashing "EXIT" prompt.
+The player sees the pit entry cone approaching, passes the bounding box, and feels the car decelerate smoothly to 80 km/h as steering is taken over. The car guides itself along the pit lane, stopping exactly at the team garage. An overlay appears: a fuel bar filling in real time and a tire change indicator. After the tire change completes, a flashing "EXIT" prompt appears, letting the player leave early with partial fuel.
 
 The player chooses when to leave — early with partial fuel and fresh tires, or wait for a full tank. Every second in the pit lane is a second not racing, and rivals who pitted earlier or later will gain or lose time based on this decision. The fantasy is **pulling off a faster pit stop than the competition** — leaving at the optimal moment while rivals are too conservative or too impatient.
 
@@ -73,7 +73,7 @@ During `pitStopped`:
 - Refuel and tire change timers start
 - Player can press **confirm** (assigned input, e.g. A/cross) — Pit Stop gatekeeps this input: it only reacts when `pitState === 'pitStopped'`. Confirm during pitEntry, departing, or on-track is silently ignored.
 
-When confirm is pressed (or both refuel + tire change complete):
+When confirm is pressed (refuel stops, tires already fresh):
 
 1. Spline follower resumes along pit exit waypoints.
 2. Speed climbs to 80 km/h.
@@ -141,10 +141,8 @@ if (refuelActive.has(carId)) {
 
 Tire Wear system exposes `resetTires(carId)`.
 
-- Tire change starts after a fixed `pit.tireChangeDelay` (~2 s, configurable).
-- After the delay elapses, `tireCondition` resets to 1.0 for that car.
-- If player presses confirm before the delay completes, the tire change is skipped — tires remain at pre-pit condition.
-- Pit overlay shows tire change status: in progress (spinner/dots) → done (checkmark).
+- Tire change starts immediately when car reaches `pitStopped`, completes after fixed `pit.tireChangeDelay` (~2 s). After completion, the pit overlay shows a checkmark and the exit prompt appears. Tire change always completes — the player cannot leave before tires are done, because a half-changed tire is not physically meaningful.
+- Refuel starts immediately when car reaches `pitStopped`, continues in parallel with tire change.
 
 ```typescript
 // Called each tick during pitStopped
@@ -229,7 +227,7 @@ pitTotal = entryTravel + serviceTime + exitWait + exitTravel
 | **Race Management**      | Records `pitTotal` per car for timing.                                                                                                                                                                                                                                                                     |
 | **Entity/Car Lifecycle** | Car entity is the same during pit — no spawning/despawning. Pit update runs on existing entity.                                                                                                                                                                                                            |
 | **Event Bus**            | Emits `pit.entry` (carId), `pit.exit` (carId, totalTimeMs?) for audio/HUD and Race Management timing. Emits `pit.status` (carId, status: 'idle'\|'pitEntry'\|'pitStopped'\|'departing'), `pit.fuel_status` (carId, fuelLevel, maxFuel), `pit.tire_status` (carId, completed: boolean) for HUD pit overlay. |
-| **HUD**                  | Shows pit overlay during pitStopped: fuel bar, tire status, confirm button.                                                                                                                                                                                                                                |
+| **HUD**                  | Shows pit overlay during pitStopped: fuel bar, tire status. Confirm button appears after tire change completes.                                                                                                                                                                                            |
 | **Audio**                | Plays pit lane ambient, refuel sound, tire change sound.                                                                                                                                                                                                                                                   |
 | **Camera**               | Unchanged — stays in whatever mode it was (cockpit or chase).                                                                                                                                                                                                                                              |
 | **Data & Config**        | Provides `pit.refuelRate`, `pit.tireChangeDelay`.                                                                                                                                                                                                                                                          |
@@ -241,7 +239,7 @@ pitTotal = entryTravel + serviceTime + exitWait + exitTravel
 
 | Case                                        | Behaviour                                                                                                             |
 | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| **confirm during tire change**              | Tire change skipped. Car leaves with pre-pit tireCondition.                                                           |
+| **confirm during tire change**              | Ignored (confirm not available until tires complete).                                                                 |
 | **confirm during refuel**                   | Refuel stops. Car leaves with partial fuel.                                                                           |
 | **Both complete, player doesn't confirm**   | Car leaves automatically after a grace period (~3 s).                                                                 |
 | **Fuel full but tire change still running** | Tire continues. Car cannot leave until confirm pressed or grace timer fires.                                          |
@@ -290,15 +288,15 @@ All knobs are in the `pit.*` namespace.
 
 ## Visual & Audio Requirements
 
-| Element                   | Requirement                                                                                     |
-| ------------------------- | ----------------------------------------------------------------------------------------------- |
-| **Pit overlay**           | HUD panel during pitStopped: fuel bar (0→100%), tire indicator (spinner→check), confirm prompt. |
-| **Pit speed enforcement** | No visual change — car slows naturally. Player sees the pit lane go by at 80 km/h.              |
-| **Garage visual**         | Team-colored garage box visible in the pit lane (modelled in track geometry).                   |
-| **Audio: pit entry**      | Whoosh/Doppler effect as car enters the enclosed pit lane area.                                 |
-| **Audio: refuel**         | Low pump sound during refuel.                                                                   |
-| **Audio: tire change**    | Impact wrench sound during tire change.                                                         |
-| **Audio: pit exit**       | Engine revving up as car leaves pit lane.                                                       |
+| Element                   | Requirement                                                                                                                         |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Pit overlay**           | HUD panel during pitStopped: fuel bar (0→100%), tire indicator (spinner→check). Confirm prompt appears after tire change completes. |
+| **Pit speed enforcement** | No visual change — car slows naturally. Player sees the pit lane go by at 80 km/h.                                                  |
+| **Garage visual**         | Team-colored garage box visible in the pit lane (modelled in track geometry).                                                       |
+| **Audio: pit entry**      | Whoosh/Doppler effect as car enters the enclosed pit lane area.                                                                     |
+| **Audio: refuel**         | Low pump sound during refuel.                                                                                                       |
+| **Audio: tire change**    | Impact wrench sound during tire change.                                                                                             |
+| **Audio: pit exit**       | Engine revving up as car leaves pit lane.                                                                                           |
 
 ---
 
@@ -309,8 +307,8 @@ All knobs are in the `pit.*` namespace.
 3. Car follows pitLaneSpline waypoints automatically during pit
 4. Car stops at assigned garage slot when position matches `pitGarageSlots[teamIndex]`
 5. Refuel begins immediately after garage stop, fuel bar shows progress
-6. Tire change begins after `tireChangeDelay`, tireCondition resets to 1.0
-7. Player can press confirm during pitStopped — leaves with current fuel + tire state
+6. Tire change starts immediately when car reaches pitStopped, completes after `tireChangeDelay`, tireCondition resets to 1.0
+7. Player can press confirm after tire change completes — leaves with fresh tires and current fuel level
 8. If confirm not pressed and both services complete, auto-release after `exitGraceTimeout`
 9. Merge check waits 200 ms if car ahead within `mergeCheckDistance`
 10. After `forceMergeTimeout` with no gap, car force-merges
