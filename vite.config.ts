@@ -13,4 +13,7 @@ export default defineConfig({
     target: "es2022",
     minify: "esbuild",
   },
+  optimizeDeps: {
+    exclude: ["@babylonjs/havok"],
+  },
 });
