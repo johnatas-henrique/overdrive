@@ -288,7 +288,7 @@ gameplay state._
 | P8  | **Menu LITE: pre-create 6 screens** at init (~600KB controls + ~1MB thumbnails). Navigation toggles `isVisible` — zero runtime allocation.                                 | ADR-0019 |
 | P9  | **Menu LITE: instant transitions** — no fade or slide in Phase 1.                                                                                                          | ADR-0019 |
 | P10 | **Menu LITE: GSM local copy** via Event Bus subscription (same pattern as Input ADR-0006).                                                                                 | ADR-0019 |
-| P11 | **Menu LITE: Loading screen minimum 2s** — regardless of asset load time. "Still loading" indicator at 10s.                                                                | ADR-0019 |
+| P11 | **Menu LITE: Loading screen minimum 0.5s** — skip entirely if assets load faster. "Still loading" indicator at 10s.                                                        | ADR-0019 |
 | P12 | **Menu LITE: car thumbnails** via `CreateScreenshotUsingRenderTargetAsync` with isolated camera, captured once at init.                                                    | ADR-0019 |
 | P13 | **Audio: Audio Engine V2 ONLY** — `CreateSoundAsync` (not `new Sound()`), `CreateAudioBusAsync` (not `SoundTrack`), `CreateSoundSourceAsync`, `CreateStreamingSoundAsync`. | ADR-0020 |
 | P14 | **Audio: 4 AudioBuses** — `music` (0.5), `sfx` (0.7), `ui` (0.6), `ambient` (0.4).                                                                                         | ADR-0020 |
@@ -388,6 +388,7 @@ These APIs are deprecated, removed, or incompatible with the pinned engine versi
 | --- | --------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | G1  | All config reads must go through `ConfigManager.get<T>()` — never access raw JSON or hardcoded objects.               | ADR-0023           |
 | G2  | All cross-system state-change signals must go through Event Bus — never direct method calls across system boundaries. | ADR-0001, ADR-0004 |
+| G3  | Colour values must be imported from `design/art/palette.json` — no hardcoded hex in game code.                        | art-bible.md       |
 | G3  | Foundation layer must have zero `@babylonjs/core` imports — verified by `tsc --noEmit`.                               | ADR-0004           |
 | G4  | Dev Infra code must compile to zero bytes in production (`__DEV__` guard).                                            | ADR-0004           |
 | G5  | `Entity/Car Lifecycle` is in Core, not Foundation (uses `PhysicsAggregate`, `AbstractMesh`).                          | ADR-0004, ADR-0005 |

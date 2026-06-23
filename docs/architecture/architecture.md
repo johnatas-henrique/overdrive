@@ -10,21 +10,21 @@
 
 ## Engine Knowledge Gap Summary
 
-| Risk       | Domains                                                                   | Systems Affected            | Mitigation / Action                                                                                                                                                         |
-| ---------- | ------------------------------------------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **HIGH**   | Audio Engine V2 (node-based API, legacy `Sound` deprecated since 8.0)     | Audio Manager (#22)         | ADR #20 resolves approach. Legacy `Sound` class still works but receives no updates. Audio Engine V2 covers all modern browsers — try/catch silences gracefully on failure. |
-| **HIGH**   | Vite build (webpack removed in 9.5)                                       | Project build system        | Use `vite.config.ts` template from engine-reference. Standard Vite config, no special migration needed.                                                                     |
-| **HIGH**   | TypeScript 6.0 (removed ts-patch, native `using` declarations)            | All systems                 | Project does not use ts-patch. Native `using` is additive, not breaking. No action.                                                                                         |
-| **HIGH**   | @babylonjs/havok 1.3.12 (ESM WASM, independent versioning)                | Physics/Handling, Collision | `optimizeDeps.exclude: ["@babylonjs/havok"]` in vite.config.ts. WASM loader verified in scaffolding doc.                                                                    |
-| **MEDIUM** | PhysicsBody API (disablePreStep, Aggregate options immutability in v9.12) | Physics/Handling            | Havok auto-step must be suppressed; `executeStep(dt, scene)` called manually in FixedUpdatePipeline slot #2. See Data Flow.                                                 |
-| **MEDIUM** | SceneLoader async APIs (LoadAsync, AppendAsync, ImportMeshAsync)          | Asset Manager               | Use `LoadAssetContainerAsync` exclusively. Verified pattern in engine-reference modules/rendering.md.                                                                       |
-| **MEDIUM** | GUI markAsDirty public API                                                | HUD                         | Existing API — verified functional in engine-reference modules/ui.md. No migration needed.                                                                                  |
-| **MEDIUM** | DSM gamepad detection (v9.11 Linux fix)                                   | Input                       | `DeviceSourceManager` API unchanged. Linux fix is automatic. Verified in engine-reference modules/input.md.                                                                 |
-| **LOW**    | Scene management, cameras, meshes, materials                              | All remaining systems       | Within training data coverage. Synchronous API surface confirms to known patterns.                                                                                          |
+| Risk       | Domains                                                                   | Systems Affected            | Mitigation / Action                                                                                                                                                |
+| ---------- | ------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **HIGH**   | Audio Engine V2 (node-based API, legacy `Sound` deprecated since 8.0)     | Audio Manager (#22)         | ADR-0020 (Accepted) — pure Audio Engine V2 via `CreateSoundAsync` + `AudioBus` + `CreateSoundSourceAsync`. No legacy `Sound` class. See ADR-0020 for complete API. |
+| **HIGH**   | Vite build (webpack removed in 9.5)                                       | Project build system        | Use `vite.config.ts` template from engine-reference. Standard Vite config, no special migration needed.                                                            |
+| **HIGH**   | TypeScript 6.0 (removed ts-patch, native `using` declarations)            | All systems                 | Project does not use ts-patch. Native `using` is additive, not breaking. No action.                                                                                |
+| **HIGH**   | @babylonjs/havok 1.3.12 (ESM WASM, independent versioning)                | Physics/Handling, Collision | `optimizeDeps.exclude: ["@babylonjs/havok"]` in vite.config.ts. WASM loader verified in scaffolding doc.                                                           |
+| **MEDIUM** | PhysicsBody API (disablePreStep, Aggregate options immutability in v9.12) | Physics/Handling            | Havok auto-step must be suppressed; `executeStep(dt, scene)` called manually in FixedUpdatePipeline slot #2. See Data Flow.                                        |
+| **MEDIUM** | SceneLoader async APIs (LoadAsync, AppendAsync, ImportMeshAsync)          | Asset Manager               | Use `LoadAssetContainerAsync` exclusively. Verified pattern in engine-reference modules/rendering.md.                                                              |
+| **MEDIUM** | GUI markAsDirty public API                                                | HUD                         | Existing API — verified functional in engine-reference modules/ui.md. No migration needed.                                                                         |
+| **MEDIUM** | DSM gamepad detection (v9.11 Linux fix)                                   | Input                       | `DeviceSourceManager` API unchanged. Linux fix is automatic. Verified in engine-reference modules/input.md.                                                        |
+| **LOW**    | Scene management, cameras, meshes, materials                              | All remaining systems       | Within training data coverage. Synchronous API surface confirms to known patterns.                                                                                 |
 
 **HIGH risk resolution status**:
 
-- Audio Engine V2 → deferred to ADR #20 (Audio Strategy). Spike task: verify `Sound` class + OscillatorNode hybrid works in Phase 1. Full V2 migration can happen anytime since both APIs coexist.
+- Audio Engine V2 → resolved via ADR-0020 (Accepted). Pure V2 path: `CreateSoundAsync` for engine WAV loops, `CreateSoundSourceAsync` for synth overlays, `AudioBus` for 4-channel mixing (music, sfx, ui, ambient). No legacy `Sound` class, no hybrid approach.
 - Vite 9.5 → resolved in scaffolding doc. No migration risk.
 - TypeScript 6.0 → no action. Project uses standard TS, no ts-patch.
 - @babylonjs/havok 1.3.12 → resolved in scaffolding doc (`optimizeDeps.exclude` pattern).
@@ -272,6 +272,10 @@ Decoupled systems (Presentation, condition-triggered reactions) communicate via 
 | `race.green.flag`            | Race Management            | Physics, HUD, Audio, AI Driver        | Countdown complete → race active                        |
 | `race.completed`             | Race Management            | Audio, Menu LITE                      | Player crosses finish line on final lap                 |
 | `race.abandoned`             | Race Management            | Audio, Menu LITE                      | Quit from Paused (no results recorded)                  |
+| `asset.load.start`           | Asset Manager              | Menu LITE, HUD                        | Batch loading started                                   |
+| `asset.load.progress`        | Asset Manager              | Menu LITE, HUD                        | Per-file load progress (loaded, total)                  |
+| `asset.load.complete`        | Asset Manager              | Menu LITE, HUD                        | Single asset finished loading                           |
+| `asset.load.allComplete`     | Asset Manager              | Menu LITE, HUD                        | Entire batch finished loading                           |
 | `asset.error`                | Asset Manager              | GSM, Dev Tools                        | Asset load failure                                      |
 
 **Event payload convention**: minimal identity only (e.g. `{ carId }`). Heavy per-frame data (speed, fuelLevel, tireCondition) is always direct getter call — never wrapped in events.
@@ -630,6 +634,10 @@ type EventMap = {
   "race.green.flag": {};
   "race.completed": { results: RaceResults };
   "race.abandoned": {};
+  "asset.load.start": { ids: string[] };
+  "asset.load.progress": { id: string; loaded: number; total: number };
+  "asset.load.complete": { id: string };
+  "asset.load.allComplete": { ids: string[] };
   "asset.error": { assetId: string; error: Error };
 };
 
