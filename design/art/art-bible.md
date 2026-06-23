@@ -377,6 +377,8 @@ Each driver has a unique on-track personality visible within 1–2 laps of follo
 
 Every helmet design must pass the **32×32 pixel test**: rendered as a coloured silhouette at 32×32 px, each must be distinguishable from the other 7. If two blur together, the design goes back for revision.
 
+> **Production gate**: This test must pass before the first helmet asset is committed to the game build. The test images are saved to `design/art/blur-test/` for review.
+
 ### 5.6 On-Screen Identification
 
 - **First encounter:** driver name appears on screen only on first overtake or at race end
@@ -609,6 +611,19 @@ No decorative or display fonts. No monospaced fonts (avoid the "90s terminal" lo
 | **Menu transition** | Instant — no fade, no slide. Content changes on same frame        | 0s            |
 
 The rule: **mechanical, not organic**. Flips, ticks, cuts. No smooth fades, no easing curves, no organic transitions. The HUD behaves like a physical stopwatch, not a mobile app.
+
+### 7.7 Track Silhouette (Race Setup Screen)
+
+The track selection cards in the Race Setup screen show a top-down layout of each circuit. The silhouette follows these rules:
+
+- **Style**: clean vector lines, white (`#FFFFFF`) on dark background (`#0d0d0f`), no fill, no gradients
+- **Fidelity**: faithful to the real circuit layout — corner sequence and overall shape must be recognisable to anyone who knows the track
+- **Line**: continuous 3–4px stroke with crisp corners, no bezier smoothing that distorts the original radius
+- **Start/Finish**: thin accent-colour hash mark at the correct position on the layout (follows the team colour when a team is selected on the previous screen)
+- **Labels**: none — no corner numbers, no elevation markers, no compass. Only the track + start/finish marker + scaling to fit the card (maintains aspect ratio)
+- **Intent**: the player should recognise the circuit from its outline alone; the silhouette is a minimal map, not a decoration
+
+These silhouettes are hand-drawn vector exports per track, not rendered from the 3D scene. Each Phase 1 track gets its own silhouette file in `design/art/silhouettes/`.
 
 ## Section 8 — Asset Standards
 

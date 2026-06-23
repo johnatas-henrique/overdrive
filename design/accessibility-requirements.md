@@ -84,7 +84,7 @@
 
 - **All accessibility settings persist** via `ConfigManager` → `IPersistence` (localStorage, ADR-0016). Survives session restarts.
 - **No accessibility setting affects gameplay simulation** — Physics, Fuel, Tire, AI are deterministic regardless of accessibility choices. Only input processing and rendering are affected.
-- **Settings screen** is part of Menu LITE (ADR-0019). Accessibility section added after Car Select, before Race Settings. MVP shows: colorblind mode, volume sliders, simplified HUD toggle, invert look. 1.0 adds: remapping, dead zone, font scale, per-axis difficulty.
+- **Settings screen** is part of Menu LITE (ADR-0019). Accessibility section accessible from menu (separate screen or in Race Setup flow). MVP shows: colorblind mode, volume sliders, simplified HUD toggle, invert look. 1.0 adds: remapping, dead zone, font scale, per-axis difficulty.
 
 ## Verification
 
