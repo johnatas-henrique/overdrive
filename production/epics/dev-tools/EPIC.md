@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/dev-tools.md
 > **Architecture Module**: Dev Infra — Tooling
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories dev-tools`
+> **Stories**: 8 stories (Ready)
 
 ## Overview
 
@@ -27,6 +27,7 @@ HTML overlay for debug (positioned over canvas container, `pointer-events: none`
 | TR-DVT-005 | GSM state visualiser — current state, history timeline, manual transitions      | ADR-0009 ✅  |
 | TR-DVT-006 | Tree-shaken in production via **DEV** guard                                     | ADR-0009 ✅  |
 | TR-DVT-007 | F1 toggle overlay, F2 toggle full event display, F3 toggle minimised            | ADR-0009 ✅  |
+| TR-DVT-008 | AI Telemetry tab in Dev Tools overlay — per-car speed, position, behavior node  | ADR-0009 ✅  |
 
 ## Definition of Done
 
@@ -37,6 +38,19 @@ This epic is complete when:
 - All Logic and Integration stories have passing test files in `tests/`
 - All Visual/Feel and UI stories have evidence docs with sign-off in `production/qa/evidence/`
 
+## Stories
+
+| #   | Story               | Type        | Status | ADR      |
+| --- | ------------------- | ----------- | ------ | -------- |
+| 001 | dev-compile-guard   | Logic       | Ready  | ADR-0009 |
+| 002 | input-keybinds      | Logic       | Ready  | ADR-0009 |
+| 003 | html-overlay        | UI          | Ready  | ADR-0009 |
+| 004 | config-tree         | Integration | Ready  | ADR-0009 |
+| 005 | event-bus-inspector | Integration | Ready  | ADR-0009 |
+| 006 | gsm-visualizer      | Integration | Ready  | ADR-0009 |
+| 007 | sim-snapshot-panel  | Integration | Ready  | ADR-0009 |
+| 008 | ai-telemetry-tab    | Integration | Ready  | ADR-0009 |
+
 ## Next Step
 
-Run `/create-stories dev-tools` to break this epic into implementable stories.
+Run `/story-readiness production/epics/dev-tools/story-001-dev-compile-guard.md` to begin implementation.

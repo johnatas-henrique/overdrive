@@ -3,8 +3,8 @@
 > **Layer**: Core (slot #1 — Input must be ready before Physics)
 > **GDD**: design/gdd/input.md
 > **Architecture Module**: Core — Input
-> **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories input`
+> **Status**: Stories Ready
+> **Stories**: 7 stories — run `/story-readiness production/epics/input/story-001-input-interface-types.md` to begin
 
 ## Overview
 
@@ -40,6 +40,20 @@ This epic is complete when:
 - All Logic and Integration stories have passing test files in `tests/`
 - All Visual/Feel and UI stories have evidence docs with sign-off in `production/qa/evidence/`
 
+## Stories
+
+| #   | Story                               | Type        | Status | ADR      |
+| --- | ----------------------------------- | ----------- | ------ | -------- |
+| 001 | IInput Interface + InputState Types | Logic       | Ready  | ADR-0006 |
+| 002 | Dead Zone Formula                   | Logic       | Ready  | ADR-0006 |
+| 003 | PlayerInput Polling Loop            | Integration | Ready  | ADR-0006 |
+| 004 | Tab Blur + Disconnect Safety        | Integration | Ready  | ADR-0006 |
+| 005 | GSM State Integration               | Integration | Ready  | ADR-0006 |
+| 006 | Debounce + Digital Edge Cases       | Logic       | Ready  | ADR-0006 |
+| 007 | Device Detection + Observable       | Integration | Ready  | ADR-0006 |
+
+Work through stories in order — each story's `Depends on:` field tells you what must be DONE before you can start it.
+
 ## Next Step
 
-Run `/create-stories input` to break this epic into implementable stories.
+Run `story-readiness production/epics/input/story-001-input-interface-types.md` to begin implementing the first Input story.

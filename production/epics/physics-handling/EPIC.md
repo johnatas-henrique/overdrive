@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/physics-handling.md
 > **Architecture Module**: Core — Physics
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories physics-handling`
+> **Stories**: 5 stories (Ready) — run `/story-readiness production/epics/physics-handling/story-001-physics-core-skeleton.md`
 
 ## Overview
 
@@ -31,6 +31,16 @@ Arcade Dynamic physics: 1 DYNAMIC PhysicsBody per car (convex hull, 800kg). No w
 | TR-PHYSICS-009 | Edge-triggered events: car.tire_blown, car.fuel_empty, car.stopped                 | ADR-0008 ✅  |
 | TR-PHYSICS-010 | Auto-shift + manual gearDelta override; configurable ratios                        | ADR-0008 ✅  |
 
+## Stories
+
+| #   | Story                                                                                         | Type        | Status | ADR      |
+| --- | --------------------------------------------------------------------------------------------- | ----------- | ------ | -------- |
+| 001 | Physics Core Skeleton — Havok init, pipeline slot, 3-phase skeleton, ground tracking          | Integration | Ready  | ADR-0008 |
+| 002 | Arcade Grip Model — gripMax, steering clamp, lift-off oversteer, understeer, telemetry        | Logic       | Ready  | ADR-0008 |
+| 003 | Engine, Gears, Drag, Braking — auto-shift, manual override, RPM, power, elevation, coast      | Logic       | Ready  | ADR-0008 |
+| 004 | Surface Handling — off-track grip/friction/min-speed, kerb 2-tick timer, telemetry flags      | Logic       | Ready  | ADR-0008 |
+| 005 | Lock, Pit, External Inputs & Edge Events — setLocked, setPit, fuelMult, tireCondition, events | Integration | Ready  | ADR-0008 |
+
 ## Definition of Done
 
 This epic is complete when:
@@ -42,4 +52,4 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories physics-handling` to break this epic into implementable stories.
+Run `/story-readiness production/epics/physics-handling/story-001-physics-core-skeleton.md` to begin implementation.

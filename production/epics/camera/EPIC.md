@@ -3,8 +3,8 @@
 > **Layer**: Core (slot #2 — depends on Physics for telemetry, renders what player sees)
 > **GDD**: design/gdd/camera.md
 > **Architecture Module**: Core — Camera
-> **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories camera`
+> **Status**: Stories Ready
+> **Stories**: 10 stories — run `/story-readiness production/epics/camera/story-001-camera-foundation.md` to begin implementation
 
 ## Overview
 
@@ -15,6 +15,21 @@ Three camera types: FreeCamera (cockpit/grid), FollowCamera (chase), ArcRotateCa
 | ADR                           | Decision Summary                                            | Engine Risk |
 | ----------------------------- | ----------------------------------------------------------- | ----------- |
 | ADR-0007: Camera Architecture | 3 camera types, camera.inputs.clear(), reactive to GSM only | LOW         |
+
+## Stories
+
+| #   | Story                | Type        | Status | ADR      |
+| --- | -------------------- | ----------- | ------ | -------- |
+| 001 | Camera Foundation    | Integration | Ready  | ADR-0007 |
+| 002 | GSM Camera Lifecycle | Integration | Ready  | ADR-0007 |
+| 003 | Cockpit Camera       | Integration | Ready  | ADR-0007 |
+| 004 | Chase + Occlusion    | Integration | Ready  | ADR-0007 |
+| 005 | Instant Toggle       | Logic       | Ready  | ADR-0007 |
+| 006 | Speed-Dependent FOV  | Logic       | Ready  | ADR-0007 |
+| 007 | Camera Shake System  | Logic       | Ready  | ADR-0007 |
+| 008 | Drone Auto-Orbit     | Integration | Ready  | ADR-0007 |
+| 009 | Head Bob + Lean      | Visual/Feel | Ready  | ADR-0007 |
+| 010 | Camera Config HMR    | Config/Data | Ready  | ADR-0007 |
 
 ## GDD Requirements
 
@@ -42,4 +57,4 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories camera` to break this epic into implementable stories.
+Run `/story-readiness production/epics/camera/story-001-camera-foundation.md` to begin implementation. Stories should be worked in dependency order (001 → 002-010 as per their `Depends on` fields).

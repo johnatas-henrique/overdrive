@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/asset-manager.md
 > **Architecture Module**: Core — Asset Management
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories asset-manager`
+> **Stories**: 6 stories (Ready) — run `/story-readiness production/epics/asset-manager/story-001-init-two-scene.md`
 
 ## Overview
 
@@ -40,6 +40,17 @@ This epic is complete when:
 - All Logic and Integration stories have passing test files in `tests/`
 - All Visual/Feel and UI stories have evidence docs with sign-off in `production/qa/evidence/`
 
+## Stories
+
+| #    | Story                           | Type        | Status | ADR      |
+| ---- | ------------------------------- | ----------- | ------ | -------- |
+| 001  | Init & Two-Scene Setup          | Integration | Ready  | ADR-0003 |
+| 002  | Asset Load & Cache              | Integration | Ready  | ADR-0003 |
+| 003  | Loading Progress & Error Events | Integration | Ready  | ADR-0003 |
+| 004  | Unload, Dispose & Edge Cases    | Logic       | Ready  | ADR-0003 |
+| 005a | Preload Concurrency             | Integration | Ready  | ADR-0003 |
+| 005b | GSM Orchestration               | Integration | Ready  | ADR-0003 |
+
 ## Next Step
 
-Run `/create-stories asset-manager` to break this epic into implementable stories.
+Run `/story-readiness production/epics/asset-manager/story-001-init-two-scene.md` to begin implementing these stories.
