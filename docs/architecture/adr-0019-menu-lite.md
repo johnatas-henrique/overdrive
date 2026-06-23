@@ -40,7 +40,7 @@ The player needs pre-race and post-race screens to navigate from game launch to 
 - GSM integration via Event Bus subscription (local copy of GSM state)
 - Input via `IInput` pipeline (ADR-0006) — not raw keyboard/gamepad events
 - Car thumbnails captured once at init, never re-rendered at runtime
-- Load screen waits minimum 2s or until assets ready, whichever is longer
+- Load screen waits minimum 0.5s or until assets ready, whichever is longer (skip entirely if loading < 0.5s)
 
 ## Decision
 
@@ -311,7 +311,7 @@ This is passed to Single Race, which forwards to Race Management.
 
 - 300 GUI controls pre-created at init (~600KB) — negligible but slightly more memory than lazy creation
 - Car thumbnail RTT adds 8-16ms to init time — acceptable one-time cost
-- No progress bar on loading screen (Phase 1) — player sees a static screen for minimum 2s
+- No progress bar on loading screen (Phase 1) — player sees a static screen for minimum 0.5s
 
 ### Risks
 
@@ -324,16 +324,16 @@ This is passed to Single Race, which forwards to Race Management.
 
 ## GDD Requirements Addressed
 
-| GDD Requirement                   | How This ADR Addresses It                                           |
-| --------------------------------- | ------------------------------------------------------------------- |
-| Screen stack (push/pop)           | `MenuLite.push()` / `pop()`. Pre-created controls toggle visibility |
-| Instant transitions               | `isVisible` swap in same JS frame — truly zero-frame                |
-| GSM integration                   | Event Bus subscription, local state copy                            |
-| Input via `IInput`                | `confirm`, `cancel`, `navUp`/`navDown` from ADR-0006 pipeline       |
-| Car thumbnail (BeautyContour)     | RTT with `clearColor = Color4(0,0,0,0)` + dedicated camera          |
-| Asset loading (min 2s)            | `performance.now()` delta + `Promise.all(containers)`               |
-| Count-up animation                | Inline async/await, 10-15 `textBlock.text` updates                  |
-| "Race Again" preserves selections | `RaceConfiguration` held in memory                                  |
+| GDD Requirement                          | How This ADR Addresses It                                           |
+| ---------------------------------------- | ------------------------------------------------------------------- |
+| Screen stack (push/pop)                  | `MenuLite.push()` / `pop()`. Pre-created controls toggle visibility |
+| Instant transitions                      | `isVisible` swap in same JS frame — truly zero-frame                |
+| GSM integration                          | Event Bus subscription, local state copy                            |
+| Input via `IInput`                       | `confirm`, `cancel`, `navUp`/`navDown` from ADR-0006 pipeline       |
+| Car thumbnail (BeautyContour)            | RTT with `clearColor = Color4(0,0,0,0)` + dedicated camera          |
+| Asset loading (min 0.5s, skip if faster) | `performance.now()` delta + `Promise.all(containers)`               |
+| Count-up animation                       | Inline async/await, 10-15 `textBlock.text` updates                  |
+| "Race Again" preserves selections        | `RaceConfiguration` held in memory                                  |
 
 ## Performance Implications
 

@@ -36,7 +36,7 @@ AI and player cars must enter the pit lane, stop at their assigned garage, recei
 
 - Pit Stop does NOT import Babylon APIs — it's a pure state machine over spline data
 - Pit Stop does NOT own a pipeline slot for physics operations — it operates at slot #8 (after all simulation systems)
-- During pit entry/depart, Pit Stop writes position and heading directly — Physics is still ticking but its input is suppressed
+- During pit entry/depart, Pit Stop drives the car via velocity targets (`IPhysics.setPitVelocity`) — Physics integrates these normally via Havok's `setLinearVelocity`. No direct position override.
 - Pit Stop reads confirm from Input system, gatekeeping it to `pitState === 'pitStopped'`
 - No crew animation, no tire compound selection in Phase 1
 - AI pit timing is delegated to Pit Stop (AI Driver does not decide when to pit — Pit Stop owns the trigger)

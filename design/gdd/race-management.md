@@ -92,21 +92,69 @@ function updatePositions(): void {
     })
     .sort((a, b) => b.totalDist - a.totalDist); // descending = most distance first
 
-  // Hysteresis: compare against previous position. Only swap if
-  // |delta| > hysteresisThreshold — prevents flicker when cars are side-by-side.
+  // Hysteresis (3-tick sustain): Only swap adjacent cars if the distance delta
+  // remains below the threshold for 3 consecutive ticks. Prevents position
+  // flicker during sustained side-by-side racing while still resolving close
+  // battles that don't settle within a few frames.
+  //
+  //   Tick 1: delta < 0.5m → hystTick = 1, position held
+  //   Tick 2: delta < 0.5m → hystTick = 2, position held
+  //   Tick 3: delta < 0.5m → hystTick = 3, swap fires
+  //   Any tick: delta >= 0.5m → hystTick reset to 0
+  //
+  const SUSTAIN_TICKS = 3;
   for (const entry of sorted) {
     const prevPos = positionGrid.get(entry.carId) ?? sorted.length;
     const newPos = sorted.indexOf(entry) + 1; // 1-based
-    if (newPos === prevPos) continue;
-
-    // For adjacent swaps, check distance delta against threshold
-    if (Math.abs(newPos - prevPos) === 1) {
-      const neighbor = sorted[newPos - 1]; // the car at the new position
-      const distanceDelta = Math.abs(entry.totalDist - neighbor.totalDist);
-      if (distanceDelta < hysteresis) continue; // too close — hold position
+    if (newPos === prevPos) {
+      // Position stable — reset hysteresis counter
+      hysteresisTicks.set(entry.carId, 0);
+      continue;
     }
 
-    positionGrid.set(entry.carId, newPos);
+    // For non-adjacent swaps, emit immediately (no hysteresis needed)
+    if (Math.abs(newPos - prevPos) > 1) {
+      hysteresisTicks.set(entry.carId, 0);
+      positionGrid.set(entry.carId, newPos);
+      emit("position.changed", {
+        carId: entry.carId,
+        old: prevPos,
+        new: newPos,
+      });
+      continue;
+    }
+
+    // Adjacent swap — apply 3-tick hysteresis
+    const neighbor = sorted[newPos - 1];
+    const distanceDelta = Math.abs(entry.totalDist - neighbor.totalDist);
+    if (distanceDelta >= hysteresis) {
+      // Delta exceeds threshold — safe to swap immediately
+      hysteresisTicks.set(entry.carId, 0);
+      positionGrid.set(entry.carId, newPos);
+      emit("position.changed", {
+        carId: entry.carId,
+        old: prevPos,
+        new: newPos,
+      });
+      continue;
+    }
+
+    // Delta below threshold — increment sustain counter
+    const currentTicks = hysteresisTicks.get(entry.carId) ?? 0;
+    const newTicks = currentTicks + 1;
+    if (newTicks >= SUSTAIN_TICKS) {
+      // Sustained for 3 ticks — allow the swap
+      hysteresisTicks.set(entry.carId, 0);
+      positionGrid.set(entry.carId, newPos);
+      emit("position.changed", {
+        carId: entry.carId,
+        old: prevPos,
+        new: newPos,
+      });
+    } else {
+      // Not yet sustained — hold position, increment counter
+      hysteresisTicks.set(entry.carId, newTicks);
+    }
   }
 }
 ```
@@ -128,10 +176,29 @@ function updateLaps(carId: string): void {
       // Record lap time
       recordLapTime(carId, newLap);
 
-      // Check if race should end
+      // Condition 1: Player completed all laps
       if (newLap >= raceConfig.lapCount) {
         emit("race.checkered", { carId, lap: newLap, results: buildResults() });
         setSubState("Checkered");
+        prevSplinePos.set(carId, current);
+        return;
+      }
+
+      // Condition 3: Leader finished, player is >=1 lap behind
+      // Player finishes current lap, then race ends — no new lap starts
+      const leaderId = findRaceLeader();
+      if (leaderId) {
+        const leaderLap = lapCount.get(leaderId) ?? 0;
+        if (leaderLap >= raceConfig.lapCount && leaderLap - newLap >= 1) {
+          emit("race.checkered", {
+            carId,
+            lap: newLap,
+            results: buildResults(),
+          });
+          setSubState("Checkered");
+          prevSplinePos.set(carId, current);
+          return;
+        }
       }
     }
 
@@ -159,7 +226,8 @@ function updateLaps(carId: string): void {
 ```typescript
 // Runtime state (module-level Maps and Sets):
 //   lapCount, positionGrid, dnfRegistry, pendingDNF, prevSplinePos, splinePositions,
-//   bestLaps, pitStopCount (Map<string, number>), pitTotalTime (Map<string, number>)
+//   bestLaps, pitStopCount (Map<string, number>), pitTotalTime (Map<string, number>),
+//   hysteresisTicks (Map<string, number>) — per-car tick counter for 3-tick sustain
 // All initialized in init().
 
 // Reentrancy: init() may be called multiple times (Race Again).
@@ -235,10 +303,33 @@ function registerDNF(carId: string, reason: DNFReason): void {
 
 ### Race End & Results
 
-The race ends when **either** condition is met:
+The race ends when **one of three conditions** is met, checked in priority order every tick during `Racing` sub-state:
 
-1. **Player crosses finish line on lap N** where `N = raceConfig.lapCount` — race ends, results computed for all 8 cars
-2. **Player DNF** — fuel empty + coast to stop (or stalled in pit)
+| #   | Condition            | Trigger                                                                                       | Action                                                                                                                                                    |
+| --- | -------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Voltas completas** | Player crosses finish line on lap N (where N = RaceConfiguration.lapCount)                    | `setSubState('Checkered')` immediately. Results computed from all cars' totalDistance at this moment.                                                     |
+| 2   | **Último colocado**  | The car immediately ahead of the player (P[N-1]) crosses finish line on its final lap         | `setSubState('Checkered')` immediately — no need for player to finish current lap. Player position is frozen at current distance — impossible to improve. |
+| 3   | **Uma volta atrás**  | Leader crosses finish line on lap N AND player is ≥1 lap behind (leader.lap - player.lap ≥ 1) | Race continues until player crosses finish line on current lap. When player crosses → `setSubState('Checkered')`. No new lap starts.                      |
+
+Conditions 1 and 3 are checked inside `updateLaps()` (on each player finish line crossing). Condition 2 is checked every tick via `checkRaceEnd()`:
+
+```typescript
+function checkRaceEnd(): void {
+  if (subState !== "Racing") return;
+
+  const playerPosition = positionGrid.get(playerCarId);
+  if (!playerPosition || playerPosition <= 1) return; // player is leading — no condition 2
+
+  // Condition 2: Car immediately ahead of player just finished all laps
+  const aheadCarId = findCarAtPosition(playerPosition - 1);
+  if (aheadCarId) {
+    const aheadLap = lapCount.get(aheadCarId) ?? 0;
+    if (aheadLap >= raceConfig.lapCount) {
+      setSubState("Checkered");
+    }
+  }
+}
+```
 
 When the race ends (Checkered sub-state):
 
@@ -251,7 +342,9 @@ function endRace(): void {
 }
 ```
 
-On player DNF (condition 2): positions for ALL 8 cars are computed from total distance. DNF cars are placed after all finishers, sorted by distance achieved before retirement. The player's car is placed last among non-DNF cars, or if all cars have more distance, the player is P8.
+> **Note**: `gsm.transition("PostRace")` from `endRace()` is deferred to end-of-tick (not executed synchronously from pipeline slot #7). This ensures all pipeline slots (including Pit Stop slot #8) complete in the `Racing` state before the GSM transitions to `PostRace`.
+
+On player DNF: positions for ALL 8 cars are computed from total distance at the checkered moment. DNF cars are placed after all finishers, sorted by distance achieved before retirement. The player's car is placed last among non-DNF cars, or if all cars have more distance, the player is P8.
 
 ```typescript
 function buildResults(): RaceResult[] {
@@ -476,3 +569,5 @@ If future playtesting reveals a need for global race parameters (e.g., minimum l
 17. Race can run to completion with 7 AI cars + player with no errors
 18. Race can run to completion with all 8 cars DNFing (player last) without hanging
 19. `endRace()` can only be called once — subsequent calls return cached results
+20. Car ahead of player finishing all laps (condition 2) triggers immediate Checkered — player races over
+21. Leader finishing with player ≥1 lap behind (condition 3) triggers Checkered after player finishes current lap — no new lap started

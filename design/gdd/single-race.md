@@ -44,19 +44,17 @@ interface RaceConfiguration {
   lapCount: number; // Player-selectable, default: 3 (from ConfigManager: singleRace.defaultLaps)
   gridSize: number; // Default: 8 (player + 7 AI)
   playerCarId: string; // Selected team (from Menu LITE)
-  difficulty: Difficulty; // 'easy' | 'medium' | 'hard', default: 'medium'
+  difficulty: number; // 0.75 / 0.875 / 1.0 / 1.125 / 1.25 (see multiplier table below), default: 1.0
   seed: number; // PRNG seed. Date.now() at race start by default. Override for replay/debug determinism.
   aiDrivers: AIDriverConfig[]; // 7 AI drivers with team assignments
 }
-
-type Difficulty = "easy" | "medium" | "hard";
 ```
 
 **Seed**: By default, `Date.now()` (unique per race, good for variety). For testing or debugging, provide a fixed seed — same seed + same inputs + same configuration → same race outcome (Determinism Contract AC #5). Replay (future): seed is read from the replay file.
 
 **Lap count**: Player selects from a predefined list in Menu LITE (3, 5, 10, 20). Default is 5.
 
-**Difficulty multiplier**: Scales all AI `teamPerformance` values. Medium (1.0×) is the baseline (1991 F1 hierarchy as designed). 5 levels provide granular tuning between arcade-easy and punishing-hard.
+**Difficulty multiplier**: Scales all AI `teamPerformance` values. Medium (1.0×) is the baseline (1991 F1 hierarchy as designed). 5 levels provide granular tuning between arcade-easy and punishing-hard. Difficulty is a `number` (not a string enum), matching ADR-0021.
 
 | Difficulty | AI multiplier           | Effect                                                      |
 | ---------- | ----------------------- | ----------------------------------------------------------- |
@@ -71,7 +69,7 @@ type Difficulty = "easy" | "medium" | "hard";
 ### Flow
 
 ```
-Menu LITE (Track Select confirm)
+Menu LITE (Race Setup confirm)
   │
   ▼
 Single Race.buildConfig(selectedTeam, selectedTrack)

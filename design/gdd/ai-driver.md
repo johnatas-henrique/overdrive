@@ -177,6 +177,24 @@ AI performance is rooted in the **1991 F1 Constructors Championship** — the re
 
 `teamPerformance` uses sqrt compression (`√(pts / 139)`) rather than linear — this preserves the real hierarchy without making the backmarkers unplayably slow.
 
+#### Personality→Parameter Mapping
+
+Each team's `teamPerformance` and `offsetPreference` produce a distinct on-track personality, defined in the art bible (Section 5.4). This table maps parameters to behaviour so a programmer can see the design intent behind each value:
+
+| Team (Parody)   | teamPerformance | offsetPreference | Personality    | What Drives The Behaviour                                                                  |
+| --------------- | --------------: | ---------------: | -------------- | ------------------------------------------------------------------------------------------ |
+| **Macklen**     |            1.00 |              0.3 | Dominant       | Max performance + positive offset = perfect but predictable reference. No unforced errors. |
+| **Willard**     |            0.95 |             -0.2 | Lightning Bolt | Near-max perf + negative offset = raw speed but inconsistent decisions.                    |
+| **Ferrell**     |            0.63 |              0.1 | Technical      | Mid-high perf + neutral offset = smooth, clean, rarely dominant.                           |
+| **Bennett**     |            0.53 |              0.0 | Consistent     | Mid perf + zero offset = dependable, maximum grip, no surprises.                           |
+| **Jordash**     |            0.31 |              0.5 | Impulsive      | Low perf + high offset = reckless bravery. Best corner speed, worst decision-making.       |
+| **Tyrant**      |            0.29 |             -0.6 | Defensive      | Low perf + very negative offset = blocks and brake-tests. Not fast, but hard to pass.      |
+| **Lorris**      |            0.15 |             -0.1 | Rookie         | Low perf + near-zero offset = raw talent, erratic execution. Grows stronger mid-race.      |
+| **Layton Hall** |            0.08 |              0.2 | Aggressive     | Minimum perf + slight positive offset = drives over the limit. 50% brilliance, 50% crash.  |
+
+> `offsetPreference`: −1.0 = favours defence/conservatism; +1.0 = favours attack/risk.
+> `teamPerformance` determines maximum possible pace; `offsetPreference` determines how often the driver reaches it.
+
 > 🎮 = Player team in Phase 1. The #11 Lorris AI driver does not exist — the player occupies that seat.
 
 #### Variance by Tier

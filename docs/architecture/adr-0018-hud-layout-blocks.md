@@ -316,7 +316,7 @@ Rationale for a single ADT:
 The minimap uses standard Babylon.js GUI controls:
 
 - Dark background: `Rectangle` with `rgba(0,0,0,0.5)`
-- Track outline: `Line` controls (thin white strokes, static after creation)
+- Track outline: `MultiLine` controls (thin white strokes, static after creation — Babylon.js `Line` is single-segment only)
 - Car dots: `Ellipse` controls with team colors, positioned via `left`/`top`
 
 Position dot updates on `position.changed` (not every frame). Setting `left`/`top` on ~8 controls is cheap — only dirty rects are re-rendered.
@@ -449,7 +449,7 @@ Config-driven via Data & Config Manager under `hud.*` namespace. HMR applies zon
 - **Risk**: SpeedBlock at 20hz appears jittery during rapid acceleration/deceleration
   **Mitigation**: Increase throttle to every tick (60hz) → if still unsatisfactory, switch to direct read via HudContext.playerCar (Option A fallback)
 - **Risk**: Minimap with complex track polyline (100+ segments) impacts frame rate
-  **Mitigation**: Profile Phase 1. If >1ms, minimize Line control count or migrate to DynamicTexture
+  **Mitigation**: Profile Phase 1. If >1ms, minimize MultiLine segment count or migrate to DynamicTexture
 - **Risk**: Pit overlay toggle causes visible flash
   **Mitigation**: Pre-set all controls to correct state before making any visible — no frame between "hide A" and "show B"
 
