@@ -1,0 +1,2039 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Overdrive — Workflow Guide</title>
+    <style>
+      :root {
+        --bg: #0d0d0f;
+        --surface: #161618;
+        --surface2: #1e1e20;
+        --border: #2a2a2e;
+        --text: #e4e4e7;
+        --text2: #a1a1aa;
+        --accent: #22d3ee;
+        --green: #4ade80;
+        --yellow: #facc15;
+        --red: #f87171;
+        --blue: #60a5fa;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        padding: 2rem 1rem;
+      }
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+      }
+
+      /* Header */
+      header {
+        text-align: center;
+        padding: 3rem 0 2rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 2rem;
+      }
+      header h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        letter-spacing: -0.05em;
+        background: linear-gradient(135deg, var(--accent), var(--blue));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      header p {
+        color: var(--text2);
+        margin-top: 0.5rem;
+        font-size: 1.1rem;
+      }
+      .subtitle {
+        font-size: 0.9rem;
+        color: var(--text2);
+        margin-top: 0.25rem;
+      }
+
+      /* Stats bar */
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1rem;
+        margin: 2rem 0;
+      }
+      .stat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+      }
+      .stat .num {
+        font-size: 2rem;
+        font-weight: 700;
+      }
+      .stat .label {
+        font-size: 0.8rem;
+        color: var(--text2);
+        margin-top: 0.25rem;
+      }
+      .stat.done .num {
+        color: var(--green);
+      }
+      .stat.pending .num {
+        color: var(--yellow);
+      }
+      .stat.total .num {
+        color: var(--accent);
+      }
+
+      /* Phase cards */
+      .phase {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+      }
+      .phase-header {
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        cursor: pointer;
+        user-select: none;
+      }
+      .phase-header:hover {
+        background: var(--surface2);
+      }
+      .phase-badge {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+      }
+      .phase-badge.done {
+        background: var(--green);
+        color: #000;
+      }
+      .phase-badge.active {
+        background: var(--yellow);
+        color: #000;
+      }
+      .phase-badge.pending {
+        background: var(--border);
+        color: var(--text2);
+      }
+      .phase-title {
+        font-weight: 600;
+        flex: 1;
+      }
+      .phase-status {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 99px;
+      }
+      .phase-status.done {
+        background: rgba(74, 222, 128, 0.15);
+        color: var(--green);
+      }
+      .phase-status.active {
+        background: rgba(250, 204, 21, 0.15);
+        color: var(--yellow);
+      }
+      .phase-status.pending {
+        background: rgba(161, 161, 170, 0.15);
+        color: var(--text2);
+      }
+      .phase-toggle {
+        color: var(--text2);
+        font-size: 1.2rem;
+      }
+
+      .phase-body {
+        padding: 0 1.5rem 1.5rem;
+      }
+
+      /* Step rows */
+      .step {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .step:last-child {
+        border-bottom: none;
+      }
+      .step-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+      .step-icon.done {
+        background: var(--green);
+        color: #000;
+      }
+      .step-icon.skipped {
+        background: var(--border);
+        color: var(--text2);
+      }
+      .step-icon.pending {
+        background: transparent;
+        border: 2px solid var(--border);
+        color: var(--text2);
+      }
+      .step-icon.warning {
+        background: var(--yellow);
+        color: #000;
+      }
+      .step-content {
+        flex: 1;
+      }
+      .step-title {
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .step-title code {
+        font-size: 0.8rem;
+        background: var(--surface2);
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+        color: var(--accent);
+      }
+      .step-desc {
+        font-size: 0.85rem;
+        color: var(--text2);
+        margin-top: 0.2rem;
+      }
+      .step-note {
+        font-size: 0.8rem;
+        background: var(--surface2);
+        border-left: 3px solid var(--yellow);
+        padding: 0.5rem 0.75rem;
+        border-radius: 0 6px 6px 0;
+        margin-top: 0.4rem;
+      }
+
+      /* Flow diagram */
+      .flow {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 2rem;
+        margin: 2rem 0;
+        overflow-x: auto;
+      }
+      .flow pre {
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        color: var(--text2);
+      }
+      .flow .highlight {
+        color: var(--accent);
+      }
+      .flow .check {
+        color: var(--green);
+      }
+      .flow .warn {
+        color: var(--yellow);
+      }
+      .flow .arrow {
+        color: var(--border);
+      }
+
+      .story-lifecycle {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 0.75rem;
+        margin: 1.5rem 0;
+      }
+      .stage {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+      }
+      .stage .emoji {
+        font-size: 1.5rem;
+        margin-bottom: 0.25rem;
+      }
+      .stage .name {
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+      .stage .detail {
+        font-size: 0.75rem;
+        color: var(--text2);
+        margin-top: 0.25rem;
+      }
+
+      h2 {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin: 2rem 0 1rem;
+        color: var(--text);
+      }
+      h3 {
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin: 1.5rem 0 0.5rem;
+      }
+      p {
+        margin-bottom: 0.75rem;
+        color: var(--text2);
+      }
+      .tag {
+        display: inline-block;
+        font-size: 0.7rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+      }
+      .tag.green {
+        background: rgba(74, 222, 128, 0.15);
+        color: var(--green);
+      }
+      .tag.yellow {
+        background: rgba(250, 204, 21, 0.15);
+        color: var(--yellow);
+      }
+      .tag.red {
+        background: rgba(248, 113, 113, 0.15);
+        color: var(--red);
+      }
+      .tag.blue {
+        background: rgba(96, 165, 250, 0.15);
+        color: var(--blue);
+      }
+
+      .toc {
+        list-style: none;
+      }
+      .toc li {
+        padding: 0.4rem 0;
+      }
+      .toc a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .toc a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 600px) {
+        header h1 {
+          font-size: 1.8rem;
+        }
+        .stats {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .phase-header {
+          padding: 1rem;
+        }
+        .phase-body {
+          padding: 0 1rem 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Overdrive · Workflow Guide</h1>
+        <p>Do conceito ao código — o pipeline completo do OCGS</p>
+        <div class="subtitle">Gerado em 2026-06-24 · Pre-Production phase</div>
+      </header>
+
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat done">
+          <div class="num">7</div>
+          <div class="label">Phases iniciadas</div>
+        </div>
+        <div class="stat total">
+          <div class="num">149</div>
+          <div class="label">Stories criadas</div>
+        </div>
+        <div class="stat total">
+          <div class="num">25</div>
+          <div class="label">ADRs escritos</div>
+        </div>
+        <div class="stat pending">
+          <div class="num">0</div>
+          <div class="label">Stories implementadas</div>
+        </div>
+      </div>
+
+      <!-- TOC -->
+      <h2>Índice</h2>
+      <ol class="toc">
+        <li><a href="#overview">Visão Geral do Pipeline</a></li>
+        <li><a href="#phase1">Phase 1: Concept</a></li>
+        <li><a href="#phase2">Phase 2: Systems Design</a></li>
+        <li><a href="#phase3">Phase 3: Technical Setup</a></li>
+        <li><a href="#phase4">Phase 4: Pre-Production</a></li>
+        <li><a href="#phase5">Phase 5: Production (Sprint Loop)</a></li>
+        <li><a href="#story-flow">O Ciclo de Vida de uma Story</a></li>
+        <li><a href="#gates">Gates entre Fases</a></li>
+        <li><a href="#quickref">Quick Reference</a></li>
+      </ol>
+
+      <!-- Overview -->
+      <h2 id="overview">Visão Geral do Pipeline</h2>
+      <div class="flow">
+        <pre>
+<span class="check">✅</span> <span class="highlight">Phase 1: Concept</span>          →  Game Concept, Pillars, Player Journey
+    │
+    ▼
+<span class="check">✅</span> <span class="highlight">Phase 2: Systems Design</span>     →  24 GDDs, Art Bible, Design Review
+    │
+    ▼
+<span class="check">✅</span> <span class="highlight">Phase 3: Technical Setup</span>     →  Engine, 25 ADRs, Architecture, Control Manifest
+    │
+    ▼
+<span class="warn">⬜</span> <span class="highlight">Phase 4: Pre-Production</span>     →  UX → Stories → Sprint → <span class="warn">Vertical Slice</span>
+    │
+    ▼
+<span class="arrow">⬜</span> <span class="highlight">Phase 5: Production</span>          →  Sprint Loop (dev-story → story-done)
+    │
+    ▼
+  <span class="arrow">⬜</span> <span class="highlight">Phase 6: Polish</span>
+    │
+    ▼
+  <span class="arrow">⬜</span> <span class="highlight">Phase 7: Release</span>
+</pre>
+      </div>
+
+      <!-- Phase 1 -->
+      <div class="phase" id="phase1">
+        <div class="phase-header">
+          <div class="phase-badge done">✓</div>
+          <div class="phase-title">Phase 1: Concept</div>
+          <span class="phase-status done">COMPLETE</span>
+          <span class="phase-toggle">▾</span>
+        </div>
+        <div class="phase-body">
+          <p>
+            Validação da ideia central do jogo. Define o que é o jogo, para quem
+            é, e por que alguém jogaria.
+          </p>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Idea Generation &amp; Brainstorming <code>/brainstorm</code>
+              </div>
+              <div class="step-desc">
+                Sessão estruturada de ideação. Produz o Game Concept Document
+                inicial.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Game Pillars Definition <code>/design-system</code>
+              </div>
+              <div class="step-desc">
+                4 pillars: Speed That Is Felt, Simple Strategy Real Decisions,
+                Racing Is Progression, Grid of Personalities. Extraídos para
+                <code>design/gdd/game-pillars.md</code>.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Player Journey Mapping <code>manual fill from template</code>
+              </div>
+              <div class="step-desc">
+                Jornada do jogador em 6 fases (First Contact → Long-Term), 8
+                Critical Moments, Anti-Patterns. Escrito em
+                <code>design/player-journey.md</code>.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                System Mapping <code>/map-systems</code>
+              </div>
+              <div class="step-desc">
+                Decomposição do conceito em 24 sistemas, dependências,
+                prioridades. Produz o <code>design/gdd/systems-index.md</code>.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Gate: Concept → Systems Design <code>/gate-check</code>
+              </div>
+              <div class="step-desc">
+                Director Panel Assessment com creative-director,
+                technical-director, producer, art-director. 8 CONCERNS
+                resolvidos. PASS.
+              </div>
+            </div>
+          </div>
+
+          <p style="margin-top: 0.75rem">
+            <span class="tag green">✅ 5/5 steps complete</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Phase 2 -->
+      <div class="phase" id="phase2">
+        <div class="phase-header">
+          <div class="phase-badge done">✓</div>
+          <div class="phase-title">Phase 2: Systems Design</div>
+          <span class="phase-status done">COMPLETE</span>
+          <span class="phase-toggle">▾</span>
+        </div>
+        <div class="phase-body">
+          <p>
+            Transforma o conceito em especificações detalhadas de cada sistema
+            do jogo.
+          </p>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Game Design Documents (24 GDDs) <code>/design-system</code>
+              </div>
+              <div class="step-desc">
+                Cada sistema (Input, Physics, AI, Fuel, HUD, Audio...) tem seu
+                próprio GDD em <code>design/gdd/</code>, com acceptance
+                criteria, tuning knobs, edge cases.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">Art Bible <code>/art-bible</code></div>
+              <div class="step-desc">
+                Identidade visual: paleta de 8 cores dos times 1990-91,
+                UnlitMaterial, baked lighting, track silhouette style.
+                <code>design/art-bible.md</code>.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Design Review (24 GDDs) <code>/design-review</code>
+              </div>
+              <div class="step-desc">
+                Cada GDD passou por revisão individual de design. Todos
+                APPROVED.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Cross-GDD Review <code>/review-all-gdds</code>
+              </div>
+              <div class="step-desc">
+                Adversarial walkthrough de 5 cenários. 2 blockers encontrados e
+                corrigidos. FAIL re-run → PASS. Relatório em
+                <code>design/reviews/gdd-cross-review-2026-06-20.md</code>.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Consistency Check <code>/consistency-check</code>
+              </div>
+              <div class="step-desc">
+                8 entidades + 1 constante verificadas em 26 GDDs. 0 conflitos.
+                PASS.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Gate: Systems Design → Technical Setup <code>/gate-check</code>
+              </div>
+              <div class="step-desc">
+                Director Panel (Creative, Technical, Producer, Art Director).
+                PASS.
+              </div>
+            </div>
+          </div>
+
+          <p style="margin-top: 0.75rem">
+            <span class="tag green">✅ 6/6 steps complete</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Phase 3 -->
+      <div class="phase" id="phase3">
+        <div class="phase-header">
+          <div class="phase-badge done">✓</div>
+          <div class="phase-title">Phase 3: Technical Setup</div>
+          <span class="phase-status done">COMPLETE</span>
+          <span class="phase-toggle">▾</span>
+        </div>
+        <div class="phase-body">
+          <p>
+            Arquitetura técnica do jogo. Define como os sistemas vão conversar
+            entre si, quais engines e bibliotecas serão usados, e documenta cada
+            decisão arquitetural.
+          </p>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Architecture Document <code>/create-architecture</code>
+              </div>
+              <div class="step-desc">
+                8 seções cobrindo layer mapping
+                (Foundation/Core/Feature/Presentation/Dev Infra), module
+                ownership, data flow (pipeline 8 slots), API boundaries.
+                <code>docs/architecture/architecture.md</code>.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Architecture Decision Records (25 ADRs)
+                <code>/architecture-decision</code>
+              </div>
+              <div class="step-desc">
+                Cada ADR documenta uma decisão arquitetural com contexto,
+                alternativas consideradas, e consequências. 5 Foundation + 12
+                Core + 1 Feature + 4 Presentation + 3 gap-filling.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Control Manifest <code>/create-control-manifest</code>
+              </div>
+              <div class="step-desc">
+                157 regras acionáveis: o que fazer e o que nunca fazer, por
+                camada. <code>docs/architecture/control-manifest.md</code>.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Engine Setup <code>/setup-engine babylonjs</code>
+              </div>
+              <div class="step-desc">
+                Babylon.js 9.12.0 + @babylonjs/havok ^1.3.12. Engine reference
+                docs populados.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Architecture Review <code>/architecture-review</code>
+              </div>
+              <div class="step-desc">
+                Validação cruzada de todos os ADRs contra architecture.md e TR
+                registry. PASS.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">Accessibility Requirements</div>
+              <div class="step-desc">
+                Standard tier (visual, motor, cognitive, auditory). Colorblind
+                modes, input remapping, simplified HUD, flashing lights warning.
+                <code>design/accessibility-requirements.md</code>.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">Performance Budgets</div>
+              <div class="step-desc">
+                14ms total (16.67ms target for 60 FPS), 2.7ms headroom. Per-slot
+                budgets. <code>docs/architecture/performance-budgets.md</code>.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                Gate: Technical Setup → Pre-Production <code>/gate-check</code>
+              </div>
+              <div class="step-desc">
+                13/13 artifacts presentes. Director Panel: CONCERNS → 7 fixes
+                resolvidos. PASS.
+              </div>
+            </div>
+          </div>
+
+          <p style="margin-top: 0.75rem">
+            <span class="tag green">✅ 9/9 steps complete</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Phase 4 -->
+      <div class="phase" id="phase4">
+        <div class="phase-header">
+          <div class="phase-badge active">4</div>
+          <div class="phase-title">Phase 4: Pre-Production</div>
+          <span class="phase-status active">IN PROGRESS</span>
+          <span class="phase-toggle">▾</span>
+        </div>
+        <div class="phase-body">
+          <p>
+            Transforma design em unidades implementáveis e organiza o trabalho.
+            <strong>Estamos aqui.</strong>
+          </p>
+
+          <!-- 4.1 -->
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                4.1 UX Specs &amp; Interaction Patterns
+                <code>/ux-design</code> + <code>/ux-review</code>
+              </div>
+              <div class="step-desc">
+                7 UX specs criadas: menu, hud, pause, pit-overlay, options,
+                race-flow, interaction-patterns. Review com ux-designer subagent
+                encontrou 6 blocking + 19 advisory — todos corrigidos. APPROVED.
+              </div>
+            </div>
+          </div>
+
+          <!-- 4.2 -->
+          <div class="step">
+            <div class="step-icon skipped">—</div>
+            <div class="step-content">
+              <div class="step-title">
+                4.2 Prototype Risky Mechanics <code>/prototype</code>
+              </div>
+              <div class="step-desc">
+                Pulado por decisão do usuário. Mecânicas de arcade racing são
+                conhecidas — o risco real está na integração Havok + arcade
+                grip, que será resolvida durante Core A.
+              </div>
+            </div>
+          </div>
+
+          <!-- 4.3 -->
+          <div class="step">
+            <div class="step-icon done">✓</div>
+            <div class="step-content">
+              <div class="step-title">
+                4.3 Create Epics &amp; Stories <code>/create-epics</code> +
+                <code>/create-stories</code>
+              </div>
+              <div class="step-desc">
+                24 epics criados com TR coverage completa. 149 stories escritas
+                com QA validation embutida (Phase 4b do create-stories).
+              </div>
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                  gap: 0.5rem;
+                  margin-top: 0.5rem;
+                "
+              >
+                <div
+                  style="
+                    background: var(--surface2);
+                    padding: 0.5rem;
+                    border-radius: 6px;
+                  "
+                >
+                  <strong>Foundation</strong> (6 epics, 29 stories)<br />
+                  <span style="font-size: 0.75rem; color: var(--text2)"
+                    >DCM 5 · EVB 3 · GSM 6 · DET 6 · PER 5 · SSN 4</span
+                  >
+                </div>
+                <div
+                  style="
+                    background: var(--surface2);
+                    padding: 0.5rem;
+                    border-radius: 6px;
+                  "
+                >
+                  <strong>Core A</strong> (6 epics, 42 stories)<br />
+                  <span style="font-size: 0.75rem; color: var(--text2)"
+                    >DVT 8 · TEL 6 · INP 7 · CAM 10 · AM 6 · PHYS 5</span
+                  >
+                </div>
+                <div
+                  style="
+                    background: var(--surface2);
+                    padding: 0.5rem;
+                    border-radius: 6px;
+                  "
+                >
+                  <strong>Core B</strong> (5 epics, 28 stories)<br />
+                  <span style="font-size: 0.75rem; color: var(--text2)"
+                    >TE 6 · COL 4 · AI 9 · FUEL 6 · TIRE 3</span
+                  >
+                </div>
+                <div
+                  style="
+                    background: var(--surface2);
+                    padding: 0.5rem;
+                    border-radius: 6px;
+                  "
+                >
+                  <strong>Core C</strong> (3 epics, 20 stories)<br />
+                  <span style="font-size: 0.75rem; color: var(--text2)"
+                    >PIT 8 · RM 8 · RR 4</span
+                  >
+                </div>
+                <div
+                  style="
+                    background: var(--surface2);
+                    padding: 0.5rem;
+                    border-radius: 6px;
+                  "
+                >
+                  <strong>Feature</strong> (1 epic, 2 stories)<br />
+                  <span style="font-size: 0.75rem; color: var(--text2)"
+                    >SR 2</span
+                  >
+                </div>
+                <div
+                  style="
+                    background: var(--surface2);
+                    padding: 0.5rem;
+                    border-radius: 6px;
+                  "
+                >
+                  <strong>Presentation</strong> (3 epics, 28 stories)<br />
+                  <span style="font-size: 0.75rem; color: var(--text2)"
+                    >HUD 12 · MENU 8 · AUDIO 8+1</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4.4 -->
+          <div class="step">
+            <div class="step-icon warning">?</div>
+            <div class="step-content">
+              <div class="step-title">
+                4.4 Validate Stories Before Pickup <code>/story-readiness</code>
+              </div>
+              <div class="step-desc">
+                Valida design completeness, architecture coverage, scope
+                clarity, Definition of Done.
+                <strong
+                  >Status: as stories já foram validadas internamente pela Phase
+                  4b do create-stories (QA lead gate), mas o passo formal nunca
+                  foi executado.</strong
+                >
+              </div>
+              <div class="step-note">
+                O /story-readiness é um checkpoint por story antes do /dev-story
+                implementá-la. A Phase 4b já validou as 149 stories — rodar o
+                comando formal agora seria repetir o trabalho. Recomendação:
+                rodar apenas nas stories do primeiro sprint.
+              </div>
+            </div>
+          </div>
+
+          <!-- 4.5 -->
+          <div class="step">
+            <div class="step-icon pending"></div>
+            <div class="step-content">
+              <div class="step-title">
+                4.5 Effort Estimation <code>/estimate</code>
+              </div>
+              <div class="step-desc">
+                Estimativas de esforço com análise de risco. Opcional — pode ser
+                feito por story selecionada.
+              </div>
+            </div>
+          </div>
+
+          <!-- 4.6 -->
+          <div class="step">
+            <div class="step-icon pending"></div>
+            <div class="step-content">
+              <div class="step-title">
+                4.6 Plan Your First Sprint <code>/sprint-plan new</code>
+              </div>
+              <div class="step-desc">
+                Producer agent cria o sprint-01.md com Must Have / Should Have /
+                Nice to Have. Popula sprint-status.yaml para tracking
+                machine-readable.
+                <strong
+                  >Primeiro sprint deve focar Foundation + Core A para ter algo
+                  rodando.</strong
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- 4.7 -->
+          <div class="step">
+            <div class="step-icon pending"></div>
+            <div class="step-content">
+              <div class="step-title">
+                4.7 Vertical Slice (Hard Gate) <code>/dev-story</code> +
+                <code>/playtest-report</code>
+              </div>
+              <div class="step-desc">
+                Build jogável do core loop completo, jogado sem guia em 3+
+                sessões. O objetivo de Pre-Production. Sem isso, não avançamos
+                para Production.
+              </div>
+            </div>
+          </div>
+
+          <p style="margin-top: 0.75rem">
+            <span class="tag green">✅ 1/7 complete</span>
+            <span class="tag yellow">⬜ 4/7 pending (4.4, 4.5, 4.6, 4.7)</span>
+            <span class="tag blue">— 1/7 skipped (prototype)</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Phase 5 -->
+      <div class="phase" id="phase5">
+        <div class="phase-header">
+          <div class="phase-badge pending">5</div>
+          <div class="phase-title">Phase 5: Production (Sprint Loop)</div>
+          <span class="phase-status pending">PENDING</span>
+          <span class="phase-toggle">▾</span>
+        </div>
+        <div class="phase-body">
+          <p>
+            O ciclo principal de produção. Cada sprint implementa stories do
+            backlog até que o jogo esteja completo.
+          </p>
+
+          <h3>Estrutura de cada Sprint</h3>
+          <div class="story-lifecycle">
+            <div class="stage">
+              <div class="emoji">📋</div>
+              <div class="name">Sprint Plan</div>
+              <div class="detail">/sprint-plan new</div>
+            </div>
+            <div class="stage">
+              <div class="emoji">🔍</div>
+              <div class="name">Story Readiness</div>
+              <div class="detail">/story-readiness [story]</div>
+            </div>
+            <div class="stage">
+              <div class="emoji">🛠️</div>
+              <div class="name">Implement</div>
+              <div class="detail">/dev-story [story]</div>
+            </div>
+            <div class="stage">
+              <div class="emoji">✅</div>
+              <div class="name">Story Done</div>
+              <div class="detail">/story-done [story]</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon pending"></div>
+            <div class="step-content">
+              <div class="step-title">
+                5.1 Story Readiness (per-story) <code>/story-readiness</code>
+              </div>
+              <div class="step-desc">
+                Antes de implementar cada story, roda /story-readiness para
+                verificar se ela ainda está válida (ADRs não mudaram, GDD não
+                foi alterado, etc).
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon pending"></div>
+            <div class="step-content">
+              <div class="step-title">
+                5.2 Implementation <code>/dev-story</code>
+              </div>
+              <div class="step-desc">
+                Roteia automaticamente para o agente programador correto
+                (gameplay, engine, ai, ui, tools). Implementa código + testes
+                contra os acceptance criteria.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon pending"></div>
+            <div class="step-content">
+              <div class="step-title">
+                5.3 Story Completion <code>/story-done</code>
+              </div>
+              <div class="step-desc">
+                8-phase review: verifica cada AC, checa desvios de GDD/ADR,
+                prompt para code review, gera relatório. Atualiza status da
+                story.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon pending"></div>
+            <div class="step-content">
+              <div class="step-title">
+                5.4 Sprint Tracking <code>/sprint-status</code>
+              </div>
+              <div class="step-desc">
+                Snapshot rápido do progresso lendo sprint-status.yaml. 30
+                linhas.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon pending"></div>
+            <div class="step-content">
+              <div class="step-title">
+                5.5 Sprint Review <code>/retrospective</code> →
+                <code>/sprint-plan new</code>
+              </div>
+              <div class="step-desc">
+                Ao final de cada sprint: análise de velocity, blockers,
+                melhorias. Depois planeja o próximo sprint.
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-icon pending"></div>
+            <div class="step-content">
+              <div class="step-title">Other Production Tools</div>
+              <div class="step-desc">
+                <code>/content-audit</code> — compara conteúdo planejado vs
+                implementado<br />
+                <code>/scope-check</code> — detecta scope creep<br />
+                <code>/propagate-design-change</code> — quando um GDD muda,
+                propaga para ADRs afetados<br />
+                <code>/team-combat</code>, <code>/team-ui</code>, etc —
+                orquestração multi-domínio<br />
+                <code>/milestone-review "alpha"</code> — revisão de milestone
+              </div>
+            </div>
+          </div>
+
+          <p style="margin-top: 0.75rem">
+            <span class="tag red">⬜ 0/0 stories implemented</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Story Flow -->
+      <h2 id="story-flow">O Ciclo de Vida de uma Story</h2>
+
+      <div class="flow">
+        <pre>
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │                    CICLO DE VIDA DE UMA STORY                       │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  ┌──────────┐    ┌──────────────┐    ┌──────────┐    ┌──────────┐
+  │ STORY    │    │ STORY        │    │ DEV      │    │ STORY    │
+  │ CREATED  │───→│ READINESS    │───→│ STORY    │───→│ DONE     │
+  │ (Phase   │    │ (4.4 / 5.1)  │    │ (5.2)    │    │ (5.3)    │
+  │  4.3)    │    │              │    │          │    │          │
+  └──────────┘    └──────────────┘    └──────────┘    └──────────┘
+       │                │                  │                │
+       ▼                ▼                  ▼                ▼
+  File criado       Verifica:          Code writer:     8-phase review:
+  em               • Design ok        • Lê GDD + ADR    1. Lê story
+  production/      • ADR ok           • Pergunta        2. Carrega GDD
+  epics/           • DoD claro        • Apresenta       3. Verifica ACs
+  [slug]/          • Sem blockers     • Implementa      4. Checa desvios
+  story-*.md                          • Cria teste      5. Code review
+                                       • Roda teste     6. Relatório
+                                                        7. Atualiza status
+                                                        8. Próxima story
+
+  <span class="check">✅ feito</span>   <span class="warn">⬜ a fazer</span>         <span class="arrow">⬜ a fazer</span>    <span class="arrow">⬜ a fazer</span>
+</pre>
+      </div>
+
+      <p>
+        As 149 stories já existem em
+        <code>production/epics/[slug]/story-*.md</code>. Cada uma tem:
+      </p>
+      <ul
+        style="color: var(--text2); margin-bottom: 1rem; padding-left: 1.5rem"
+      >
+        <li>TR-IDs referenciando requisitos técnicos</li>
+        <li>ADR references (só de Accepted ADRs)</li>
+        <li>Control manifest version date</li>
+        <li>Engine-specific implementation notes</li>
+        <li>Acceptance criteria do GDD</li>
+        <li>QA test cases (da Phase 4b do create-stories)</li>
+      </ul>
+
+      <p>
+        <strong>Ordem de implementação recomendada:</strong> Foundation → Core A
+        → Core B → Core C → Feature → Presentation. Dentro de cada camada,
+        seguir a ordem de dependência das stories.
+      </p>
+
+      <!-- Gates -->
+      <h2 id="gates">Gates entre Fases</h2>
+
+      <div class="flow">
+        <pre>
+  <span class="check">✅</span> Concept ───────────→ Systems Design     → <span class="check">PASS</span>  (8 director concerns resolvidos)
+  <span class="check">✅</span> Systems Design ─────→ Technical Setup    → <span class="check">PASS</span>  (4 directors, todos concerns resolvidos)
+  <span class="check">✅</span> Technical Setup ────→ Pre-Production    → <span class="check">PASS</span>  (13/13 artifacts, 7 fixes)
+
+  <span class="warn">⬜</span> Pre-Production ─────→ <span class="highlight">Production</span>        → <span class="warn">GATE NÃO ATINGIDO</span>
+      Requisitos para passar:
+      • 1+ UX spec reviewed           <span class="check">✅</span>
+      • UX review complete            <span class="check">✅</span>
+      • 1+ prototype com README       <span class="warn">⬜</span> (skipped)
+      • Story files existem           <span class="check">✅</span> (149)
+      • 1+ sprint plan                <span class="warn">⬜</span> (passo 4.6)
+      • 1+ playtest report            <span class="warn">⬜</span> (Vertical Slice, passo 4.7)
+
+  <span class="arrow">⬜</span> Production ──────────→ <span class="highlight">Polish</span>            → <span class="arrow">⬜</span> Todas MVP stories completas
+  <span class="arrow">⬜</span> Polish ───────────────→ <span class="highlight">Release</span>            → <span class="arrow">⬜</span> Release checklist
+</pre>
+      </div>
+
+      <!-- Quick Reference -->
+      <h2 id="quickref">Quick Reference</h2>
+
+      <div style="overflow-x: auto">
+        <table
+          style="width: 100%; border-collapse: collapse; font-size: 0.85rem"
+        >
+          <thead>
+            <tr style="background: var(--surface2)">
+              <th
+                style="
+                  padding: 0.5rem 0.75rem;
+                  text-align: left;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                Step
+              </th>
+              <th
+                style="
+                  padding: 0.5rem 0.75rem;
+                  text-align: left;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                Command
+              </th>
+              <th
+                style="
+                  padding: 0.5rem 0.75rem;
+                  text-align: left;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                Status
+              </th>
+              <th
+                style="
+                  padding: 0.5rem 0.75rem;
+                  text-align: left;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                Produz
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                1.1 Brainstorm
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/brainstorm</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                game-concept.md
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                1.2 Game Pillars
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                template
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                game-pillars.md
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                1.3 Player Journey
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                template
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                player-journey.md
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                1.4 System Mapping
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/map-systems</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                systems-index.md
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                Gate 1→2
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/gate-check</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅ PASS</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                —
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                2.1 24 GDDs
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/design-system</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                design/gdd/*.md
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                2.2 Art Bible
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/art-bible</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                design/art-bible.md
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                2.3 Design Review
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/design-review</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                design/gdd/reviews/*.md
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                2.4 Cross Review
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/review-all-gdds</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅ PASS</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                gdd-cross-review-*.md
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                Gate 2→3
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/gate-check</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅ PASS</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                —
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                3.1 Architecture
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/create-architecture</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                architecture.md
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                3.2 25 ADRs
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/architecture-decision</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                docs/architecture/adr-*.md
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                3.3 Control Manifest
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/create-control-manifest</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                control-manifest.md
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                Gate 3→4
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/gate-check</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅ PASS</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                —
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                4.1 UX Specs
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/ux-design</code> + <code>/ux-review</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                design/ux/*.md
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                4.2 Prototype
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/prototype</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag yellow">skipped</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                —
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                4.3 Epics + Stories
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/create-epics</code> + <code>/create-stories</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag green">✅</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                149 stories
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                4.4 Story Readiness
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/story-readiness</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag yellow">⬜</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                READY / NEEDS WORK / BLOCKED
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                4.5 Estimation
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/estimate</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag yellow">⬜</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                estimates
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                4.6 Sprint Plan
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/sprint-plan new</code>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag yellow">⬜</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                sprint-01.md
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                4.7 Vertical Slice
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <code>/dev-story</code> loop
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag yellow">⬜</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                playable build
+              </td>
+            </tr>
+            <tr>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                5.x Production
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                sprint loop
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                <span class="tag yellow">⬜</span>
+              </td>
+              <td
+                style="
+                  padding: 0.4rem 0.75rem;
+                  border-bottom: 1px solid var(--border);
+                "
+              >
+                código + testes
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Architecture Layer Map -->
+      <h2>Layer Map: Foundation → Core → Feature → Presentation</h2>
+      <div class="flow">
+        <pre>
+  <span class="highlight">FOUNDATION (29 stories)</span>      <span class="arrow">→</span>  Zero engine imports. Config, Events, GSM, Determinism, Persistence, Snapshot.
+  <span class="highlight">CORE A (42 stories)</span>          <span class="arrow">→</span>  Dev Tools, Telemetry, Input, Camera, Asset Manager, Physics/Handling.
+  <span class="highlight">CORE B (28 stories)</span>          <span class="arrow">→</span>  Track, Collision, AI Driver, Fuel, Tire Wear.
+  <span class="highlight">CORE C (20 stories)</span>          <span class="arrow">→</span>  Pit Stop, Race Management Core, Race Results.
+  <span class="highlight">FEATURE (2 stories)</span>          <span class="arrow">→</span>  Single Race (thin adapter).
+  <span class="highlight">PRESENTATION (28 stories)</span>    <span class="arrow">→</span>  HUD, Menu LITE, Audio.
+
+  Init order:
+  Foundation (DCM→EVB→GSM→DET→PER→SSN)
+  <span class="arrow">→</span> Core A (DVT→TEL→INP→CAM→AM→PHYS)
+  <span class="arrow">→</span> Core B (TE→COL→AI→FUEL→TIRE)
+  <span class="arrow">→</span> Core C (PIT→RM→RR)
+  <span class="arrow">→</span> Feature (SR)
+  <span class="arrow">→</span> Presentation (HUD→MENU→AUDIO)
+
+  Pipeline (8 slots, fixed 1/60s tick):
+  Slot 1: Input         Slot 5: Fuel
+  Slot 2: Physics       Slot 6: Tire Wear
+  Slot 3: AI Driver     Slot 7: Race Management
+  Slot 4: Collision     Slot 8: Pit Stop
+</pre>
+      </div>
+
+      <!-- Footer -->
+      <div
+        style="
+          text-align: center;
+          padding: 2rem 0;
+          color: var(--text2);
+          font-size: 0.85rem;
+        "
+      >
+        <p>
+          <span class="tag green">149 stories criadas</span>
+          <span class="tag yellow">0 implementadas</span>
+          <span class="tag blue">Em Pre-Production</span>
+        </p>
+        <p style="margin-top: 0.5rem">
+          Overdrive — OpenCode Game Studios · Babylon.js 9.12.0 + Havok ^1.3.12
+        </p>
+      </div>
+    </div>
+
+    <script>
+      // Collapsible phases
+      document.querySelectorAll(".phase-header").forEach((header) => {
+        header.addEventListener("click", () => {
+          const body = header.nextElementSibling;
+          const toggle = header.querySelector(".phase-toggle");
+          if (body.style.display === "none") {
+            body.style.display = "block";
+            toggle.textContent = "▾";
+          } else {
+            body.style.display = "none";
+            toggle.textContent = "▸";
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

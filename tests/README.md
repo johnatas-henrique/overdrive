@@ -2,7 +2,7 @@
 
 **Engine**: Babylon.js 9.12.0
 **Test Framework**: Vitest
-**CI**: `.github/workflows/ci.yml`
+**CI**: `.github/workflows/tests.yml`
 **Setup date**: 2026-06-18
 
 ## Directory Layout
