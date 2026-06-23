@@ -3,8 +3,8 @@
 > **Layer**: Foundation
 > **GDD**: design/gdd/persistence.md
 > **Architecture Module**: Foundation — Data/Storage
-> **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories persistence`
+> **Status**: Stories Ready — 5 stories created on 2026-06-22
+> **Stories**: 5 stories — run `/story-readiness` to begin implementation
 
 ## Overview
 
@@ -37,6 +37,16 @@ This epic is complete when:
 - All Logic and Integration stories have passing test files in `tests/`
 - All Visual/Feel and UI stories have evidence docs with sign-off in `production/qa/evidence/`
 
+## Stories
+
+| #   | Story                          | Type        | Status | ADR      |
+| --- | ------------------------------ | ----------- | ------ | -------- |
+| 001 | persistence-state-machine-init | Logic       | Ready  | ADR-0016 |
+| 002 | save-load-key-prefix           | Integration | Ready  | ADR-0016 |
+| 003 | error-isolation                | Integration | Ready  | ADR-0016 |
+| 004 | degraded-mode-retry            | Logic       | Ready  | ADR-0016 |
+| 005 | migration-chain                | Logic       | Ready  | ADR-0016 |
+
 ## Next Step
 
-Run `/create-stories persistence` to break this epic into implementable stories.
+Run `/story-readiness production/epics/persistence/story-001-persistence-state-machine-init.md` to begin implementation.

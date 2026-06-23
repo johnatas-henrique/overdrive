@@ -4,7 +4,17 @@
 > **GDD**: design/gdd/data-config-manager.md
 > **Architecture Module**: Foundation — Data/Config
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories data-config-manager`
+> **Stories**: 5 created — see table below
+
+## Stories
+
+| #    | Story                                   | Type        | Status | ADR      |
+| ---- | --------------------------------------- | ----------- | ------ | -------- |
+| 001  | Core Register + Get + Error Handling    | Logic       | Ready  | ADR-0023 |
+| 002  | Environment Variable Override           | Logic       | Ready  | ADR-0023 |
+| 003a | HMR Cache Handler (invalidateNamespace) | Logic       | Ready  | ADR-0023 |
+| 003b | HMR Vite Wiring                         | Integration | Ready  | ADR-0023 |
+| 004  | Access Logging + Debug State            | Logic       | Ready  | ADR-0023 |
 
 ## Overview
 

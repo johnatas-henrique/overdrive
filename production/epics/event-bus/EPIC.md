@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/event-bus.md
 > **Architecture Module**: Foundation — Communication
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories event-bus`
+> **Stories**: 3 stories (Ready)
 
 ## Overview
 
@@ -29,6 +29,14 @@ Typed pub-sub event system. Events declared as an `EventMap` interface — every
 | TR-EVB-007 | Subscribe during dispatch does not receive current event            | ADR-0001 ✅  |
 | TR-EVB-008 | Zero dependencies on Babylon.js or any game system                  | ADR-0001 ✅  |
 
+## Stories
+
+| #   | Story                                                               | Type  | Status | ADR      | TR Coverage                                                  | Est. |
+| --- | ------------------------------------------------------------------- | ----- | ------ | -------- | ------------------------------------------------------------ | ---- |
+| 001 | [Event Types and Contracts](story-001-event-types-and-contracts.md) | Logic | Ready  | ADR-0001 | TR-EVB-001, TR-EVB-003, TR-EVB-008                           | ~1h  |
+| 002 | [Core Event Bus](story-002-core-event-bus.md)                       | Logic | Ready  | ADR-0001 | TR-EVB-002, TR-EVB-004 (partial), TR-EVB-006 (partial)       | 6–8h |
+| 003 | [Edge Cases](story-003-edge-cases.md)                               | Logic | Ready  | ADR-0001 | TR-EVB-004 (leak), TR-EVB-005, TR-EVB-006 (once), TR-EVB-007 | 4–6h |
+
 ## Definition of Done
 
 This epic is complete when:
@@ -40,4 +48,4 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories event-bus` to break this epic into implementable stories.
+Run `/story-readiness production/epics/event-bus/story-001-event-types-and-contracts.md` to begin implementation.

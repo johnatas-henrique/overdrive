@@ -3,8 +3,8 @@
 > **Layer**: Foundation
 > **GDD**: design/gdd/simulation-snapshot.md
 > **Architecture Module**: Foundation — State
-> **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories simulation-snapshot`
+> **Status**: Stories Ready
+> **Stories**: 4 stories Ready — proceed to `/story-readiness story-001-isnapshotable-fnv1a`
 
 ## Overview
 
@@ -37,6 +37,15 @@ This epic is complete when:
 - All Logic and Integration stories have passing test files in `tests/`
 - All Visual/Feel and UI stories have evidence docs with sign-off in `production/qa/evidence/`
 
+## Stories
+
+| #   | Story                                            | Type        | Status | ADR      |
+| --- | ------------------------------------------------ | ----------- | ------ | -------- |
+| 001 | ISnapshotable Interface + FNV-1a Hashing         | Logic       | Ready  | ADR-0017 |
+| 002 | SimulationSnapshot Orchestrator — Core Lifecycle | Integration | Ready  | ADR-0017 |
+| 003 | SHA-256 Sync Hash + Snapshot Determinism         | Integration | Ready  | ADR-0017 |
+| 004 | Error Isolation + Registration Edge Cases        | Logic       | Ready  | ADR-0017 |
+
 ## Next Step
 
-Run `/create-stories simulation-snapshot` to break this epic into implementable stories.
+Run `/story-readiness production/epics/simulation-snapshot/story-001-isnapshotable-fnv1a.md` to begin implementation.

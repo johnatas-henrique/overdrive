@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/game-state-machine.md
 > **Architecture Module**: Foundation — Orchestration
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories game-state-machine`
+> **Stories**: 6 stories (Ready)
 
 ## Overview
 
@@ -38,6 +38,17 @@ This epic is complete when:
 - All Logic and Integration stories have passing test files in `tests/`
 - All Visual/Feel and UI stories have evidence docs with sign-off in `production/qa/evidence/`
 
+## Stories
+
+| #   | Story                     | Type        | Status | ADR      |
+| --- | ------------------------- | ----------- | ------ | -------- |
+| 001 | core-fsm-transition-table | Logic       | Ready  | ADR-0024 |
+| 002 | async-lifecycle-hooks     | Logic       | Ready  | ADR-0024 |
+| 003 | event-bus-integration     | Integration | Ready  | ADR-0024 |
+| 004 | transition-throttling     | Logic       | Ready  | ADR-0024 |
+| 005 | state-history-ring-buffer | Logic       | Ready  | ADR-0024 |
+| 006 | dispose-safety            | Logic       | Ready  | ADR-0024 |
+
 ## Next Step
 
-Run `/create-stories game-state-machine` to break this epic into implementable stories.
+Stories are ready. Run `/story-readiness production/epics/game-state-machine/story-001-core-fsm-transition-table.md` to begin implementation.

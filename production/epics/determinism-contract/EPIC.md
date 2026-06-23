@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/determinism-contract.md
 > **Architecture Module**: Foundation — Pipeline
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories determinism-contract`
+> **Stories**: 6 created — see table below
 
 ## Overview
 
@@ -28,6 +28,17 @@ Fixed timestep pipeline and deterministic RNG. `FixedUpdatePipeline` with 8 immu
 | TR-DET-006 | Havok auto-step suppressed; pipeline calls executeStep(dt, bodies) | ADR-0002 ✅  |
 | TR-DET-007 | Pipeline from engine.runRenderLoop(), not onBeforeRenderObservable | ADR-0002 ✅  |
 
+## Stories
+
+| #   | Story                       | Type        | Status | ADR      |
+| --- | --------------------------- | ----------- | ------ | -------- |
+| 001 | SeededRandom                | Logic       | Ready  | ADR-0002 |
+| 002 | FixedUpdatePipeline         | Logic       | Ready  | ADR-0002 |
+| 003 | InputBuffer                 | Logic       | Ready  | ADR-0002 |
+| 004 | Fixed Timestep Accumulator  | Logic       | Ready  | ADR-0002 |
+| 005 | Pipeline Engine Integration | Integration | Ready  | ADR-0002 |
+| 006 | Determinism Enforcement     | Logic       | Ready  | ADR-0002 |
+
 ## Definition of Done
 
 This epic is complete when:
@@ -39,4 +50,4 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories determinism-contract` to break this epic into implementable stories.
+Run `/story-readiness production/epics/determinism-contract/story-001-seeded-random.md` to begin implementation.
