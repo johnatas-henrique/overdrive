@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/race-management.md
 > **Architecture Module**: Core — Race Flow
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories race-results`
+> **Stories**: 4 stories (Ready)
 
 ## Overview
 
@@ -35,6 +35,15 @@ This epic is complete when:
 - All Logic and Integration stories have passing test files in `tests/`
 - All Visual/Feel and UI stories have evidence docs with sign-off in `production/qa/evidence/`
 
+## Stories
+
+| #   | Story                                             | Type        | Status | ADR      |
+| --- | ------------------------------------------------- | ----------- | ------ | -------- |
+| 001 | RaceResult Data Model & Results Aggregation       | Logic       | Ready  | ADR-0015 |
+| 002 | Fastest Lap Tracking & Best Lap Time              | Logic       | Ready  | ADR-0015 |
+| 003 | DNF Classification & Positioning in Results       | Logic       | Ready  | ADR-0015 |
+| 004 | Results Serialization & Pit Stop Data Integration | Integration | Ready  | ADR-0015 |
+
 ## Next Step
 
-Run `/create-stories race-results` to break this epic into implementable stories.
+Run `/story-readiness production/epics/race-results/story-001-results-data-model.md` to begin implementation.

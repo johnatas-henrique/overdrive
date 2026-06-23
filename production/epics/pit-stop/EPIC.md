@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/pit-stop.md
 > **Architecture Module**: Core — Pit Stop
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories pit-stop`
+> **Stories**: 8 stories (Ready)
 
 ## Overview
 
@@ -29,6 +29,19 @@ Velocity-driven pit stop system (no position override — would oscillate with P
 | TR-PIT-007 | Merge check at garage exit (config-driven distance/timeout)                  | ADR-0014 ✅  |
 | TR-PIT-008 | Pit stop timer per car for HUD display                                       | ADR-0014 ✅  |
 
+## Stories
+
+| #   | Story                               | Type               | Status | ADR      |
+| --- | ----------------------------------- | ------------------ | ------ | -------- |
+| 001 | Pit State Machine & Zone Detection  | Logic              | Ready  | ADR-0014 |
+| 002 | Pit Entry Guidance & Garage Stop    | Integration        | Ready  | ADR-0014 |
+| 003 | Refuel & Tire Change Services       | Integration        | Ready  | ADR-0014 |
+| 004 | Confirm Gatekeeping & Auto-Release  | Logic              | Ready  | ADR-0014 |
+| 005 | Pit Exit, Merge Check & Return      | Logic              | Ready  | ADR-0014 |
+| 006 | AI Pit Strategy                     | Logic              | Ready  | ADR-0014 |
+| 007 | Race Management Pit Timer           | Integration        | Ready  | ADR-0014 |
+| 008 | Documentation & Visual Verification | Config/Data+Visual | Ready  | ADR-0014 |
+
 ## Definition of Done
 
 This epic is complete when:
@@ -40,4 +53,4 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories pit-stop` to break this epic into implementable stories.
+Run `/story-readiness production/epics/pit-stop/story-001-pit-state-machine.md` → `/dev-story` to begin implementation.

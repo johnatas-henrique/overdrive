@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/race-management.md
 > **Architecture Module**: Core — Race Flow
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories race-management-core`
+> **Stories**: 8 stories (Ready)
 
 ## Overview
 
@@ -38,6 +38,19 @@ This epic is complete when:
 - All Logic and Integration stories have passing test files in `tests/`
 - All Visual/Feel and UI stories have evidence docs with sign-off in `production/qa/evidence/`
 
+## Stories
+
+| #   | Story                                                | Type        | Status | ADR      |
+| --- | ---------------------------------------------------- | ----------- | ------ | -------- |
+| 001 | Race Management Initialization & Config Validation   | Logic       | Ready  | ADR-0015 |
+| 002 | Countdown → GreenFlag Sub-State Machine              | Logic       | Ready  | ADR-0015 |
+| 003 | Lap Detection via Spline Wrap-Around                 | Logic       | Ready  | ADR-0015 |
+| 004 | Position Grid & Position Hysteresis                  | Logic       | Ready  | ADR-0015 |
+| 005 | DNF Lifecycle — Fuel Empty Detection                 | Integration | Ready  | ADR-0015 |
+| 006 | DNF Exceptions — Pit Entry, Stalled in Pit, Last Lap | Integration | Ready  | ADR-0015 |
+| 007 | Race-End Conditions                                  | Logic       | Ready  | ADR-0015 |
+| 008 | Race Results & Event Emission                        | Logic       | Ready  | ADR-0015 |
+
 ## Next Step
 
-Run `/create-stories race-management-core` to break this epic into implementable stories.
+Run `/story-readiness production/epics/race-management-core/story-001-init-config-validation.md` to begin implementation.
