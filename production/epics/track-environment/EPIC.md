@@ -4,11 +4,22 @@
 > **GDD**: design/gdd/track-environment.md
 > **Architecture Module**: Core — Track
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories track-environment`
+> **Stories**: 6 stories (Ready)
 
 ## Overview
 
-Track spline as custom `SplineSegment[]` array (not Babylon.js `Curve3`/`CatmullRomCurve3` — cannot carry per-segment metadata). Each segment carries position, heading, curvature, gripSurface, trackWidth. GLB loaded via Asset Manager with static Havok colliders (3-5 bodies per track, `PhysicsShapeType.MESH`). Pit zone detection via inline XZ point-in-box (not Havok trigger volumes). Config-driven: `src/config/tracks/{id}.ts` + GLB assets. HDR skybox IBL per track. Pit lane geometry included from the start (retrofitting would require remaking the track).
+Track spline as custom `SplineSegment[]` array (not Babylon.js `Curve3`/`CatmullRomCurve3` — cannot carry per-segment metadata). Each segment carries position, heading, curvature, gripSurface, trackWidth. GLB loaded via Asset Manager with static Havok colliders (3-5 bodies per track, `PhysicsShapeType.MESH`). Pit zone detection via inline XZ point-in-box (not Havok trigger volumes). Config-driven: `src/config/tracks/{id}.ts` + GLB assets. Gradient skydome per track. Pit lane geometry included from the start (retrofitting would require remaking the track).
+
+## Stories
+
+| #   | Story                                     | Type        | Status | ADR                |
+| --- | ----------------------------------------- | ----------- | ------ | ------------------ |
+| 001 | TrackConfig data model + config structure | Config/Data | Ready  | ADR-0025           |
+| 002 | Spline query interface                    | Logic       | Ready  | ADR-0025           |
+| 003 | Track loading/disposal lifecycle          | Integration | Ready  | ADR-0025           |
+| 004 | Static physics collider setup             | Integration | Ready  | ADR-0025, ADR-0010 |
+| 005 | Pit lane zones and queries                | Logic       | Ready  | ADR-0025           |
+| 006 | Skybox per track                          | Visual/Feel | Ready  | ADR-0025           |
 
 ## Governing ADRs
 
@@ -24,7 +35,7 @@ Track spline as custom `SplineSegment[]` array (not Babylon.js `Curve3`/`Catmull
 | TR-TE-002 | GLB loaded via Asset Manager, instantiated in raceScene                    | ADR-0025 ✅  |
 | TR-TE-003 | Static environment meshes with PhysicsShapeType.MESH for collision         | ADR-0025 ✅  |
 | TR-TE-004 | Pit lane with entry, exit, 8 pit boxes, speed limit zone                   | ADR-0025 ✅  |
-| TR-TE-005 | HDR skybox IBL per track (time of day, weather preset)                     | ADR-0025 ✅  |
+| TR-TE-005 | Gradient skydome per track (time of day, weather preset)                   | ADR-0025 ✅  |
 | TR-TE-006 | Off-track detection via spline distance check                              | ADR-0025 ✅  |
 | TR-TE-007 | Config-driven track definition — zero code changes to add circuit          | ADR-0025 ✅  |
 | TR-TE-008 | TrackEnvironmentManager lifecycle: load()/dispose() with AssetContainer    | ADR-0025 ✅  |
@@ -41,4 +52,4 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories track-environment` to break this epic into implementable stories.
+Stories written. Run `/story-readiness production/epics/track-environment/story-001-track-config-data-model.md` to begin implementation.

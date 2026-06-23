@@ -1,10 +1,10 @@
 # Epic: Tire Wear
 
-> **Layer**: Core (slot #9 — writes tireCondition to Physics with 1-tick delay)
+> **Layer**: Core (slot #6 — writes tireCondition to Physics with 1-tick delay)
 > **GDD**: design/gdd/tire-wear.md
 > **Architecture Module**: Core — Strategy/Tire
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories tire-wear`
+> **Stories**: 3 stories (Ready)
 
 ## Overview
 
@@ -38,6 +38,14 @@ This epic is complete when:
 - All Logic and Integration stories have passing test files in `tests/`
 - All Visual/Feel and UI stories have evidence docs with sign-off in `production/qa/evidence/`
 
+## Stories
+
+| #   | Title                                                 | Type  | Status | ADR      |
+| --- | ----------------------------------------------------- | ----- | ------ | -------- |
+| 001 | Core Tire Degradation Engine                          | Logic | Ready  | ADR-0012 |
+| 002 | Tire Wear Modifiers (Off-Track, Abrasion, Durability) | Logic | Ready  | ADR-0012 |
+| 003 | Tire Blowout, resetTires, and Race Lifecycle          | Logic | Ready  | ADR-0012 |
+
 ## Next Step
 
-Run `/create-stories tire-wear` to break this epic into implementable stories.
+Run `/story-readiness production/epics/tire-wear/story-001-core-degradation-engine.md` then `/dev-story` to begin implementation.

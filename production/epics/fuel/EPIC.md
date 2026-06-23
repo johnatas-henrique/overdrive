@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/fuel.md
 > **Architecture Module**: Core — Strategy/Fuel
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories fuel`
+> **Stories**: 6 stories (Ready)
 
 ## Overview
 
@@ -28,6 +28,17 @@ Fuel consumption model: `fuelUsed = throttleAvg × baseRate × efficiencyRate ×
 | TR-FUEL-006 | Fuel economy stat configurable per team                                        | ADR-0011 ✅  |
 | TR-FUEL-007 | Tank capacity configurable per team                                            | ADR-0011 ✅  |
 
+## Stories
+
+| #   | Title                                | Type        | Status | ADR      |
+| --- | ------------------------------------ | ----------- | ------ | -------- |
+| 001 | Fuel State & Car Lifecycle           | Logic       | Ready  | ADR-0011 |
+| 002 | Consumption Math & fuelMult Delivery | Logic       | Ready  | ADR-0011 |
+| 003 | fuel_empty Event & Edge Cases        | Integration | Ready  | ADR-0011 |
+| 004 | Efficiency Upgrades                  | Config/Data | Ready  | ADR-0011 |
+| 005 | addFuel for Pit Stop                 | Integration | Ready  | ADR-0011 |
+| 006 | Reset & Race Restart                 | Logic       | Ready  | ADR-0011 |
+
 ## Definition of Done
 
 This epic is complete when:
@@ -39,4 +50,4 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories fuel` to break this epic into implementable stories.
+Run `/story-readiness production/epics/fuel/story-001-fuel-state-car-lifecycle.md` then `/dev-story` to begin implementation.

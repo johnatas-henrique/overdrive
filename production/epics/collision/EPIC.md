@@ -3,8 +3,8 @@
 > **Layer**: Core (slot #6 — event-only system, feeds HUD/Camera/Audio/AI)
 > **GDD**: design/gdd/collision.md
 > **Architecture Module**: Core — Collision
-> **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories collision`
+> **Status**: Stories Ready
+> **Stories**: 4 stories (Ready)
 
 ## Overview
 
@@ -30,6 +30,15 @@ Event-only collision system — no `update()`, no pipeline slot. Subscribes to `
 | TR-COLLISION-008 | Car-car vs car-barrier distinguished by otherId prefix (car* vs barrier*) | ADR-0010 ✅  |
 | TR-COLLISION-009 | Reentrant registration — off() before on() for Race Again                 | ADR-0010 ✅  |
 
+## Stories
+
+| #   | Story                                    | Type        | Status | ADR      |
+| --- | ---------------------------------------- | ----------- | ------ | -------- |
+| 001 | Core Collision Manager                   | Logic       | Ready  | ADR-0010 |
+| 002 | Barrier Detection & Event Classification | Logic       | Ready  | ADR-0010 |
+| 003 | Impulse Threshold & Grazing Suppression  | Logic       | Ready  | ADR-0010 |
+| 004 | GSM Lifecycle & Event Bus Integration    | Integration | Ready  | ADR-0010 |
+
 ## Definition of Done
 
 This epic is complete when:
@@ -41,4 +50,4 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories collision` to break this epic into implementable stories.
+Run `/story-readiness production/epics/collision/story-001-core-collision-manager.md` to begin implementation.
