@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/single-race.md
 > **Architecture Module**: Feature — Mode Adapter
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories single-race`
+> **Stories**: 2 stories (Ready) — see Stories section
 
 ## Overview
 
@@ -33,6 +33,13 @@ This epic is complete when:
 - All Logic and Integration stories have passing test files in `tests/`
 - All Visual/Feel and UI stories have evidence docs with sign-off in `production/qa/evidence/`
 
+## Stories
+
+| #   | Story                   | Type        | Status | ADR      |
+| --- | ----------------------- | ----------- | ------ | -------- |
+| 001 | Build RaceConfiguration | Logic       | Ready  | ADR-0021 |
+| 002 | Race Flow Integration   | Integration | Ready  | ADR-0021 |
+
 ## Next Step
 
-Run `/create-stories single-race` to break this epic into implementable stories.
+Run `/story-readiness production/epics/single-race/story-001-build-configuration.md` to begin implementation.

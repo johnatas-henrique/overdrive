@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/audio.md
 > **Architecture Module**: Presentation — Audio
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories audio`
+> **Stories**: 11 stories (Ready) — run `/story-readiness` to begin implementation
 
 ## Overview
 
@@ -20,18 +20,18 @@ Audio Engine V2 exclusively — `CreateSoundAsync`, `CreateAudioBusAsync`, `Crea
 
 ## GDD Requirements
 
-| TR-ID        | Requirement                                                                                     | ADR Coverage |
-| ------------ | ----------------------------------------------------------------------------------------------- | ------------ |
-| TR-AUDIO-001 | Engine sound: pitch varies with RPM/throttle in real-time — WAV loop + OscillatorNode on sfxBus | ADR-0020 ✅  |
-| TR-AUDIO-002 | Tire squeal on high lateralG — graze suppressed                                                 | ADR-0020 ✅  |
-| TR-AUDIO-003 | Collision impacts: thud (car-car) / scrape (barrier) proportional to impulse                    | ADR-0020 ✅  |
-| TR-AUDIO-004 | UI sounds: menu navigation confirm/cancel                                                       | ADR-0020 ✅  |
-| TR-AUDIO-005 | Music: menu BGM, race start jingle, podium fanfare                                              | ADR-0020 ✅  |
-| TR-AUDIO-006 | 4 AudioBuses with independent volume: music (0.5), sfx (0.7), ui (0.6), ambient (0.4)           | ADR-0020 ✅  |
-| TR-AUDIO-007 | 500ms linear crossfade between GSM states via setVolume with duration                           | ADR-0020 ✅  |
-| TR-AUDIO-008 | Engine sound mutes when car is in pit stop (pit limiter)                                        | ADR-0020 ✅  |
-| TR-AUDIO-009 | maxInstances for collision sounds (default: 5)                                                  | ADR-0020 ✅  |
-| TR-AUDIO-010 | Context unlock on first user interaction (resumeOnInteraction)                                  | ADR-0020 ✅  |
+| TR-ID        | Requirement                                                                                                 | ADR Coverage |
+| ------------ | ----------------------------------------------------------------------------------------------------------- | ------------ |
+| TR-AUDIO-001 | Audio Engine V2 — CreateAudioEngineAsync() initialises the engine; try/catch on failure silences gracefully | ADR-0020 ✅  |
+| TR-AUDIO-002 | Audio Asset Manager — CreateSoundAsync() for sample-based SFX (engine loops, collisions); cached in Map     | ADR-0020 ✅  |
+| TR-AUDIO-003 | Four AudioBus instances: music (0.5), sfx (0.7), ui (0.6), ambient (0.4) via CreateAudioBusAsync            | ADR-0020 ✅  |
+| TR-AUDIO-004 | GSM event subscription — play music on Menu/PostRace; stop race playlist on pause; resume on unpause        | ADR-0020 ✅  |
+| TR-AUDIO-005 | Race event subscription — collision.impact, gear.up/down, lap.complete, checkered fanfare                   | ADR-0020 ✅  |
+| TR-AUDIO-006 | Car engine oscillator per active car — OscillatorNode synthesised from rpm, gear, throttle                  | ADR-0020 ✅  |
+| TR-AUDIO-007 | Volumes persisted per category (user preference) — 0..1 range, independent per AudioBus                     | ADR-0020 ✅  |
+| TR-AUDIO-008 | Race Again: stopAll(), dispose and re-create engine oscillator nodes; SoundSource samples disposed          | ADR-0020 ✅  |
+| TR-AUDIO-009 | maxInstances for collision sounds — default 5; oldest instance auto-stopped; no custom pooling              | ADR-0020 ✅  |
+| TR-AUDIO-010 | Audio context unlock on first user interaction — resumeOnInteraction: true; unlockAsync() for programmatic  | ADR-0020 ✅  |
 
 ## Definition of Done
 
@@ -43,6 +43,22 @@ This epic is complete when:
 - All Visual/Feel and UI stories have evidence docs with sign-off in `production/qa/evidence/`
 - Audio Engine V2 spike story completed and all APIs verified in target engine version
 
+## Stories
+
+| #    | Story                                 | Type        | Status | ADR      |
+| ---- | ------------------------------------- | ----------- | ------ | -------- |
+| 000  | Audio Engine V2 API Spike             | Integration | Ready  | ADR-0020 |
+| 001  | Engine Init & Context Unlock          | Integration | Ready  | ADR-0020 |
+| 009  | Audio Config & Bus Creation           | Config/Data | Ready  | ADR-0020 |
+| 003a | Engine Sound — WAV & Oscillator Setup | Logic       | Ready  | ADR-0020 |
+| 003b | Engine Sound — 60Hz Runtime           | Integration | Ready  | ADR-0020 |
+| 004  | Tire Squeal with Wear Modifier        | Logic       | Ready  | ADR-0020 |
+| 005  | Collision Sound System                | Integration | Ready  | ADR-0020 |
+| 006  | Pit Lane & Wind Ambient               | Logic       | Ready  | ADR-0020 |
+| 007  | GSM Audio State Machine & Crossfade   | Integration | Ready  | ADR-0020 |
+| 008  | Menu Music & Race Event Sounds        | Integration | Ready  | ADR-0020 |
+| 010  | Race Again Cleanup                    | Integration | Ready  | ADR-0020 |
+
 ## Next Step
 
-Run `/create-stories audio` to break this epic into implementable stories.
+Run `/story-readiness production/epics/audio/story-000-audio-v2-spike.md` → `/dev-story` to begin implementation.
