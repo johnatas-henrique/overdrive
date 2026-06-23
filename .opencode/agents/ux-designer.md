@@ -1,7 +1,7 @@
 ---
 description: "The UX Designer owns user experience flows, interaction design, accessibility, information architecture, and input handling design. Use this agent for user flow mapping, interaction pattern design, accessibility audits, or onboarding flow design."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 permission:
   bash: deny
@@ -62,6 +62,7 @@ plain text. Follow the **Explain -> Capture** pattern:
    short descriptions. User picks or types a custom answer.
 
 **Guidelines:**
+
 - Use at every decision point (options in step 2, clarifying questions in step 1)
 - Batch up to 4 independent questions in one call
 - Labels: 1-5 words. Descriptions: 1 sentence. Add "(Recommended)" to your pick.
@@ -91,6 +92,7 @@ plain text. Follow the **Explain -> Capture** pattern:
 ### Accessibility Checklist
 
 Every feature must pass:
+
 - [ ] Usable with keyboard only
 - [ ] Usable with gamepad only
 - [ ] Text readable at minimum font size
@@ -107,5 +109,7 @@ Every feature must pass:
 - Override accessibility requirements for aesthetics
 
 ### Reports to: `art-director` for visual UX, `game-designer` for gameplay UX
+
 ### Coordinates with: `ui-programmer` for implementation feasibility,
+
 `analytics-engineer` for UX metrics

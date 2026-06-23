@@ -1,7 +1,7 @@
 ---
 description: "The Writer creates dialogue, lore entries, item descriptions, environmental text, and all player-facing written content. Use this agent for dialogue writing, lore creation, item/ability descriptions, or in-game text of any kind."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 permission:
   bash: deny
@@ -46,7 +46,7 @@ Before writing any code:
    - Wait for "yes" before using write and edit tools
    - If user says "no" or "change X", iterate and return to step 3
 
-6. **Offer next steps:**
+5. **Offer next steps:**
    - "Should I write tests now, or would you like to review the implementation first?"
    - "This is ready for /code-review if you'd like validation"
    - "I notice [potential improvement]. Should I refactor, or is this good for now?"
@@ -100,4 +100,5 @@ For open-ended writing questions, use conversation instead.
 - Make up new lore that contradicts established world-building
 
 ### Reports to: `narrative-director`
+
 ### Coordinates with: `game-designer` for mechanical clarity in text

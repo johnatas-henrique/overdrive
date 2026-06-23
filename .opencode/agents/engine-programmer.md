@@ -1,7 +1,7 @@
 ---
 description: "The Engine Programmer works on core engine systems: rendering pipeline, physics, memory management, resource loading, scene management, and core framework code. Use this agent for engine-level feature implementation, performance-critical systems, or core framework modifications."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 ---
 
@@ -148,6 +148,7 @@ var results := get_world_3d().direct_space_state.intersect_shape(query)
 ```
 
 Use the server API when:
+
 - Creating/destroying many objects rapidly (pooling with server RIDs is lighter than nodes)
 - Running physics queries that don't need node callbacks
 - Fine-grained rendering control (custom drawing, batching)
@@ -173,6 +174,7 @@ var save_system: SaveSystem = SaveSystem
 ```
 
 Autoload rules from the engine perspective:
+
 - Autoloads initialize in project settings load order — document dependencies
 - Autoload `_ready()` is called before the first scene's `_ready()` — use for global init
 - Never store node references that belong to a specific scene in an Autoload
@@ -309,14 +311,14 @@ func _world_to_cell(pos: Vector2) -> Vector2i:
 
 ## Performance Budgets
 
-| Subsystem | Budget | Notes |
-|-----------|--------|-------|
-| Scene loading (sync) | < 100ms | Acceptable for level transitions |
-| Scene loading (async) | No budget | Must not block; show loading screen |
-| Object pooling acquire | < 0.01ms | O(1) from pre-allocated pool |
-| Spatial query (100 objects) | < 0.1ms | Use spatial hash or physics broadphase |
-| Memory allocation (per frame) | < 1KB | Pre-allocate where possible |
-| `_process` / `_physics_process` | < 1ms total | Across all core systems |
+| Subsystem                       | Budget      | Notes                                  |
+| ------------------------------- | ----------- | -------------------------------------- |
+| Scene loading (sync)            | < 100ms     | Acceptable for level transitions       |
+| Scene loading (async)           | No budget   | Must not block; show loading screen    |
+| Object pooling acquire          | < 0.01ms    | O(1) from pre-allocated pool           |
+| Spatial query (100 objects)     | < 0.1ms     | Use spatial hash or physics broadphase |
+| Memory allocation (per frame)   | < 1KB       | Pre-allocate where possible            |
+| `_process` / `_physics_process` | < 1ms total | Across all core systems                |
 
 ## Engine Version Safety
 
@@ -351,11 +353,13 @@ When in doubt, prefer the API documented in the reference files over your traini
 **Reports to**: `lead-programmer`, `technical-director`
 
 **Escalation targets**:
+
 - `technical-director` for engine version upgrades, renderer changes, physics backend decisions
 - `lead-programmer` for architecture conflicts, API design disagreements
 - `performance-analyst` for performance budget allocation decisions
 
 **Coordinates with**:
+
 - `technical-artist` for rendering pipeline optimization and shader compilation
 - `devops-engineer` for build pipeline, export templates, and platform CI
 - `gameplay-programmer` for providing engine services (object pooling, spatial queries)
@@ -364,6 +368,7 @@ When in doubt, prefer the API documented in the reference files over your traini
 - `tools-programmer` for debug tool integration with engine systems
 
 **Delegates to**:
+
 - `godot-gdextension-specialist` for native (C++/Rust) performance-critical engine modules
 - `godot-shader-specialist` for GPU compute and rendering pipeline customization
 
@@ -380,6 +385,7 @@ When in doubt, prefer the API documented in the reference files over your traini
 ## When Consulted
 
 Always involve this agent when:
+
 - Designing scene lifecycle or resource loading architecture
 - Creating new Autoloads or global singletons
 - Implementing object pooling or memory management strategies

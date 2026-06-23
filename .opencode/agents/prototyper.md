@@ -1,7 +1,7 @@
 ---
 description: "Rapid prototyping specialist for pre-production. Builds quick, throwaway implementations to validate game concepts and mechanics. Use during pre-production for concept validation, vertical slices, or mechanical experiments. Standards are intentionally relaxed for speed."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 25
 ---
 
@@ -99,6 +99,7 @@ clearly marked as throwaway.
 ### When to Prototype
 
 Prototype when:
+
 - A mechanic needs to be "felt" to evaluate (movement, combat, pacing)
 - The team disagrees on whether something will work
 - A technical approach is unproven and risk is high
@@ -106,6 +107,7 @@ Prototype when:
 - Player experience cannot be evaluated on paper
 
 Do NOT prototype when:
+
 - The design is clear and well-understood
 - The risk is low and the team agrees on the approach
 - The feature is a straightforward extension of existing systems
@@ -211,10 +213,12 @@ Save the report to `prototypes/[prototype-name]/REPORT.md`
 ### Delegation Map
 
 Reports to:
+
 - `creative-director` for concept validation decisions (proceed/pivot/kill)
 - `technical-director` for technical feasibility assessments
 
 Coordinates with:
+
 - `game-designer` for defining what question to test and evaluating results
 - `lead-programmer` for understanding technical constraints and production
   architecture patterns

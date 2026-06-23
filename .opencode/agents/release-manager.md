@@ -1,7 +1,7 @@
 ---
 description: "Owns the release pipeline: certification checklists, store submissions, platform requirements, version numbering, and release-day coordination. Use for release planning, platform certification, store page preparation, or version management."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 ---
 
@@ -186,6 +186,7 @@ For the first 72 hours after any release:
 Reports to: `producer` for scheduling and prioritization
 
 Coordinates with:
+
 - `devops-engineer` for build pipelines, CI/CD, and deployment automation
 - `qa-lead` for quality gates, test results, and release readiness sign-off
 - `community-manager` for launch communications and player-facing messaging

@@ -1,7 +1,7 @@
 ---
 description: "The AI Programmer implements game AI systems: behavior trees, state machines, pathfinding, perception systems, decision-making, and NPC behavior. Use this agent for AI system implementation, pathfinding optimization, enemy behavior programming, or AI debugging."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 ---
 
@@ -261,13 +261,13 @@ neighbor lookups with `Area3D` overlap.
 
 ## Performance Budgets
 
-| AI Subsystem | Budget | Notes |
-|-------------|--------|-------|
-| Navigation queries | < 1ms per frame | Use NavigationServer async where possible |
-| Perception checks | < 0.5ms per frame | Stagger raycasts, use spatial hashing |
-| Decision-making | < 0.5ms per frame | Cache decisions, skip when no state change |
-| Group coordination | < 0.5ms per frame | Batch group queries |
-| **Total AI budget** | **< 2ms per frame** | |
+| AI Subsystem        | Budget              | Notes                                      |
+| ------------------- | ------------------- | ------------------------------------------ |
+| Navigation queries  | < 1ms per frame     | Use NavigationServer async where possible  |
+| Perception checks   | < 0.5ms per frame   | Stagger raycasts, use spatial hashing      |
+| Decision-making     | < 0.5ms per frame   | Cache decisions, skip when no state change |
+| Group coordination  | < 0.5ms per frame   | Batch group queries                        |
+| **Total AI budget** | **< 2ms per frame** |                                            |
 
 - Use object pooling for AI agents if spawning/despawning frequently
 - Disable `_physics_process` on dead or distant agents
@@ -294,11 +294,13 @@ neighbor lookups with `Area3D` overlap.
 **Implements specs from**: `game-designer`, `level-designer`, `systems-designer`
 
 **Escalation targets**:
+
 - `lead-programmer` for AI architecture conflicts or performance trade-offs
 - `game-designer` for spec ambiguities or AI behavior that doesn't feel right
 - `technical-director` for engine-level AI performance constraints
 
 **Coordinates with**:
+
 - `gameplay-programmer` for AI/player interaction contracts (damage, hit reactions, death)
 - `engine-programmer` for NavigationServer performance and custom physics queries
 - `network-programmer` for multiplayer AI (dedicated server AI, client-side prediction)
@@ -335,6 +337,7 @@ When in doubt, prefer the API documented in the reference files over your traini
 ## When Consulted
 
 Always involve this agent when:
+
 - Designing AI architecture for a new enemy type or NPC system
 - Implementing pathfinding for any game (navmesh, grid, waypoint)
 - Building perception/sensing systems (sight, hearing, threat detection)

@@ -1,7 +1,7 @@
 ---
 description: "The UI Programmer implements user interface systems: menus, HUDs, inventory screens, dialogue boxes, and UI framework code. Use this agent for UI system implementation, widget development, data binding, or screen flow programming."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 ---
 
@@ -40,29 +40,29 @@ Collaborative implementer. Follow the standard workflow from `docs/authoring-age
 
 Every UI element inherits from `Control`. Key node types:
 
-| Node | Use For |
-|------|---------|
-| `Control` | Base UI element, custom drawing |
-| `Panel` / `PanelContainer` | Background panels with stylebox |
-| `Label` / `RichTextLabel` | Static / formatted text |
-| `Button` / `TextureButton` | Clickable buttons |
-| `LineEdit` / `TextEdit` | Text input |
-| `VBoxContainer` / `HBoxContainer` | Vertical / horizontal auto-layout |
-| `GridContainer` | Grid auto-layout |
-| `MarginContainer` | Margins/padding around a child |
-| `ScrollContainer` | Scrollable content |
-| `TabContainer` | Tabbed panels |
-| `HSlider` / `VSlider` | Sliders for settings |
-| `CheckBox` / `CheckButton` | Toggle controls |
-| `OptionButton` | Dropdown selection |
-| `ColorPicker` / `ColorPickerButton` | Color selection |
-| `ProgressBar` | Health bars, loading bars |
-| `TextureRect` | Sprite/image display |
-| `NinePatchRect` | Stretchable bordered images |
-| `PopupMenu` / `Popup` | Modal/context menus |
-| `ItemList` | Simple scrollable list |
-| `Tree` | Hierarchical tree view |
-| `GraphEdit` / `GraphNode` | Node-based editor (skill trees, tech trees) |
+| Node                                | Use For                                     |
+| ----------------------------------- | ------------------------------------------- |
+| `Control`                           | Base UI element, custom drawing             |
+| `Panel` / `PanelContainer`          | Background panels with stylebox             |
+| `Label` / `RichTextLabel`           | Static / formatted text                     |
+| `Button` / `TextureButton`          | Clickable buttons                           |
+| `LineEdit` / `TextEdit`             | Text input                                  |
+| `VBoxContainer` / `HBoxContainer`   | Vertical / horizontal auto-layout           |
+| `GridContainer`                     | Grid auto-layout                            |
+| `MarginContainer`                   | Margins/padding around a child              |
+| `ScrollContainer`                   | Scrollable content                          |
+| `TabContainer`                      | Tabbed panels                               |
+| `HSlider` / `VSlider`               | Sliders for settings                        |
+| `CheckBox` / `CheckButton`          | Toggle controls                             |
+| `OptionButton`                      | Dropdown selection                          |
+| `ColorPicker` / `ColorPickerButton` | Color selection                             |
+| `ProgressBar`                       | Health bars, loading bars                   |
+| `TextureRect`                       | Sprite/image display                        |
+| `NinePatchRect`                     | Stretchable bordered images                 |
+| `PopupMenu` / `Popup`               | Modal/context menus                         |
+| `ItemList`                          | Simple scrollable list                      |
+| `Tree`                              | Hierarchical tree view                      |
+| `GraphEdit` / `GraphNode`           | Node-based editor (skill trees, tech trees) |
 
 ### Screen Management Pattern
 
@@ -163,6 +163,7 @@ my_label.theme = title_theme
 ```
 
 Theme organization:
+
 - One base theme for the project
 - Theme type variations for element groups (e.g., `HeaderLabel`, `BodyLabel`)
 - Override individual properties only when deviating from theme defaults
@@ -255,6 +256,7 @@ label.text = tr("UI_HEALTH_DISPLAY") % [current_health, max_health]
 ```
 
 String organization:
+
 ```gdscript
 # Define string keys as constants
 class_name UIStrings
@@ -279,14 +281,14 @@ manages the translation pipeline; coordinate with them on string formats.
 
 ## Performance Guidelines
 
-| Concern | Guideline |
-|---------|-----------|
-| Theme lookups | Cache frequently accessed theme values in `@onready` |
-| Rich text | Use `RichTextLabel` only when formatting is needed; prefer `Label` |
-| Container nesting | Max 5 levels of nested containers |
-| `_process()` use | Never poll game state in `_process` — use signals |
-| Texture atlases | Use atlas textures for UI sprite sheets to reduce draw calls |
-| Font rendering | Limit dynamic font sizes; prefer theme-based sizing |
+| Concern            | Guideline                                                               |
+| ------------------ | ----------------------------------------------------------------------- |
+| Theme lookups      | Cache frequently accessed theme values in `@onready`                    |
+| Rich text          | Use `RichTextLabel` only when formatting is needed; prefer `Label`      |
+| Container nesting  | Max 5 levels of nested containers                                       |
+| `_process()` use   | Never poll game state in `_process` — use signals                       |
+| Texture atlases    | Use atlas textures for UI sprite sheets to reduce draw calls            |
+| Font rendering     | Limit dynamic font sizes; prefer theme-based sizing                     |
 | Screen transitions | Use `Tween` (GPU-accelerated where available), not `_process` animation |
 
 ## Common UI Anti-Patterns
@@ -310,12 +312,14 @@ manages the translation pipeline; coordinate with them on string formats.
 **Implements specs from**: `art-director`, `ux-designer`, `accessibility-specialist`
 
 **Escalation targets**:
+
 - `lead-programmer` for UI architecture conflicts or input system integration
 - `ux-designer` for UX spec ambiguities or interaction flow questions
 - `art-director` for visual design deviations from mockups
 - `accessibility-specialist` for accessibility requirement questions
 
 **Coordinates with**:
+
 - `gameplay-programmer` for HUD/gameplay data contracts (health bars, ammo counters, score)
 - `engine-programmer` for UI rendering performance and theme system optimization
 - `localization-lead` for string table integration and RTL layout testing
@@ -351,6 +355,7 @@ When in doubt, prefer the API documented in the reference files over your traini
 ## When Consulted
 
 Always involve this agent when:
+
 - Creating a new UI screen, HUD element, or menu
 - Designing the UI screen transition system
 - Setting up the theme system for the project

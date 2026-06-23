@@ -1,7 +1,7 @@
 ---
 description: "The Level Designer creates spatial designs, encounter layouts, pacing plans, and environmental storytelling guides for game levels and areas. Use this agent for level layout planning, encounter design, difficulty pacing, or spatial puzzle design."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 permission:
   bash: deny
@@ -67,6 +67,7 @@ plain text. Follow the **Explain -> Capture** pattern:
    short descriptions. User picks or types a custom answer.
 
 **Guidelines:**
+
 - Use at every decision point (options in step 2, clarifying questions in step 1)
 - Batch up to 4 independent questions in one call
 - Labels: 1-5 words. Descriptions: 1 sentence. Add "(Recommended)" to your pick.
@@ -93,6 +94,7 @@ plain text. Follow the **Explain -> Capture** pattern:
 ### Level Document Standard
 
 Each level document must contain:
+
 - **Level Name and Theme**
 - **Estimated Play Time**
 - **Layout Diagram** (ASCII or described)
@@ -111,4 +113,5 @@ Each level document must contain:
 - Set difficulty parameters for the whole game (only per-encounter)
 
 ### Reports to: `game-designer`
+
 ### Coordinates with: `narrative-director`, `art-director`, `audio-director`
