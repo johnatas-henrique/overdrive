@@ -219,6 +219,9 @@ _Written by qa-lead at story creation. The developer implements against these â€
 - Assert: failed contains system that threw
 
 ## Test Evidence
+
+Test evidence: `tests/unit/snapshot.test.ts` â€” verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 002 (uses SimulationSnapshot orchestrator, register(), restoreSnapshot())

@@ -157,6 +157,9 @@ _Written by qa-lead at story creation. The developer implements against these â€
 - Assert: returns `null`, other keys unaffected
 
 ## Test Evidence
+
+Test evidence: `tests/unit/persistence.test.ts` â€” verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 001 (persistence-state-machine-init)

@@ -170,6 +170,9 @@ _Written by qa-lead at story creation. The developer implements against these �
 - Assert: hash excludes timestamp — same state = same hash
 
 ## Test Evidence
+
+Test evidence: `tests/unit/snapshot.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 002 (uses FullGameSnapshot type and SimulationSnapshot orchestrator)

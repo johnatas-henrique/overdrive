@@ -132,6 +132,9 @@ _Written by qa-lead at story creation. The developer implements against these �
 - Assert: lexicographic comparison would fail (`"0.10" > "0.7"` lexicographically is `false`)
 
 ## Test Evidence
+
+Test evidence: `tests/unit/persistence.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 002 (save-load-key-prefix — PersistedEntry format, load path)

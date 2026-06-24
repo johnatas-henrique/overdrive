@@ -150,6 +150,9 @@ _Written by qa-lead at story creation. The developer implements against these â€
 - Assert: `hash()` produces identical output
 
 ## Test Evidence
+
+Test evidence: `tests/unit/snapshot.test.ts` â€” verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: None (first Foundation-level dependency for this epic)

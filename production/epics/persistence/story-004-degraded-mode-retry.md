@@ -131,6 +131,9 @@ _Written by qa-lead at story creation. The developer implements against these â€
 - Assert: short-circuits (does not retry)
 
 ## Test Evidence
+
+Test evidence: `tests/unit/persistence.test.ts` â€” verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 001 (persistence-state-machine-init), Story 002 (save-load-key-prefix)

@@ -110,6 +110,9 @@ _Written by qa-lead at story creation. The developer implements against these â€
 - Assert: second call is no-op (no error, no re-initialization)
 
 ## Test Evidence
+
+Test evidence: `tests/unit/persistence.test.ts` â€” verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: None
