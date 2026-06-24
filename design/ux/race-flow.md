@@ -34,7 +34,7 @@ The entire flow is an **emotional curve**: expectation (loading) → tension (gr
        │ TIMEOUT ou CONFIRM
        ▼
   ┌─────────────────────────────────────┐
-  │  Countdown 5→1 (5s, 1s/light)       │  ← lights turning on, beep at each light
+  │  Countdown 5→1 (5s, 1s/light)       │  ← lights turn off one by one (red→off), beep at each light
   └─────────────────────────────────────┘
        │ GREEN FLAG
        ▼
@@ -70,7 +70,7 @@ Transition the player from setup (menus) to the track without breaking immersion
 | ------------------ | ----------------------------- | ----------- | ------------------------------------------------------------------------- |
 | **Loading**        | 0.5s minimum (skip if < 0.5s) | —           | Assets load in background. If instantaneous, jumps straight to Grid.      |
 | **Grid Cinematic** | 8s (or CONFIRM skip)          | +8s         | Camera positioned in front of the grid, cars stationary, engines revving. |
-| **Countdown**      | 5s (1s/light)                 | +5s         | Lights turn on sequentially 5→1. Event `race.light.countdown`.            |
+| **Countdown**      | 5s (1s/light)                 | +5s         | Lights turn off sequentially 5→1. All off = GREEN. Event `race.light.countdown`.            |
 | **Green Flag**     | —                             | —           | Transition to Racing. Race begins.                                        |
 
 ### What the Player Sees
