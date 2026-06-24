@@ -107,17 +107,30 @@ _Written by qa-lead at story creation. The developer implements against these â€
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/persistence.test.ts`
+
+### AC-1: writes queue in Degraded
+- Force Degraded state
+- Call `save('key', value)` multiple times
+- Assert: writes queued in memory (not lost)
+
+### AC-2: FIFO queue with cap
+- Queue 55 entries (cap 50)
+- Assert: oldest 5 entries discarded
+- Assert: most recent 50 preserved
+
+### AC-3: retry() flushes
+- After Degraded, restore storage, call `retry()`
+- Assert: queued writes flushed to storage
+
+### AC-4: non-recoverable failure
+- Simulate unrecoverable storage error
+- Call `retry()`
+- Assert: short-circuits (does not retry)
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/persistence/degraded_mode_test.ts` â€” must exist and pass
-
-**Cross-story integration**: The `retry()` queue-flush-to-storage path requires an integration test that spans Stories 004 and 002. Tracked as an Epic-level DoD item.
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: Story 001 (persistence-state-machine-init), Story 002 (save-load-key-prefix)

@@ -108,17 +108,30 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/persistence.test.ts`
+
+### AC-1: migration chain executes
+- Store payload at version `0.5.0`
+- Register migrations `0.5→0.6`, `0.6→0.7`
+- Load
+- Assert: both migrations run, payload at version `0.7.0`
+
+### AC-2: missing migration throws
+- Store at `0.5.0`
+- Register only `0.6→0.7` (missing `0.5→0.6`)
+- Load
+- Assert: throws `MigrationError('Missing migration: 0.5 → 0.6')`
+- Assert: save not loaded (data integrity)
+
+### AC-3: semver comparison (not lexicographic)
+- Store at `0.10.0`, current `0.7.0`
+- Register `0.7→0.10` and `0.10→0.11`
+- Assert: correct chain detected (`0.7→0.10→0.11`)
+- Assert: lexicographic comparison would fail (`"0.10" > "0.7"` lexicographically is `false`)
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/persistence/migration_chain_test.ts` — must exist and pass
-
-**Cross-story integration**: The full `load() → detect version mismatch → run migrations → return migrated data` pipeline is tracked as an Epic-level DoD item: `tests/integration/persistence/migration_load_integration_test.ts`.
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: Story 002 (save-load-key-prefix — PersistedEntry format, load path)

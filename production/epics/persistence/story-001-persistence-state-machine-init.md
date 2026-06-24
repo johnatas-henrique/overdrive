@@ -91,15 +91,25 @@ _Written by qa-lead at story creation. The developer implements against these â€
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/persistence.test.ts`
+
+### AC-1: init() enters Ready
+- Mock localStorage to be available
+- Call `Persistence.init()`
+- Assert: state = Ready
+
+### AC-2: init() enters Degraded in private browsing
+- Mock localStorage `setItem` to throw
+- Call `Persistence.init()`
+- Assert: state = Degraded
+
+### AC-3: duplicate init guarded
+- Call `init()` twice
+- Assert: second call is no-op (no error, no re-initialization)
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/persistence/state_machine_init_test.ts` â€” must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: None

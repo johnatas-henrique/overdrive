@@ -130,15 +130,33 @@ _Written by qa-lead at story creation. The developer implements against these â€
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/integration/persistence.test.ts`
+
+### AC-1: save + load round-trip
+- `save('settings', { audio: 0.8 })`
+- `load('settings')`
+- Assert: returns `{ audio: 0.8 }`
+
+### AC-2: key prefix isolation
+- Verify game keys use configured prefix
+- Assert: no collision with non-game localStorage entries
+
+### AC-3: load nonexistent returns null
+- `load('nonexistent')`
+- Assert: returns `null`
+
+### AC-4: delete()
+- Save value, call `delete('settings')`
+- Assert: `load('settings')` returns `null`
+
+### AC-5: corrupted data
+- Manually corrupt stored entry
+- `load('settings')`
+- Assert: returns `null`, other keys unaffected
+
 ## Test Evidence
-
-**Story Type**: Integration
-**Required evidence**: `tests/integration/persistence/save_load_roundtrip_test.ts` â€” must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: Story 001 (persistence-state-machine-init)

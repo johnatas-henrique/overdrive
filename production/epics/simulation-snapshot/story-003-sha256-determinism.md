@@ -152,17 +152,24 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/snapshot.test.ts`
+
+### AC-1: SHA-256 deterministic
+- Call `crypto.subtle.digest('SHA-256', data)` on same input twice
+- Assert: identical digest output
+
+### AC-2: dual hashing (FNV-1a + SHA-256)
+- Take snapshot, compute FNV-1a (tick hash) and SHA-256 (sync hash)
+- Assert: both hashes deterministic for same state
+- Assert: FNV-1a faster but less collision-resistant than SHA-256
+
+### AC-3: timestamp excluded from comparison
+- Create same state with different timestamps
+- Assert: hash excludes timestamp — same state = same hash
+
 ## Test Evidence
-
-**Story Type**: Integration
-**Required evidence**:
-
-- Integration: `tests/integration/simulation-snapshot/sha256-determinism_test.ts` — must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: Story 002 (uses FullGameSnapshot type and SimulationSnapshot orchestrator)

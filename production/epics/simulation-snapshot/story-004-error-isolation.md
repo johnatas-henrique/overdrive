@@ -193,17 +193,32 @@ _Written by qa-lead at story creation. The developer implements against these â€
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/snapshot.test.ts`
+
+### AC-1: duplicate systemId
+- Register system with id `fuel`
+- Register second system with same id `fuel`
+- Assert: throws `SnapshotError('System already registered: fuel')`
+
+### AC-2: unregistered system skipped
+- Call `takeSnapshot()` when system has not registered
+- Assert: system skipped with warning logged
+- Assert: other systems captured normally
+
+### AC-3: corrupted snapshot on restore
+- Call `deserialize()` that throws for one system
+- Assert: error caught, logged
+- Assert: other systems restore normally
+
+### AC-4: restore result structure
+- Call `restoreSnapshot()` with partially corrupt snapshot
+- Assert: returns `{ succeeded: [...], failed: [...] }`
+- Assert: succeeded contains systems that restored
+- Assert: failed contains system that threw
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**:
-
-- Logic: `tests/unit/simulation-snapshot/error-isolation_test.ts` â€” must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: Story 002 (uses SimulationSnapshot orchestrator, register(), restoreSnapshot())

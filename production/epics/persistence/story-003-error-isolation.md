@@ -88,15 +88,24 @@ _Written by qa-lead at story creation. The developer implements against these â€
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/integration/persistence.test.ts`
+
+### AC-1: corrupted entry isolated
+- Save two keys, corrupt one in localStorage
+- `load` corrupted key: returns `null`, error logged (key + size)
+- `load` other key: returns correct value
+
+### AC-2: non-existent storage
+- `load('nonexistent')`
+- Assert: returns `null`
+
+### AC-3: error logging
+- Corrupted entry
+- Assert: error log contains key name and size of corrupted data
+
 ## Test Evidence
-
-**Story Type**: Integration
-**Required evidence**: `tests/integration/persistence/error_isolation_test.ts` â€” must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: Story 002 (save-load-key-prefix)

@@ -171,17 +171,25 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/integration/snapshot.test.ts`
+
+### AC-1: register + capture
+- Register 3 test systems
+- Call `takeSnapshot()`
+- Assert: snapshot contains state from all 3 systems
+
+### AC-2: restore + hash match
+- Take snapshot, modify all systems
+- Call `restoreSnapshot(snapshot)`
+- Assert: `hash()` for each system matches expected values
+
+### AC-3: end-to-end lifecycle
+- Full cycle: register → takeSnapshot → modify → restoreSnapshot → verify
+- Assert: all systems return to exact captured state
+
 ## Test Evidence
-
-**Story Type**: Integration
-**Required evidence**:
-
-- Integration: `tests/integration/simulation-snapshot/orchestrator-lifecycle_test.ts` — must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: Story 001 (ISnapshotable interface + FNV-1a)

@@ -127,17 +127,29 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/snapshot.test.ts`
+
+### AC-1: ISnapshotable interface
+- Implement test system with ISnapshotable
+- Call `serialize()` — returns state object
+- Call `deserialize(state)` — restores from state
+- Assert: round-trip produces identical state
+
+### AC-2: FNV-1a deterministic
+- Call `hash()` on same state twice
+- Assert: identical hash strings
+
+### AC-3: different state, different hash
+- Modify state, call `hash()`
+- Assert: hash differs from original
+
+### AC-4: cross-run determinism
+- Create same state in two separate runs
+- Assert: `hash()` produces identical output
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**:
-
-- Logic: `tests/unit/simulation-snapshot/interface-and-fnv1a_test.ts` — must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: None (first Foundation-level dependency for this epic)
