@@ -16,16 +16,18 @@ end: "2026-07-29"
 generated: "2026-06-24"
 updated: "2026-06-24"
 
+# Completed: Story 001 — Core Register + Get + Error Handling
+
 stories:
   - id: "1-1"
     name: "Story 001: Core Register + Get + Error Handling"
     file: "production/epics/data-config-manager/story-001-core-registry.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-2"
     name: "Story 002: Environment Variable Override"
