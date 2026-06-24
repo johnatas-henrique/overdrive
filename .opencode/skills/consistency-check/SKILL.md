@@ -18,6 +18,7 @@ per-section checks may have missed and what `/review-all-gdds`'s holistic review
 catches too late.
 
 **When to run:**
+
 - After writing each new GDD (before moving to the next system)
 - Before `/review-all-gdds` (so that skill starts with a clean baseline)
 - Before `/create-architecture` (inconsistencies poison downstream ADRs)
@@ -30,6 +31,7 @@ catches too late.
 ## Phase 1: Parse Arguments and Load Registry
 
 **Modes:**
+
 - No argument / `full` — check all registered entries against all GDDs
 - `since-last-review` — check only GDDs modified since the last review report
 - `entity:<name>` — check one specific entity across all GDDs
@@ -42,18 +44,21 @@ Read path="design/registry/entities.yaml"
 ```
 
 If the file does not exist or has no entries:
+
 > "Entity registry is empty. Run `/design-system` to write GDDs — the registry
 > is populated automatically after each GDD is completed. Nothing to check yet."
 
 Stop and exit.
 
 Build four lookup tables from the registry:
+
 - **entity_map**: `{ name → { source, attributes, referenced_by } }`
 - **item_map**: `{ name → { source, value_gold, weight, ... } }`
 - **formula_map**: `{ name → { source, variables, output_range } }`
 - **constant_map**: `{ name → { source, value, unit } }`
 
 Count total registered entries. Report:
+
 ```
 Registry loaded: [N] entities, [N] items, [N] formulas, [N] constants
 Scope: [full | since-last-review | entity:name]
@@ -71,9 +76,11 @@ Exclude: `game-concept.md`, `systems-index.md`, `game-pillars.md` — these are
 not system GDDs.
 
 For `since-last-review` mode:
+
 ```bash
 git log --name-only --pretty=format: -- design/gdd/ | grep "\.md$" | sort -u
 ```
+
 Limit to GDDs modified since the most recent `design/gdd/gdd-cross-review-*.md`
 file's creation date.
 
@@ -100,6 +107,7 @@ Grep pattern="[entity_name]" glob="design/gdd/*.md" output_mode="content" -C 3
 ```
 
 For each GDD hit, extract the values mentioned near the entity name:
+
 - any numeric attributes (counts, costs, durations, ranges, rates)
 - any categorical attributes (types, tiers, categories)
 - any derived values (totals, outputs, results)
@@ -108,6 +116,7 @@ For each GDD hit, extract the values mentioned near the entity name:
 Compare extracted values against the registry entry.
 
 **Conflict detection:**
+
 - Registry says `[entity_name].[attribute] = [value_A]`. GDD says `[entity_name] has [value_B]`. → **CONFLICT**
 - Registry says `[item_name].[attribute] = [value_A]`. GDD says `[item_name] is [value_B]`. → **CONFLICT**
 - GDD mentions `[entity_name]` but doesn't specify the attribute. → **NOTE** (no conflict, just unverifiable)
@@ -115,6 +124,7 @@ Compare extracted values against the registry entry.
 ### 3b: Item Scan
 
 For each item in item_map, grep all GDDs for the item name. Extract:
+
 - sell price / value / gold value
 - weight
 - stack rules (stackable / non-stackable)
@@ -125,19 +135,23 @@ Compare against registry entry values.
 ### 3c: Formula Scan
 
 For each formula in formula_map, grep all GDDs for the formula name. Extract:
+
 - variable names mentioned near the formula
 - output range or cap values mentioned
 
 Compare against registry entry:
+
 - Different variable names → **CONFLICT**
 - Output range stated differently → **CONFLICT**
 
 ### 3d: Constant Scan
 
 For each constant in constant_map, grep all GDDs for the constant name. Extract:
+
 - Any numeric value mentioned near the constant name
 
 Compare against registry value:
+
 - Different number → **CONFLICT**
 
 ---
@@ -150,9 +164,11 @@ conflicting GDD to get precise context:
 ```
 Read path="design/gdd/[conflicting_gdd].md"
 ```
+
 (Or use Grep with wider context if the file is large)
 
 Confirm the conflict with full context. Determine:
+
 1. **Which GDD is correct?** Check the `source:` field in the registry — the
    source GDD is the authoritative owner. Any other GDD that contradicts it
    is the one that needs updating.
@@ -163,6 +179,7 @@ Confirm the conflict with full context. Determine:
    then fix all other GDDs.
 
 For each conflict, classify:
+
 - **🔴 CONFLICT** — same named entity/item/formula/constant with different values
   in different GDDs. Must resolve before architecture begins.
 - **⚠️ STALE REGISTRY** — source GDD value changed but registry not updated.
@@ -217,6 +234,7 @@ Verdict: PASS | CONFLICTS FOUND
 ```
 
 **Verdict:**
+
 - **PASS** — no conflicts. Registry and GDDs agree on all checked values.
 - **CONFLICTS FOUND** — one or more conflicts detected. List resolution steps.
 
@@ -225,14 +243,17 @@ Verdict: PASS | CONFLICTS FOUND
 ## Phase 6: Registry Corrections
 
 If stale registry entries were found, ask:
+
 > "May I update `design/registry/entities.yaml` to fix the [N] stale entries?"
 
 For each stale entry:
+
 - Update the `value` / attribute field
 - Set `revised:` to today's date
 - Add a YAML comment with the old value: `# was: [old_value] before [date]`
 
 If new entries were found in GDDs that are not in the registry, ask:
+
 > "Found [N] entities/items mentioned in GDDs that aren't in the registry yet.
 > May I add them to `design/registry/entities.yaml`?"
 
@@ -251,6 +272,7 @@ append an entry to `docs/consistency-failures.md` for each conflict:
 
 ```markdown
 ### [YYYY-MM-DD] — /consistency-check — 🔴 CONFLICT
+
 **Domain**: [system domain(s) involved]
 **Documents involved**: [source GDD] vs [conflicting GDD]
 **What happened**: [specific conflict — entity name, attribute, differing values]
@@ -259,12 +281,44 @@ append an entry to `docs/consistency-failures.md` for each conflict:
 referenced in economy GDD before authoring — always check entities.yaml first"]
 ```
 
-Only append if `docs/consistency-failures.md` exists. If the file is missing,
-skip this step silently — do not create the file from this skill.
+If `docs/consistency-failures.md` does not exist, create it with this header before appending:
+
+```markdown
+# Consistency Failure Log
+
+<!-- Auto-maintained by /consistency-check. Do not edit manually. -->
+<!-- One entry per detected conflict, in chronological order. -->
+
+| Date | GDD A | GDD B | Conflict Type | Status |
+| ---- | ----- | ----- | ------------- | ------ |
+```
+
+Then append the new conflict entries. Never skip logging — a missing file is not a reason to lose conflict history.
 
 ---
 
-## Next Steps
+## Phase 7: Session State and Closing
+
+Silently append to `production/session-state/active.md` (create the file if it does not exist):
+
+```
+<!-- CONSISTENCY-CHECK: [date] | GDDs checked: [N] | Conflicts found: [N] | Report: docs/consistency-report-[date].md -->
+```
+
+Then close with an `question` widget:
+
+- **Prompt**: "Consistency check complete — [N] conflicts found. What next?"
+- **Options**:
+  - `[A] Fix the highest-priority conflict now`
+  - `[B] Save full report and stop`
+  - `[C] Run /design-review on the most conflicted GDD`
+  - `[D] Stop here`
+
+Never end the skill with plain text. Always close with this widget.
+
+---
+
+## Recovery / Reference
 
 - **If PASS**: Run `/review-all-gdds` for holistic design-theory review, or
   `/create-architecture` if all MVP GDDs are complete.

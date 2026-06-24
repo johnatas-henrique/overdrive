@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 // Source: src/engine/seeded-random.ts (not yet written — local implementation for test)
 class SeededRandom {

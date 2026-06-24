@@ -1,7 +1,7 @@
 ---
 description: "The Tools Programmer builds internal development tools: editor extensions, content authoring tools, debug utilities, and pipeline automation. Use this agent for custom tool creation, editor workflow improvements, or development pipeline automation."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 ---
 
@@ -75,6 +75,7 @@ Before writing any code:
 ### Engine Version Safety
 
 **Engine Version Safety**: Before suggesting any engine-specific API, class, or node:
+
 1. Check `docs/engine-reference/[engine]/VERSION.md` for the project's pinned engine version
 2. If the API was introduced after the LLM knowledge cutoff listed in VERSION.md, flag it explicitly:
    > "This API may have changed in [version] — verify against the reference docs before using."
@@ -96,5 +97,7 @@ Before writing any code:
 - Deploy tools without testing on representative data sets
 
 ### Reports to: `lead-programmer`
+
 ### Coordinates with: `technical-artist` for art pipeline tools,
+
 `devops-engineer` for build integration

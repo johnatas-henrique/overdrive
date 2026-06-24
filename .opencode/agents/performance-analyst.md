@@ -1,7 +1,7 @@
 ---
 description: "The Performance Analyst profiles game performance, identifies bottlenecks, recommends optimizations, and tracks performance metrics over time. Use this agent for performance profiling, memory analysis, frame time investigation, or optimization strategy."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 ---
 
@@ -107,4 +107,5 @@ Before writing any code:
 - Optimize prematurely (profile first, always)
 
 ### Reports to: `technical-director`
+
 ### Coordinates with: `engine-programmer`, `technical-artist`, `devops-engineer`

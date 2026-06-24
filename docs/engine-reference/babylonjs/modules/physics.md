@@ -96,6 +96,40 @@ body.disablePreStep = false; // Allow direct position changes
 | `PhysicsShapeType.CYLINDER` | Pillars, pipes |
 | `PhysicsShapeType.PLANE` | Infinite ground planes |
 
+### Manual Havok Stepping (Fixed Timestep)
+
+For deterministic physics (fixed timestep pipeline), disable auto-step and call `executeStep()` manually each tick:
+
+```typescript
+import { HavokPlugin } from "@babylonjs/core/Physics/Plugins/havokPlugin";
+import HavokPhysics from "@babylonjs/havok";
+
+async function setupFixedStepPhysics(scene: Scene): Promise<HavokPlugin> {
+  const havokInstance = await HavokPhysics();
+  const havokPlugin = new HavokPlugin(true, havokInstance);
+
+  // IMPORTANT: suppress auto-step — scene.onBeforeRenderObservable auto-steps at
+  // variable render FPS. Fixed timestep requires manual control.
+  scene.enablePhysics(new Vector3(0, -9.81, 0), havokPlugin);
+  scene.getPhysicsEngine()!.setTimeStep(1 / 60);
+
+  // Remove the auto-step: clear default before render observers
+  // (scene.enablePhysics registers onBeforeRender — we disable via plugin property)
+  return havokPlugin;
+}
+
+// In FixedUpdatePipeline tick:
+function physicsTick(plugin: HavokPlugin, scene: Scene, dt: number) {
+  // executeStep accepts dt in seconds — must be exact FIXED_DT (1/60)
+  // Havok extrapolates internally; calling with 1/60 each tick keeps determinism.
+  plugin.executeStep(dt, scene);
+}
+```
+
+**Important**: `executeStep(dt, scene)` must be called with the same `dt` value every tick in the fixed timestep pipeline. Calling it with variable `dt` (from `engine.getDeltaTime()`) breaks determinism. The default auto-step from `scene.enablePhysics()` must be suppressed — use the plugin's `executeStep` directly and ensure no `onBeforeRender` physics stepping is active.
+
+Source: ADR-0002 (Fixed Timestep Determinism), ADR-0008 (Vehicle Physics — Arcade Dynamic).
+
 ### Body Types
 
 | Type | Description | Performance |

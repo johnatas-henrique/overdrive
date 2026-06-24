@@ -11,7 +11,10 @@ These show what runs before and after each skill, and what artifacts flow betwee
 PHASE 1: CONCEPT
   /start ──────────────────────────────────────────────────────► routes to A/B/C/D
   /brainstorm ──────────────────────────────────────────────────► design/gdd/game-concept.md
-  /setup-engine ────────────────────────────────────────────────► AGENTS.md + technical-preferences.md
+  /setup-engine ────────────────────────────────────────────────► CLAUDE.md + technical-preferences.md
+  /prototype [core-mechanic] ───────────────────────────────────► prototypes/[name]-concept/REPORT.md
+        │ PROCEED                                                  (validate idea BEFORE writing GDDs)
+        ▼
   /design-review [game-concept.md] ────────────────────────────► concept validated
   /gate-check ─────────────────────────────────────────────────► PASS → advance to systems-design
         │
@@ -45,11 +48,13 @@ PHASE 4: PRE-PRODUCTION
   /test-setup ─────────────────────────────────────────────────► test framework + CI/CD pipeline
   /test-helpers ───────────────────────────────────────────────► tests/helpers/[engine-specific].gd
 
-  [Stories + prototype]
+  [Vertical slice — before epics, validate full game loop]
+  /vertical-slice ─────────────────────────────────────────────► prototypes/[name]-vertical-slice/REPORT.md
+  /playtest-report ────────────────────────────────────────────► production/playtests/
+
+  [Stories + sprint plan — only after vertical slice PROCEEDS]
   /create-epics [layer] ───────────────────────────────────────► production/epics/*/EPIC.md
   /create-stories [epic-slug] ─────────────────────────────────► production/epics/*/story-*.md
-  /prototype [core-mechanic] ──────────────────────────────────► prototypes/[name]/
-  /playtest-report ────────────────────────────────────────────► tests/playtest/vertical-slice.md
   /sprint-plan new ────────────────────────────────────────────► production/sprints/sprint-01.md
   /gate-check ─────────────────────────────────────────────────► PASS → advance to production
         │
@@ -297,36 +302,6 @@ How a story gets from backlog to closed (summary view):
 
 ---
 
-## Skill Chain: UX Pipeline in Detail (Legacy Reference)
-
-```
-design/gdd/*.md (UX requirements extracted)
-design/player-journey.md (emotional arc)
-        │
-        ▼
-/ux-design hud              → design/ux/hud.md
-/ux-design screen [name]    → design/ux/screens/[name].md
-/ux-design patterns         → design/ux/interaction-patterns.md
-        │
-        ▼
-/ux-review design/ux/
-        │
-        ├── APPROVED → all specs ready for /team-ui
-        ├── NEEDS REVISION → blocking issues listed → fix → re-run review
-        └── MAJOR REVISION → fundamental UX problems → significant redesign
-                │
-                ▼ (after APPROVED)
-        /team-ui
-                │
-                ├── Phase 1: context load + /ux-design (if specs missing)
-                ├── Phase 2: visual design (art-director)
-                ├── Phase 3: layout implementation (ui-programmer)
-                ├── Phase 4: accessibility audit (accessibility-specialist)
-                └── Phase 5: final review
-```
-
----
-
 ## Brownfield Onboarding Flow
 
 For projects with existing work (use `/start` option D or run directly):
@@ -354,34 +329,34 @@ For projects with existing work (use `/start` option D or run directly):
 
 ## How to Read These Diagrams
 
-| Symbol | Meaning |
-|--------|---------|
-| `──►` | Produces this artifact |
-| `│ ▼` | Flows into next step |
-| `├──` | Branch (multiple possible outcomes) |
-| `×N` | Runs N times (once per system, story, etc.) |
-| `(input)` | Read by the skill but not produced here |
-| `[optional]` | Not required for the gate to pass |
-| `WRITE` (caps) | File written to disk immediately |
+| Symbol         | Meaning                                     |
+| -------------- | ------------------------------------------- |
+| `──►`          | Produces this artifact                      |
+| `│ ▼`          | Flows into next step                        |
+| `├──`          | Branch (multiple possible outcomes)         |
+| `×N`           | Runs N times (once per system, story, etc.) |
+| `(input)`      | Read by the skill but not produced here     |
+| `[optional]`   | Not required for the gate to pass           |
+| `WRITE` (caps) | File written to disk immediately            |
 
 ---
 
 ## Common Entry Points
 
-| Where you are | Run this |
-|---------------|---------|
-| Brand new, no idea | `/start` → `/brainstorm` |
-| Have a concept, no engine | `/setup-engine` |
-| Have concept + engine | `/map-systems` |
-| Mid-systems design | `/design-system [next system]` or `/map-systems next` |
-| All GDDs done | `/review-all-gdds` → `/gate-check` |
-| In technical setup | `/create-architecture` → `/architecture-decision` |
-| Starting UX design | `/ux-design screen [name]` or `/ux-design hud` |
-| Scaffolding tests | `/test-setup` → `/test-helpers` |
-| Have stories, ready to code | `/story-readiness [story]` → `/dev-story [story]` |
-| Story done | `/story-done [story]` |
-| Running QA for a sprint | `/qa-plan` → `/smoke-check` → `/regression-suite` |
-| Bug backlog needs sorting | `/bug-triage` |
-| Extended stability testing | `/soak-test` |
-| Not sure | `/help` |
-| Existing project | `/adopt` |
+| Where you are               | Run this                                              |
+| --------------------------- | ----------------------------------------------------- |
+| Brand new, no idea          | `/start` → `/brainstorm`                              |
+| Have a concept, no engine   | `/setup-engine`                                       |
+| Have concept + engine       | `/map-systems`                                        |
+| Mid-systems design          | `/design-system [next system]` or `/map-systems next` |
+| All GDDs done               | `/review-all-gdds` → `/gate-check`                    |
+| In technical setup          | `/create-architecture` → `/architecture-decision`     |
+| Starting UX design          | `/ux-design screen [name]` or `/ux-design hud`        |
+| Scaffolding tests           | `/test-setup` → `/test-helpers`                       |
+| Have stories, ready to code | `/story-readiness [story]` → `/dev-story [story]`     |
+| Story done                  | `/story-done [story]`                                 |
+| Running QA for a sprint     | `/qa-plan` → `/smoke-check` → `/regression-suite`     |
+| Bug backlog needs sorting   | `/bug-triage`                                         |
+| Extended stability testing  | `/soak-test`                                          |
+| Not sure                    | `/help`                                               |
+| Existing project            | `/adopt`                                              |

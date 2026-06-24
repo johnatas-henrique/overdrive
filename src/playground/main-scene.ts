@@ -1,14 +1,14 @@
-import { Scene } from "@babylonjs/core/scene";
-import { Vector3, Color3, Color4 } from "@babylonjs/core/Maths/math";
-import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
-import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
-import { PhysicsAggregate } from "@babylonjs/core/Physics/v2/physicsAggregate";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { Color3, Color4, Vector3 } from "@babylonjs/core/Maths/math";
+import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { PhysicsShapeType } from "@babylonjs/core/Physics/v2/IPhysicsEnginePlugin";
+import { PhysicsAggregate } from "@babylonjs/core/Physics/v2/physicsAggregate";
 import { DefaultRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline";
-import { CreateSceneGUI } from "./gui";
+import type { Scene } from "@babylonjs/core/scene";
 import { templateConfig } from "../config/template-config";
+import { CreateSceneGUI } from "./gui";
 
 export const CreateMainScene = async (scene: Scene): Promise<void> => {
   scene.clearColor = new Color4(0.05, 0.05, 0.08, 1);
@@ -19,7 +19,7 @@ export const CreateMainScene = async (scene: Scene): Promise<void> => {
     Math.PI / 2.5,
     12,
     Vector3.Zero(),
-    scene,
+    scene
   );
   camera.attachControl(true);
 
@@ -30,7 +30,11 @@ export const CreateMainScene = async (scene: Scene): Promise<void> => {
     new DefaultRenderingPipeline("defaultPipeline", true, scene);
   }
 
-  const ground = MeshBuilder.CreateGround("ground", { width: 10, height: 10 }, scene);
+  const ground = MeshBuilder.CreateGround(
+    "ground",
+    { width: 10, height: 10 },
+    scene
+  );
   const groundMat = new StandardMaterial("groundMat", scene);
   groundMat.diffuseColor = new Color3(0.22, 0.24, 0.3);
   ground.material = groundMat;

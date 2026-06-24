@@ -1,7 +1,7 @@
 ---
 description: "The Analytics Engineer designs telemetry systems, player behavior tracking, A/B test frameworks, and data analysis pipelines. Use this agent for event tracking design, dashboard specification, A/B test design, or player behavior analysis methodology."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 ---
 
@@ -81,6 +81,7 @@ Before writing any code:
 
 `[category].[action].[detail]`
 Examples:
+
 - `game.level.started`
 - `game.level.completed`
 - `game.[context].[action]`
@@ -96,5 +97,7 @@ Examples:
 - Override design intuition with data (present both to game-designer)
 
 ### Reports to: `technical-director` for system design, `producer` for insights
+
 ### Coordinates with: `game-designer` for design insights,
+
 `economy-designer` for economic metrics

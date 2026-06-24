@@ -1,13 +1,13 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { WebGPUEngine } from "@babylonjs/core/Engines/webgpuEngine";
-import { Scene } from "@babylonjs/core/scene";
-import { HavokPlugin } from "@babylonjs/core/Physics/v2/Plugins/havokPlugin";
 import { Vector3 } from "@babylonjs/core/Maths/math";
+import { HavokPlugin } from "@babylonjs/core/Physics/v2/Plugins/havokPlugin";
+import { Scene } from "@babylonjs/core/scene";
 import "@babylonjs/core/Physics/joinedPhysicsEngineComponent";
 import "@babylonjs/core/Materials/Textures/cubeTexture";
 import "@babylonjs/core/Materials/Textures/Loaders/envTextureLoader";
-import { CreateMainScene } from "./playground/main-scene";
 import { templateConfig } from "./config/template-config";
+import { CreateMainScene } from "./playground/main-scene";
 
 class App {
   public engine!: Engine | WebGPUEngine;
@@ -33,7 +33,8 @@ class App {
     if (templateConfig.rendering.webgpuFirst && "gpu" in navigator) {
       try {
         const webgpu = new WebGPUEngine(this.canvas, {
-          adaptToDeviceRatio: templateConfig.rendering.engine.adaptToDeviceRatio,
+          adaptToDeviceRatio:
+            templateConfig.rendering.engine.adaptToDeviceRatio,
           antialias: templateConfig.rendering.engine.antialias,
         });
         await webgpu.initAsync();
@@ -44,7 +45,8 @@ class App {
     }
     return new Engine(this.canvas, true, {
       stencil: templateConfig.rendering.engine.stencil,
-      disableWebGL2Support: templateConfig.rendering.engine.disableWebGL2Support,
+      disableWebGL2Support:
+        templateConfig.rendering.engine.disableWebGL2Support,
       adaptToDeviceRatio: templateConfig.rendering.engine.adaptToDeviceRatio,
     });
   }

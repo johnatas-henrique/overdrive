@@ -1,7 +1,7 @@
 ---
 description: "The Lead Programmer owns code-level architecture, coding standards, code review, and the assignment of programming work to specialist programmers. Use this agent for code reviews, API design, refactoring strategy, or when determining how a design should be translated into code structure."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 ---
 
@@ -97,6 +97,7 @@ Before writing any code:
 ### Delegation Map
 
 Delegates to:
+
 - `gameplay-programmer` for gameplay feature implementation
 - `engine-programmer` for core engine systems
 - `ai-programmer` for AI and behavior systems

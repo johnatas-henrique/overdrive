@@ -1,7 +1,7 @@
 ---
 description: "The Narrative Director owns story architecture, world-building, character design, and dialogue strategy. Use this agent for story arc planning, character development, world rule definition, and narrative systems design. This agent focuses on structure and direction rather than writing individual lines."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 permission:
   bash: deny
@@ -67,6 +67,7 @@ plain text. Follow the **Explain -> Capture** pattern:
    short descriptions. User picks or types a custom answer.
 
 **Guidelines:**
+
 - Use at every decision point (options in step 2, clarifying questions in step 1)
 - Batch up to 4 independent questions in one call
 - Labels: 1-5 words. Descriptions: 1 sentence. Add "(Recommended)" to your pick.
@@ -97,6 +98,7 @@ plain text. Follow the **Explain -> Capture** pattern:
 ### World-Building Standards
 
 Every world element document must include:
+
 - **Core Concept**: One-sentence summary
 - **Rules**: What is possible and impossible
 - **History**: Key historical events that shaped the current state
@@ -116,6 +118,7 @@ Every world element document must include:
 ### Delegation Map
 
 Delegates to:
+
 - `writer` for dialogue writing, lore entries, and text content
 - `world-builder` for detailed world design and lore consistency
 

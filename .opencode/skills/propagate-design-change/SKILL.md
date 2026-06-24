@@ -20,10 +20,12 @@ what the GDD now says, and guides the user through resolution.
 ## 1. Validate Argument
 
 A GDD path argument is **required**. If missing, fail with:
+
 > "Usage: `/propagate-design-change design/gdd/[system].md`
 > Provide the path to the GDD that was changed."
 
 Verify the file exists. If not, fail with:
+
 > "[path] not found. Check the path and try again."
 
 ---
@@ -43,10 +45,12 @@ git show HEAD:design/gdd/[filename].md
 ```
 
 If the file has no git history (new file), report:
+
 > "No previous version in git — this appears to be a new GDD, not a revision.
 > Nothing to propagate."
 
 If git returns the previous version, do a conceptual diff:
+
 - Identify sections that changed (new rules, removed rules, modified formulas,
   changed acceptance criteria, changed tuning knobs)
 - Identify sections that are unchanged
@@ -72,11 +76,12 @@ Key changes affecting architecture:
 ## 4. Load Architecture Inputs
 
 Read all ADRs in `docs/architecture/`:
+
 - For each ADR, read the full file
 - Extract the "GDD Requirements Addressed" table
 - Note which GDD documents and requirement IDs each ADR references
 
-Read `docs/architecture/architecture-traceability.md` if it exists.
+Read `docs/architecture/requirements-traceability.md` if it exists.
 
 Report: "Loaded [N] ADRs. [M] reference [gdd filename]."
 
@@ -95,11 +100,11 @@ of the GDD. For each referenced requirement:
 
 Classify each affected ADR as one of:
 
-| Status | Meaning |
-|--------|---------|
-| ✅ **Still Valid** | The GDD change doesn't affect what this ADR decided |
-| ⚠️ **Needs Review** | The GDD change may affect this ADR — human judgment needed |
-| 🔴 **Likely Superseded** | The GDD change directly contradicts what this ADR assumed |
+| Status                   | Meaning                                                    |
+| ------------------------ | ---------------------------------------------------------- |
+| ✅ **Still Valid**       | The GDD change doesn't affect what this ADR decided        |
+| ⚠️ **Needs Review**      | The GDD change may affect this ADR — human judgment needed |
+| 🔴 **Likely Superseded** | The GDD change directly contradicts what this ADR assumed  |
 
 For each affected ADR, produce an impact entry:
 
@@ -148,6 +153,7 @@ ADRs referencing this GDD: [M]
 ## 6b. Director Gate — Technical Impact Review
 
 **Review mode check** — apply before spawning TD-CHANGE-IMPACT:
+
 - `solo` → skip. Note: "TD-CHANGE-IMPACT skipped — Solo mode." Proceed to Phase 7.
 - `lean` → skip. Note: "TD-CHANGE-IMPACT skipped — Lean mode." Proceed to Phase 7.
 - `full` → spawn as normal.
@@ -157,11 +163,13 @@ Spawn `technical-director` via Task using gate **TD-CHANGE-IMPACT** (`.opencode/
 Pass: the full Design Change Impact Report from Phase 6 (change summary, all affected ADRs with their Still Valid / Needs Review / Likely Superseded classifications, and recommended actions).
 
 The technical-director reviews whether:
+
 - The impact classifications are correct (no ADRs under-classified)
 - The recommended actions are architecturally sound
 - Any cascading effects on other ADRs or systems were missed
 
 Apply the verdict:
+
 - **APPROVE** → proceed to Phase 7 resolution workflow
 - **CONCERNS** → surface the specific ADRs or recommendations flagged; use `question` with options: `Revise the impact assessment` / `Accept with noted concerns` / `Discuss further`
 - **REJECT** → do not proceed to resolution; re-analyze the impact before continuing
@@ -173,14 +181,17 @@ Apply the verdict:
 For each ADR marked "Needs Review" or "Likely Superseded", ask the user what to do:
 
 Ask for each ADR in turn:
+
 > "ADR-NNNN ([title]) — [status]. What would you like to do?"
 > Options:
+>
 > - "Mark Superseded (I'll write a new ADR)" — updates ADR status line to `Superseded by: [pending]`
 > - "Update in place (minor revision)" — opens the ADR for editing; note what to revise
 > - "Keep as-is (the change doesn't actually affect this decision)"
 > - "Skip for now (revisit later)"
 
 For ADRs marked **Superseded**:
+
 - Update the ADR's Status field: `Superseded by ADR-[next number] (pending — see change-impact-[date]-[system].md)`
 - Ask: "May I update the status in [ADR filename]?"
 
@@ -188,14 +199,16 @@ For ADRs marked **Superseded**:
 
 ## 8. Update Traceability Index
 
-If `docs/architecture/architecture-traceability.md` exists:
+If `docs/architecture/requirements-traceability.md` exists:
+
 - Add the changed GDD requirements to the "Superseded Requirements" table:
 
 ```markdown
 ## Superseded Requirements
-| Date | GDD | Requirement | Changed To | ADRs Affected | Resolution |
-|------|-----|-------------|------------|---------------|------------|
-| [date] | [gdd] | [old requirement text] | [new requirement text] | ADR-NNNN | [Superseded/Updated/Valid] |
+
+| Date   | GDD   | Requirement            | Changed To             | ADRs Affected | Resolution                 |
+| ------ | ----- | ---------------------- | ---------------------- | ------------- | -------------------------- |
+| [date] | [gdd] | [old requirement text] | [new requirement text] | ADR-NNNN      | [Superseded/Updated/Valid] |
 ```
 
 Ask: "May I update the traceability index?"
@@ -207,6 +220,7 @@ Ask: "May I update the traceability index?"
 Ask: "May I write the change impact report to `docs/architecture/change-impact-[date]-[system-slug].md`?"
 
 The document contains:
+
 - The change summary from step 3
 - The full impact analysis from step 5
 - Resolution decisions made in step 7

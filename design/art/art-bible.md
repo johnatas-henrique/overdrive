@@ -1,13 +1,13 @@
 # Art Bible — Overdrive
 
-*Created: 2026-06-16*
-*Status: Draft (Sections 1-N completed incrementally)*
+_Created: 2026-06-16_
+_Status: Signed Off (AD-ART-BIBLE: 2026-06-22 ✅ | Version 1.0)_
 
 ---
 
 ## Section 1: Visual Identity Statement
 
-> **Art Director Sign-Off (AD-ART-BIBLE)**: PENDING
+> **Art Director Sign-Off (AD-ART-BIBLE)**: 2026-06-22 ✅
 
 ### 1.1 The One-Line Visual Rule
 
@@ -17,19 +17,19 @@ When any visual decision is ambiguous, this rule resolves it: eliminate gradient
 
 ### 1.2 Supporting Visual Principles
 
-**P1: Stream for Speed** — *Design test: "When choosing between detail and silhouette clarity, this principle says: the shape must read at 300 km/h."*
+**P1: Stream for Speed** — _Design test: "When choosing between detail and silhouette clarity, this principle says: the shape must read at 300 km/h."_
 
 Anchored to pillar **"Speed That Is Felt"**. Vehicles, environments, and UI elements are reduced to their most readable silhouette. Body panels are broad colour fields with minimal panel breaks. Road details (kerbs, markings, elevation changes) use high-contrast colour blocks rather than texture. The car's identity must resolve from a blur in the corner of the eye during a 400m straight.
 
-**P2: Colour Speaks, Decoration Whispers** — *Design test: "When choosing between a decorative flourish and a functional colour signal, this principle says: every colour carries meaning — use it."*
+**P2: Colour Speaks, Decoration Whispers** — _Design test: "When choosing between a decorative flourish and a functional colour signal, this principle says: every colour carries meaning — use it."_
 
 Anchored to pillar **"Simple Strategy, Real Decisions"**. Fuel state, tire wear, boost readiness, and rival threat are communicated through the palette itself — not through icons or meters that fight the speed. Green-to-red shifts on the HUD, tire-glow temperature bands, and track-surface colour zones replace numerical readouts. A gradient is never the answer; a colour shift is.
 
-**P3: Progress Is a Palette Shift** — *Design test: "When showing player advancement, this principle says: change the colour, not the geometry."*
+**P3: Progress Is a Palette Shift** — _Design test: "When showing player advancement, this principle says: change the colour, not the geometry."_
 
 Anchored to pillar **"Racing Is Progression"**. As the player upgrades parts and switches teams, the material language shifts — not the silhouette. Early-season cars (or lower-tier teams) use matte, desaturated colour fields; late-season cars (or top teams) gain saturations, subtle metallic flecks (applied as flat colour bands, never gradients), and glow accents on engine components. The same clean geometry reads as "starter" or "champion" through palette and finish alone.
 
-**P4: Team Colours, Driver Faces** — *Design test: "When introducing a rival, this principle says: the car's colour is the team's identity, the driver's character is their own."*
+**P4: Team Colours, Driver Faces** — _Design test: "When introducing a rival, this principle says: the car's colour is the team's identity, the driver's character is their own."_
 
 Anchored to pillar **"Grid of Personalities"**. The car livery belongs to the **team** — two drivers from the same team share the same car colours and patterns. What distinguishes each rival driver is their **driving behaviour** (aggressive, consistent, impulsive, defensive) and their **personal signature** — helmet design, car number, and on-track mannerisms. A player recognizes a rival not by "a red car" but by "the red car that dives inside at Turn 3" or "the blue car with the yellow chevron helmet that defends the line stubbornly." The team palette satisfies the visual constraint (flat, saturated, no blending) while the personality type satisfies the recognition need.
 
@@ -77,6 +77,8 @@ The net effect: the cutscene doesn't look like a different game — it looks lik
 
 ### 2.3 Victory / Podium
 
+> **MVP scope**: Results screen is static text (position, time, rival reaction). Full podium ceremony (confetti, champagne, golden-hour lighting, 3D podium) is **Alpha** scope.
+
 **Primary emotion**: Triumphant release — the payoff. Confetti, champagne, roar of the crowd. Deserved, earned, and absolutely unapologetic.
 
 **Lighting character**: Golden hour from behind the podium (low sun, 3200K, long shadows). High contrast with warm spill across the player character and car. Lens flare / bloom permitted here — the one state where we break the "no post-processing" rule for a brief, celebratory moment.
@@ -89,7 +91,7 @@ The net effect: the cutscene doesn't look like a different game — it looks lik
 
 ### 2.4 Defeat / Off-Podium
 
-**Primary emotion**: Quiet burn — not tragedy, not comedy, but the sour taste of *almost*. A driver walking away from the car, helmet under arm.
+**Primary emotion**: Quiet burn — not tragedy, not comedy, but the sour taste of _almost_. A driver walking away from the car, helmet under arm.
 
 **Lighting character**: Twilight, just after the sun has dropped. Deep blue ambient (8000K-10000K), very low contrast, everything picking up a cool rim light. Desaturated to near-monochrome — only the car's livery retains a ghost of its colour.
 
@@ -97,7 +99,7 @@ The net effect: the cutscene doesn't look like a different game — it looks lik
 
 **Energy level**: Measured (close to contemplative)
 
-**Pillar connection**: Flat colour fields drain to almost nothing — the palette at its most restrained, proving the highs by showing the lows. The one-line rule still holds: "every pixel declares velocity" — except here velocity is *zero*, and that stillness is the point.
+**Pillar connection**: Flat colour fields drain to almost nothing — the palette at its most restrained, proving the highs by showing the lows. The one-line rule still holds: "every pixel declares velocity" — except here velocity is _zero_, and that stillness is the point.
 
 ### 2.5 Cutscene (Narrative)
 
@@ -121,23 +123,23 @@ The net effect: the cutscene doesn't look like a different game — it looks lik
 
 **Energy level**: Measured (building to high)
 
-**Pillar connection**: Championship map is "bold colour fields" at its purest — tracks are flat geometric nodes connected by sharp vector lines, each region in a single bold colour block on dark background. The one-line rule applies to the transition animation: the line connecting one race to the next *is* a speedline, drawn in real time.
+**Pillar connection**: Championship map is "bold colour fields" at its purest — tracks are flat geometric nodes connected by sharp vector lines, each region in a single bold colour block on dark background. The one-line rule applies to the transition animation: the line connecting one race to the next _is_ a speedline, drawn in real time.
 
 ### 2.7 Mood State Transitions
 
-| Transition | Visual Treatment |
-|---|---|
-| Paddock → Race | Flash cut to black, hard cut to track. No fade. Sound of ignition hitting on the cut. |
-| Race → Victory | Slow-motion kicks in over the last 3 seconds. Colour saturation ramps up as the finish line approaches. |
-| Race → Defeat | Audio drops out before the car stops. Colour desaturates frame by frame. Slow fade to twilight paddock. |
-| Cutscene → Race | Speedline wipe: horizontal white lines streak across left-to-right, revealing the track behind them. |
-| Race → Championship | The last frame of track freezes, then panel-wipes into the map view. |
+| Transition          | Visual Treatment                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------- |
+| Paddock → Race      | Flash cut to black, hard cut to track. No fade. Sound of ignition hitting on the cut.                   |
+| Race → Victory      | Slow-motion kicks in over the last 3 seconds. Colour saturation ramps up as the finish line approaches. |
+| Race → Defeat       | Audio drops out before the car stops. Colour desaturates frame by frame. Slow fade to twilight paddock. |
+| Cutscene → Race     | Speedline wipe: horizontal white lines streak across left-to-right, revealing the track behind them.    |
+| Race → Championship | The last frame of track freezes, then panel-wipes into the map view.                                    |
 
 ---
 
 ## Section 3: Shape Language
 
-> **Art Director Sign-Off (AD-ART-BIBLE)**: PENDING
+> **Art Director Sign-Off (AD-ART-BIBLE)**: 2026-06-22 ✅
 
 ### 3.1 Team Car Design (Fixed per Team)
 
@@ -149,11 +151,11 @@ For rival cars, each team's design stays fixed across all seasons — Macklen al
 
 **Reference images for the silhouette aesthetic:**
 
-| Image | Reference For |
-|-------|--------------|
-| `van-diemen-rf90-formula-ford-1990.jpg` | Compact silhouette inspiration |
-| `ralt-rt35-1991.jpg` | Athletic silhouette inspiration |
-| `williams-fw14b-1992.jpg` | Complex silhouette inspiration |
+| Image                                   | Reference For                   |
+| --------------------------------------- | ------------------------------- |
+| `van-diemen-rf90-formula-ford-1990.jpg` | Compact silhouette inspiration  |
+| `ralt-rt35-1991.jpg`                    | Athletic silhouette inspiration |
+| `williams-fw14b-1992.jpg`               | Complex silhouette inspiration  |
 
 These three references define the **visual vocabulary** — smooth curves, simplified aero elements, bold colour blocking — not a progression path.
 
@@ -170,11 +172,11 @@ Each of the 8 teams has a distinct car design — different silhouette, proporti
 
 A player recognizes a rival through a combination that works at peripheral vision:
 
-| Signal | Source | Readable From |
-|--------|--------|---------------|
-| The car's team livery | Body colour + pattern | 200m+ |
-| The car number | Nose / sidepod numeral | 100m+ |
-| The helmet design | Top of cockpit, coloured peak | 50m+ |
+| Signal                | Source                                      | Readable From         |
+| --------------------- | ------------------------------------------- | --------------------- |
+| The car's team livery | Body colour + pattern                       | 200m+                 |
+| The car number        | Nose / sidepod numeral                      | 100m+                 |
+| The helmet design     | Top of cockpit, coloured peak               | 50m+                  |
 | The driving behaviour | Corner entry, braking point, defensive line | Instant (after 1 lap) |
 
 **Example**: The same blue-and-yellow team livery appears on two cars in the grid. But the player learns that car #7 (red chevron helmet) always brakes late and tries the inside, while car #14 (white helmet, blue stripe) holds the racing line and makes you go around. Recognition happens through behaviour, confirmed by helmet and number.
@@ -183,21 +185,21 @@ A player recognizes a rival through a combination that works at peripheral visio
 
 Overdrive's 7 rival teams (and the player) draw from a restricted palette of flat, saturated team colours:
 
-*Team colours and driver assignments are defined in Section 4.3 (Team Palette) and Section 5 (Character & Driver Visual Design).*
+_Team colours and driver assignments are defined in Section 4.3 (Team Palette) and Section 5 (Character & Driver Visual Design)._
 
 ### 3.2 Environment Shape Language
 
 **The rule**: Everything is simplified and stylised — except the track itself, which is the most detailed surface.
 
-| Element | Shape Language | Rationale |
-|---------|---------------|-----------|
-| **Track surface** | Smooth, continuous — the most detailed surface in the game | Eye naturally follows it; speed reads against simplified surroundings |
-| **Kerbs** | Bold colour blocks, simplified ramps | High-contrast visual anchors at corner entry/exit |
-| **Barriers** | Simplified walls, flat colour bands | Readability at 300 km/h; no texture detail |
-| **Buildings / grandstands** | Simplified boxes with broad colour fields | Speed sensation — they flash past as colour blocks |
-| **Trees / landscape** | 3-4 polygon cards with flat colour | No leaf detail, no transparency — pure silhouette |
-| **Sky / clouds** | Flat gradient bands or simplified cloud shapes | No photorealistic sky; cel-style horizon bands |
-| **Tunnels / bridges** | Dark simplified geometry with emissive edge strips | Speed lines on tunnel walls as particle FX |
+| Element                     | Shape Language                                             | Rationale                                                             |
+| --------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------- |
+| **Track surface**           | Smooth, continuous — the most detailed surface in the game | Eye naturally follows it; speed reads against simplified surroundings |
+| **Kerbs**                   | Bold colour blocks, simplified ramps                       | High-contrast visual anchors at corner entry/exit                     |
+| **Barriers**                | Simplified walls, flat colour bands                        | Readability at 300 km/h; no texture detail                            |
+| **Buildings / grandstands** | Simplified boxes with broad colour fields                  | Speed sensation — they flash past as colour blocks                    |
+| **Trees / landscape**       | 3-4 polygon cards with flat colour                         | No leaf detail, no transparency — pure silhouette                     |
+| **Sky / clouds**            | Flat gradient bands or simplified cloud shapes             | No photorealistic sky; cel-style horizon bands                        |
+| **Tunnels / bridges**       | Dark simplified geometry with emissive edge strips         | Speed lines on tunnel walls as particle FX                            |
 
 **Ground-to-car lighting**: Light bounces off surfaces as large colour planes, not specular highlights. This reinforces the stylized look and prevents visual noise at speed.
 
@@ -205,14 +207,14 @@ Overdrive's 7 rival teams (and the player) draw from a restricted palette of fla
 
 The UI follows a clean, modern grammar — flat colour fields, bold typography, no unnecessary decoration. Rounded corners are allowed on buttons and badges; gradients are forbidden. Every element is flat and readable.
 
-| Element | Shape | Behaviour |
-|---------|-------|-----------|
-| **Fuel bar** | Horizontal rectangle with stepped decrement | Drops in discrete blocks, not smooth drain |
-| **Tachometer** | Vertical segmented bar | Segments light up in sequence as revs rise |
-| **Position counter** | Angular badge, bold numeral | Shape scales up/down on overtake/fall |
-| **Portraits** | Simplified bust, flat colour fill | Matches Speed Keyframe cutscene style |
-| **Buttons** | Flat, slight rounding allowed, no bevel | Click feedback via colour shift only |
-| **Dialogue boxes** | Sharp-cornered panels, border in accent colour | No shadow, no transparency |
+| Element              | Shape                                          | Behaviour                                  |
+| -------------------- | ---------------------------------------------- | ------------------------------------------ |
+| **Fuel bar**         | Horizontal rectangle with stepped decrement    | Drops in discrete blocks, not smooth drain |
+| **Tachometer**       | Vertical segmented bar                         | Segments light up in sequence as revs rise |
+| **Position counter** | Angular badge, bold numeral                    | Shape scales up/down on overtake/fall      |
+| **Portraits**        | Simplified bust, flat colour fill              | Matches Speed Keyframe cutscene style      |
+| **Buttons**          | Flat, slight rounding allowed, no bevel        | Click feedback via colour shift only       |
+| **Dialogue boxes**   | Sharp-cornered panels, border in accent colour | No shadow, no transparency                 |
 
 ### 3.4 Visual Hierarchy at Speed
 
@@ -232,12 +234,11 @@ Racing at 300 km/h means the eye has milliseconds to parse the frame. The hierar
 
 Saved under `design/art/references/`:
 
-| File | Subject |
-|------|---------|
-| `van-diemen-rf90-formula-ford-1990.jpg` | Low-poly compact silhouette style reference |
-| `ralt-rt35-1991.jpg` | Low-poly athletic silhouette style reference |
-| `williams-fw14b-1992.jpg` | Low-poly complex aero silhouette style reference |
-
+| File                                    | Subject                                          |
+| --------------------------------------- | ------------------------------------------------ |
+| `van-diemen-rf90-formula-ford-1990.jpg` | Low-poly compact silhouette style reference      |
+| `ralt-rt35-1991.jpg`                    | Low-poly athletic silhouette style reference     |
+| `williams-fw14b-1992.jpg`               | Low-poly complex aero silhouette style reference |
 
 ## Section 4 — Color System
 
@@ -245,13 +246,13 @@ Saved under `design/art/references/`:
 
 Five core colours anchor the visual identity across every game state. These are the only colours used for track elements, kerbs, and critical UI primitives:
 
-| Colour | Hex | Use |
-|--------|-----|-----|
-| Race Red | `#E8301A` | Alert, danger, player damage, critical fuel |
-| Track Black | `#2A2A2A` | Asphalt base (adjusted per track, ±1 step) |
-| Kerb White | `#F0F0F0` | Track edges, start/finish line, UI text |
-| Asphalt Grey | `#4A4A4A` | Runoff areas, secondary track surfaces |
-| Signal Yellow | `#F5C800` | Caution, kerbs, flag, highlight |
+| Colour        | Hex       | Use                                         |
+| ------------- | --------- | ------------------------------------------- |
+| Race Red      | `#E8301A` | Alert, danger, player damage, critical fuel |
+| Track Black   | `#2A2A2A` | Asphalt base (adjusted per track, ±1 step)  |
+| Kerb White    | `#F0F0F0` | Track edges, start/finish line, UI text     |
+| Asphalt Grey  | `#4A4A4A` | Runoff areas, secondary track surfaces      |
+| Signal Yellow | `#F5C800` | Caution, kerbs, flag, highlight             |
 
 **Rule:** No gradients in the game palette. Every colour is a solid, flat value.
 
@@ -259,52 +260,52 @@ Five core colours anchor the visual identity across every game state. These are 
 
 Each track has a fixed sky palette based on its region and climate. Weather variation is colour-shift only — no dynamic weather simulation.
 
-| Climate | Region Examples | Sky Colour | Light Quality |
-|---------|----------------|------------|---------------|
-| Warm / Sunny | Brazil, Australia, Italy, Spain | `#3B82D6` (Warm Blue) | High contrast, hard shadows |
-| Temperate | UK, France, Germany | `#6B8FA3` (Cold Blue) | Soft, overcast, diffuse |
-| Rainy / Cold | Belgium, Netherlands, Japan | `#8B9BB4` (Closed Grey) | Flat, low saturation |
-| Championship Finale | Any track | `#E8943A` (Golden Hour) | Warm, long shadows, bloom permitted |
+| Climate             | Region Examples                 | Sky Colour              | Light Quality                       |
+| ------------------- | ------------------------------- | ----------------------- | ----------------------------------- |
+| Warm / Sunny        | Brazil, Australia, Italy, Spain | `#3B82D6` (Warm Blue)   | High contrast, hard shadows         |
+| Temperate           | UK, France, Germany             | `#6B8FA3` (Cold Blue)   | Soft, overcast, diffuse             |
+| Rainy / Cold        | Belgium, Netherlands, Japan     | `#8B9BB4` (Closed Grey) | Flat, low saturation                |
+| Championship Finale | Any track                       | `#E8943A` (Golden Hour) | Warm, long shadows, bloom permitted |
 
 ### 4.3 Team Palette (8 Teams)
 
 Each team has a fixed livery colour pair inspired by the 1990–1991 F1 grid. These colours identify the team at a glance — the driver is identified by helmet + number + behaviour.
 
-| Team | Parody of | Primary | Secondary | Notes |
-|------|-----------|---------|-----------|-------|
-| **Macklen** | McLaren | `#C8102E` (Red) | `#FFFFFF` (White) | Marlboro-era McLaren |
-| **Willard** | Williams | `#0051BA` (Blue) | `#FFFFFF` + `#FFD700` (White + Yellow) | Canon Williams |
-| **Ferrell** | Ferrari | `#DC0000` (Ferrari Red) | `#FFD700` (Yellow) | Scuderia Ferrari |
-| **Bennett** | Benetton | `#FFD700` (Yellow) | `#006B3F` + `#003DA5` (Green + Blue) | 1991 Benetton |
-| **Jordash** | Jordan | `#006B3F` (Emerald Green) | `#003DA5` (Royal Blue) | 7UP Jordan 191 |
-| **Tyrant** | Tyrrell | `#404058` (Dark Navy) | `#002060` (Royal Blue) + `#FFD700` (Yellow) | 019-era Tyrrell |
-| **Lorris** | Lotus | `#E8A800` (Camel Gold) | `#181818` (Black) | Camel Lotus 102 |
-| **Layton Hall** | Leyton House | `#00CED1` (Dark Turquoise) | `#175D52` (Dark Teal) | CG911-era Leyton House |
+| Team            | Parody of    | Primary                    | Secondary                                   | Notes                  |
+| --------------- | ------------ | -------------------------- | ------------------------------------------- | ---------------------- |
+| **Macklen**     | McLaren      | `#C8102E` (Red)            | `#FFFFFF` (White)                           | Marlboro-era McLaren   |
+| **Willard**     | Williams     | `#0051BA` (Blue)           | `#FFFFFF` + `#FFD700` (White + Yellow)      | Canon Williams         |
+| **Ferrell**     | Ferrari      | `#DC0000` (Ferrari Red)    | `#FFD700` (Yellow)                          | Scuderia Ferrari       |
+| **Bennett**     | Benetton     | `#FFD700` (Yellow)         | `#006B3F` + `#003DA5` (Green + Blue)        | 1991 Benetton          |
+| **Jordash**     | Jordan       | `#006B3F` (Emerald Green)  | `#003DA5` (Royal Blue)                      | 7UP Jordan 191         |
+| **Tyrant**      | Tyrrell      | `#404058` (Dark Navy)      | `#002060` (Royal Blue) + `#FFD700` (Yellow) | 019-era Tyrrell        |
+| **Lorris**      | Lotus        | `#E8A800` (Camel Gold)     | `#181818` (Black)                           | Camel Lotus 102        |
+| **Layton Hall** | Leyton House | `#00CED1` (Dark Turquoise) | `#175D52` (Dark Teal)                       | CG911-era Leyton House |
 
 ### 4.4 HUD Palette
 
 Seven functional colours reserved for the interface layer:
 
-| Colour | Hex | Use |
-|--------|-----|-----|
-| Pure White | `#FFFFFF` | Primary text, speed, revs |
-| Alert Red | `#E8301A` | Critical fuel, warning, low tyres |
-| Fuel Blue | `#00BFFF` | Fuel gauge |
-| Tach Yellow | `#F5C800` | Rev limiter zone |
-| Tyre Cyan | `#00E5FF` | Tyre temperature indicator |
-| Position Ghost | `#808080` | Ghost car / opponent delta |
-| Overtake Green | `#00FF66` | Overtake streak, positive delta |
+| Colour         | Hex       | Use                               |
+| -------------- | --------- | --------------------------------- |
+| Pure White     | `#FFFFFF` | Primary text, speed, revs         |
+| Alert Red      | `#E8301A` | Critical fuel, warning, low tyres |
+| Fuel Blue      | `#00BFFF` | Fuel gauge                        |
+| Tach Yellow    | `#F5C800` | Rev limiter zone                  |
+| Tyre Cyan      | `#00E5FF` | Tyre temperature indicator        |
+| Position Ghost | `#808080` | Ghost car / opponent delta        |
+| Overtake Green | `#00FF66` | Overtake streak, positive delta   |
 
 ### 4.5 Championship Progression Mood Shift
 
 As the championship reaches its climax (final races, title contention), lighting and post-processing shift subtly:
 
-| Property | Early Season | Late Season (Title Decider) |
-|----------|-------------|-----------------------------|
-| Contrast | Medium | High |
-| Sky Palette | Standard per-track | +5% contrast, warmer bias |
-| Bloom | Subtle | Slightly elevated for drama |
-| Team Colours | Same hex values | Same hex values |
+| Property     | Early Season       | Late Season (Title Decider) |
+| ------------ | ------------------ | --------------------------- |
+| Contrast     | Medium             | High                        |
+| Sky Palette  | Standard per-track | +5% contrast, warmer bias   |
+| Bloom        | Subtle             | Slightly elevated for drama |
+| Team Colours | Same hex values    | Same hex values             |
 
 The car itself never changes colour or geometry — team identity is恒定. The drama comes from atmosphere, not from the vehicle.
 
@@ -322,6 +323,7 @@ The car itself never changes colour or geometry — team identity is恒定. The 
 ### 5.1 Driver Identification Philosophy
 
 Driver identity is three things: **helmet + number + behaviour**. Not face, not car silhouette. On track at 300 km/h, the player identifies a rival by:
+
 1. The colour shape of the helmet inside the cockpit
 2. The car number on the rear wing and nose
 3. How the car behaves through corners
@@ -330,16 +332,16 @@ The car itself is the team's identity (livery). Two drivers from the same team s
 
 ### 5.2 Car Numbers (1991 Season Reference)
 
-| Team | No. | Reference Driver |
-|------|:---:|:----------------:|
-| Macklen | #1 | Senna (defending champion) |
-| Willard | #5 | Mansell |
-| Ferrell | #27 | Prost |
-| Bennett | #20 | Piquet |
-| Jordash | #33 | de Cesaris |
-| Tyrant | #3 | Nakajima |
-| Lorris | #11 | Häkkinen |
-| Layton Hall | #16 | Capelli |
+| Team        | No. |      Reference Driver      |
+| ----------- | :-: | :------------------------: |
+| Macklen     | #1  | Senna (defending champion) |
+| Willard     | #5  |          Mansell           |
+| Ferrell     | #27 |           Prost            |
+| Bennett     | #20 |           Piquet           |
+| Jordash     | #33 |         de Cesaris         |
+| Tyrant      | #3  |          Nakajima          |
+| Lorris      | #11 |          Häkkinen          |
+| Layton Hall | #16 |          Capelli           |
 
 Numbers are fixed per team. Font is bold, white or black (maximum contrast against car livery), positioned on the rear wing endplate and nose cone.
 
@@ -347,42 +349,43 @@ Numbers are fixed per team. Font is bold, white or black (maximum contrast again
 
 Each helmet is inspired by the real driver's 1991 identity but modified enough to be a parody, not a replica.
 
-| Team | Helmet Description | Colours | Reference Inspiration |
-|------|-------------------|---------|---------------------|
-| **Macklen** | Yellow crown with navy and dark green bands, white central stripe | `#FFD700` `#1A237E` `#1B5E20` `#FFFFFF` | Senna — yellow base with dark green/navy triband |
-| **Willard** | Medium blue with white diagonal band and gold accent | `#1565C0` `#FFFFFF` `#FFD700` | Mansell — blue with diagonal contrasting stripe |
-| **Ferrell** | White with blue, red and green bands across the crown | `#FFFFFF` `#1565C0` `#DC0000` `#006B3F` | Prost — white with multi-colour crown bands |
-| **Bennett** | White with blue and red side stripes, yellow accent | `#FFFFFF` `#003DA5` `#DC0000` `#FFD700` | Piquet — white base with coloured side elements |
-| **Jordash** | White with inverted-V emerald green and royal blue stripes | `#FFFFFF` `#006B3F` `#003DA5` | de Cesaris — white with large coloured V shapes |
-| **Tyrant** | White with red circle on crown and navy details | `#FFFFFF` `#E8301A` `#404058` | Nakajima — white base with red circular motif |
-| **Lorris** | Silver-white with diagonal blue and red bands, black details | `#E0E0E0` `#1565C0` `#DC0000` `#181818` | Häkkinen — bright base with diagonal coloured bands |
-| **Layton Hall** | Red with horizontal turquoise band and white accent | `#DC0000` `#00CED1` `#FFFFFF` | Capelli — red with contrasting horizontal stripe |
+| Team            | Helmet Description                                                | Colours                                 | Reference Inspiration                               |
+| --------------- | ----------------------------------------------------------------- | --------------------------------------- | --------------------------------------------------- |
+| **Macklen**     | Yellow crown with navy and dark green bands, white central stripe | `#FFD700` `#1A237E` `#1B5E20` `#FFFFFF` | Senna — yellow base with dark green/navy triband    |
+| **Willard**     | Medium blue with white diagonal band and gold accent              | `#1565C0` `#FFFFFF` `#FFD700`           | Mansell — blue with diagonal contrasting stripe     |
+| **Ferrell**     | White with blue, red and green bands across the crown             | `#FFFFFF` `#1565C0` `#DC0000` `#006B3F` | Prost — white with multi-colour crown bands         |
+| **Bennett**     | White with blue and red side stripes, yellow accent               | `#FFFFFF` `#003DA5` `#DC0000` `#FFD700` | Piquet — white base with coloured side elements     |
+| **Jordash**     | White with inverted-V emerald green and royal blue stripes        | `#FFFFFF` `#006B3F` `#003DA5`           | de Cesaris — white with large coloured V shapes     |
+| **Tyrant**      | White with red circle on crown and navy details                   | `#FFFFFF` `#E8301A` `#404058`           | Nakajima — white base with red circular motif       |
+| **Lorris**      | Silver-white with diagonal blue and red bands, black details      | `#E0E0E0` `#1565C0` `#DC0000` `#181818` | Häkkinen — bright base with diagonal coloured bands |
+| **Layton Hall** | Red with horizontal turquoise band and white accent               | `#DC0000` `#00CED1` `#FFFFFF`           | Capelli — red with contrasting horizontal stripe    |
 
 ### 5.4 Driver Behaviour Profiles
 
 Each driver has a unique on-track personality visible within 1–2 laps of following them.
 
-| Team | Behaviour | Tactical Note |
-|------|-----------|---------------|
-| **Macklen** | **Dominant.** Reference of the grid. Fastest consistent lap, perfect traction on exits, closes the door at the exact right point. Does not make unforced errors. | Player must pressure him for several laps to force a rare mistake. Victory over Macklen means beating the best. |
-| **Willard** | **Lightning bolt.** As fast as Macklen over one lap — sometimes faster. But makes errors: runs wide, spins under pressure, locks up in braking. | Watch for his mistake patterns. Patience pays — push hard and he will eventually crack. |
-| **Ferrell** | **Technical.** Smooth inputs, fast corner entry. Rarely makes errors but lacks Macklen's race pace. | Beat him through pit strategy — tyre wear and fuel planning. He follows the optimal line every time. |
-| **Bennett** | **Consistent.** Clean line, hard to pass. Maximum grip, no gifts. Not the fastest but demands the most laps to overtake. | Requires a clean overtaking move — he will not hand you the position. |
-| **Jordash** | **Impulsive.** Best corner speed on the grid. Session-fast. But spins under pressure — 2+ consecutive corners of pressure forces an error. | Press him relentlessly through successive corners. He will spin or run wide. |
-| **Tyrant** | **Defensive.** Guards the line with everything. Brake-tests into corners, opens wide on exit, pushes if you try the inside. | Not a win threat but a blocker. Pass him early, avoid getting stuck behind. |
-| **Lorris** | **Rookie.** Fast when confident, erratic when not. Daring overtakes followed by solo mistakes. Grows stronger in the second half of the race. | Unpredictable. Give space early, capitalise on his mistakes mid-race. |
-| **Layton Hall** | **Aggressive.** Drives at the absolute limit — which means over it, sometimes. Overtakes where nobody tries. 50% brilliance, 50% contact. | Both or nothing. High risk, high reward. |
+| Team            | Behaviour                                                                                                                                                        | Tactical Note                                                                                                   |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Macklen**     | **Dominant.** Reference of the grid. Fastest consistent lap, perfect traction on exits, closes the door at the exact right point. Does not make unforced errors. | Player must pressure him for several laps to force a rare mistake. Victory over Macklen means beating the best. |
+| **Willard**     | **Lightning bolt.** As fast as Macklen over one lap — sometimes faster. But makes errors: runs wide, spins under pressure, locks up in braking.                  | Watch for his mistake patterns. Patience pays — push hard and he will eventually crack.                         |
+| **Ferrell**     | **Technical.** Smooth inputs, fast corner entry. Rarely makes errors but lacks Macklen's race pace.                                                              | Beat him through pit strategy — tyre wear and fuel planning. He follows the optimal line every time.            |
+| **Bennett**     | **Consistent.** Clean line, hard to pass. Maximum grip, no gifts. Not the fastest but demands the most laps to overtake.                                         | Requires a clean overtaking move — he will not hand you the position.                                           |
+| **Jordash**     | **Impulsive.** Best corner speed on the grid. Session-fast. But spins under pressure — 2+ consecutive corners of pressure forces an error.                       | Press him relentlessly through successive corners. He will spin or run wide.                                    |
+| **Tyrant**      | **Defensive.** Guards the line with everything. Brake-tests into corners, opens wide on exit, pushes if you try the inside.                                      | Not a win threat but a blocker. Pass him early, avoid getting stuck behind.                                     |
+| **Lorris**      | **Rookie.** Fast when confident, erratic when not. Daring overtakes followed by solo mistakes. Grows stronger in the second half of the race.                    | Unpredictable. Give space early, capitalise on his mistakes mid-race.                                           |
+| **Layton Hall** | **Aggressive.** Drives at the absolute limit — which means over it, sometimes. Overtakes where nobody tries. 50% brilliance, 50% contact.                        | Both or nothing. High risk, high reward.                                                                        |
 
 ### 5.5 Blur Test
 
 Every helmet design must pass the **32×32 pixel test**: rendered as a coloured silhouette at 32×32 px, each must be distinguishable from the other 7. If two blur together, the design goes back for revision.
+
+> **Production gate**: This test must pass before the first helmet asset is committed to the game build. The test images are saved to `design/art/blur-test/` for review.
 
 ### 5.6 On-Screen Identification
 
 - **First encounter:** driver name appears on screen only on first overtake or at race end
 - **Standing:** displayed during race interstitials (#1 = Macklen, #5 = Willard, etc.)
 - **During race:** identified by helmet colour and car number only — no floating name tags
-
 
 ## Section 6 — Environment Design
 
@@ -396,18 +399,18 @@ Every track is a **character**, not just a layout. The player should recognise e
 
 The following elements are built once and reused across all tracks, reducing per-track production cost by ~80%:
 
-| Asset | Shared Across | Notes |
-|-------|--------------|-------|
-| **Kerb types** | All tracks | 3 variants: white+red (standard), white+yellow (fast corner), white+blue (run-off edge) |
-| **Barriers** | All tracks | Armco, concrete wall, tire wall — same models, placed per layout |
-| **Fencing** | All tracks | Catch fencing, pedestrian fencing, grandstand railings |
-| **Guard-rails** | All tracks | Same model, placed on elevated sections |
-| **Pit building** | All tracks | Same base model with per-track colour/material variant |
-| **Grandstands** | All tracks | 2-3 size variants, placed per track needs |
-| **Trees** | All tracks | 3 stylized tree types (pine, round canopy, palm), palette-swapped per climate |
-| **Marshalling posts** | All tracks | Same model, blue flag light included |
-| **Lighting towers** | All tracks | For night sections (Phase 2) |
-| **Start/finish gantry** | All tracks | Same base model, per-track overlay (track name + logo) |
+| Asset                   | Shared Across | Notes                                                                                   |
+| ----------------------- | ------------- | --------------------------------------------------------------------------------------- |
+| **Kerb types**          | All tracks    | 3 variants: white+red (standard), white+yellow (fast corner), white+blue (run-off edge) |
+| **Barriers**            | All tracks    | Armco, concrete wall, tire wall — same models, placed per layout                        |
+| **Fencing**             | All tracks    | Catch fencing, pedestrian fencing, grandstand railings                                  |
+| **Guard-rails**         | All tracks    | Same model, placed on elevated sections                                                 |
+| **Pit building**        | All tracks    | Same base model with per-track colour/material variant                                  |
+| **Grandstands**         | All tracks    | 2-3 size variants, placed per track needs                                               |
+| **Trees**               | All tracks    | 3 stylized tree types (pine, round canopy, palm), palette-swapped per climate           |
+| **Marshalling posts**   | All tracks    | Same model, blue flag light included                                                    |
+| **Lighting towers**     | All tracks    | For night sections (Phase 2)                                                            |
+| **Start/finish gantry** | All tracks    | Same base model, per-track overlay (track name + logo)                                  |
 
 ### 6.3 Track Selection — 1991 Calendar Clone
 
@@ -417,14 +420,12 @@ If the game isn't fun on these 4 tracks, it's not the tracks — it's the core l
 
 Parody names are used to avoid licensing issues; the geometry is real.
 
-| Track (Parody) | Real Circuit | Country | Landscape | Climate | Signature Landmarks |
-|---|---|---|---|---|---|
-| **TBD** | Spa-Francorchamps | Belgium | Ardennes forest — dense trees, rolling elevation | Cool, overcast | Eau Rouge/Raidillon climb, bus stop chicane, Pouhon through trees |
-| **TBD** | Monza | Italy | Royal park — flat, open, formal gardens | Warm, sunny | Parabolica grandstand, Lesmo curves, twin-front straight with gantry |
-| **TBD** | Monaco | Monaco | City streets — tower-topped, harbour backdrop | Sunny, Mediterranean | Tunnel exit (dark→light), harbour chicane, fairmont hairpin, swimming pool |
-| **TBD** | Interlagos (Autódromo José Carlos Pace) | Brazil | Hillside bowl — elevation changes, reservoir | Warm, humid | Senna's S grandstands, downhill Mergulho, reservoir infield, café |
-
-*Parody names to be defined during GDD phase using the same letter-swap technique as team names.*
+| Track (Parody) | Real Circuit                            | Country | Landscape                                        | Climate              | Signature Landmarks                                                        |
+| -------------- | --------------------------------------- | ------- | ------------------------------------------------ | -------------------- | -------------------------------------------------------------------------- |
+| **Ardennes**   | Spa-Francorchamps                       | Belgium | Ardennes forest — dense trees, rolling elevation | Cool, overcast       | Eau Rouge/Raidillon climb, bus stop chicane, Pouhon through trees          |
+| **Brianza**    | Monza                                   | Italy   | Royal park — flat, open, formal gardens          | Warm, sunny          | Parabolica grandstand, Lesmo curves, twin-front straight with gantry       |
+| **Riviera**    | Monaco                                  | Monaco  | City streets — tower-topped, harbour backdrop    | Sunny, Mediterranean | Tunnel exit (dark→light), harbour chicane, fairmont hairpin, swimming pool |
+| **Interlakes** | Interlagos (Autódromo José Carlos Pace) | Brazil  | Hillside bowl — elevation changes, reservoir     | Warm, humid          | Senna's S grandstands, downhill Mergulho, reservoir infield, café          |
 
 **Phase 2 adds 4 more tracks** (8 total, completing the 1.0 championship). Selection will be announced during the GDD phase.
 **Phase 3 adds 8 more** (16 total — full 1991 season).
@@ -433,14 +434,15 @@ Parody names are used to avoid licensing issues; the geometry is real.
 
 The world outside the track is **stylized** — simplified buildings, geometric terrain, simplified trees. No photorealistic textures. The contrast between the smooth track surface and the stylized surroundings guides the player's eye.
 
-- **Forest tracks** (Spa-clone): layered geometric trees, dark green/blue palette, mist band at treeline
-- **Park tracks** (Monza-clone): formal gardens (hedge cubes, geometric flowerbeds), open sky, warm colours
-- **City tracks** (Monaco-clone): blocky buildings with lit windows (emissive quads), harbour water as flat dark blue plane
-- **Inland tracks** (Interlagos-clone): sculpted terrain with simplified hills, reservoir as flat reflective plane
+- **Forest tracks** (Ardennes-clone): layered geometric trees, dark green/blue palette, mist band at treeline
+- **Park tracks** (Brianza-clone): formal gardens (hedge cubes, geometric flowerbeds), open sky, warm colours
+- **City tracks** (Riviera-clone): blocky buildings with lit windows (emissive quads), harbour water as flat dark blue plane
+- **Inland tracks** (Interlakes-clone): sculpted terrain with simplified hills, reservoir as flat reflective plane
 
 ### 6.5 Paddock & Garage (Hybrid)
 
 **Phase 1 — Hybrid (Early Access):**
+
 - Static 3D garage scene: car centre-stage, tools on walls, team banners
 - Slow camera pan across the scene (subtle movement, no player control)
 - Car model reflects current team livery and visible upgrades (wings, nose, tyres)
@@ -448,6 +450,7 @@ The world outside the track is **stylized** — simplified buildings, geometric 
 - Scene loads once per session; menus are Babylon.js GUI
 
 **Phase 2 — Navigable Hub (1.0):**
+
 - Same garage, now part of a larger paddock
 - Player-controlled camera (third-person, point-and-click movement)
 - Rival team garages visible in background (loading screen hint: "these are your competition")
@@ -467,12 +470,12 @@ The world outside the track is **stylized** — simplified buildings, geometric 
 
 At 300+ km/h, the player cannot process detail. The environment is designed to be read in under 200ms:
 
-| Layer | What | Visual Treatment |
-|-------|------|-----------------|
+| Layer             | What                                  | Visual Treatment                 |
+| ----------------- | ------------------------------------- | -------------------------------- |
 | **1 — Immediate** | Track surface, kerbs, braking markers | Smooth, high-contrast, saturated |
-| **2 — Near** | Barriers, run-off, marshalling posts | Mid-saturation, blocky shapes |
-| **3 — Mid** | Grandstands, buildings, hills | Desaturated, simplified geometry |
-| **4 — Far** | Sky, horizon, distant landmarks | Flat colour bands, no detail |
+| **2 — Near**      | Barriers, run-off, marshalling posts  | Mid-saturation, blocky shapes    |
+| **3 — Mid**       | Grandstands, buildings, hills         | Desaturated, simplified geometry |
+| **4 — Far**       | Sky, horizon, distant landmarks       | Flat colour bands, no detail     |
 
 **Design rule**: If a player has time to admire a tree texture at full speed, the tree has too much detail. Everything outside the track surface exists to be a blur.
 
@@ -487,6 +490,7 @@ The UI follows the **Misto** principle: dark backgrounds with subtle team-colour
 3. **Accent** — team colour appears in 3–4 specific spots only, never as a background fill
 
 **Hard rules:**
+
 - No gradients in menus (except the top accent bar)
 - No rounded buttons: 4px radius maximum
 - Icons are geometric shapes or emoji, not illustrated
@@ -524,16 +528,16 @@ Every menu screen follows this skeleton:
 
 **Components:**
 
-| Element | Style | Notes |
-|---------|-------|-------|
-| **Top accent bar** | 3px solid in team colour | Only gradient allowed — team colour to transparent |
-| **Logo** | Bold uppercase, 22px, colour #eee | Team colour only on the glyph (⬡) |
-| **Sidebar** | 200px, left border accent on active item | Active: team colour border + 7% opacity bg |
-| **Panel** | Inset, dark fill, thin white border | Contains car display and stats |
-| **Car display** | Centered, dark inset (rgba 0,0,0,0.25) | Car icon with drop-shadow in team colour |
-| **Stat bars** | 2px height, rounded 1px | Fill colour = team colour, bar bg #1a1a1e |
-| **Footer** | Top border 3% white | Actions: secondary buttons + primary team-colour CTA |
-| **Primary CTA** | Team colour background + dark text | Only one per screen — always "CORRER" |
+| Element            | Style                                    | Notes                                                |
+| ------------------ | ---------------------------------------- | ---------------------------------------------------- |
+| **Top accent bar** | 3px solid in team colour                 | Only gradient allowed — team colour to transparent   |
+| **Logo**           | Bold uppercase, 22px, colour #eee        | Team colour only on the glyph (⬡)                    |
+| **Sidebar**        | 200px, left border accent on active item | Active: team colour border + 7% opacity bg           |
+| **Panel**          | Inset, dark fill, thin white border      | Contains car display and stats                       |
+| **Car display**    | Centered, dark inset (rgba 0,0,0,0.25)   | Car icon with drop-shadow in team colour             |
+| **Stat bars**      | 2px height, rounded 1px                  | Fill colour = team colour, bar bg #1a1a1e            |
+| **Footer**         | Top border 3% white                      | Actions: secondary buttons + primary team-colour CTA |
+| **Primary CTA**    | Team colour background + dark text       | Only one per screen — always "CORRER"                |
 
 ### 7.3 HUD — Minimum Viable
 
@@ -552,16 +556,20 @@ Every menu screen follows this skeleton:
 └─────────────────────────────────────────────┘
 ```
 
-| Zone | Position | Content | Visual | Repositonable |
-|------|----------|---------|--------|---------------|
-| **Mini map** | Top-left | Simplified track outline with position dots in team colours | 240×240px container, dark background (rgba(0,0,0,0.5)), label muted | Yes — whole zone moves |
-| **Speed** | Top-center | Speed (km/h) | 72px bold white, rgba(0,0,0,0.35) background | Yes — whole zone moves |
-| **Lap** | Center-left | Lap counter | 28px bold, muted white, rgba(0,0,0,0.35) background | Yes — zone moves relative to speed |
-| **Position** | Center-right | Grid position | 32px bold, muted white, rgba(0,0,0,0.35) background | Yes — zone moves relative to speed |
-| **Resources** | Top-right | Fuel bar (Fuel Blue #00BFFF) + Tyre bar (Tyre Cyan #00E5FF) + percentages | 320×160px, rgba(0,0,0,0.3) background, 24px bar height, 92% width | Yes — whole zone moves |
-| **Menu** | ESC key | No button on screen | Accessed via keyboard only | N/A |
+| Zone              | Position       | Content                                                                          | Visual                                                                 | Repositonable                      |
+| ----------------- | -------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------- |
+| **Speed**         | Top-center     | Speed (km/h), no unit label                                                      | 72px bold white, every frame read (no throttle), direct from Physics   | Yes — whole zone moves             |
+| **Position + Lap**| Top-right      | Position format (current/total), lap counter (current/total)                     | 32px bold, muted white, position above lap                             | Yes — whole zone moves             |
+| **Lap Times**     | Top-left       | Current lap time, last lap time, fastest lap time in MM:SS.mmm                   | 16px monospace, muted white, stacked vertically                        | Yes — whole zone moves             |
+| **Fuel + Tire**   | Lower-right    | Fuel bar (0-100%) with icon (pump), Tire bar (0-100%) with icon (tire)           | ~40px bar height, flat colour shifts (no gradient), green→yellow→red  | Yes — whole zone moves             |
+| **Gap Info**      | Contextual     | Delta to car ahead AND behind, in seconds                                        | Shown only when in P2+ position, updates 20Hz via Event Bus           | Yes — whole zone moves             |
+| **Minimap**       | Center-right   | Simplified track outline with position dots in team colours, below position block| 240×240px container, dark background (rgba(0,0,0,0.5)), toggleable     | Yes — whole zone moves             |
+| **Countdown**     | Center-top     | 5 circles (24px diameter), red off / green on, 1s interval                       | Disappears after green flag (LIGHT_INTERVAL_TICKS=60)                 | Fixed position                     |
+| **Alert Block**   | Center-center  | Max 2 simultaneous alerts (PIT READY, FUEL EMPTY, CAR AHEAD/BEHIND, ±1 POS)      | 16px uppercase sans-serif, FIFO replacement                           | Fixed position                     |
+| **Menu**          | ESC key        | No button on screen                                                              | Accessed via keyboard only                                             | N/A                                |
 
 **Design rules for HUD:**
+
 - No floating name tags on rival cars — identified by helmet colour and car number only
 - No team badge or name on screen — the player knows what car they are driving
 - Map dots use team colours (Macklen = red, Lorris = gold, etc.)
@@ -583,30 +591,45 @@ Default is always Minimal HUD. The detailed toggle is saved per player profile.
 
 ### 7.5 Typography
 
-| Use | Font | Weight | Size | Case |
-|-----|------|--------|------|------|
-| **Logo** | Inter or system sans-serif | 700 (Bold) | 22px | Uppercase |
-| **Menu items** | Inter or system sans-serif | 500 (Medium) | 13px | Sentence |
-| **Labels** | Inter or system sans-serif | 500 | 10–11px | Uppercase, spaced 1–2px |
-| **Values (stats)** | Inter or system sans-serif | 600 (Semibold) | 13px | Numeric |
-| **HUD speed/pos** | Inter or system sans-serif | 700 | 14–16px | Numeric |
-| **Body / descriptions** | Inter or system sans-serif | 400 (Regular) | 12px | Sentence |
+| Use                     | Font                       | Weight         | Size    | Case                    |
+| ----------------------- | -------------------------- | -------------- | ------- | ----------------------- |
+| **Logo**                | Inter or system sans-serif | 700 (Bold)     | 22px    | Uppercase               |
+| **Menu items**          | Inter or system sans-serif | 500 (Medium)   | 13px    | Sentence                |
+| **Labels**              | Inter or system sans-serif | 500            | 10–11px | Uppercase, spaced 1–2px |
+| **Values (stats)**      | Inter or system sans-serif | 600 (Semibold) | 13px    | Numeric                 |
+| **HUD speed**           | Inter or system sans-serif | 700            | **72px** | Numeric                 |
+| **HUD position/lap**    | Inter or system sans-serif | 700 (Bold)     | **32px** | Numeric                 |
+| **HUD lap times**       | Inter or system sans-serif | 400 (Regular)  | **16px** | Numeric, monospace      |
+| **Alert block**         | Inter or system sans-serif | 600 (Semibold) | **16px** | Uppercase               |
+| **Body / descriptions** | Inter or system sans-serif | 400 (Regular)  | 12px    | Sentence                |
 
 No decorative or display fonts. No monospaced fonts (avoid the "90s terminal" look). Everything is clean, geometric, and readable at a glance.
 
 ### 7.6 HUD Animations
 
-| Event | Animation | Duration |
-|-------|-----------|----------|
-| **Position change** | Flash arrow (▲N / ▼N) beside position number, fades out | 1.5s |
-| **Overtake** | Subtle edge flash (team colour) on the side the car passed | 0.3s |
-| **Lap complete** | Lap counter flips (mechanical tick — no smooth transition) | 0.1s |
-| **Fuel critical** | Fuel bar pulses (shifts between current colour and red) | 0.5s interval |
-| **Race end** | Slow-motion entry (0.3s of 50% speed, then freeze + result panel) | 0.3s |
-| **Menu transition** | Instant — no fade, no slide. Content changes on same frame | 0s |
+| Event               | Animation                                                         | Duration      |
+| ------------------- | ----------------------------------------------------------------- | ------------- |
+| **Position change** | Flash arrow (▲N / ▼N) beside position number, fades out           | 1.5s          |
+| **Overtake**        | Subtle edge flash (team colour) on the side the car passed        | 0.3s          |
+| **Lap complete**    | Lap counter flips (mechanical tick — no smooth transition)        | 0.1s          |
+| **Fuel critical**   | Fuel bar pulses (shifts between current colour and red)           | 0.5s interval |
+| **Race end**        | Slow-motion entry (0.3s of 50% speed, then freeze + result panel) | 0.3s          |
+| **Menu transition** | Instant — no fade, no slide. Content changes on same frame        | 0s            |
 
 The rule: **mechanical, not organic**. Flips, ticks, cuts. No smooth fades, no easing curves, no organic transitions. The HUD behaves like a physical stopwatch, not a mobile app.
 
+### 7.7 Track Silhouette (Race Setup Screen)
+
+The track selection cards in the Race Setup screen show a top-down layout of each circuit. The silhouette follows these rules:
+
+- **Style**: clean vector lines, white (`#FFFFFF`) on dark background (`#0d0d0f`), no fill, no gradients
+- **Fidelity**: faithful to the real circuit layout — corner sequence and overall shape must be recognisable to anyone who knows the track
+- **Line**: continuous 3–4px stroke with crisp corners, no bezier smoothing that distorts the original radius
+- **Start/Finish**: thin accent-colour hash mark at the correct position on the layout (follows the team colour when a team is selected on the previous screen)
+- **Labels**: none — no corner numbers, no elevation markers, no compass. Only the track + start/finish marker + scaling to fit the card (maintains aspect ratio)
+- **Intent**: the player should recognise the circuit from its outline alone; the silhouette is a minimal map, not a decoration
+
+These silhouettes are hand-drawn vector exports per track, not rendered from the 3D scene. Each Phase 1 track gets its own silhouette file in `design/art/silhouettes/`.
 
 ## Section 8 — Asset Standards
 
@@ -616,43 +639,45 @@ The rule: **mechanical, not organic**. Flips, ticks, cuts. No smooth fades, no e
 
 ### 8.2 Triangle Budgets
 
-| Asset                        | Max Tris       | Notes                                                              |
-| ---------------------------- | -------------- | ------------------------------------------------------------------ |
-| **Car (per team)**               | 8.000          | Body, wings, suspension, mirrors, cockpit — 1 merged mesh per car  |
-| **Track surface**                | 250.000        | Asphalt, markings, kerbs integrated                                |
-| **Kerb (shared asset)**          | 10.000         | 3 variants: standard, fast corner, run-off edge                    |
-| **Barriers + fencing**           | 60.000         | Armco, tire walls, catch fencing — shared across tracks            |
-| **Buildings**                    | 80.000         | Simplified blocks with texture for windows/detail                  |
-| **Grandstands**                  | 40.000         | Tiered seating + crowd texture                                     |
-| **Trees + landscape**            | 20.000         | Stylised, 2–4 polygon shapes per tree                              |
-| **Signage + decoration**         | 10.000         | Flat planes with texture (patrocinadores, boards)                  |
-| **Total per track**              | **~470.000**       | **Generous ceiling — reduce only if FPS drops below 60**               |
+| Asset                    | Max Tris     | Notes                                                             |
+| ------------------------ | ------------ | ----------------------------------------------------------------- |
+| **Car (per team)**       | 8.000        | Body, wings, suspension, mirrors, cockpit — 1 merged mesh per car |
+| **Track surface**        | 250.000      | Asphalt, markings, kerbs integrated                               |
+| **Kerb (shared asset)**  | 10.000       | 3 variants: standard, fast corner, run-off edge                   |
+| **Barriers + fencing**   | 60.000       | Armco, tire walls, catch fencing — shared across tracks           |
+| **Buildings**            | 80.000       | Simplified blocks with texture for windows/detail                 |
+| **Grandstands**          | 40.000       | Tiered seating + crowd texture                                    |
+| **Trees + landscape**    | 20.000       | Stylised, 2–4 polygon shapes per tree                             |
+| **Signage + decoration** | 10.000       | Flat planes with texture (patrocinadores, boards)                 |
+| **Total per track**      | **~470.000** | **Generous ceiling — reduce only if FPS drops below 60**          |
 
 **Draw call budget**: ≤100 per frame (at 60 FPS target). Achieved via mesh merging (1 mesh per car, 1 mesh per track section) and material batching.
 
 ### 8.3 Texture Budgets
 
-| Asset                         | Resolution    | Format  | Notes                                         |
-| ----------------------------- | ------------- | ------- | --------------------------------------------- |
-| **Car body (per team)**           | 512×512       | PNG     | Painted texture: base colour + sponsors + details |
-| **Track surface**                 | 1024×1024     | PNG     | Asphalt + markings                             |
-| **Kerb (shared)**                 | 256×256       | PNG     | 3 colour variants                              |
-| **Barrier + fencing**             | 256×256       | PNG     | Shared atlas                                   |
-| **Building facade**               | 512×512       | PNG     | Window/detail texture                          |
-| **Grandstand crowd**              | 512×256       | PNG     | Crowd rows                                     |
-| **Sky**                           | 1024×512      | PNG     | Per-track gradient (fixed per Section 4)       |
-| **HUD elements**                  | —             | Code    | Solid colours via Babylon.js GUI, no textures  |
+| Asset                   | Resolution | Format | Notes                                             |
+| ----------------------- | ---------- | ------ | ------------------------------------------------- |
+| **Car body (per team)** | 512×512    | PNG    | Painted texture: base colour + sponsors + details |
+| **Track surface**       | 1024×1024  | PNG    | Asphalt + markings                                |
+| **Kerb (shared)**       | 256×256    | PNG    | 3 colour variants                                 |
+| **Barrier + fencing**   | 256×256    | PNG    | Shared atlas                                      |
+| **Building facade**     | 512×512    | PNG    | Window/detail texture                             |
+| **Grandstand crowd**    | 512×256    | PNG    | Crowd rows                                        |
+| **Sky**                 | 1024×512   | PNG    | Per-track gradient (fixed per Section 4)          |
+| **HUD elements**        | —          | Code   | Solid colours via Babylon.js GUI, no textures     |
 
 **Total texture memory per track**: ~8–12 MB (well within 512 MB budget).
 
 ### 8.4 Car Model Requirements
 
 Each car is a **single merged mesh** with one material (the painted texture from Section 8.3). This ensures:
+
 - 1 draw call per car (not 10+ for separate parts)
 - Material batching across cars sharing the same texture atlas (Phase 2)
 - Frustum culling on the entire car, not individual parts
 
 **Minimum visible detail at 300 km/h:**
+
 - Car silhouette must be distinguishable from rivals at 50m distance
 - Sponsor logos readable at 20m distance
 - Helmet visible in cockpit view (no external model needed)
@@ -676,12 +701,12 @@ shared/tree_pine.glb           — Pine tree (shared)
 
 ### 8.6 File Formats
 
-| Purpose           | Format  | Notes                                           |
-| ----------------- | ------- | ----------------------------------------------- |
-| 3D models         | .glb    | Binary glTF — compact, web-optimised            |
-| Textures          | .png    | Lossless — avoids JPEG artefacts on flat colours |
-| Cutscene art      | .png    | 2x resolution (retina-ready)                    |
-| Audio             | .ogg    | Web-optimised, small file size                  |
+| Purpose      | Format | Notes                                            |
+| ------------ | ------ | ------------------------------------------------ |
+| 3D models    | .glb   | Binary glTF — compact, web-optimised             |
+| Textures     | .png   | Lossless — avoids JPEG artefacts on flat colours |
+| Cutscene art | .png   | 2x resolution (retina-ready)                     |
+| Audio        | .ogg   | Web-optimised, small file size                   |
 
 ### 8.7 Resolution Strategy
 
@@ -692,6 +717,28 @@ shared/tree_pine.glb           — Pine tree (shared)
 
 HUD elements scale with `AdvancedDynamicTexture idealWidth` (set to 1920). Track and car geometry renders at native resolution.
 
+### 8.8 Material Pipeline
+
+> **Art Director Sign-Off (AD-ART-BIBLE)**: 2026-06-22 ✅
+
+**All world-visible geometry uses Babylon.js `UnlitMaterial`.** This is the single material path for the entire game. No `StandardMaterial`, `PBRMaterial`, or custom shader is used for gameplay visuals.
+
+This decision follows directly from the one-line visual rule ("Flat colours, sharp edges, pure speed") and Principle P2 from Section 1.2 ("Light bounces off surfaces as large colour planes, not specular highlights"). With UnlitMaterial:
+
+- **Lighting character is achieved through baked texture colour** — car body textures (512×512 PNG) contain base colour, sponsor logos, and baked lighting in the texture itself, not through scene lighting response.
+- **Scene directional light + shadowmap ONLY** — a single directional light casts hard shadows for depth perception. No ambient, no point lights, no spotlights. The shadowmap affects the environment only (track surface, barriers, buildings), not cars.
+- **No specular, reflection, or PBR material response** — cars receive zero specular highlights, zero reflections (even on chrome/glass elements), and zero PBR material response. Chrome accents are painted as grey-white colour bands in the texture, not reflective materials.
+
+**Post-processing blacklist** (banned effects — never enabled):
+
+- SSAO, SSR, tonemapping, color grading, lens flare, bloom (except GlowState cutscene — Section 2.3), depth of field, motion blur (except speed lines — Section 2.1), vignette, chromatic aberration, film grain
+
+Exceptions (explicitly allowed):
+
+- Directional light shadowmap (single, hard shadow, 2048×2048)
+- Speed lines overlay (Section 2.1)
+- GlowState bloom during cutscenes (Section 2.3)
+- Screen shake on collision impact (Physics GDD, camera GDD)
 
 ## Section 9 — Palette JSON (Machine-Readable)
 
@@ -706,11 +753,26 @@ The palette is exported in a single JSON file at `design/art/palette.json`. This
     "lastUpdated": "2025-06-18"
   },
   "gamePalette": {
-    "raceRed": { "hex": "#E8301A", "use": "Alert, danger, player damage, critical fuel" },
-    "trackBlack": { "hex": "#2A2A2A", "use": "Asphalt base (adjusted per track, ±1 step)" },
-    "kerbWhite": { "hex": "#F0F0F0", "use": "Track edges, start/finish line, UI text" },
-    "asphaltGrey": { "hex": "#4A4A4A", "use": "Runoff areas, secondary track surfaces" },
-    "signalYellow": { "hex": "#F5C800", "use": "Caution, kerbs, flag, highlight" }
+    "raceRed": {
+      "hex": "#E8301A",
+      "use": "Alert, danger, player damage, critical fuel"
+    },
+    "trackBlack": {
+      "hex": "#2A2A2A",
+      "use": "Asphalt base (adjusted per track, ±1 step)"
+    },
+    "kerbWhite": {
+      "hex": "#F0F0F0",
+      "use": "Track edges, start/finish line, UI text"
+    },
+    "asphaltGrey": {
+      "hex": "#4A4A4A",
+      "use": "Runoff areas, secondary track surfaces"
+    },
+    "signalYellow": {
+      "hex": "#F5C800",
+      "use": "Caution, kerbs, flag, highlight"
+    }
   },
   "skyPalettes": [
     {
@@ -889,17 +951,36 @@ The palette is exported in a single JSON file at `design/art/palette.json`. This
     }
   ],
   "hudPalette": [
-    { "name": "Pure White", "hex": "#FFFFFF", "use": "Primary text, speed, revs" },
-    { "name": "Alert Red", "hex": "#E8301A", "use": "Critical fuel, warning, low tyres" },
+    {
+      "name": "Pure White",
+      "hex": "#FFFFFF",
+      "use": "Primary text, speed, revs"
+    },
+    {
+      "name": "Alert Red",
+      "hex": "#E8301A",
+      "use": "Critical fuel, warning, low tyres"
+    },
     { "name": "Fuel Blue", "hex": "#00BFFF", "use": "Fuel gauge" },
     { "name": "Tach Yellow", "hex": "#F5C800", "use": "Rev limiter zone" },
-    { "name": "Tyre Cyan", "hex": "#00E5FF", "use": "Tyre temperature indicator" },
-    { "name": "Position Ghost", "hex": "#808080", "use": "Ghost car / opponent delta" },
-    { "name": "Overtake Green", "hex": "#00FF66", "use": "Overtake streak, positive delta" }
+    {
+      "name": "Tyre Cyan",
+      "hex": "#00E5FF",
+      "use": "Tyre temperature indicator"
+    },
+    {
+      "name": "Position Ghost",
+      "hex": "#808080",
+      "use": "Ghost car / opponent delta"
+    },
+    {
+      "name": "Overtake Green",
+      "hex": "#00FF66",
+      "use": "Overtake streak, positive delta"
+    }
   ]
 }
 ```
-
 
 ## Section 10 — AI Art Anchor Prompt
 

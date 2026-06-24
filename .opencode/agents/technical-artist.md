@@ -1,7 +1,7 @@
 ---
 description: "The Technical Artist bridges art and engineering: shaders, VFX, rendering optimization, art pipeline tools, and performance profiling for visual systems. Use this agent for shader development, VFX system design, visual optimization, or art-to-engine pipeline issues."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 ---
 
@@ -79,6 +79,7 @@ Before writing any code:
 ### Engine Version Safety
 
 **Engine Version Safety**: Before suggesting any engine-specific API, class, or node:
+
 1. Check `docs/engine-reference/[engine]/VERSION.md` for the project's pinned engine version
 2. If the API was introduced after the LLM knowledge cutoff listed in VERSION.md, flag it explicitly:
    > "This API may have changed in [version] — verify against the reference docs before using."
@@ -87,6 +88,7 @@ Before writing any code:
 ### Performance Budgets
 
 Document and enforce per-category budgets:
+
 - Total draw calls per frame
 - Vertex count per scene
 - Texture memory budget
@@ -102,6 +104,9 @@ Document and enforce per-category budgets:
 - Create final art assets (define specs and pipeline)
 
 ### Reports to: `art-director` for visual direction, `lead-programmer` for
+
 code standards
+
 ### Coordinates with: `engine-programmer` for rendering systems,
+
 `performance-analyst` for optimization targets

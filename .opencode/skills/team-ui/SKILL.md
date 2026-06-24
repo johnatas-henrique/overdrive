@@ -1,10 +1,11 @@
 ---
 name: team-ui
 description: "Orchestrate the UI team through the full UX pipeline: from UX spec authoring through visual design, implementation, review, and polish. Integrates with /ux-design, /ux-review, and studio UX templates."
-argument-hint: "[UI feature description]"
+argument-hint: "[UI feature description] [--review full|lean|solo]"
 user-invocable: true
 allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Task, question, TodoWrite
 ---
+
 When this skill is invoked, orchestrate the UI team through a structured pipeline.
 
 **Decision Points:** At each phase transition, use `question` to present
@@ -12,7 +13,24 @@ the user with the subagent's proposals as selectable options. Write the agent's
 full analysis in conversation, then capture the decision with concise labels.
 The user must approve before moving to the next phase.
 
+## Phase 0: Resolve Review Mode
+
+1. If `--review [mode]` was passed as an argument, use that mode.
+2. Else read `production/review-mode.txt` — use whatever is written there.
+3. Else default to `lean`.
+
+Modes:
+
+- `full` — spawn all director and lead gates as described
+- `lean` — skip director gates unless they are PHASE-GATE type (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE)
+- `solo` — skip all director gate spawning entirely; run the skill without any agent gates
+
+Store the resolved mode for use in all subsequent phases.
+
+**Director gate skip rule**: Before spawning creative-director, art-director, or any other Tier 1/2 director for review (outside of PHASE-GATE triggers), apply the resolved mode: skip if solo mode; skip if lean mode and this is not a PHASE-GATE.
+
 ## Team Composition
+
 - **ux-designer** — User flows, wireframes, accessibility, input handling
 - **ui-programmer** — UI framework, screens, widgets, data binding, implementation
 - **art-director** — Visual style, layout polish, consistency with art bible
@@ -20,6 +38,7 @@ The user must approve before moving to the next phase.
 - **accessibility-specialist** — Audits accessibility compliance at Phase 4
 
 **Templates used by this pipeline:**
+
 - `ux-spec.md` — Standard screen/flow UX specification
 - `hud-design.md` — HUD-specific UX specification
 - `interaction-pattern-library.md` — Reusable interaction patterns
@@ -28,6 +47,7 @@ The user must approve before moving to the next phase.
 ## How to Delegate
 
 Use the Task tool to spawn each team member as a subagent:
+
 - `subagent_type: ux-designer` — User flows, wireframes, accessibility, input handling
 - `subagent_type: ui-programmer` — UI framework, screens, widgets, data binding
 - `subagent_type: art-director` — Visual style, layout polish, art bible consistency
@@ -41,6 +61,7 @@ Always provide full context in each agent's prompt (feature requirements, existi
 ### Phase 1a: Context Gathering
 
 Before designing anything, read and synthesize:
+
 - `design/gdd/game-concept.md` — platform targets and intended audience
 - `design/player-journey.md` — player's state and context when they reach this screen
 - All GDD UI Requirements sections relevant to this feature
@@ -48,9 +69,11 @@ Before designing anything, read and synthesize:
 - `design/accessibility-requirements.md` — committed accessibility tier (e.g., Basic, Enhanced, Full)
 
 **If `design/ux/interaction-patterns.md` does not exist**, surface the gap immediately:
+
 > "interaction-patterns.md does not exist — no existing patterns to reuse."
 
 Then use `question` with options:
+
 - (a) Run `/ux-design patterns` first to establish the pattern library, then continue
 - (b) Proceed without the pattern library — ui-programmer will treat all patterns created as new and add each to a new `design/ux/interaction-patterns.md` at completion
 
@@ -65,6 +88,7 @@ Invoke `/ux-design [feature name]` skill OR delegate directly to ux-designer to 
 If designing the HUD, use the `hud-design.md` template instead of `ux-spec.md`.
 
 > **Notes on special cases:**
+>
 > - For HUD design specifically, invoke `/ux-design` with `argument: hud` (e.g., `/ux-design hud`).
 > - For the interaction pattern library, run `/ux-design patterns` once at project start and update it whenever new patterns are introduced during later phases.
 
@@ -79,6 +103,7 @@ After the spec is complete, invoke `/ux-review design/ux/[feature-name].md`.
 ### Phase 2: Visual Design
 
 Delegate to **art-director**:
+
 - Review the full UX spec (flows, wireframes, interaction patterns, accessibility notes) — not just the wireframe images
 - Apply visual treatment from the art bible: colors, typography, spacing, animation style
 - Check that visual design preserves accessibility compliance: verify color contrast ratios, and confirm color is never the only indicator of state (shape, text, or icon must reinforce it)
@@ -89,6 +114,7 @@ Delegate to **art-director**:
 ### Phase 3: Implementation
 
 Before implementation begins, spawn the **engine UI specialist** (from `.opencode/docs/technical-preferences.md` Engine Specialists → UI Specialist) to review the UX spec and visual design spec for engine-specific implementation guidance:
+
 - Which engine UI framework should be used for this screen? (e.g., UI Toolkit vs UGUI in Unity, Control nodes vs CanvasLayer in Godot, UMG vs CommonUI in Unreal)
 - Any engine-specific gotchas for the proposed layout or interaction patterns?
 - Recommended widget/node structure for the engine?
@@ -97,6 +123,7 @@ Before implementation begins, spawn the **engine UI specialist** (from `.opencod
 If no engine is configured, skip this step.
 
 Delegate to **ui-programmer**:
+
 - Implement the UI following the UX spec and visual design spec
 - **Use patterns from `design/ux/interaction-patterns.md`** — do not reinvent patterns that are already specified. If a pattern almost fits but needs modification, note the deviation and flag it for ux-designer review.
 - **UI NEVER owns or modifies game state** — display only; emit events for all player actions
@@ -110,6 +137,7 @@ Delegate to **ui-programmer**:
 ### Phase 4: Review (parallel)
 
 Delegate in parallel:
+
 - **ux-designer**: Verify implementation matches wireframes and interaction spec. Test keyboard-only and gamepad-only navigation. Check accessibility features function correctly.
 - **art-director**: Verify visual consistency with art bible. Check at minimum and maximum supported resolutions.
 - **accessibility-specialist**: Verify compliance against the committed accessibility tier documented in `design/accessibility-requirements.md`. Flag any violations as blockers.
@@ -145,6 +173,7 @@ If any spawned agent (via Task) returns BLOCKED, errors, or cannot complete:
 4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.
 
 Common blockers:
+
 - Input file missing (story not found, GDD absent) → redirect to the skill that creates it
 - ADR status is Proposed → do not implement; run `/architecture-decision` first
 - Scope too large → split into two stories via `/create-stories`

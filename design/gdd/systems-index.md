@@ -1,6 +1,6 @@
 # Systems Index: Overdrive
 
-> **Status**: Draft
+> **Status**: Design Complete
 > **Created**: 2026-06-18
 > **Last Updated**: 2026-06-18
 > **Source Concept**: design/gdd/game-concept.md
@@ -33,7 +33,7 @@ Built before anything renders on screen. These systems are the architectural bac
 | 3   | Game State Machine    | Infrastructure | Event Bus                                                         | 0     | Approved |
 | 4   | Persistence Interface | Infrastructure | —                                                                 | 0     | Approved |
 | 5   | Simulation Snapshot   | Infrastructure | —                                                                 | 0     | Approved |
-| 9   | Asset Manager         | Infrastructure | Data & Config, Event Bus                                          | 0     | Approved |
+| 6   | Asset Manager         | Infrastructure | Data & Config, Event Bus                                          | 0     | Approved |
 | 7   | Entity/Car Lifecycle  | Infrastructure | Event Bus, Data & Config, Asset Manager                           | 0     | Approved |
 | 8   | Dev Tools             | Developer Tool | Event Bus, Data & Config, Game State Machine, Simulation Snapshot | 0     | Approved |
 | 9   | Determinism Contract  | Constraint     | —                                                                 | 0     | Approved |
@@ -54,7 +54,7 @@ Everything needed for one complete race. Player picks car and track, races 7 AI 
 
 | #   | System           | Category    | Dependencies                                                     | Phase | Status   |
 | --- | ---------------- | ----------- | ---------------------------------------------------------------- | ----- | -------- |
-| 10  | Input            | Core Racing | Data & Config, Event Bus                                         | 2     | Approved |
+| 10  | Input            | Core Racing | Data & Config, Event Bus                                         | 1     | Approved |
 | 11  | Menu LITE        | UI          | Input, Data & Config, Asset Manager, Event Bus, GSM              | 1     | Approved |
 | 12  | Physics/Handling | Core Racing | Input, Entity/Car Lifecycle, Data & Config, Determinism Contract | 1     | Approved |
 | 13  | Collision        | Core Racing | Entity/Car Lifecycle                                             | 1     | Approved |
@@ -67,13 +67,13 @@ Everything needed for one complete race. Player picks car and track, races 7 AI 
 
 ### Track & AI
 
-| #   | System              | Category | Dependencies                                                                                             | Phase | Status          |
-| --- | ------------------- | -------- | -------------------------------------------------------------------------------------------------------- | ----- | --------------- |
-| 15  | Track + Environment | Track    | Asset Manager, Data & Config                                                                             | 1     | Approved        |
-| 16  | Fuel                | Strategy | Physics/Handling, Data & Config                                                                          | 1     | Approved        |
-| 17  | Tire Wear           | Strategy | Physics/Handling, Data & Config                                                                          | 1     | Approved        |
-| 18  | Pit Stop            | Strategy | Fuel, Tire Wear, Race Management, Entity/Car Lifecycle, Event Bus, Track + Env, Physics/Handling         | 1     | Approved        |
-| 19  | AI Driver           | AI       | Physics/Handling, Entity/Car Lifecycle, Data & Config, Track + Env, Collision, Fuel, Tire Wear, Pit Stop | 1     | Design Complete |
+| #   | System              | Category | Dependencies                                                                                             | Phase | Status   |
+| --- | ------------------- | -------- | -------------------------------------------------------------------------------------------------------- | ----- | -------- |
+| 15  | Track + Environment | Track    | Asset Manager, Data & Config                                                                             | 1     | Approved |
+| 16  | Fuel                | Strategy | Physics/Handling, Data & Config                                                                          | 1     | Approved |
+| 17  | Tire Wear           | Strategy | Physics/Handling, Data & Config                                                                          | 1     | Approved |
+| 18  | Pit Stop            | Strategy | Fuel, Tire Wear, Race Management, Entity/Car Lifecycle, Event Bus, Track + Env, Physics/Handling         | 1     | Approved |
+| 19  | AI Driver           | AI       | Physics/Handling, Entity/Car Lifecycle, Data & Config, Track + Env, Collision, Fuel, Tire Wear, Pit Stop | 1     | Approved |
 
 **Track geometry**: Includes pit lane from the start — retrofitting later would require remaking the track.
 **Fuel**: Consumption per tick from throttle avg. Lift-and-coast to conserve — no driving mode toggle. Runtime data flow with Physics is bidirectional (reads throttleAvg via getter, writes fuelMult via setter). Module dependency is one-way: Fuel → Physics — no circular dependency.
@@ -83,13 +83,13 @@ Everything needed for one complete race. Player picks car and track, races 7 AI 
 
 ### Race Flow & Feedback
 
-| #   | System             | Category       | Dependencies                                                                                                                  | Phase | Status          |
-| --- | ------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----- | --------------- |
-| 20  | Race Management    | Race Flow      | Physics/Handling (spline distance), Collision, Fuel, Tire Wear, Pit Stop, GSM, Entity/Car Lifecycle, Data & Config, Event Bus | 1     | Approved        |
-| 21  | HUD                | UI/Feedback    | Physics/Handling (speed), Fuel, Tire Wear, Race Mgmt (pos, lap), Camera, Event Bus                                            | 1     | Approved        |
-| 22  | Audio              | UI/Feedback    | Physics/Handling (RPM, speed), Collision (impacts), Event Bus, Asset Manager                                                  | 1     | Approved        |
-| 23  | Telemetry Recorder | Developer Tool | Event Bus, Physics/Handling, AI Driver, Data & Config                                                                         | 1     | Design Complete |
-| 24  | Single Race        | Race Flow      | Race Management, Data & Config, Game State Machine                                                                            | 1     | Approved        |
+| #   | System             | Category       | Dependencies                                                                                                                  | Phase | Status   |
+| --- | ------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----- | -------- |
+| 20  | Race Management    | Race Flow      | Physics/Handling (spline distance), Collision, Fuel, Tire Wear, Pit Stop, GSM, Entity/Car Lifecycle, Data & Config, Event Bus | 1     | Approved |
+| 21  | HUD                | UI/Feedback    | Physics/Handling (speed), Fuel, Tire Wear, Race Mgmt (pos, lap), Camera, Event Bus                                            | 1     | Approved |
+| 22  | Audio              | UI/Feedback    | Physics/Handling (RPM, speed), Collision (impacts), Event Bus, Asset Manager                                                  | 1     | Approved |
+| 23  | Telemetry Recorder | Developer Tool | Event Bus, Physics/Handling, AI Driver, Data & Config                                                                         | 1     | Approved |
+| 24  | Single Race        | Race Flow      | Race Management, Data & Config, Game State Machine                                                                            | 1     | Approved |
 
 **Race Management**: Receives `RaceConfiguration` (grid size, lap count, ruleset), publishes `RaceEvent`s. Mode-agnostic — Single Race and Championship are different configurations.
 **HUD**: Modular blocks (speed, lap, pos, fuel, tires, minimap). Rearrangeable layout.

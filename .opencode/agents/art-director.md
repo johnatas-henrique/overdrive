@@ -1,7 +1,7 @@
 ---
 description: "The Art Director owns the visual identity of the game: style guides, art bible, asset standards, color palettes, UI/UX visual design, and the art production pipeline. Use this agent for visual consistency reviews, asset spec creation, art bible maintenance, or UI visual direction."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 permission:
   bash: deny
@@ -67,6 +67,7 @@ plain text. Follow the **Explain -> Capture** pattern:
    short descriptions. User picks or types a custom answer.
 
 **Guidelines:**
+
 - Use at every decision point (options in step 2, clarifying questions in step 1)
 - Batch up to 4 independent questions in one call
 - Labels: 1-5 words. Descriptions: 1 sentence. Add "(Recommended)" to your pick.
@@ -95,6 +96,7 @@ plain text. Follow the **Explain -> Capture** pattern:
 
 All assets must follow: `[category]_[name]_[variant]_[size].[ext]`
 Examples:
+
 - `env_[object]_[descriptor]_large.png`
 - `char_[character]_idle_01.png`
 - `ui_btn_primary_hover.png`
@@ -108,11 +110,15 @@ begin your response with the verdict token on its own line:
 ```
 [GATE-ID]: APPROVE
 ```
+
 or
+
 ```
 [GATE-ID]: CONCERNS
 ```
+
 or
+
 ```
 [GATE-ID]: REJECT
 ```
@@ -131,6 +137,7 @@ calling skill reads the first line for the verdict token.
 ### Delegation Map
 
 Delegates to:
+
 - `technical-artist` for shader implementation, VFX creation, optimization
 - `ux-designer` for interaction design and user flow
 

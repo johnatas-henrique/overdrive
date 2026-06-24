@@ -50,12 +50,13 @@
 
     babylonjs-specialist -- Babylon.js lead: TypeScript/WebGL, scene graph, rendering pipeline
       babylonjs-physics-specialist   -- Physics: Havok V2, impulse engines, vehicle simulation
-      babylonjs-network-specialist   -- Networking: Colyseus 0.17, WebSocket, state sync
+      babylonjs-network-specialist   -- Networking: Colyseus, WebSocket, state sync
       babylonjs-gui-specialist       -- GUI: AdvancedDynamicTexture, HUD, 3D UI
       babylonjs-perf-specialist      -- Performance: draw calls, instancing, profiling
 ```
 
 ### Legend
+
 ```
 sys  = systems-designer       gp  = gameplay-programmer
 lvl  = level-designer         ep  = engine-programmer
@@ -72,41 +73,41 @@ art-dir = art-director
 
 ### Who Can Delegate to Whom
 
-| From | Can Delegate To |
-|------|----------------|
-| creative-director | game-designer, art-director, audio-director, narrative-director |
-| technical-director | lead-programmer, devops-engineer, performance-analyst, technical-artist (technical decisions) |
-| producer | Any agent (task assignment within their domain only) |
-| game-designer | systems-designer, level-designer, economy-designer |
-| lead-programmer | gameplay-programmer, engine-programmer, ai-programmer, network-programmer, tools-programmer, ui-programmer |
-| art-director | technical-artist, ux-designer |
-| audio-director | sound-designer |
-| narrative-director | writer, world-builder |
-| qa-lead | qa-tester |
-| release-manager | devops-engineer (release builds), qa-lead (release testing) |
-| localization-lead | writer (string review), ui-programmer (text fitting) |
-| prototyper | (works independently, reports findings to producer and relevant leads) |
-| security-engineer | network-programmer (security review), lead-programmer (secure patterns) |
-| accessibility-specialist | ux-designer (accessible patterns), ui-programmer (implementation), qa-tester (a11y testing) |
-| [engine]-specialist | engine sub-specialists (delegates subsystem-specific work) |
-| [engine] sub-specialists | (advises all programmers on engine subsystem patterns and optimization) |
-| live-ops-designer | economy-designer (live economy), community-manager (event comms), analytics-engineer (engagement metrics) |
-| community-manager | (works with producer for approval, release-manager for patch note timing) |
+| From                     | Can Delegate To                                                                                            |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| creative-director        | game-designer, art-director, audio-director, narrative-director                                            |
+| technical-director       | lead-programmer, devops-engineer, performance-analyst, technical-artist (technical decisions)              |
+| producer                 | Any agent (task assignment within their domain only)                                                       |
+| game-designer            | systems-designer, level-designer, economy-designer                                                         |
+| lead-programmer          | gameplay-programmer, engine-programmer, ai-programmer, network-programmer, tools-programmer, ui-programmer |
+| art-director             | technical-artist, ux-designer                                                                              |
+| audio-director           | sound-designer                                                                                             |
+| narrative-director       | writer, world-builder                                                                                      |
+| qa-lead                  | qa-tester                                                                                                  |
+| release-manager          | devops-engineer (release builds), qa-lead (release testing)                                                |
+| localization-lead        | writer (string review), ui-programmer (text fitting)                                                       |
+| prototyper               | (works independently, reports findings to producer and relevant leads)                                     |
+| security-engineer        | network-programmer (security review), lead-programmer (secure patterns)                                    |
+| accessibility-specialist | ux-designer (accessible patterns), ui-programmer (implementation), qa-tester (a11y testing)                |
+| [engine]-specialist      | engine sub-specialists (delegates subsystem-specific work)                                                 |
+| [engine] sub-specialists | (advises all programmers on engine subsystem patterns and optimization)                                    |
+| live-ops-designer        | economy-designer (live economy), community-manager (event comms), analytics-engineer (engagement metrics)  |
+| community-manager        | (works with producer for approval, release-manager for patch note timing)                                  |
 
 ### Escalation Paths
 
-| Situation | Escalate To |
-|-----------|------------|
-| Two designers disagree on a mechanic | game-designer |
-| Game design vs narrative conflict | creative-director |
-| Game design vs technical feasibility | producer (facilitates), then creative-director + technical-director |
-| Art vs audio tonal conflict | creative-director |
-| Code architecture disagreement | technical-director |
-| Cross-system code conflict | lead-programmer, then technical-director |
-| Schedule conflict between departments | producer |
-| Scope exceeds capacity | producer, then creative-director for cuts |
-| Quality gate disagreement | qa-lead, then technical-director |
-| Performance budget violation | performance-analyst flags, technical-director decides |
+| Situation                             | Escalate To                                                         |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| Two designers disagree on a mechanic  | game-designer                                                       |
+| Game design vs narrative conflict     | creative-director                                                   |
+| Game design vs technical feasibility  | producer (facilitates), then creative-director + technical-director |
+| Art vs audio tonal conflict           | creative-director                                                   |
+| Code architecture disagreement        | technical-director                                                  |
+| Cross-system code conflict            | lead-programmer, then technical-director                            |
+| Schedule conflict between departments | producer                                                            |
+| Scope exceeds capacity                | producer, then creative-director for cuts                           |
+| Quality gate disagreement             | qa-lead, then technical-director                                    |
+| Performance budget violation          | performance-analyst flags, technical-director decides               |
 
 ## Common Workflow Patterns
 
@@ -206,16 +207,27 @@ art-dir = art-director
 10. producer            -- Marks release complete
 ```
 
-### Pattern 8: Rapid Prototype
+### Pattern 8: Concept Prototype (early — before GDDs)
 
 ```text
 1. game-designer        -- Defines the hypothesis and success criteria
-2. prototyper           -- Scaffolds prototype with /prototype
-3. prototyper           -- Builds minimal implementation (hours, not days)
+2. prototyper           -- Scaffolds concept prototype with /prototype
+3. prototyper           -- Builds minimal implementation (1-3 days)
 4. game-designer        -- Evaluates prototype against criteria
-5. prototyper           -- Documents findings report
-6. creative-director    -- Go/no-go decision on proceeding to production
-7. producer             -- Schedules production work if approved
+5. prototyper           -- Documents findings in REPORT.md
+6. creative-director    -- PROCEED / PIVOT / KILL decision (full mode only)
+7. game-designer        -- Informs GDD writing with prototype learnings if PROCEED
+```
+
+### Pattern 8b: Vertical Slice (pre-production — after GDDs and architecture)
+
+```text
+1. game-designer        -- Confirms slice scope against GDDs
+2. prototyper           -- Builds production-quality end-to-end build with /vertical-slice
+3. prototyper           -- Conducts internal playtest sessions (minimum 1)
+4. prototyper           -- Documents findings in REPORT.md
+5. creative-director    -- Go/no-go decision on proceeding to Production (full mode)
+6. producer             -- Schedules Production epics/sprints if PROCEED
 ```
 
 ### Pattern 9: Live Event / Season Launch
@@ -240,6 +252,7 @@ art-dir = art-director
 ### Design Change Notification
 
 When a design document changes, the game-designer must notify:
+
 - lead-programmer (implementation impact)
 - qa-lead (test plan update needed)
 - producer (schedule impact assessment)
@@ -248,6 +261,7 @@ When a design document changes, the game-designer must notify:
 ### Architecture Change Notification
 
 When an ADR is created or modified, the technical-director must notify:
+
 - lead-programmer (code changes needed)
 - All affected specialist programmers
 - qa-lead (testing strategy may change)
@@ -256,6 +270,7 @@ When an ADR is created or modified, the technical-director must notify:
 ### Asset Standard Change Notification
 
 When the art bible or asset standards change, the art-director must notify:
+
 - technical-artist (pipeline changes)
 - All content creators working with affected assets
 - devops-engineer (if build pipeline is affected)

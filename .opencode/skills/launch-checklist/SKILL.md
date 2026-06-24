@@ -16,7 +16,7 @@ Read the argument for the launch date or `dry-run` mode. Dry-run mode generates 
 
 ## Phase 2: Gather Project Context
 
-- Read `AGENTS.md` (or `CLAUDE.md` for Claude Code projects) for tech stack, target platforms, and team structure
+- Read `AGENTS.md` for tech stack, target platforms, and team structure
 - Read the latest milestone in `production/milestones/`
 - Read any existing release checklist in `production/releases/`
 - Read the content calendar in `design/live-ops/content-calendar.md` if it exists
@@ -36,6 +36,7 @@ Read the argument for the launch date or `dry-run` mode. Dry-run mode generates 
 
 ```markdown
 # Launch Checklist: [Game Title]
+
 Target Launch: [Date or DRY RUN]
 Generated: [Date]
 
@@ -44,6 +45,7 @@ Generated: [Date]
 ## 1. Code Readiness
 
 ### Build Health
+
 - [ ] Clean build on all target platforms
 - [ ] Zero compiler warnings
 - [ ] All unit tests passing
@@ -54,6 +56,7 @@ Generated: [Date]
 - [ ] Build version correctly set and tagged in source control
 
 ### Code Quality
+
 - [ ] TODO count: [N] (zero required for launch, or documented exceptions)
 - [ ] FIXME count: [N] (zero required)
 - [ ] HACK count: [N] (each must have documented justification)
@@ -64,6 +67,7 @@ Generated: [Date]
 - [ ] Crash reporting integrated and verified
 
 ### Security
+
 - [ ] No exposed API keys or credentials in source
 - [ ] Save data encrypted
 - [ ] Network communication secured (TLS/DTLS)
@@ -76,6 +80,7 @@ Generated: [Date]
 ## 2. Content Readiness
 
 ### Assets
+
 - [ ] All placeholder art replaced with final assets
 - [ ] All placeholder audio replaced with final audio
 - [ ] Audio mix finalized and approved by audio director
@@ -84,6 +89,7 @@ Generated: [Date]
 - [ ] Asset naming conventions enforced
 
 ### Text and Localization
+
 - [ ] All player-facing text proofread
 - [ ] No hardcoded strings (all externalized for localization)
 - [ ] All supported languages translated and verified
@@ -92,6 +98,7 @@ Generated: [Date]
 - [ ] Credits complete, accurate, and up to date
 
 ### Game Content
+
 - [ ] All levels/maps playable from start to finish
 - [ ] Tutorial flow complete and tested with new players
 - [ ] All achievements/trophies implemented and tested
@@ -104,6 +111,7 @@ Generated: [Date]
 ## 3. Quality Assurance
 
 ### Testing
+
 - [ ] Full regression test suite passed
 - [ ] Zero S1 (Critical) bugs open
 - [ ] Zero S2 (Major) bugs open (or documented exceptions)
@@ -113,6 +121,7 @@ Generated: [Date]
 - [ ] Edge cases tested (full storage, no network, suspend/resume)
 
 ### Platform Certification
+
 - [ ] PC: Steam/Epic/GOG SDK requirements met
 - [ ] Console: TRC/TCR/Lotcheck submission prepared
 - [ ] Mobile: App Store/Play Store guidelines compliant
@@ -120,6 +129,7 @@ Generated: [Date]
 - [ ] Age ratings obtained (ESRB, PEGI, regional)
 
 ### Performance
+
 - [ ] Target FPS met on minimum spec hardware
 - [ ] Load times within budget on all platforms
 - [ ] Memory usage within budget on all platforms
@@ -131,6 +141,7 @@ Generated: [Date]
 ## 4. Store and Distribution
 
 ### Store Pages
+
 - [ ] Store page copy finalized and proofread
 - [ ] Screenshots current and per-platform resolution
 - [ ] Trailers current and approved
@@ -140,6 +151,7 @@ Generated: [Date]
 - [ ] Pre-purchase/wishlist campaigns active (if applicable)
 
 ### Legal
+
 - [ ] EULA finalized and approved by legal
 - [ ] Privacy policy published and linked
 - [ ] Third-party license attributions complete
@@ -152,6 +164,7 @@ Generated: [Date]
 ## 5. Infrastructure
 
 ### Servers (if multiplayer/online)
+
 - [ ] Production servers provisioned and load-tested
 - [ ] Auto-scaling configured and tested
 - [ ] Database backups configured
@@ -160,6 +173,7 @@ Generated: [Date]
 - [ ] Monitoring and alerting configured
 
 ### Analytics and Monitoring
+
 - [ ] Analytics pipeline verified and receiving data
 - [ ] Crash reporting active and dashboard accessible
 - [ ] Server monitoring dashboards live
@@ -171,6 +185,7 @@ Generated: [Date]
 ## 6. Community and Marketing
 
 ### Community Readiness
+
 - [ ] Community guidelines published
 - [ ] Moderation team briefed and tools ready
 - [ ] Discord/forum/social channels set up
@@ -178,6 +193,7 @@ Generated: [Date]
 - [ ] Support email/ticketing system active
 
 ### Marketing
+
 - [ ] Launch trailer published
 - [ ] Press/influencer review keys distributed
 - [ ] Social media launch posts scheduled
@@ -189,6 +205,7 @@ Generated: [Date]
 ## 7. Operations
 
 ### Team Readiness
+
 - [ ] On-call schedule set for first 72 hours post-launch
 - [ ] Incident response playbook reviewed by team
 - [ ] Rollback plan documented and tested
@@ -196,6 +213,7 @@ Generated: [Date]
 - [ ] Communication plan for launch issues (who posts, where, how fast)
 
 ### Day-One Plan
+
 - [ ] Day-one patch prepared (if needed)
 - [ ] Server unlock/go-live procedure documented
 - [ ] Launch monitoring dashboard bookmarked by all leads
@@ -208,12 +226,15 @@ Generated: [Date]
 **Overall Status**: [READY / NOT READY / CONDITIONAL]
 
 ### Blocking Items
+
 [List any items that must be resolved before launch]
 
 ### Conditional Items
+
 [List items that have documented workarounds or accepted risk]
 
 ### Sign-Offs Required
+
 - [ ] Creative Director — Content and experience quality
 - [ ] Technical Director — Technical health and stability
 - [ ] QA Lead — Quality and test coverage

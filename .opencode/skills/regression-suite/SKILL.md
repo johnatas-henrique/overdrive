@@ -3,7 +3,7 @@ name: regression-suite
 description: "Map test coverage to GDD critical paths, identify fixed bugs without regression tests, flag coverage drift from new features, and maintain tests/regression-suite.md. Run after implementing a bug fix or before a release gate."
 argument-hint: "[update | audit | report]"
 user-invocable: true
-allowed-tools: Read, Glob, Grep, Write, Edit
+allowed-tools: Read, Glob, Grep, Write, Edit, question
 ---
 
 # Regression Suite
@@ -20,6 +20,7 @@ and known failure points. This skill maintains that list.
 **Output:** `tests/regression-suite.md`
 
 **When to run:**
+
 - After fixing a bug (confirm a regression test was written or identify gap)
 - Before a release gate (`/gate-check polish` requires regression suite exists)
 - As part of sprint close to detect coverage drift
@@ -29,13 +30,19 @@ and known failure points. This skill maintains that list.
 ## 1. Parse Arguments
 
 **Modes:**
+
 - `/regression-suite update` — scan new bug fixes this sprint and check
   for regression test presence; add new tests to the suite manifest
 - `/regression-suite audit` — full audit of all GDD critical paths vs.
   existing test coverage; flag paths with no regression test
 - `/regression-suite report` — read-only status report (no writes); suitable
   for sprint reviews
-- No argument — run `update` if a sprint is active, else `audit`
+- No argument — if a sprint is clearly active (sprint plan exists with in-progress stories), run `update`. If ambiguous or no active sprint is detected, use `question`:
+  - Prompt: "No subcommand specified. Which mode do you want to run?"
+  - Options:
+    - `[A] update — scan new bug fixes this sprint and add missing regression tests`
+    - `[B] audit — full audit of all GDD critical paths vs. existing test coverage`
+    - `[C] report — read-only status report (no writes)`
 
 ---
 
@@ -44,6 +51,7 @@ and known failure points. This skill maintains that list.
 ### Step 2a — Load existing regression suite
 
 Read `tests/regression-suite.md` if it exists. Extract:
+
 - Total registered regression tests
 - Last updated date
 - Any tests flagged as `STALE` or `QUARANTINED`
@@ -53,6 +61,7 @@ If it does not exist: note "No regression suite found — will create one."
 ### Step 2b — Load test inventory
 
 Glob all test files:
+
 ```
 tests/unit/**/*_test.*
 tests/integration/**/*_test.*
@@ -66,6 +75,7 @@ Do not read test file contents unless needed for name-to-test mapping.
 
 For `audit` mode: read `design/gdd/systems-index.md` to get all systems.
 For each MVP-tier system, read its GDD and extract:
+
 - Acceptance Criteria (these define the critical paths)
 - Formulas section (formulas must have regression tests)
 - Edge Cases section (known edge cases should have regression tests)
@@ -77,6 +87,7 @@ and story files to find stories with Status: Complete this sprint.
 
 Glob `production/qa/bugs/*.md` and filter for bugs with a `Status: Closed`
 or `Status: Fixed` field. Note:
+
 - Which story or system the bug was in
 - Whether a regression test was mentioned in the fix description
 
@@ -92,12 +103,12 @@ For each GDD acceptance criterion, determine whether a test exists:
    and function names related to the criterion's key noun/verb
 2. Assign coverage:
 
-| Status | Meaning |
-|--------|---------|
-| **COVERED** | A test file exists that targets this criterion's logic |
+| Status      | Meaning                                                          |
+| ----------- | ---------------------------------------------------------------- |
+| **COVERED** | A test file exists that targets this criterion's logic           |
 | **PARTIAL** | A test exists but doesn't cover all cases (e.g. happy path only) |
-| **MISSING** | No test found for this critical path |
-| **EXEMPT** | Visual/Feel or UI criterion — not automatable by design |
+| **MISSING** | No test found for this critical path                             |
+| **EXEMPT**  | Visual/Feel or UI criterion — not automatable by design          |
 
 3. Elevate MISSING items that correspond to formulas or state machines to
    **HIGH PRIORITY** gap — these are the most likely regression sources.
@@ -116,6 +127,7 @@ For each closed bug:
    - **MISSING REGRESSION TEST** — bug was fixed but no test guards against recurrence
 
 For MISSING REGRESSION TEST items:
+
 - Flag them as regression gaps
 - Suggest the test file path: `tests/unit/[system]/[bug-slug]_regression_test.[ext]`
 - Note: "Without this test, this bug can silently return in a future sprint."
@@ -127,6 +139,7 @@ For MISSING REGRESSION TEST items:
 Coverage drift occurs when the game grows but the regression suite doesn't.
 
 Check for drift indicators:
+
 - Stories completed this sprint with no corresponding test files in `tests/`
 - New systems added to `systems-index.md` since the last regression-suite update
 - GDD sections added or revised since the regression suite was last updated
@@ -191,25 +204,25 @@ of which tests should always pass before a release:
 
 ### [System Name]
 
-| Test File | Test Function (if known) | Covers | Added |
-|-----------|--------------------------|--------|-------|
-| `tests/unit/[system]/[file]_test.[ext]` | `test_[scenario]` | AC-N / BUG-NNN | [date] |
+| Test File                               | Test Function (if known) | Covers         | Added  |
+| --------------------------------------- | ------------------------ | -------------- | ------ |
+| `tests/unit/[system]/[file]_test.[ext]` | `test_[scenario]`        | AC-N / BUG-NNN | [date] |
 
 ## Known Gaps
 
 Tests that should exist but don't yet:
 
-| Priority | System | Suggested Path | Covers | Reason Not Yet Written |
-|----------|--------|----------------|--------|------------------------|
-| HIGH | [system] | `tests/unit/[system]/[path]` | BUG-NNN | Bug fixed without test |
+| Priority | System   | Suggested Path               | Covers  | Reason Not Yet Written |
+| -------- | -------- | ---------------------------- | ------- | ---------------------- |
+| HIGH     | [system] | `tests/unit/[system]/[path]` | BUG-NNN | Bug fixed without test |
 
 ## Quarantined Tests
 
 Tests that are flaky or disabled (do not run in CI):
 
 | Test File | Function | Reason | Quarantined Since |
-|-----------|----------|--------|-------------------|
-| (none) | | | |
+| --------- | -------- | ------ | ----------------- |
+| (none)    |          |        |                   |
 ```
 
 ---

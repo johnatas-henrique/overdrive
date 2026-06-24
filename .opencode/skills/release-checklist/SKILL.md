@@ -16,7 +16,7 @@ Read the argument for the target platform (`pc`, `console`, `mobile`, or `all`).
 
 ## Phase 2: Load Project Context
 
-- Read `AGENTS.md` (or `CLAUDE.md` for Claude Code projects) for project context, version information, and platform targets.
+- Read `AGENTS.md` for project context, version information, and platform targets.
 - Read the current milestone from `production/milestones/` to understand what features and content should be included in this release.
 
 ---
@@ -38,14 +38,17 @@ Check for test results in any test output directories or CI logs if available.
 
 ```markdown
 ## Release Checklist: [Version] -- [Platform]
+
 Generated: [Date]
 
 ### Codebase Health
+
 - TODO count: [N] ([list top 5 if many])
 - FIXME count: [N] ([list all -- these are potential blockers])
 - HACK count: [N] ([list all -- these need review])
 
 ### Build Verification
+
 - [ ] Clean build succeeds on all target platforms
 - [ ] No compiler warnings (zero-warning policy)
 - [ ] All assets included and loading correctly
@@ -54,6 +57,7 @@ Generated: [Date]
 - [ ] Build is reproducible from tagged commit
 
 ### Quality Gates
+
 - [ ] Zero S1 (Critical) bugs
 - [ ] Zero S2 (Major) bugs -- or documented exceptions with producer approval
 - [ ] All critical path features tested and signed off by QA
@@ -66,6 +70,7 @@ Generated: [Date]
 - [ ] Soak test passed (4+ hours continuous play)
 
 ### Content Complete
+
 - [ ] All placeholder assets replaced with final versions
 - [ ] All TODO/FIXME in content files resolved or documented
 - [ ] All player-facing text proofread
@@ -77,8 +82,10 @@ Generated: [Date]
 Add platform-specific sections based on the argument:
 
 **For `pc`:**
+
 ```markdown
 ### Platform Requirements: PC
+
 - [ ] Minimum and recommended specs verified and documented
 - [ ] Keyboard+mouse controls fully functional
 - [ ] Controller support tested (Xbox, PlayStation, generic)
@@ -92,8 +99,10 @@ Add platform-specific sections based on the argument:
 ```
 
 **For `console`:**
+
 ```markdown
 ### Platform Requirements: Console
+
 - [ ] TRC/TCR/Lotcheck requirements checklist complete
 - [ ] Platform-specific controller prompts display correctly
 - [ ] Suspend/resume works correctly
@@ -106,8 +115,10 @@ Add platform-specific sections based on the argument:
 ```
 
 **For `mobile`:**
+
 ```markdown
 ### Platform Requirements: Mobile
+
 - [ ] App store guidelines compliance verified
 - [ ] All required device permissions justified and documented
 - [ ] Privacy policy linked and accurate
@@ -121,8 +132,10 @@ Add platform-specific sections based on the argument:
 ```
 
 **Store and launch sections (all platforms):**
+
 ```markdown
 ### Store / Distribution
+
 - [ ] Store page metadata complete and proofread
   - [ ] Short description
   - [ ] Long description
@@ -140,6 +153,7 @@ Add platform-specific sections based on the argument:
 - [ ] Pricing configured for all regions
 
 ### Launch Readiness
+
 - [ ] Analytics / telemetry verified and receiving data
 - [ ] Crash reporting configured and dashboard accessible
 - [ ] Day-one patch prepared and tested (if needed)
@@ -157,6 +171,7 @@ resolved before launch. If NOT READY, list the specific items that need
 resolution and estimated time to address them.]
 
 **Sign-offs Required:**
+
 - [ ] QA Lead
 - [ ] Technical Director
 - [ ] Producer

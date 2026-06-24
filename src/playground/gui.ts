@@ -1,13 +1,15 @@
-import { Scene } from "@babylonjs/core/scene";
+import type { Scene } from "@babylonjs/core/scene";
 import { AdvancedDynamicTexture } from "@babylonjs/gui/2D/advancedDynamicTexture";
-import { TextBlock } from "@babylonjs/gui/2D/controls/textBlock";
-import { StackPanel } from "@babylonjs/gui/2D/controls/stackPanel";
 import { Button } from "@babylonjs/gui/2D/controls/button";
 import { Control } from "@babylonjs/gui/2D/controls/control";
+import { StackPanel } from "@babylonjs/gui/2D/controls/stackPanel";
+import { TextBlock } from "@babylonjs/gui/2D/controls/textBlock";
 
 export const CreateSceneGUI = async (scene: Scene): Promise<void> => {
   if (scene.getEngine().name === "WebGPU") {
-    await import("@babylonjs/core/Engines/WebGPU/Extensions/engine.dynamicTexture");
+    await import(
+      "@babylonjs/core/Engines/WebGPU/Extensions/engine.dynamicTexture"
+    );
   }
 
   const adt = AdvancedDynamicTexture.CreateFullscreenUI("ui");

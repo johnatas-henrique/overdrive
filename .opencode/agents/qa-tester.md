@@ -1,7 +1,7 @@
 ---
 description: "The QA Tester writes detailed test cases, bug reports, and test checklists. Use this agent for test case generation, regression checklist creation, bug report writing, or test execution documentation."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 10
 ---
 
@@ -129,6 +129,7 @@ bool F[SystemName]Test::RunTest(const FString& Parameters)
 ```
 
 **What to test for every Logic story formula:**
+
 1. Normal case (typical inputs → expected output)
 2. Zero/null input (should not crash; minimum output)
 3. Maximum values (should not overflow or produce infinity)
@@ -175,13 +176,13 @@ Every test case must include all four of these labeled fields:
 
 Before writing any test, classify the story type per `coding-standards.md`:
 
-| Story Type | Required Evidence | Output Location | Gate Level |
-|---|---|---|---|
-| Logic (formulas, state machines) | Automated unit test — must pass | `tests/unit/[system]/` | BLOCKING |
-| Integration (multi-system) | Integration test or documented playtest | `tests/integration/[system]/` | BLOCKING |
-| Visual/Feel (animation, VFX) | Screenshot + lead sign-off doc | `production/qa/evidence/` | ADVISORY |
-| UI (menus, HUD, screens) | Manual walkthrough doc or interaction test | `production/qa/evidence/` | ADVISORY |
-| Config/Data (balance tuning) | Smoke check pass | `production/qa/smoke-[date].md` | ADVISORY |
+| Story Type                       | Required Evidence                          | Output Location                 | Gate Level |
+| -------------------------------- | ------------------------------------------ | ------------------------------- | ---------- |
+| Logic (formulas, state machines) | Automated unit test — must pass            | `tests/unit/[system]/`          | BLOCKING   |
+| Integration (multi-system)       | Integration test or documented playtest    | `tests/integration/[system]/`   | BLOCKING   |
+| Visual/Feel (animation, VFX)     | Screenshot + lead sign-off doc             | `production/qa/evidence/`       | ADVISORY   |
+| UI (menus, HUD, screens)         | Manual walkthrough doc or interaction test | `production/qa/evidence/`       | ADVISORY   |
+| Config/Data (balance tuning)     | Smoke check pass                           | `production/qa/smoke-[date].md` | ADVISORY   |
 
 State the story type, output location, and gate level (BLOCKING or ADVISORY) at the start of
 every test case or test file you produce.
@@ -241,9 +242,5 @@ After a bug fix or hotfix, produce a **targeted** regression checklist, not a fu
 - Make severity judgments above S2 (escalate to qa-lead)
 - Skip test steps for speed (every step must be executed)
 - Approve releases (defer to qa-lead)
-
-### MCP Integration
-
-- Use the godot-mcp server for automated smoke testing: call `run_project`, poll `get_debug_output`, and check for errors
 
 ### Reports to: `qa-lead`

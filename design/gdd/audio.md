@@ -28,31 +28,71 @@ Audio makes simulation data tangible. A 200 km/h car without sound feels like a 
 
 ### Sound Architecture
 
-Babylon.js Audio Engine V2 (default in v9.x) with Web Audio API backend.
+Babylon.js Audio Engine V2 (default since v7.52) with Web Audio API backend. All sound creation is async (`CreateSoundAsync`, `CreateSoundSourceAsync`).
+
+**Import paths:**
+
+| Concept                 | Import                                   | API                                                |
+| ----------------------- | ---------------------------------------- | -------------------------------------------------- |
+| Audio Engine            | `@babylonjs/core/AudioV2/audioEngineV2`  | `CreateAudioEngineAsync()`                         |
+| Static Sound (WAV)      | `@babylonjs/core/AudioV2/staticSound`    | `CreateSoundAsync(name, source, options)`          |
+| Streaming Sound (MP3)   | `@babylonjs/core/AudioV2/streamingSound` | `CreateStreamingSoundAsync(name, source, options)` |
+| Audio Bus               | `@babylonjs/core/AudioV2/audioBus`       | `CreateAudioBusAsync(name, options)`               |
+| Custom AudioNode source | `@babylonjs/core/AudioV2/soundSource`    | `CreateSoundSourceAsync(name, audioNode, options)` |
+| Parameter ramp          | `@babylonjs/core/AudioV2/audioParameter` | `AudioParameterRampShape.Linear`                   |
+| Sound Buffer            | `@babylonjs/core/AudioV2/staticSound`    | `CreateSoundBufferAsync(source)`                   |
 
 ```
 AudioManager
-├── SoundTrack "music"    — menu music, results fanfare
-├── SoundTrack "sfx"      — engine, tires, collisions, pit
-├── SoundTrack "ui"       — menu clicks, HUD feedback
-└── SoundTrack "ambient"  — pit lane ambient, wind
+├── AudioBus "music"       — menu music, results fanfare
+├── AudioBus "sfx"          — engine, tires, collisions, pit
+├── AudioBus "ui"           — menu clicks, HUD feedback
+└── AudioBus "ambient"      — pit lane ambient, wind
 ```
 
-Each `SoundTrack` has independent volume control. All tracks mix through the Web Audio API master gain node.
+Each `AudioBus` has independent volume control. All buses mix through the engine's master gain. The architecture is: Sound → AudioBus → Master → Speakers. Buses are created with `CreateAudioBusAsync`.
 
-**Initialization**: AudioManager.init() called during Loading state (GSM `'gsm.state.entered'` with `to: Loading`). Creates SoundTracks, loads engine samples, sets up procedural nodes.
+**Initialization**: `AudioManager.init()` called during Loading state (GSM `'gsm.state.entered'` with `to: Loading`). Creates AudioBus instances, loads engine samples via `CreateSoundAsync`, sets up procedural nodes via `CreateSoundSourceAsync`. The first user interaction (click/keypress) unlocks the Web Audio context — Audio Engine V2 handles this automatically via `resumeOnInteraction: true` (default), showing a small unmute button if needed. No custom unlock prompt required.
 
-### Engine Sound (Hybrid)
+### Engine Sound (Hybrid via CreateSoundAsync + CreateSoundSourceAsync)
 
-**Base layer**: WAV sample loop per car class (V12, V10, V8). Pitch shifted via `Sound.playbackRate`.
+**Base layer**: WAV sample loop per car class (V12, V10, V8). Pitch shifted via `StaticSound.playbackRate`. Loaded via `CreateSoundAsync(name, "engine.wav", { loop: true })`.
 
-**Overlay layer**: Web Audio `OscillatorNode` (sine wave) at a frequency proportional to RPM. Adds subtle vibrato/tremolo so the sample doesn't sound static.
+**Overlay layer**: `OscillatorNode` connected through Babylon's audio pipeline via `CreateSoundSourceAsync`. No raw Web Audio path — the OscillatorNode routes to the same `sfxBus`, sharing volume and crossfade with the base sample.
 
+```typescript
+// Init
+const audioEngine = await CreateAudioEngineAsync();
+const sfxBus = await CreateAudioBusAsync("sfx", { volume: 0.7 });
+
+const baseEngine = await CreateSoundAsync(
+  "engine_v12",
+  "audio/engine/v12.wav",
+  {
+    loop: true,
+    outBus: sfxBus,
+  }
+);
+
+// Oscillator overlay — same bus as base sample
+const osc = new OscillatorNode(audioEngine.audioContext, { type: "sine" });
+osc.start();
+const overlay = await CreateSoundSourceAsync("engine_v12_overlay", osc, {
+  volume: 0.3,
+  outBus: sfxBus, // same bus! no dual path
+});
+
+// Per-tick (60hz)
+const rpmRatio = physicsRpm / maxRpm;
+baseEngine.playbackRate = 0.6 + rpmRatio * 0.9; // 0.6x at idle, 1.5x at redline
+osc.frequency.value = 80 + rpmRatio * 120; // oscillator tracks RPM
 ```
+
 Pitch formula:
-  basePitch = 0.6 + (RPM / maxRpm) × 0.9    // 0.6x at idle, 1.5x at redline
-  vibrato = sin(time × RPM × 0.01) × 0.02    // ±2% oscillation
-  finalPitch = basePitch + vibrato
+basePitch = 0.6 + (RPM / maxRpm) × 0.9 // 0.6x at idle, 1.5x at redline
+vibrato = sin(time × RPM × 0.01) × 0.02 // ±2% oscillation
+finalPitch = basePitch + vibrato
+
 ```
 
 **RPM source**: `physics.rpm` read directly every tick (60 Hz). No throttling — engine pitch must track RPM frame-perfectly.
@@ -60,7 +100,9 @@ Pitch formula:
 **Volume**: Proportional to throttle input. At 0% throttle (coasting), engine volume drops 40%. This creates the "lift" in lift-off oversteer — the engine quiets when you lift, tires take over.
 
 ```
+
 engineVolume = baseVolume × (0.6 + throttle × 0.4)
+
 ```
 
 **Car class mapping**:
@@ -77,18 +119,22 @@ engineVolume = baseVolume × (0.6 + throttle × 0.4)
 Triggered when `physics.lateralG` exceeds a threshold (configurable per surface).
 
 ```
+
 squealVolume = clamp((abs(lateralG) - squealThreshold) / (maxLateralG - squealThreshold), 0, 1)
+
 ```
 
 **Wear modifier**: As tire condition drops, squeal onset threshold decreases (squeals earlier = more noise when tires are worn).
 
 ```
+
 effectiveThreshold = squealThreshold × (0.5 + tireCondition × 0.5)
 // tireCondition 1.0 → threshold unchanged
 // tireCondition 0.3 → threshold at 65% of base (squeals earlier as condition drops)
+
 ```
 
-**Sound**: Single looping WAV with pitch variance. Volume fades in/out smoothly (50ms attack, 100ms release) to prevent popping.
+**Sound**: Single looping WAV (`CreateSoundAsync("tire_squeal", "sounds/tire.wav", { loop: true, outBus: sfxBus })`) with pitch variance. Volume fades via `setVolume()` (50ms attack, 100ms release) to prevent popping.
 
 ### Collision Sounds
 
@@ -97,6 +143,7 @@ effectiveThreshold = squealThreshold × (0.5 + tireCondition × 0.5)
 - Full volume, stereo-panned by impact direction
 - Volume proportional to impulse magnitude
 - Two samples: thud (barrier) and scrape (car-car), selected by collision type
+- `maxInstances: 5` on the collision `CreateSoundAsync` call — max 5 concurrent, oldest auto-stopped
 
 **Nearby rival collision** (within 30m radius):
 
@@ -105,7 +152,9 @@ effectiveThreshold = squealThreshold × (0.5 + tireCondition × 0.5)
 - Creates spatial awareness without drowning out player's own sounds
 
 ```
+
 rivalVolume = baseVolume × clamp(1 - (distance / 30), 0, 1) × 0.3
+
 ```
 
 **Distant rival collision** (>30m): Not played.
@@ -139,7 +188,9 @@ Camera does not change during pit stop (confirmed in Camera GDD). Audio stays co
 Volume proportional to speed.
 
 ```
+
 windVolume = clamp((speed - windOnset) / (maxSpeed - windOnset), 0, 1) × maxWindVolume
+
 ```
 
 **Onset**: Wind becomes audible at 100 km/h (configurable). Below this, silence. At 300 km/h, wind is prominent but never louder than engine.
@@ -165,7 +216,7 @@ One-shot sample triggered when `physics.gear` changes.
 | Paused    | Race sounds fade to low ambient (muffled). UI sounds (pause menu) reactivate |
 | PostRace  | Race sounds fade out, results fanfare plays once                             |
 
-Transition: 500ms crossfade between states (no abrupt cuts).
+Transition: 500ms linear ramp via `sound.setVolume(target, { duration: 0.5, shape: AudioParameterRampShape.Linear })` — applied per-Sound or per-Bus depending on scope.
 
 ---
 
@@ -189,7 +240,9 @@ Transition: 500ms crossfade between states (no abrupt cuts).
 ### Lifecycle
 
 ```
+
 Uninitialized → Initialized → Running
+
 ```
 
 - **Uninitialized**: No audio context. AudioManager not created.
@@ -229,10 +282,10 @@ Uninitialized → Initialized → Running
 
 | #   | Edge Case                         | Handling                                                      |
 | --- | --------------------------------- | ------------------------------------------------------------- |
-| 1   | Audio context blocked by browser  | First user interaction unlocks Web Audio API. Show prompt     |
-| 2   | Sample load failure               | Fall back to procedural-only engine sound (oscillator)        |
-| 3   | Multiple collision sounds/second  | Max 5 concurrent collision sounds; queue excess, drop oldest  |
-| 4   | GSM rapid state changes           | Crossfade cancelled; new state's audio starts immediately     |
+| 1   | Audio context blocked by browser  | Audio Engine V2 handles automatically via `resumeOnInteraction: true`. Shows unmute button if needed. No custom prompt required. |
+| 2   | Sample load failure               | Fall back to procedural-only engine sound (oscillator via `CreateSoundSourceAsync`) |
+| 3   | Multiple collision sounds/second  | `maxInstances: 5` on the collision `CreateSoundAsync` call. Oldest instance stops if a 6th plays. No custom pooling needed. |
+| 4   | GSM rapid state changes           | `setVolume()` cancels previous ramp automatically. New state starts immediately |
 | 5   | RPM spike (0→redline in 1 tick)   | Pitch interpolates over 3 ticks (16ms ramp) to prevent glitch |
 | 6   | All cars off-screen (replay mode) | Engine sounds muted by distance; only player car audible      |
 
@@ -334,4 +387,5 @@ All values in `audio.*` namespace, runtime-configurable via ConfigManager.
 | --- | --------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | 1   | Should gear shift sample vary per car class or be shared? | Decide                                                                                |
 | 2   | Menu music CC0 source — Pixabay or agent-generated?       | Resolved — body §Menu Music specifies CC0 from Pixabay/Freesound or agent placeholder |
-| 3   | Engine sample duration — 2s loop vs 4s loop?              | Decide                                                                                |
+| 3   | Engine sample duration — 2s loop vs 4s loop?              | Resolved — 2s–4s WAV loop is appropriate for StaticSound playbackRate (buffer <30s)   |
+```

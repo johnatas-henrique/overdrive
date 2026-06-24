@@ -28,6 +28,7 @@ will have changed.
 ## 1. Parse Arguments
 
 Resolve the review mode (once, store for all gate spawns this run):
+
 1. If `--review [full|lean|solo]` was passed → use that
 2. Else read `production/review-mode.txt` → use that value
 3. Else → default to `lean`
@@ -35,6 +36,7 @@ Resolve the review mode (once, store for all gate spawns this run):
 See `.opencode/docs/director-gates.md` for the full check pattern.
 
 **Modes:**
+
 - `/create-epics all` — process all systems in layer order
 - `/create-epics layer: foundation` — Foundation layer only
 - `/create-epics layer: core` — Core layer only
@@ -79,6 +81,7 @@ Report: "Loaded [N] GDDs, [M] ADRs, engine: [name + version]."
 ## 3. Processing Order
 
 Process in dependency-safe layer order:
+
 1. **Foundation** (no dependencies)
 2. **Core** (depends on Foundation)
 3. **Feature** (depends on Core)
@@ -93,6 +96,7 @@ Within each layer, use the order from `systems-index.md`.
 For each system, map it to an architectural module from `architecture.md`.
 
 Check ADR coverage against the TR registry:
+
 - **Traced requirements**: TR-IDs that have an Accepted ADR covering them
 - **Untraced requirements**: TR-IDs with no ADR — warn before proceeding
 
@@ -111,18 +115,25 @@ Present to user before writing anything:
 ```
 
 If there are untraced requirements:
+
 > "⚠️ [N] requirements in [system] have no ADR. The epic can be created, but
 > stories for these requirements will be marked Blocked until ADRs exist.
 > Run `/architecture-decision` first, or proceed with placeholders."
 
-Ask: "Shall I create Epic: [name]?"
-Options: "Yes, create it", "Skip", "Pause — I need to write ADRs first"
+Use `question`:
+
+- Prompt: "Shall I create Epic: [name]?"
+- Options:
+  - `[A] Yes, create it`
+  - `[B] Skip this epic`
+  - `[C] Pause — I need to write ADRs first`
 
 ---
 
 ## 4b. Producer Epic Structure Gate
 
 **Review mode check** — apply before spawning PR-EPIC:
+
 - `solo` → skip. Note: "PR-EPIC skipped — Solo mode." Proceed to Step 5 (write epic files).
 - `lean` → skip (not a PHASE-GATE). Note: "PR-EPIC skipped — Lean mode." Proceed to Step 5 (write epic files).
 - `full` → spawn as normal.
@@ -131,7 +142,23 @@ After all epics for the current layer are defined (Step 4 completed for all in-s
 
 Pass: the full epic structure summary (all epics, their scope summaries, governing ADR counts), the layer being processed, milestone timeline and team capacity.
 
-Present the producer's assessment. If UNREALISTIC, offer to revise epic boundaries (split overscoped or merge underscoped epics) before writing. If CONCERNS, surface them and let the user decide. Do not write epic files until the producer gate resolves.
+Present the producer's assessment.
+
+If UNREALISTIC: offer to revise epic boundaries (split overscoped or merge underscoped epics). Revise and re-run the gate before writing.
+
+If CONCERNS, use `question`:
+
+- Prompt: "Producer raised concerns about the epic structure. How do you want to proceed?"
+- Options:
+  - `[A] Proceed as planned — I accept the producer's concerns`
+  - `[B] Revise epic boundaries — split or merge as recommended`
+  - `[C] Stop — I want to reconsider the scope`
+
+If [A]: proceed to Step 5.
+If [B]: revise epic definitions from Step 4 and re-run the producer gate.
+If [C]: stop. Verdict: **BLOCKED** — user wants to reconsider epic scope.
+
+Do not write epic files until the producer gate resolves.
 
 ---
 
@@ -159,20 +186,21 @@ and the architecture module's stated responsibilities]
 
 ## Governing ADRs
 
-| ADR | Decision Summary | Engine Risk |
-|-----|-----------------|-------------|
+| ADR               | Decision Summary | Engine Risk     |
+| ----------------- | ---------------- | --------------- |
 | ADR-NNNN: [title] | [1-line summary] | LOW/MEDIUM/HIGH |
 
 ## GDD Requirements
 
-| TR-ID | Requirement | ADR Coverage |
-|-------|-------------|--------------|
-| TR-[system]-001 | [requirement text from registry] | ADR-NNNN ✅ |
-| TR-[system]-002 | [requirement text] | ❌ No ADR |
+| TR-ID           | Requirement                      | ADR Coverage |
+| --------------- | -------------------------------- | ------------ |
+| TR-[system]-001 | [requirement text from registry] | ADR-NNNN ✅  |
+| TR-[system]-002 | [requirement text]               | ❌ No ADR    |
 
 ## Definition of Done
 
 This epic is complete when:
+
 - All stories are implemented, reviewed, and closed via `/story-done`
 - All acceptance criteria from `design/gdd/[filename].md` are verified
 - All Logic and Integration stories have passing test files in `tests/`
@@ -193,9 +221,9 @@ Create or update the master index:
 Last Updated: [date]
 Engine: [name + version]
 
-| Epic | Layer | System | GDD | Stories | Status |
-|------|-------|--------|-----|---------|--------|
-| [name] | Foundation | [system] | [file] | Not yet created | Ready |
+| Epic   | Layer      | System   | GDD    | Stories         | Status |
+| ------ | ---------- | -------- | ------ | --------------- | ------ |
+| [name] | Foundation | [system] | [file] | Not yet created | Ready  |
 ```
 
 ---

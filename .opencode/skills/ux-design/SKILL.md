@@ -13,14 +13,15 @@ When this skill is invoked:
 
 Three authoring modes exist based on the argument:
 
-| Argument | Mode | Output file |
-|----------|------|-------------|
-| `hud` | HUD design | `design/ux/hud.md` |
-| `patterns` | Interaction pattern library | `design/ux/interaction-patterns.md` |
-| Any other value (e.g., `main-menu`, `inventory`) | UX spec for a screen or flow | `design/ux/[argument].md` |
-| No argument | Ask the user | (see below) |
+| Argument                                         | Mode                         | Output file                         |
+| ------------------------------------------------ | ---------------------------- | ----------------------------------- |
+| `hud`                                            | HUD design                   | `design/ux/hud.md`                  |
+| `patterns`                                       | Interaction pattern library  | `design/ux/interaction-patterns.md` |
+| Any other value (e.g., `main-menu`, `inventory`) | UX spec for a screen or flow | `design/ux/[argument].md`           |
+| No argument                                      | Ask the user                 | (see below)                         |
 
 **If no argument is provided**, do not fail — ask instead. Use `question`:
+
 - "What are we designing today?"
   - Options: "A specific screen or flow (I'll name it)", "The game HUD", "The interaction pattern library", "I'm not sure — help me figure it out"
 
@@ -44,15 +45,21 @@ comes from arriving informed.
 ### 2b: Player Journey
 
 Read `design/player-journey.md` if it exists. For each relevant section, extract:
+
 - Which journey phase(s) does this screen appear in?
 - What is the player's emotional state on arrival at this screen?
 - What player need is this screen serving in the journey?
 - What critical moments (from the journey map) does this screen deliver?
 
 If the player journey file does not exist, note the gap and proceed:
+
 > "No player journey map found at `design/player-journey.md`. Designing without it
 > means we'll be making assumptions about player context. Consider running a player
 > journey session after this spec is drafted."
+
+Also add to the UX spec's Open Questions section:
+
+> "Player journey map not yet created. Template available at `.opencode/docs/templates/player-journey.md`. Run `/ux-design` Phase 2b or create it manually to establish player context for this screen."
 
 ### 2c: GDD UI Requirements
 
@@ -101,6 +108,7 @@ Interaction Map and inform accessibility requirements:
 - **Target Platforms** — for safe zone and aspect ratio decisions
 
 If the section is unconfigured (`[TO BE CONFIGURED]`), ask once:
+
 > "Input methods aren't configured yet. What does this game target?"
 > Options: "Keyboard/Mouse only", "Gamepad only", "Both (PC + Console)", "Touch (mobile)", "All of the above"
 >
@@ -114,6 +122,7 @@ or per screen.
 Before any design work, present a brief summary to the user:
 
 > **Designing: [Screen/Flow Name]**
+>
 > - Mode: [UX Spec / HUD Design / Pattern Library]
 > - Journey phase(s): [from player-journey.md, or "unknown — no journey map"]
 > - GDD requirements feeding this spec: [count and names, or "none found"]
@@ -133,22 +142,23 @@ Before creating a skeleton, check if the target output file already exists.
 Glob `design/ux/[filename].md` (where `[filename]` is the resolved output path from Phase 1).
 
 **If the file exists — retrofit mode:**
+
 - Read the file in full
 - For each expected section, check whether the body has real content (more than a `[To be designed]` placeholder) or is empty/placeholder
 - Present a section status summary to the user:
 
 > "Found existing UX spec at `design/ux/[filename].md`. Here's what's already done:
 >
-> | Section | Status |
-> |---------|--------|
-> | Overview & Context | [Complete / Empty / Placeholder] |
-> | Player Journey Integration | ... |
-> | Screen Layout & Information Architecture | ... |
-> | Interaction Model | ... |
-> | Feedback & State Communication | ... |
-> | Accessibility | ... |
-> | Edge Cases & Error States | ... |
-> | Open Questions | ... |
+> | Section                                  | Status                           |
+> | ---------------------------------------- | -------------------------------- |
+> | Overview & Context                       | [Complete / Empty / Placeholder] |
+> | Player Journey Integration               | ...                              |
+> | Screen Layout & Information Architecture | ...                              |
+> | Interaction Model                        | ...                              |
+> | Feedback & State Communication           | ...                              |
+> | Accessibility                            | ...                              |
+> | Edge Cases & Error States                | ...                              |
+> | Open Questions                           | ...                              |
 >
 > I'll work on the [N] incomplete sections only — existing content will not be overwritten."
 
@@ -393,6 +403,7 @@ Ask: "May I create the skeleton file at `design/ux/[filename].md`?"
 ---
 
 After writing the skeleton, update `production/session-state/active.md` with:
+
 - Task: Designing [screen/flow name] UX spec
 - Current section: Starting (skeleton created)
 - File: design/ux/[filename].md
@@ -416,9 +427,13 @@ Context  ->  Questions  ->  Options  ->  Decision  ->  Draft  ->  Approval  ->  
 4. **Decision**: User picks an approach or provides custom direction.
 5. **Draft**: Write the section content in conversation for review. Flag provisional
    assumptions explicitly.
-6. **Approval**: "Does this capture it? Any changes before I write it to the file?"
-7. **Write**: Use `Edit` to replace the `[To be designed]` placeholder with approved
-   content. Confirm the write.
+6. **Approval**: Use `question`:
+   - "Does this capture the [section name] correctly?"
+   - Options: "Yes — write it to the file", "Small changes needed (describe below)", "Major rethink needed"
+     Do not proceed to step 7 until the user selects "Yes".
+7. **Write**: Use `question`: "May I write the [section name] section to `[filepath]`?"
+   - Options: "Yes, write it", "Wait — one more change"
+     Once confirmed, use `Edit` to replace the `[To be designed]` placeholder with approved content.
 
 After writing each section, update `production/session-state/active.md`.
 
@@ -431,9 +446,10 @@ After writing each section, update `production/session-state/active.md`.
 This section is the foundation. Every other decision flows from it.
 
 **Questions to ask**:
+
 - "What player goal does this screen serve? What is the player trying to DO here?"
 - "What would go wrong if this screen didn't exist or was hard to use?"
-- "Complete this sentence: 'The player arrives at this screen wanting to ___.' "
+- "Complete this sentence: 'The player arrives at this screen wanting to \_\_\_.' "
 
 Cross-reference the player journey context gathered in Phase 2. The stated purpose
 must align with the journey phase and emotional state.
@@ -443,6 +459,7 @@ must align with the journey phase and emotional state.
 #### Section B: Player Context on Arrival
 
 **Questions to ask**:
+
 - "When in the game does a player first encounter this screen?"
 - "What were they just doing immediately before reaching this screen?"
 - "What emotional state should the design assume? (calm, stressed, curious, time-pressured)"
@@ -457,6 +474,7 @@ Offer to map this against the journey phases if the player journey doc exists.
 Where does this screen sit in the game's navigation hierarchy? This is a one-paragraph orientation map — not a full flow diagram.
 
 **Questions to ask**:
+
 - "Is this screen accessed from the main menu, from pause, from within gameplay, or from another screen?"
 - "Is it a top-level destination (always reachable) or a context-dependent one (only accessible in certain states)?"
 - "Can the player reach this screen from more than one place in the game?"
@@ -470,19 +488,20 @@ Present as: "This screen lives at: [root] → [parent] → [this screen]" plus a
 Map every way the player can arrive at and leave this screen.
 
 **Questions to ask**:
+
 - "What are all the ways a player can reach this screen?" (List each trigger: button press, game event, redirect from another screen, etc.)
 - "What can the player do to exit? What happens when they do?" (Back button, confirm action, timeout, game event)
 - "Are there any exits that are one-way — where the player cannot return to this screen without starting over?"
 
 Present as two tables:
 
-| Entry Source | Trigger | Player carries this context |
-|---|---|---|
-| [screen/event] | [how] | [state/data they arrive with] |
+| Entry Source   | Trigger | Player carries this context   |
+| -------------- | ------- | ----------------------------- |
+| [screen/event] | [how]   | [state/data they arrive with] |
 
-| Exit Destination | Trigger | Notes |
-|---|---|---|
-| [screen/event] | [how] | [any irreversible state changes] |
+| Exit Destination | Trigger | Notes                            |
+| ---------------- | ------- | -------------------------------- |
+| [screen/event]   | [how]   | [any irreversible state changes] |
 
 ---
 
@@ -491,19 +510,24 @@ Present as two tables:
 This is the largest and most interactive section. Work through it in sub-sections:
 
 **Sub-section 1 — Information Hierarchy** (establish this before any layout):
+
 - Ask the user to list every piece of information this screen must communicate.
 - Then ask them to rank the items: "What is the single most important thing a player
   needs to see first? What is second? What can be discovered rather than immediately visible?"
 - Present the resulting hierarchy for approval before moving to zones.
 
 **Sub-section 2 — Layout Zones**:
+
 - Based on the information hierarchy, propose rough screen zones (header, content
   area, action bar, sidebar, etc.).
 - Offer 2-3 zone arrangements with rationale for each. Reference platform and
   input context gathered from game concept.
-- Ask: "Do any of these match your mental image, or shall we build a custom arrangement?"
+- Use `question` to capture the choice:
+  - "Which zone arrangement fits best?"
+  - Options: [the 2-3 named arrangements you just presented] + "None — build a custom arrangement"
 
 **Sub-section 3 — Component Inventory**:
+
 - For each zone, list the UI components it contains. For each component, note:
   - Component type (button, list, card, stat display, input field, etc.)
   - Content it displays
@@ -512,6 +536,7 @@ This is the largest and most interactive section. Work through it in sub-section
   - If it introduces a new pattern (flag for later addition to the library)
 
 **Sub-section 4 — ASCII Wireframe**:
+
 - Offer to generate an ASCII wireframe based on the zone layout and component list.
 - Use `question`: "Want an ASCII wireframe as part of this spec?"
   - Options: "Yes, include one", "No, I'll attach a separate file"
@@ -525,6 +550,7 @@ This is the largest and most interactive section. Work through it in sub-section
 Guide the user to think beyond the happy path.
 
 **Questions to ask** (work through these one at a time):
+
 - "What does this screen look like the very first time a player sees it, when there
   is no data yet? (empty state)"
 - "What happens when something goes wrong — an error, a failed action, a missing
@@ -536,17 +562,18 @@ Guide the user to think beyond the happy path.
 
 Present the collected states as a table for approval:
 
-| State / Variant | Trigger | What Changes |
-|-----------------|---------|--------------|
-| Default | Normal load | — |
-| Empty | No data available | [content area description] |
-| [etc.] | [trigger] | [changes] |
+| State / Variant | Trigger           | What Changes               |
+| --------------- | ----------------- | -------------------------- |
+| Default         | Normal load       | —                          |
+| Empty           | No data available | [content area description] |
+| [etc.]          | [trigger]         | [changes]                  |
 
 ---
 
 #### Section E: Interaction Map
 
 For each interactive component identified in the Layout Specification, define:
+
 - The action (tap, click, press, hold, scroll, drag)
 - The platform input(s) that trigger it (mouse click, gamepad A, keyboard Enter)
 - The immediate feedback (visual, audio, haptic)
@@ -567,14 +594,15 @@ an existing UX spec or note it as a spec dependency.
 For every player action in the Interaction Map, document the corresponding event the game or analytics system should fire — or explicitly note "no event" if none applies.
 
 **Questions to ask**:
+
 - "For each action, should the game fire an analytics event, trigger a game-state change, or both?"
 - "Are there any actions that should NOT fire an event — and is that a deliberate choice?"
 
 Present as a table alongside the Interaction Map:
 
-| Player Action | Event Fired | Payload / Data |
-|---|---|---|
-| [action] | [EventName] or none | [data passed with event] |
+| Player Action | Event Fired         | Payload / Data           |
+| ------------- | ------------------- | ------------------------ |
+| [action]      | [EventName] or none | [data passed with event] |
 
 Flag any action that modifies persistent game state (save data, progress, economy) — these need explicit attention from the architecture team.
 
@@ -585,12 +613,14 @@ Flag any action that modifies persistent game state (save data, progress, econom
 Specify how the screen enters and exits, and how it responds to state changes.
 
 **Questions to ask**:
+
 - "How does this screen appear? (fade in, slide from right, instant pop, scale from button)"
 - "How does it dismiss? (fade out, slide back, cut)"
 - "Are there any in-screen state transitions that need animation? (loading spinner, success state, error flash)"
 - "Is there any animation that could cause motion sickness — and does the game have a reduced-motion option?"
 
 Minimum required:
+
 - Screen enter transition
 - Screen exit transition
 - At least one state-change animation if the screen has multiple states
@@ -602,6 +632,7 @@ Minimum required:
 Cross-reference the GDD UI Requirements sections gathered in Phase 2.
 
 For each piece of information the screen displays, ask:
+
 - "Where does this data come from? Which system owns it?"
 - "Does this screen need to write data back, or is it read-only?"
 - "Is any of this data time-sensitive or real-time? (health bars, cooldown timers)"
@@ -612,10 +643,10 @@ delivered. That is an architecture decision.
 
 Present the data requirements as a table:
 
-| Data | Source System | Read / Write | Notes |
-|------|--------------|--------------|-------|
-| [item] | [system] | Read | — |
-| [item] | [system] | Write | [concern if any] |
+| Data   | Source System | Read / Write | Notes            |
+| ------ | ------------- | ------------ | ---------------- |
+| [item] | [system]      | Read         | —                |
+| [item] | [system]      | Write        | [concern if any] |
 
 ---
 
@@ -624,6 +655,7 @@ Present the data requirements as a table:
 Cross-reference `design/accessibility-requirements.md` if it exists.
 
 Walk through the ux-designer agent's standard checklist for this screen:
+
 - Keyboard-only navigation path through all interactive elements
 - Gamepad navigation order (if applicable)
 - Text contrast and minimum readable font sizes
@@ -631,9 +663,10 @@ Walk through the ux-designer agent's standard checklist for this screen:
 - Screen reader considerations for any non-text elements
 - Any motion or animation that needs a reduced-motion alternative
 
-Use `question` to surface any open questions on accessibility tier:
-- "Has the accessibility tier been committed to for this project?"
-  - Options: "Yes, read from requirements doc", "Not yet — let's flag it as a question", "Skip accessibility section for now"
+If no accessibility tier has been defined for this project, note the gap in the UX spec's Open Questions section:
+
+> "Accessibility tier not yet defined — consider WCAG-AA as a baseline. Run `/gate-check` to see whether this blocks any phase gates."
+> Then continue to the next section without stopping.
 
 ---
 
@@ -642,6 +675,7 @@ Use `question` to surface any open questions on accessibility tier:
 Document constraints that affect how this screen behaves when text is translated.
 
 **Questions to ask**:
+
 - "Which text elements on this screen are the longest? What is the maximum character count that fits the layout?"
 - "Are there any elements where text length is layout-critical — e.g., a button label that must stay on one line?"
 - "Are there any elements that display numbers, dates, or currencies that need locale-specific formatting?"
@@ -666,13 +700,17 @@ Write at least 5 specific, testable criteria that a QA tester can verify without
 ```
 
 **Minimum required**:
+
 - 1 performance criterion (load/open time)
 - 1 navigation criterion (at least one entry or exit path verified)
 - 1 error/empty state criterion
 - 1 accessibility criterion (per committed tier)
 - 1 criterion specific to this screen's core purpose
 
-Ask the user to confirm: "Do these criteria cover what would actually make this screen 'done' for your QA process?"
+Use `question` to confirm:
+
+- "Do these acceptance criteria cover what would make this screen 'done' for your QA process?"
+- Options: "Yes — these are solid", "Add one more criterion", "Remove or rephrase one"
 
 ---
 
@@ -687,6 +725,7 @@ Ask the user to describe the game's relationship with on-screen information in
 1-2 sentences.
 
 Offer framing examples to help:
+
 - "Nearly HUD-free — atmosphere requires unobstructed immersion (e.g., Hollow Knight, Firewatch)"
 - "Minimal but present — only critical information visible, everything else contextual (e.g., Dark Souls)"
 - "Information-dense — all decision-relevant data always visible (e.g., Diablo IV, StarCraft II)"
@@ -709,18 +748,19 @@ to communicate to the player on screen."
 **Step 2 — Categorization**:
 For each item, ask the user to categorize it:
 
-| Category | Description |
-|----------|-------------|
-| **Must Show** | Always visible, player needs it for core decisions |
+| Category       | Description                                                     |
+| -------------- | --------------------------------------------------------------- |
+| **Must Show**  | Always visible, player needs it for core decisions              |
 | **Contextual** | Visible only when relevant (in combat, near interactable, etc.) |
-| **On Demand** | Player must actively request it (toggle, hold button) |
-| **Hidden** | Communicated through world/audio, never on-screen text |
+| **On Demand**  | Player must actively request it (toggle, hold button)           |
+| **Hidden**     | Communicated through world/audio, never on-screen text          |
 
 Use `question` to step through items in groups of 3-4, not all at once.
 This is the most consequential design decision in the HUD — do not rush it.
 
 **Conflict check**: If the information philosophy (Section A) says "nearly HUD-free"
 but the Must Show list is growing long, surface the conflict explicitly:
+
 > "The current Must Show list has [N] items. That may conflict with the HUD-free
 > philosophy. Options: reduce the Must Show list, revise the philosophy, or define
 > a hybrid approach where HUD is absent in exploration and present in combat."
@@ -732,6 +772,7 @@ but the Must Show list is growing long, surface the conflict explicitly:
 Only after the information architecture is approved, design layout zones.
 
 Base layout on:
+
 - Which items are Must Show (they drive the permanent zone decisions)
 - Where player attention naturally goes during gameplay (center-screen for action games,
   corners for strategy games)
@@ -745,6 +786,7 @@ categorization from Section B.
 #### Section D: HUD Elements
 
 For each element in the layout, specify:
+
 - Element name and category (Must Show / Contextual / On Demand)
 - Content displayed
 - Visual form (bar, number, icon, counter, map)
@@ -763,6 +805,7 @@ These follow the same structure as the UX spec equivalents. See UX Spec section
 guidance for D (States/Variants), E (Interactions), and G (Accessibility).
 
 For the HUD specifically, emphasize:
+
 - Dynamic Behaviors: what causes the HUD to change density mid-gameplay?
 - Platform Variants: does mobile/console require different element sizes or positions?
 
@@ -780,6 +823,7 @@ pattern used.
 
 Present the extracted list: "Based on existing UX specs, these patterns are already
 in use in the game:"
+
 - [Pattern name]: used in [screen], [screen]
 - [etc.]
 
@@ -801,6 +845,7 @@ For each pattern (existing or new), document:
 **Description**: [One paragraph explaining what this pattern is and when to use it]
 
 **Specification**:
+
 - [Component behavior]
 - [Input mapping]
 - [Visual/audio feedback]
@@ -812,14 +857,17 @@ For each pattern (existing or new), document:
 **Reference**: [Screenshot path or ASCII example, if available]
 ```
 
-Work through patterns in groups. Offer: "Shall I draft the first batch based on what
-I've found in the existing specs, or do you want to define them one by one?"
+Work through patterns in groups. Use `question`:
+
+- "How do you want to work through these patterns?"
+- Options: "Draft the first batch from existing specs (faster)", "Define them one by one (more control)", "Start with the most-used pattern first"
 
 ---
 
 #### Phase 3: Identify Gaps
 
 After cataloging known patterns, ask:
+
 - "Are there screens or interactions planned that would need patterns not yet
   in this library?"
 - "Are there any patterns in existing specs that feel inconsistent with each
@@ -839,8 +887,10 @@ this screen have a corresponding element in this spec? Present any gaps.
 **2. Pattern library alignment**: Are all interaction patterns used in this spec
 referenced by name? If a new pattern was invented during this spec session, flag
 it for addition to the pattern library:
-> "This spec uses [pattern name], which isn't in the pattern library yet.
-> Want to add it now, or flag it as a gap?"
+Use `question`:
+
+- "This spec uses [pattern name], which isn't in the pattern library yet. What should we do?"
+- Options: "Add it to the pattern library now", "Flag it as a gap and continue", "Skip — this pattern is one-off"
 
 **3. Navigation consistency**: Do the entry/exit points in this spec match the
 navigation map in any related specs? Flag mismatches.
@@ -852,7 +902,9 @@ committed to in `design/accessibility-requirements.md`? If not, flag open questi
 Flag any that don't.
 
 Present the check results:
+
 > **Cross-Reference Check: [Screen Name]**
+>
 > - GDD requirements: [N of M covered / all covered]
 > - New patterns to add to library: [list or "none"]
 > - Navigation mismatches: [list or "none"]
@@ -868,6 +920,7 @@ When all sections are approved and written:
 ### 6a: Update Session State
 
 Update `production/session-state/active.md` with:
+
 - Task: [screen-name] UX spec
 - Status: Complete (or In Review)
 - File: design/ux/[filename].md
@@ -883,6 +936,7 @@ Before presenting options, state clearly:
 > to have a review verdict."
 
 Then use `question`:
+
 - "Run `/ux-review [filename]` now, or do something else first?"
   - Options:
     - "Run `/ux-review` now — validate this spec"
@@ -920,15 +974,16 @@ disruption.
 This skill uses `ux-designer` as the primary agent (set in frontmatter). For
 specific sub-topics, additional context or coordination may be needed:
 
-| Topic | Coordinate with |
-|-------|----------------|
-| Visual aesthetics, color, layout feel | `art-director` — UX spec defines zones; art defines how they look |
-| Implementation feasibility (engine constraints) | `ui-programmer` — before finalizing component inventory |
-| Gameplay data requirements | `game-designer` — when data ownership is unclear |
-| Narrative/lore visible in the UI | `narrative-director` — for flavor text, item names, lore panels |
-| Accessibility tier decisions | Handled by this session — owned by ux-designer |
+| Topic                                           | Coordinate with                                                   |
+| ----------------------------------------------- | ----------------------------------------------------------------- |
+| Visual aesthetics, color, layout feel           | `art-director` — UX spec defines zones; art defines how they look |
+| Implementation feasibility (engine constraints) | `ui-programmer` — before finalizing component inventory           |
+| Gameplay data requirements                      | `game-designer` — when data ownership is unclear                  |
+| Narrative/lore visible in the UI                | `narrative-director` — for flavor text, item names, lore panels   |
+| Accessibility tier decisions                    | Handled by this session — owned by ux-designer                    |
 
 When delegating to another agent via the Task tool:
+
 - Provide: screen name, game concept summary, the specific question needing expert input
 - The agent returns analysis to this session
 - This session presents the agent's output to the user

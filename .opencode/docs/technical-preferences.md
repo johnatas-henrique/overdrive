@@ -43,21 +43,31 @@
 
 ## Testing
 
-- **Framework**: [TO BE CONFIGURED — vitest recommended for Vite projects]
-- **Minimum Coverage**: [TO BE CONFIGURED]
+- **Framework**: Vitest 4.1.9 (configured in `package.json`)
+- **Minimum Coverage**: 80% unit, 70% integration (target — enforce when first stories are written)
 - **Required Tests**: Physics (vehicle simulation), input handling, scene transitions, economy/balance
+- **Runner**: `npx vitest run`
+- **Typecheck**: `npx tsc --noEmit` (pre-commit)
 
 ## Forbidden Patterns
 
 <!-- Add patterns that should never appear in this project's codebase -->
+
 - `import * as BABYLON from "@babylonjs/core"` — barrel import breaks tree-shaking
 - Singletons for game systems — use dependency injection via constructor parameters
 - Hardcoded gameplay values — must be data-driven from config files
 - Direct DOM manipulation — use Babylon.js GUI for UI
+- `Sound` class (legacy) — use `CreateSoundAsync` + Audio Engine V2
+- `SceneLoader.Load`, `Append`, `ImportMesh` (sync variants) — use `*Async` equivalents
+- Webpack — use Vite
+- Jest — use Vitest
+- ts-patch — TypeScript 6.0+ native, no patch needed
+- WebVR — use WebXR
 
 ## Allowed Libraries / Addons
 
 <!-- Add approved third-party dependencies here -->
+
 - `@babylonjs/core` — engine
 - `@babylonjs/gui` — HUD and menus
 - `@babylonjs/havok` — physics
@@ -68,7 +78,34 @@
 ## Architecture Decisions Log
 
 <!-- Quick reference linking to full ADRs in docs/architecture/ -->
-- [No ADRs yet — use /architecture-decision to create one]
+
+- **ADR-0001** Event Bus Architecture — `docs/architecture/adr-0001-event-bus-architecture.md`
+- **ADR-0002** Fixed Timestep & Determinism Pipeline — `docs/architecture/adr-0002-fixed-timestep-determinism.md`
+- **ADR-0003** Two-Scene Architecture & Asset Lifecycle — `docs/architecture/adr-0003-two-scene-architecture.md`
+- **ADR-0004** Module Boundary & Dependency Rules — `docs/architecture/adr-0004-module-boundary-rules.md`
+- **ADR-0005** Entity/Car Lifecycle & State Ownership — `docs/architecture/adr-0005-entity-car-lifecycle.md`
+- **ADR-0006** Input Abstraction — `docs/architecture/adr-0006-input-abstraction.md`
+- **ADR-0007** Camera Architecture — `docs/architecture/adr-0007-camera-architecture.md`
+- **ADR-0008** Vehicle Physics (Arcade Dynamic) — `docs/architecture/adr-0008-vehicle-physics.md`
+- **ADR-0009** Developer Tools — `docs/architecture/adr-0009-dev-tools.md`
+- **ADR-0010** Collision Model — `docs/architecture/adr-0010-collision-model.md`
+- **ADR-0011** Fuel Model — `docs/architecture/adr-0011-fuel-model.md`
+- **ADR-0012** Tire Wear Model — `docs/architecture/adr-0012-tire-model.md`
+- **ADR-0013** AI Driver — `docs/architecture/adr-0013-ai-driver.md`
+- **ADR-0014** Pit Stop Flow — `docs/architecture/adr-0014-pit-stop-flow.md`
+- **ADR-0015** Race Management — `docs/architecture/adr-0015-race-management.md`
+- **ADR-0016** Persistence — `docs/architecture/adr-0016-persistence.md`
+- **ADR-0017** Simulation Snapshot — `docs/architecture/adr-0017-simulation-snapshot.md`
+- **ADR-0018** HUD Layout & Blocks — `docs/architecture/adr-0018-hud-layout-blocks.md`
+- **ADR-0019** Menu LITE — `docs/architecture/adr-0019-menu-lite.md`
+- **ADR-0020** Audio Engine — `docs/architecture/adr-0020-audio-engine.md`
+- **ADR-0021** Single Race Adapter — `docs/architecture/adr-0021-single-race-adapter.md`
+- **ADR-0022** Telemetry Recorder — `docs/architecture/adr-0022-telemetry-recorder.md`
+- **ADR-0023** Data & Config Manager — `docs/architecture/adr-0023-data-config-manager.md`
+- **ADR-0024** Game State Machine — `docs/architecture/adr-0024-game-state-machine.md`
+- **ADR-0025** Track + Environment — `docs/architecture/adr-0025-track-environment.md`
+
+All 25 ADRs Accepted. See `docs/architecture/` for full detail.
 
 ## Engine Specialists
 
@@ -85,13 +122,13 @@
 
 ### File Extension Routing
 
-| File Extension / Type | Specialist to Spawn |
-|-----------------------|---------------------|
-| Game code (.ts files) | babylonjs-specialist |
-| Scene/level files (.ts scene setup) | babylonjs-specialist |
-| Shader files (.fx, custom shader code) | babylonjs-perf-specialist |
-| UI / screen files (.ts ADT setup) | babylonjs-gui-specialist |
-| Physics / vehicle files (.ts physics) | babylonjs-physics-specialist |
+| File Extension / Type                     | Specialist to Spawn          |
+| ----------------------------------------- | ---------------------------- |
+| Game code (.ts files)                     | babylonjs-specialist         |
+| Scene/level files (.ts scene setup)       | babylonjs-specialist         |
+| Shader files (.fx, custom shader code)    | babylonjs-perf-specialist    |
+| UI / screen files (.ts ADT setup)         | babylonjs-gui-specialist     |
+| Physics / vehicle files (.ts physics)     | babylonjs-physics-specialist |
 | Network / multiplayer files (.ts network) | babylonjs-network-specialist |
-| Configuration / data (.json) | babylonjs-specialist |
-| General architecture review | babylonjs-specialist |
+| Configuration / data (.json)              | babylonjs-specialist         |
+| General architecture review               | babylonjs-specialist         |

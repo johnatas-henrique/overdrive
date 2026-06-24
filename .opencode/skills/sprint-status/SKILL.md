@@ -32,6 +32,7 @@ files, and makes at most one concrete recommendation.
   files found. Start a sprint with `/sprint-plan new`." Then stop.
 
 Read the sprint file in full. Extract:
+
 - Sprint number and goal
 - Start date and end date
 - All story or task entries with their priority (Must Have / Should Have /
@@ -42,6 +43,7 @@ Read the sprint file in full. Extract:
 ## 2. Calculate Days Remaining
 
 Using today's date and the sprint end date from the sprint file, calculate:
+
 - Total sprint days (end minus start)
 - Days elapsed
 - Days remaining
@@ -87,14 +89,14 @@ After collecting status for all stories, check each IN PROGRESS story for stalen
   or `updated: 2026-04-01`). Accept any reasonable date field name: `Last Updated`,
   `Updated`, `last-updated`, `updated_at`.
 - Calculate days since that date using today's date.
-- If the date is more than 2 days ago, flag the story as **STALE**.
+- If the date is more than 4 days ago, flag the story as **STALE**. (4-day threshold accounts for weekends — a story last touched on Friday won't appear stale until Wednesday.)
 - If no date field is found in the story file, note "no timestamp — cannot check staleness."
 - If the story has no referenced file (inline task), note "inline task — cannot check staleness."
 
 STALE stories are included in the output table and collected into an "Attention Needed"
 section (see Phase 5 output format).
 
-**Stale story escalation**: If any IN PROGRESS story is flagged STALE, the burndown verdict
+**Stale story escalation**: If any IN PROGRESS story is flagged STALE (no progress in 4+ days), the burndown verdict
 is upgraded to at least **At Risk** — even if the completion percentage is within the normal
 On Track window. Record this escalation reason: "At Risk — [N] story(ies) with no progress in
 [N] days."
@@ -104,11 +106,12 @@ On Track window. Record this escalation reason: "At Risk — [N] story(ies) with
 ## 4. Burndown Assessment
 
 Calculate:
+
 - Tasks complete (DONE or COMPLETE)
 - Tasks in progress (IN PROGRESS)
 - Tasks blocked (BLOCKED)
 - Tasks not started (NOT STARTED or MISSING)
-- Completion percentage: (complete / total) * 100
+- Completion percentage: (complete / total) \* 100
 
 Assess burndown by comparing completion percentage to time consumed percentage:
 
@@ -123,42 +126,48 @@ At Risk / Behind: unknown — sprint dates not found."
 
 ## 5. Output
 
-Keep the total output to 30 lines or fewer. Use this format:
+Keep the output concise. The story status table is mandatory — do not truncate it. Aim for under 50 lines total; omit the Emerging Risks section if nothing notable was found. Use this format:
 
 ```markdown
 ## Sprint [N] Status — [Today's Date]
+
 **Sprint Goal**: [from sprint plan]
 **Days Remaining**: [N] of [total] ([% time consumed])
 
 ### Progress: [complete/total] tasks ([%])
 
-| Story / Task         | Priority   | Status      | Owner   | Blocker        |
-|----------------------|------------|-------------|---------|----------------|
-| [title]              | Must Have  | DONE        | [owner] |                |
-| [title]              | Must Have  | IN PROGRESS | [owner] |                |
-| [title]              | Must Have  | BLOCKED     | [owner] | [brief reason] |
-| [title]              | Should Have| NOT STARTED | [owner] |                |
+| Story / Task | Priority    | Status      | Owner   | Blocker        |
+| ------------ | ----------- | ----------- | ------- | -------------- |
+| [title]      | Must Have   | DONE        | [owner] |                |
+| [title]      | Must Have   | IN PROGRESS | [owner] |                |
+| [title]      | Must Have   | BLOCKED     | [owner] | [brief reason] |
+| [title]      | Should Have | NOT STARTED | [owner] |                |
 
 ### Attention Needed
-| Story / Task         | Status      | Last Updated   | Days Stale | Note           |
-|----------------------|-------------|----------------|------------|----------------|
-| [title]              | IN PROGRESS | [date or N/A]  | [N days]   | [STALE / no timestamp — cannot check staleness / inline task — cannot check staleness] |
 
-*(Omit this section entirely if no IN PROGRESS stories are stale or have timestamp concerns.)*
+| Story / Task | Status      | Last Updated  | Days Stale | Note                                                                                   |
+| ------------ | ----------- | ------------- | ---------- | -------------------------------------------------------------------------------------- |
+| [title]      | IN PROGRESS | [date or N/A] | [N days]   | [STALE / no timestamp — cannot check staleness / inline task — cannot check staleness] |
+
+_(Omit this section entirely if no IN PROGRESS stories are stale or have timestamp concerns.)_
 
 ### Burndown: [On Track / At Risk / Behind]
+
 [1-2 sentences. If behind: which Must Haves are at risk. If on track: confirm
 and note any Should Haves the team could pull.]
 
 ### Must-Haves at Risk
+
 [List any Must Have stories that are BLOCKED or NOT STARTED with less than
 40% of sprint time remaining. If none, write "None."]
 
 ### Emerging Risks
+
 [Any risks visible from the story scan: missing files, cascading blockers,
 stories with no owner. If none, write "None identified."]
 
 ### Recommendation
+
 [One concrete action, or "Sprint is on track — no action needed."]
 ```
 
@@ -205,4 +214,4 @@ For more detail on a specific story, the user can read the story file directly
 or run `/story-readiness [path]`.
 
 For sprint replanning, use `/sprint-plan update`.
-For end-of-sprint retrospective, use `/milestone-review`.
+For end-of-sprint retrospective, use `/retrospective`.

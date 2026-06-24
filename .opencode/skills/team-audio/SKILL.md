@@ -1,12 +1,13 @@
 ---
 name: team-audio
 description: "Orchestrate audio team: audio-director + sound-designer + technical-artist + gameplay-programmer for full audio pipeline from direction to implementation."
-argument-hint: "[feature or area to design audio for]"
+argument-hint: "[feature or area to design audio for] [--review full|lean|solo]"
 user-invocable: true
 allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Task, question, TodoWrite
 ---
 
 If no argument is provided, output usage guidance and exit without spawning any agents:
+
 > Usage: `/team-audio [feature or area]` — specify the feature or area to design audio for (e.g., `combat`, `main menu`, `forest biome`, `boss encounter`). Do not use `question` here; output the guidance directly.
 
 When this skill is invoked with an argument, orchestrate the audio team through a structured pipeline.
@@ -15,6 +16,20 @@ When this skill is invoked with an argument, orchestrate the audio team through 
 the user with the subagent's proposals as selectable options. Write the agent's
 full analysis in conversation, then capture the decision with concise labels.
 The user must approve before moving to the next step.
+
+## Phase 0: Resolve Review Mode
+
+1. If `--review [mode]` was passed as an argument, use that mode.
+2. Else read `production/review-mode.txt` — use whatever is written there.
+3. Else default to `lean`.
+
+Modes:
+
+- `full` — spawn all director and lead gates as described
+- `lean` — skip director gates unless they are PHASE-GATE type (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE)
+- `solo` — skip all director gate spawning entirely; run the skill without any agent gates
+
+Store the resolved mode for use in all subsequent phases.
 
 1. **Read the argument** for the target feature or area (e.g., `combat`,
    `main menu`, `forest biome`, `boss encounter`).
@@ -28,6 +43,7 @@ The user must approve before moving to the next step.
 ## How to Delegate
 
 Use the Task tool to spawn each team member as a subagent:
+
 - `subagent_type: audio-director` — Sonic identity, emotional tone, audio palette
 - `subagent_type: sound-designer` — SFX specifications, audio events, mixing groups
 - `subagent_type: technical-artist` — Audio middleware, bus structure, memory budgets
@@ -39,7 +55,9 @@ Always provide full context in each agent's prompt (feature description, existin
 3. **Orchestrate the audio team** in sequence:
 
 ### Step 1: Audio Direction (audio-director)
+
 Spawn the `audio-director` agent to:
+
 - Define the sonic identity for this feature/area
 - Specify the emotional tone and audio palette
 - Set music direction (adaptive layers, stems, transitions)
@@ -47,7 +65,9 @@ Spawn the `audio-director` agent to:
 - Establish any adaptive audio rules (combat intensity, exploration, tension)
 
 ### Step 2: Sound Design and Audio Accessibility (parallel)
+
 Spawn the `sound-designer` agent to:
+
 - Create detailed SFX specifications for every audio event
 - Define sound categories (ambient, UI, gameplay, music, dialogue)
 - Specify per-sound parameters (volume range, pitch variation, attenuation)
@@ -55,6 +75,7 @@ Spawn the `sound-designer` agent to:
 - Define mixing groups and ducking rules
 
 Spawn the `accessibility-specialist` agent in parallel to:
+
 - Identify which audio events carry critical gameplay information (damage received, enemy nearby, objective complete) and require visual alternatives for hearing-impaired players
 - Specify subtitle requirements: which audio events need captions, what text format, on-screen duration
 - Check that no gameplay state is communicated by audio alone (all must have a visual fallback)
@@ -62,7 +83,9 @@ Spawn the `accessibility-specialist` agent in parallel to:
 - Output: audio accessibility requirements list integrated into the audio event spec
 
 ### Step 3: Technical Implementation (parallel)
+
 Spawn the `technical-artist` agent to:
+
 - Design the audio middleware integration (Wwise/FMOD/native)
 - Define audio bus structure and routing
 - Specify memory budgets for audio assets per platform
@@ -70,6 +93,7 @@ Spawn the `technical-artist` agent to:
 - Design any audio-reactive visual effects
 
 Spawn the **primary engine specialist** in parallel (from `.opencode/docs/technical-preferences.md` Engine Specialists) to validate the integration approach:
+
 - Is the proposed audio middleware integration idiomatic for the engine? (e.g., Godot's built-in AudioStreamPlayer vs FMOD, Unity's Audio Mixer vs Wwise, Unreal's MetaSounds vs FMOD)
 - Any engine-specific audio node/component patterns that should be used?
 - Known audio system changes in the pinned engine version that affect the integration plan?
@@ -78,7 +102,9 @@ Spawn the **primary engine specialist** in parallel (from `.opencode/docs/techni
 If no engine is configured, skip the specialist spawn.
 
 ### Step 4: Code Integration (gameplay-programmer)
+
 Spawn the `gameplay-programmer` agent to:
+
 - Implement audio manager system or review existing
 - Wire up audio events to gameplay triggers
 - Implement adaptive music system (if specified)
@@ -87,7 +113,9 @@ Spawn the `gameplay-programmer` agent to:
 
 4. **Compile the audio design document** combining all team outputs.
 
-5. **Save to** `design/gdd/audio-[feature].md`.
+5. **Save to** `design/audio/audio-[feature].md`.
+
+   Note: If `design/audio/` does not exist, the sub-agent writing the document should create it (the directory will be created automatically when the file is written).
 
 6. **Output a summary** with: audio event count, estimated asset count,
    implementation tasks, and any open questions between team members.
@@ -123,6 +151,7 @@ If any spawned agent (via Task) returns BLOCKED, errors, or cannot complete:
 4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.
 
 Common blockers:
+
 - Input file missing (story not found, GDD absent) → redirect to the skill that creates it
 - ADR status is Proposed → do not implement; run `/architecture-decision` first
 - Scope too large → split into two stories via `/create-stories`

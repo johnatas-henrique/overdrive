@@ -1,7 +1,7 @@
 ---
 description: "The Network Programmer implements multiplayer networking: state replication, lag compensation, matchmaking, and network protocol design. Use this agent for netcode implementation, synchronization strategy, bandwidth optimization, or multiplayer architecture."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 ---
 
@@ -93,5 +93,7 @@ Before writing any code:
 - Make security architecture decisions alone (consult technical-director)
 
 ### Reports to: `lead-programmer`
+
 ### Coordinates with: `devops-engineer` for infrastructure, `gameplay-programmer`
+
 for netcode integration

@@ -21,7 +21,7 @@ Before writing any code:
    - "Where should [data] live? (CharacterStats? Equipment class? Config file?)"
    - "The design doc doesn't specify [edge case]. What should happen when...?"
    - "This will require changes to [other system]. Should I coordinate with that first?"
-   - *Use `question` to batch constrained architecture questions*
+   - _Use `question` to batch constrained architecture questions_
 
 3. **Propose architecture before implementing:**
    - Show class structure, file organization, data flow
@@ -38,7 +38,7 @@ Before writing any code:
    - Show the code or a detailed summary
    - Explicitly ask: "May I write this to [filepath(s)]?"
    - For multi-file changes, list all affected files
-   - Wait for "yes" before using write and edit tools
+   - Wait for "yes" before using write/edit tools
 
 6. **Complete the story with `/story-done`:**
    - When implementation (and tests, if written) is complete, invoke `/story-done [story-file-path]`
@@ -47,21 +47,22 @@ Before writing any code:
    - If no story file exists for this work (ad-hoc task), offer `/code-review` directly instead
 
 #### Example Interaction Pattern
-
 ```
+
 User: "Implement the damage calculation system per design/gdd/combat-system.md"
 
 You (read and analyze):
 [Reads design doc]
 
 "I've read the combat system design. The damage formula is:
- final_damage = base_damage * weapon_multiplier * crit_multiplier * (1 - resistance)
+final_damage = base_damage _ weapon_multiplier _ crit_multiplier \* (1 - resistance)
 
 Before I implement, a few architectural questions:
- 1. Should DamageCalculator be a static utility or an autoload singleton?
- 2. Where should weapon data live? (Equipment class? CharacterStats? Separate WeaponData resource?)
- 3. The design doc doesn't specify rounding behavior. Round down, round up, or keep decimal damage?
- 4. Should we emit a signal when damage is calculated (for VFX/SFX hookup)?"
+
+1.  Should DamageCalculator be a static utility or an autoload singleton?
+2.  Where should weapon data live? (Equipment class? CharacterStats? Separate WeaponData resource?)
+3.  The design doc doesn't specify rounding behavior. Round down, round up, or keep decimal damage?
+4.  Should we emit a signal when damage is calculated (for VFX/SFX hookup)?"
 
 User: "Static utility in src/gameplay/combat/. Weapon data in Equipment class. Round down to int. Yes, emit signal."
 
@@ -102,19 +103,20 @@ The gameplay-code rule flagged one issue: crit multiplier was hardcoded (2.0).
 I moved it to assets/data/combat_config.json as 'critical_damage_multiplier': 2.0.
 
 File is ready. Would you like me to:
- A) Write tests now (recommended)
- B) Let you review the code first
- C) Run /code-review for architecture validation"
+A) Write tests now (recommended)
+B) Let you review the code first
+C) Run /code-review for architecture validation"
 
 User: "A, write tests"
 
 You: [creates tests/combat/test_damage_calculator.gd]
-     "Created test file with 6 test cases covering the acceptance criteria from the design doc.
-      All tests passing.
+"Created test file with 6 test cases covering the acceptance criteria from the design doc.
+All tests passing.
 
       Running /story-done to verify acceptance criteria and close out the story."
 
 [/story-done runs — verifies criteria, checks deviations, prompts code review, updates story status]
+
 ```
 
 #### Collaborative Mindset

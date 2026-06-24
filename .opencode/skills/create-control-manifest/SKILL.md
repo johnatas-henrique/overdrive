@@ -12,7 +12,7 @@ agent: technical-director
 The Control Manifest is a flat, actionable rules sheet for programmers. It
 answers "what do I do?" and "what must I never do?" — organized by architectural
 layer, extracted from all Accepted ADRs, technical preferences, and engine
-reference docs. Where ADRs explain *why*, the manifest tells you *what*.
+reference docs. Where ADRs explain _why_, the manifest tells you _what_.
 
 **Output:** `docs/architecture/control-manifest.md`
 
@@ -24,17 +24,20 @@ status. Re-run whenever new ADRs are accepted or existing ADRs are revised.
 ## 1. Load All Inputs
 
 ### ADRs
+
 - Glob `docs/architecture/adr-*.md` and read every file
 - Filter to only Accepted ADRs (Status: Accepted) — skip Proposed, Deprecated,
   Superseded
 - Note the ADR number and title for every rule sourced
 
 ### Technical Preferences
+
 - Read `.opencode/docs/technical-preferences.md`
 - Extract: naming conventions, performance budgets, approved libraries/addons,
   forbidden patterns
 
 ### Engine Reference
+
 - Read `docs/engine-reference/[engine]/VERSION.md` for engine + version
 - Read `docs/engine-reference/[engine]/deprecated-apis.md` — these become
   forbidden API entries
@@ -49,25 +52,31 @@ Report: "Loaded [N] Accepted ADRs, engine: [name + version]."
 For each Accepted ADR, extract:
 
 ### Required Patterns (from "Implementation Guidelines" section)
+
 - Every "must", "should", "required to", "always" statement
 - Every specific pattern or approach mandated
 
 ### Forbidden Approaches (from "Alternatives Considered" sections)
-- Every alternative that was explicitly rejected — *why* it was rejected becomes
+
+- Every alternative that was explicitly rejected — _why_ it was rejected becomes
   the rule ("never use X because Y")
 - Any anti-patterns explicitly called out
 
 ### Performance Guardrails (from "Performance Implications" section)
+
 - Budget constraints: "max N ms per frame for this system"
 - Memory limits: "this system must not exceed N MB"
 
 ### Engine API Constraints (from "Engine Compatibility" section)
+
 - Post-cutoff APIs that require verification
 - Verified behaviours that differ from default LLM assumptions
 - API fields or methods that behave differently in the pinned engine version
 
 ### Layer Classification
+
 Classify each rule by the architectural layer of the system it governs:
+
 - **Foundation**: Scene management, event architecture, save/load, engine init
 - **Core**: Core gameplay loops, main player systems, physics/collision
 - **Feature**: Secondary systems, secondary mechanics, AI
@@ -82,16 +91,20 @@ If an ADR spans multiple layers, duplicate the rule into each relevant layer.
 Combine rules that apply to all layers:
 
 ### From technical-preferences.md:
+
 - Naming conventions (classes, variables, signals/events, files, constants)
 - Performance budgets (target framerate, frame budget, draw call limits, memory ceiling)
 
 ### From deprecated-apis.md:
+
 - All deprecated APIs → Forbidden API entries
 
 ### From current-best-practices.md (if available):
+
 - Engine-recommended patterns → Required entries
 
 ### From technical-preferences.md forbidden patterns:
+
 - Copy any "Forbidden Patterns" entries directly
 
 ---
@@ -112,13 +125,21 @@ Total rules extracted:
   - Global: [N] naming conventions, [M] forbidden APIs, [P] approved libraries
 ```
 
-Ask: "Does this look complete? Any rules to add or remove before I write the manifest?"
+Use `question`:
+
+- Prompt: "Does this rule summary look complete?"
+- Options:
+  - `[A] Yes — looks good, run the director review and write the manifest`
+  - `[B] Add rules — I have additional rules to include before writing`
+  - `[C] Remove rules — some extracted rules should be dropped`
+  - `[D] Stop here — I need to review the ADRs first`
 
 ---
 
 ## 4b. Director Gate — Technical Review
 
 **Review mode check** — apply before spawning TD-MANIFEST:
+
 - `solo` → skip. Note: "TD-MANIFEST skipped — Solo mode." Proceed to Phase 5.
 - `lean` → skip. Note: "TD-MANIFEST skipped — Lean mode." Proceed to Phase 5.
 - `full` → spawn as normal.
@@ -128,12 +149,14 @@ Spawn `technical-director` via Task using gate **TD-MANIFEST** (`.opencode/docs/
 Pass: the Control Manifest Preview from Phase 4 (rule counts per layer, full extracted rule list), the list of ADRs covered, engine version, and any rules sourced from technical-preferences.md or engine reference docs.
 
 The technical-director reviews whether:
+
 - All mandatory ADR patterns are captured and accurately stated
 - Forbidden approaches are complete and correctly attributed
 - No rules were added that lack a source ADR or preference document
 - Performance guardrails are consistent with the ADR constraints
 
 Apply the verdict:
+
 - **APPROVE** → proceed to Phase 5
 - **CONCERNS** → surface via `question` with options: `Revise flagged rules` / `Accept and proceed` / `Discuss further`
 - **REJECT** → do not write the manifest; fix the flagged rules and re-present the summary
@@ -142,7 +165,13 @@ Apply the verdict:
 
 ## 5. Write the Control Manifest
 
-Ask: "May I write this to `docs/architecture/control-manifest.md`?"
+Use `question`:
+
+- Prompt: "May I write the Control Manifest?"
+- Options:
+  - `[A] Yes — write to docs/architecture/control-manifest.md`
+  - `[B] Show me the full draft first, then ask again`
+  - `[C] Not yet — I want to make more changes`
 
 Format:
 
@@ -168,55 +197,65 @@ rule, see the referenced ADR.
 
 ## Foundation Layer Rules
 
-*Applies to: scene management, event architecture, save/load, engine initialisation*
+_Applies to: scene management, event architecture, save/load, engine initialisation_
 
 ### Required Patterns
+
 - **[rule]** — source: [ADR-NNNN]
 - **[rule]** — source: [ADR-NNNN]
 
 ### Forbidden Approaches
+
 - **Never [anti-pattern]** — [brief reason] — source: [ADR-NNNN]
 
 ### Performance Guardrails
+
 - **[system]**: max [N]ms/frame — source: [ADR-NNNN]
 
 ---
 
 ## Core Layer Rules
 
-*Applies to: core gameplay loop, main player systems, physics, collision*
+_Applies to: core gameplay loop, main player systems, physics, collision_
 
 ### Required Patterns
+
 ...
 
 ### Forbidden Approaches
+
 ...
 
 ### Performance Guardrails
+
 ...
 
 ---
 
 ## Feature Layer Rules
 
-*Applies to: secondary mechanics, AI systems, secondary features*
+_Applies to: secondary mechanics, AI systems, secondary features_
 
 ### Required Patterns
+
 ...
 
 ### Forbidden Approaches
+
 ...
 
 ---
 
 ## Presentation Layer Rules
 
-*Applies to: rendering, audio, UI, VFX, shaders, animations*
+_Applies to: rendering, audio, UI, VFX, shaders, animations_
 
 ### Required Patterns
+
 ...
 
 ### Forbidden Approaches
+
 ...
 
 ---
@@ -224,31 +263,37 @@ rule, see the referenced ADR.
 ## Global Rules (All Layers)
 
 ### Naming Conventions
-| Element | Convention | Example |
-|---------|-----------|---------|
-| Classes | [from technical-preferences] | [example] |
-| Variables | [from technical-preferences] | [example] |
+
+| Element        | Convention                   | Example   |
+| -------------- | ---------------------------- | --------- |
+| Classes        | [from technical-preferences] | [example] |
+| Variables      | [from technical-preferences] | [example] |
 | Signals/Events | [from technical-preferences] | [example] |
-| Files | [from technical-preferences] | [example] |
-| Constants | [from technical-preferences] | [example] |
+| Files          | [from technical-preferences] | [example] |
+| Constants      | [from technical-preferences] | [example] |
 
 ### Performance Budgets
-| Target | Value |
-|--------|-------|
-| Framerate | [from technical-preferences] |
-| Frame budget | [from technical-preferences] |
-| Draw calls | [from technical-preferences] |
+
+| Target         | Value                        |
+| -------------- | ---------------------------- |
+| Framerate      | [from technical-preferences] |
+| Frame budget   | [from technical-preferences] |
+| Draw calls     | [from technical-preferences] |
 | Memory ceiling | [from technical-preferences] |
 
 ### Approved Libraries / Addons
+
 - [library] — approved for [purpose]
 
 ### Forbidden APIs ([engine version])
+
 These APIs are deprecated or unverified for [engine + version]:
+
 - `[api name]` — deprecated since [version] / unverified post-cutoff
 - Source: `docs/engine-reference/[engine]/deprecated-apis.md`
 
 ### Cross-Cutting Constraints
+
 - [constraint that applies everywhere, regardless of layer]
 ```
 

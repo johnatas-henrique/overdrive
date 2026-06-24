@@ -1,6 +1,6 @@
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import glsl from "vite-plugin-glsl";
-import { resolve } from "path";
 
 export default defineConfig({
   plugins: [glsl()],
@@ -11,6 +11,8 @@ export default defineConfig({
   },
   build: {
     target: "es2022",
-    minify: "esbuild",
+  },
+  optimizeDeps: {
+    exclude: ["@babylonjs/havok"],
   },
 });

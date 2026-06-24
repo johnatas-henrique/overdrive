@@ -13,8 +13,8 @@ This skill audits an existing project's artifacts for **format compliance** with
 the template's skill pipeline, then produces a prioritised migration plan.
 
 **This is not `/project-stage-detect`.**
-`/project-stage-detect` answers: *what exists?*
-`/adopt` answers: *will what exists actually work with the template's skills?*
+`/project-stage-detect` answers: _what exists?_
+`/adopt` answers: _will what exists actually work with the template's skills?_
 
 A project can have GDDs, ADRs, and stories — and every format-sensitive skill
 will still fail silently or produce wrong results if those artifacts are in the
@@ -42,6 +42,7 @@ skill is running during the silent read phase.
 Then read silently before presenting anything else.
 
 ### Existence check
+
 - `production/stage.txt` — if present, read it (authoritative phase)
 - `design/gdd/game-concept.md` — concept exists?
 - `design/gdd/systems-index.md` — systems index exists?
@@ -53,7 +54,9 @@ Then read silently before presenting anything else.
 - Glob `docs/adoption-plan-*.md` — note the filename of the most recent prior plan if any exist
 
 ### Infer phase (if no stage.txt)
+
 Use the same heuristic as `/project-stage-detect`:
+
 - 10+ source files in `src/` → Production
 - Stories in `production/epics/` → Pre-Production
 - ADRs exist → Technical Setup
@@ -62,6 +65,7 @@ Use the same heuristic as `/project-stage-detect`:
 - Nothing → Fresh (not a brownfield project — suggest `/start`)
 
 If the project appears fresh (no artifacts at all), use `question`:
+
 - "This looks like a fresh project — no existing artifacts found. `/adopt` is for
   projects with work to migrate. What would you like to do?"
   - "Run `/start` — begin guided first-time onboarding"
@@ -84,18 +88,19 @@ the file exists but that it contains the internal structure the template require
 
 For each GDD file found, check for the 8 required sections by scanning headings:
 
-| Required Section | Heading pattern to look for |
-|---|---|
-| Overview | `## Overview` |
-| Player Fantasy | `## Player Fantasy` |
+| Required Section        | Heading pattern to look for                              |
+| ----------------------- | -------------------------------------------------------- |
+| Overview                | `## Overview`                                            |
+| Player Fantasy          | `## Player Fantasy`                                      |
 | Detailed Rules / Design | `## Detailed` or `## Core Rules` or `## Detailed Design` |
-| Formulas | `## Formulas` or `## Formula` |
-| Edge Cases | `## Edge Cases` |
-| Dependencies | `## Dependencies` or `## Depends` |
-| Tuning Knobs | `## Tuning` |
-| Acceptance Criteria | `## Acceptance` |
+| Formulas                | `## Formulas` or `## Formula`                            |
+| Edge Cases              | `## Edge Cases`                                          |
+| Dependencies            | `## Dependencies` or `## Depends`                        |
+| Tuning Knobs            | `## Tuning`                                              |
+| Acceptance Criteria     | `## Acceptance`                                          |
 
 For each GDD, record:
+
 - Which sections are present
 - Which sections are missing
 - Whether it has any content in present sections or just placeholder text
@@ -108,13 +113,13 @@ Valid values: `In Design`, `Designed`, `In Review`, `Approved`, `Needs Revision`
 
 For each ADR file found, check for these critical sections:
 
-| Section | Impact if missing |
-|---|---|
-| `## Status` | **BLOCKING** — `/story-readiness` ADR status check silently passes everything |
-| `## ADR Dependencies` | HIGH — dependency ordering in `/architecture-review` breaks |
-| `## Engine Compatibility` | HIGH — post-cutoff API risk is unknown |
-| `## GDD Requirements Addressed` | MEDIUM — traceability matrix loses coverage |
-| `## Performance Implications` | LOW — not pipeline-critical |
+| Section                         | Impact if missing                                                             |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| `## Status`                     | **BLOCKING** — `/story-readiness` ADR status check silently passes everything |
+| `## ADR Dependencies`           | HIGH — dependency ordering in `/architecture-review` breaks                   |
+| `## Engine Compatibility`       | HIGH — post-cutoff API risk is unknown                                        |
+| `## GDD Requirements Addressed` | MEDIUM — traceability matrix loses coverage                                   |
+| `## Performance Implications`   | LOW — not pipeline-critical                                                   |
 
 For each ADR, record: which sections present, which missing, current Status value
 if the Status section exists.
@@ -147,19 +152,20 @@ For each story file found:
 
 ### 2e: Infrastructure Audit
 
-| Artifact | Path | Impact if missing |
-|---|---|---|
-| TR registry | `docs/architecture/tr-registry.yaml` | HIGH — no stable requirement IDs |
-| Control manifest | `docs/architecture/control-manifest.md` | HIGH — no layer rules for stories |
-| Manifest version stamp | In manifest header: `Manifest Version:` | MEDIUM — staleness checks blind |
-| Sprint status | `production/sprint-status.yaml` | MEDIUM — `/sprint-status` falls back to markdown |
-| Stage file | `production/stage.txt` | MEDIUM — phase auto-detect unreliable |
-| Engine reference | `docs/engine-reference/[engine]/VERSION.md` | HIGH — ADR engine checks blind |
-| Architecture traceability | `docs/architecture/architecture-traceability.md` | MEDIUM — no persistent matrix |
+| Artifact                  | Path                                             | Impact if missing                                |
+| ------------------------- | ------------------------------------------------ | ------------------------------------------------ |
+| TR registry               | `docs/architecture/tr-registry.yaml`             | HIGH — no stable requirement IDs                 |
+| Control manifest          | `docs/architecture/control-manifest.md`          | HIGH — no layer rules for stories                |
+| Manifest version stamp    | In manifest header: `Manifest Version:`          | MEDIUM — staleness checks blind                  |
+| Sprint status             | `production/sprint-status.yaml`                  | MEDIUM — `/sprint-status` falls back to markdown |
+| Stage file                | `production/stage.txt`                           | MEDIUM — phase auto-detect unreliable            |
+| Engine reference          | `docs/engine-reference/[engine]/VERSION.md`      | HIGH — ADR engine checks blind                   |
+| Architecture traceability | `docs/architecture/requirements-traceability.md` | MEDIUM — no persistent matrix                    |
 
 ### 2f: Technical Preferences Audit
 
 Read `.opencode/docs/technical-preferences.md`. Check each field for `[TO BE CONFIGURED]`:
+
 - Engine, Language, Rendering, Physics → HIGH if unconfigured (ADR skills fail)
 - Naming conventions → MEDIUM
 - Performance budgets → MEDIUM
@@ -171,7 +177,7 @@ Read `.opencode/docs/technical-preferences.md`. Check each field for `[TO BE CON
 
 Organise every gap found across all audits into four severity tiers:
 
-**BLOCKING** — Will cause template skills to silently produce wrong results *right now*.
+**BLOCKING** — Will cause template skills to silently produce wrong results _right now_.
 Examples: ADR missing Status field, systems-index parenthetical status values,
 engine not configured when ADRs exist.
 
@@ -195,12 +201,14 @@ is template-compatible and only advisory improvements remain.
 ## Phase 4: Build the Migration Plan
 
 Compose a numbered, ordered action plan. Ordering rules:
+
 1. BLOCKING gaps first (must fix before any pipeline skill runs reliably)
 2. HIGH gaps next, infrastructure before GDD/ADR content (bootstrapping needs correct formats)
 3. MEDIUM gaps ordered: GDD gaps before ADR gaps before story gaps (stories depend on GDDs and ADRs)
 4. LOW gaps last
 
 For each gap, produce a plan entry with:
+
 - A clear problem statement (one sentence, no jargon)
 - The exact command to fix it, if a skill handles it
 - Manual steps if it requires direct editing
@@ -221,6 +229,7 @@ For each affected GDD, list which sections are missing and the fix:
 `/design-system retrofit design/gdd/[filename].md`
 
 **Infrastructure bootstrap ordering** — always present in this sequence:
+
 1. Fix ADR formats first (registry depends on reading ADR Status fields)
 2. Run `/architecture-review` → bootstraps `tr-registry.yaml`
 3. Run `/create-control-manifest` → creates manifest with version stamp
@@ -228,6 +237,7 @@ For each affected GDD, list which sections are missing and the fix:
 5. Run `/gate-check [phase]` → writes `stage.txt` authoritatively
 
 **Existing stories** — note explicitly:
+
 > "Existing stories continue to work with all template skills — all new format
 > checks auto-pass when the fields are absent. They won't benefit from TR-ID
 > staleness tracking or manifest version checks until they're regenerated. This
@@ -257,6 +267,7 @@ Estimated remediation: [X blocking items × ~Y min each = roughly Z hours]
 ```
 
 Before asking to write, show a **Gap Preview**:
+
 - List every BLOCKING gap as a one-line bullet describing the actual problem
   (e.g. `systems-index.md: 3 rows have parenthetical status values`,
   `adr-0002.md: missing ## Status section`). No counts — show the actual items.
@@ -265,10 +276,12 @@ Before asking to write, show a **Gap Preview**:
 This gives the user enough context to judge scope before committing to writing the file.
 
 If a prior adoption plan was detected in Phase 1, add a note:
+
 > "A previous plan exists at `docs/adoption-plan-[prior-date].md`. The new plan will
 > reflect current project state — it does not diff against the prior run."
 
 Use `question`:
+
 - "Ready to write the migration plan?"
   - "Yes — write `docs/adoption-plan-[date].md`"
   - "Show me the full plan preview first (don't write yet)"
@@ -311,24 +324,32 @@ Re-run `/adopt` anytime to check remaining gaps.
 ## Step 3: Bootstrap Infrastructure
 
 ### 3a. Register existing requirements (creates tr-registry.yaml)
+
 Run `/architecture-review` — even if ADRs already exist, this run bootstraps
 the TR registry from your existing GDDs and ADRs.
 **Time**: 1 session (review can be long for large codebases)
+
 - [ ] tr-registry.yaml created
 
 ### 3b. Create control manifest
+
 Run `/create-control-manifest`
 **Time**: 30 min
+
 - [ ] docs/architecture/control-manifest.md created
 
 ### 3c. Create sprint tracking file
+
 Run `/sprint-plan update`
 **Time**: 5 min (if sprint plan already exists as markdown)
+
 - [ ] production/sprint-status.yaml created
 
 ### 3d. Set authoritative project stage
+
 Run `/gate-check [current-phase]`
 **Time**: 5 min
+
 - [ ] production/stage.txt written
 
 ---
@@ -378,6 +399,7 @@ After writing the adoption plan (or if the user cancels writing), check whether
   - `Solo` — No director reviews at all. Maximum speed. Best for game jams, prototypes, or if reviews feel like overhead.
 
 Write the choice to `production/review-mode.txt` immediately after selection — no separate "May I write?" needed:
+
 - `Full` → write `full`
 - `Lean (recommended)` → write `lean`
 - `Solo` → write `solo`
@@ -394,6 +416,7 @@ branch that applies:
 
 **If there are parenthetical status values in systems-index.md:**
 Use `question`:
+
 - "The most urgent fix is `systems-index.md` — [N] rows have parenthetical status
   values (e.g. `Needs Revision (see notes)`) that break /gate-check,
   /create-stories, and /architecture-review right now. I can fix these in-place."
@@ -403,6 +426,7 @@ Use `question`:
 
 **If ADRs are missing `## Status` (and no parenthetical issue):**
 Use `question`:
+
 - "The most urgent fix is adding `## Status` to [N] ADR(s): [list filenames].
   Without it, /story-readiness silently passes all ADR checks. Start with
   [first affected filename]?"
@@ -412,6 +436,7 @@ Use `question`:
 
 **If GDDs are missing Acceptance Criteria (and no blocking issues above):**
 Use `question`:
+
 - "The most urgent gap is missing Acceptance Criteria in [N] GDD(s):
   [list filenames]. Without them, /create-stories can't generate stories.
   Start with [highest-priority GDD filename]?"
@@ -421,10 +446,13 @@ Use `question`:
 
 **If no BLOCKING or HIGH gaps exist:**
 Use `question`:
+
 - "No blocking gaps — this project is template-compatible. What next?"
   - "Walk me through the medium-priority improvements"
   - "Run /project-stage-detect for a broader health check"
   - "Done — I'll work through the plan at my own pace"
+
+> **Adoption plan saved to `docs/adoption-plan-[date].md`.** Re-run `/adopt` at any time to re-check remaining gaps as you complete them.
 
 ---
 

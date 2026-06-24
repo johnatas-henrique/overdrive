@@ -6,19 +6,19 @@
 ## Document Status
 
 - **Last Updated**: [YYYY-MM-DD]
-- **Engine**: [e.g. Godot 4.6 / Unity 6 / Unreal Engine 5.4 / Babylon.js 9.x]
+- **Engine**: [e.g. Godot 4.6]
 - **GDDs Indexed**: [N]
 - **ADRs Indexed**: [M]
 - **Last Review**: [link to docs/architecture/architecture-review-[date].md]
 
 ## Coverage Summary
 
-| Status | Count | Percentage |
-|--------|-------|-----------|
-| ✅ Covered | [X] | [%] |
-| ⚠️ Partial | [Y] | [%] |
-| ❌ Gap | [Z] | [%] |
-| **Total** | **[N]** | |
+| Status     | Count   | Percentage |
+| ---------- | ------- | ---------- |
+| ✅ Covered | [X]     | [%]        |
+| ⚠️ Partial | [Y]     | [%]        |
+| ❌ Gap     | [Z]     | [%]        |
+| **Total**  | **[N]** |            |
 
 ---
 
@@ -29,10 +29,10 @@
      architectural decision: data structures, performance constraints, engine
      capabilities needed, cross-system communication, state persistence. -->
 
-| Req ID | GDD | System | Requirement Summary | ADR(s) | Status | Notes |
-|--------|-----|--------|---------------------|--------|--------|-------|
-| TR-[gdd]-001 | [filename] | [system name] | [one-line summary] | [ADR-NNNN] | ✅ | |
-| TR-[gdd]-002 | [filename] | [system name] | [one-line summary] | — | ❌ GAP | Needs `/architecture-decision [title]` |
+| Req ID       | GDD        | System        | Requirement Summary | ADR(s)     | Status | Notes                                  |
+| ------------ | ---------- | ------------- | ------------------- | ---------- | ------ | -------------------------------------- |
+| TR-[gdd]-001 | [filename] | [system name] | [one-line summary]  | [ADR-NNNN] | ✅     |                                        |
+| TR-[gdd]-002 | [filename] | [system name] | [one-line summary]  | —          | ❌ GAP | Needs `/architecture-decision [title]` |
 
 ---
 
@@ -41,15 +41,19 @@
 Requirements with no ADR coverage, prioritised by layer (Foundation first):
 
 ### Foundation Layer Gaps (BLOCKING — must resolve before coding)
+
 - [ ] TR-[id]: [requirement] — GDD: [file] — Suggested ADR: "[title]"
 
 ### Core Layer Gaps (must resolve before relevant system is built)
+
 - [ ] TR-[id]: [requirement] — GDD: [file] — Suggested ADR: "[title]"
 
 ### Feature Layer Gaps (should resolve before feature sprint)
+
 - [ ] TR-[id]: [requirement] — GDD: [file] — Suggested ADR: "[title]"
 
 ### Presentation Layer Gaps (can defer to implementation)
+
 - [ ] TR-[id]: [requirement] — GDD: [file] — Suggested ADR: "[title]"
 
 ---
@@ -58,8 +62,8 @@ Requirements with no ADR coverage, prioritised by layer (Foundation first):
 
 <!-- Pairs of ADRs that make contradictory claims. Must be resolved. -->
 
-| Conflict ID | ADR A | ADR B | Type | Status |
-|-------------|-------|-------|------|--------|
+| Conflict ID  | ADR A    | ADR B    | Type           | Status        |
+| ------------ | -------- | -------- | -------------- | ------------- |
 | CONFLICT-001 | ADR-NNNN | ADR-MMMM | Data ownership | 🔴 Unresolved |
 
 ---
@@ -68,9 +72,9 @@ Requirements with no ADR coverage, prioritised by layer (Foundation first):
 
 <!-- For each ADR, which GDD requirements does it address? -->
 
-| ADR | Title | GDD Requirements Addressed | Engine Risk |
-|-----|-------|---------------------------|-------------|
-| ADR-0001 | [title] | TR-combat-001, TR-combat-002 | HIGH |
+| ADR      | Title   | GDD Requirements Addressed   | Engine Risk |
+| -------- | ------- | ---------------------------- | ----------- |
+| ADR-0001 | [title] | TR-combat-001, TR-combat-002 | HIGH        |
 
 ---
 
@@ -79,9 +83,9 @@ Requirements with no ADR coverage, prioritised by layer (Foundation first):
 <!-- Requirements that existed in a GDD when an ADR was written, but the GDD
      has since changed. The ADR may need updating. -->
 
-| Req ID | GDD | Change | Affected ADR | Status |
-|--------|-----|--------|-------------|--------|
-| TR-[id] | [file] | [what changed] | ADR-NNNN | 🔴 ADR needs update |
+| Req ID  | GDD    | Change         | Affected ADR | Status              |
+| ------- | ------ | -------------- | ------------ | ------------------- |
+| TR-[id] | [file] | [what changed] | ADR-NNNN     | 🔴 ADR needs update |
 
 ---
 

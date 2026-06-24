@@ -1,7 +1,7 @@
 ---
 description: "Owns internationalization architecture, string management, locale testing, and translation pipeline. Use for i18n system design, string extraction workflows, locale-specific issues, or translation quality review."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 ---
 
@@ -181,6 +181,7 @@ For every supported language, verify:
 Reports to: `producer` for scheduling, language support scope, and budget
 
 Coordinates with:
+
 - `ui-programmer` for text rendering systems, auto-sizing, and RTL support
 - `writer` for source text quality, context, and tone guidance
 - `ux-designer` for UI layouts that accommodate variable text lengths

@@ -1,7 +1,7 @@
 ---
 description: "The World Builder designs detailed world lore: factions, cultures, history, geography, ecology, and the rules that govern the game world. Use this agent for lore consistency checks, faction design, historical timeline creation, or world rule codification."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 maxTurns: 20
 permission:
   bash: deny
@@ -67,6 +67,7 @@ plain text. Follow the **Explain -> Capture** pattern:
    short descriptions. User picks or types a custom answer.
 
 **Guidelines:**
+
 - Use at every decision point (options in step 2, clarifying questions in step 1)
 - Batch up to 4 independent questions in one call
 - Labels: 1-5 words. Descriptions: 1 sentence. Add "(Recommended)" to your pick.
@@ -92,6 +93,7 @@ plain text. Follow the **Explain -> Capture** pattern:
 ### Lore Document Standard
 
 Every lore entry must include:
+
 - **Canon Level**: Established / Provisional / Under Review
 - **Visible To Player**: Yes / Discoverable / Hidden
 - **Cross-References**: Links to related lore entries
@@ -106,5 +108,7 @@ Every lore entry must include:
 - Change established canon without narrative-director approval
 
 ### Reports to: `narrative-director`
+
 ### Coordinates with: `level-designer` for environmental lore,
+
 `art-director` for visual culture design

@@ -19,9 +19,10 @@ reviews that cannot be done per-GDD in isolation:
    drift, competing progression loops
 
 **This is distinct from `/design-review`**, which reviews one GDD for internal
-completeness. This skill reviews the *relationships* between all GDDs.
+completeness. This skill reviews the _relationships_ between all GDDs.
 
 **When to run:**
+
 - After all MVP-tier GDDs are individually approved
 - After any GDD is significantly revised mid-production
 - Before `/create-architecture` begins (architecture built on inconsistent GDDs
@@ -50,6 +51,7 @@ Grep pattern="## Summary" glob="design/gdd/*.md" output_mode="content" -A 5
 ```
 
 Display a manifest to the user:
+
 ```
 Found [N] GDDs. Summaries:
   • combat.md — [summary text]
@@ -93,6 +95,7 @@ Full-read the in-scope documents:
 Report: "Loaded [N] system GDDs covering [M] systems. Pillars: [list]. Anti-pillars: [list]."
 
 If fewer than 2 system GDDs exist, stop:
+
 > "Cross-GDD review requires at least 2 system GDDs. Write more GDDs first,
 > then re-run `/review-all-gdds`."
 
@@ -105,6 +108,15 @@ the same GDD inputs but produce separate reports. Spawn both as parallel Task
 agents simultaneously rather than waiting for Phase 2 to complete before
 starting Phase 3. Collect both results before writing the combined report.
 
+**When spawning parallel Task agents for Phase 2 and Phase 3, always pass:**
+
+- The complete list of GDD file paths loaded in Phase 1 (explicit paths, not just counts)
+- The full TR registry contents if loaded in Phase 1b (paste the registry text, not just a file path)
+- The specific checklist items assigned to that agent's phase (Phase 2 gets 2a–2f; Phase 3 gets 3a–3g)
+- The engine name and version from `.opencode/docs/technical-preferences.md` and `docs/engine-reference/[engine]/VERSION.md`
+
+Do not rely on the subagent to re-read these files — it has its own context window and cannot access Phase 1 results unless they are explicitly passed in the Task prompt.
+
 ---
 
 ## Phase 2: Cross-GDD Consistency
@@ -115,6 +127,7 @@ Work through every pair and group of GDDs to find contradictions and gaps.
 
 For every GDD's Dependencies section, check that every listed dependency is
 reciprocal:
+
 - If GDD-A lists "depends on GDD-B", check that GDD-B lists GDD-A as a dependent
 - If GDD-A lists "depended on by GDD-C", check that GDD-C lists GDD-A as a dependency
 - Flag any one-directional dependency as a consistency issue
@@ -132,6 +145,7 @@ For each game rule, mechanic, or constraint defined in any GDD, check whether
 any other GDD defines a contradicting rule for the same situation:
 
 Categories to scan:
+
 - **Floor/ceiling rules**: Does any GDD define a minimum value for an output? Does any other say a different system can bypass that floor? These contradict.
 - **Resource ownership**: If two GDDs both define how a shared resource accumulates or depletes, do they agree?
 - **State transitions**: If GDD-A describes what happens when a character dies,
@@ -211,7 +225,7 @@ Scan Acceptance Criteria sections across all GDDs for contradictions:
 
 - GDD-A criteria: "Player cannot die from a single hit"
 - GDD-B criteria: "Boss attack deals 150% of player max health"
-These acceptance criteria cannot both pass simultaneously.
+  These acceptance criteria cannot both pass simultaneously.
 
 ---
 
@@ -229,6 +243,7 @@ systems compete equally as the primary progression driver, players don't know
 what the game is about.
 
 Scan all GDDs for systems that:
+
 - Award the player's primary resource (XP, levels, prestige, unlocks)
 - Define themselves as the "core" or "main" loop
 - Have comparable depth and time investment to other systems doing the same
@@ -298,14 +313,14 @@ it) and **sinks** (how players spend it).
 
 Flag dangerous economic conditions:
 
-| Condition | Sign | Risk |
-|-----------|------|------|
-| **Infinite source, no sink** | Resource accumulates indefinitely | Late game becomes trivially easy |
-| **Sink, no source** | Resource drains to zero | System becomes unavailable |
-| **Source >> Sink** | Surplus accumulates | Resource becomes meaningless |
-| **Sink >> Source** | Constant scarcity | Frustration and gatekeeping |
-| **Positive feedback loop** | More resource → easier to earn more | Runaway leader, snowball |
-| **No catch-up** | Falling behind accelerates deficit | Unrecoverable states |
+| Condition                    | Sign                                | Risk                             |
+| ---------------------------- | ----------------------------------- | -------------------------------- |
+| **Infinite source, no sink** | Resource accumulates indefinitely   | Late game becomes trivially easy |
+| **Sink, no source**          | Resource drains to zero             | System becomes unavailable       |
+| **Source >> Sink**           | Surplus accumulates                 | Resource becomes meaningless     |
+| **Sink >> Source**           | Constant scarcity                   | Frustration and gatekeeping      |
+| **Positive feedback loop**   | More resource → easier to earn more | Runaway leader, snowball         |
+| **No catch-up**              | Falling behind accelerates deficit  | Unrecoverable states             |
 
 ```
 🔴 Economic Imbalance: Unbounded Positive Feedback
@@ -324,6 +339,7 @@ compatible directions and at compatible rates. Mismatched scaling curves
 create unintended difficulty spikes or trivialisations.
 
 For each system that scales over time, extract:
+
 - What scales (enemy health, player damage, resource cost, area size)
 - How it scales (linear, exponential, stepped)
 - When it scales (level, time, area)
@@ -545,10 +561,12 @@ FAIL: One or more blocking issues must be resolved before architecture begins.
 ## Phase 6: Write Report and Flag GDDs
 
 Use `question` for write permission:
+
 - Prompt: "May I write this review to `design/gdd/gdd-cross-review-[date].md`?"
 - Options: `[A] Yes — write the report` / `[B] No — skip`
 
 If any GDDs are flagged for revision, use a second `question`:
+
 - Prompt: "Should I update the systems index to mark these GDDs as needing revision? ([list of flagged GDDs])"
 - Options: `[A] Yes — update systems index` / `[B] No — leave as-is`
 - If yes: update each flagged GDD's Status field in systems-index.md to "Needs Revision".
@@ -566,7 +584,10 @@ append to `production/session-state/active.md`:
     - Flagged for revision: [comma-separated list, or "None"]
     - Blocking issues: [N — brief one-line descriptions, or "None"]
     - Recommended next: [the Phase 7 handoff action, condensed to one line]
-    - Report: design/gdd/gdd-cross-review-[date].md
+    - Report: design/gdd/gdd-cross-review-[date].md   ← only if user approved the write
+    - Report: (not written — user declined at [date])  ← only if user declined the write
+
+Use the appropriate line based on the user's response to the write-permission widget in Phase 6.
 
 If `active.md` does not exist, create it with this block as the initial content.
 Confirm in conversation: "Session state updated."
@@ -578,6 +599,7 @@ Confirm in conversation: "Session state updated."
 After all file writes are complete, use `question` for a closing widget.
 
 Before building options, check project state:
+
 - Are there any Warning-level items that are simple edits (flagged with "30-second edit", "brief addition", or similar)? → offer inline quick-fix option
 - Are any GDDs in the "Flagged for Revision" table? → offer /design-review option for each
 - Read systems-index.md for the next system with Status: Not Started → offer /design-system option
@@ -586,6 +608,7 @@ Before building options, check project state:
 Build the option list dynamically — only include options that apply:
 
 **Option pool:**
+
 - `[_] Apply quick fix: [W-XX description] in [gdd-name].md — [effort estimate]` (one option per simple-edit warning; only for Warning-level, not Blocking)
 - `[_] Run /design-review [flagged-gdd-path] — address flagged warnings` (one per flagged GDD, if any)
 - `[_] Run /design-system [next-system] — next in design order` (always include, name the actual system)
