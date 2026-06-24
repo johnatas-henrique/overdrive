@@ -60,15 +60,23 @@ _Handled by neighbouring stories — do not implement here:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/integration/config-manager.test.ts`
+
+### AC-1: HMR payload triggers invalidation
+- Simulate Vite HMR payload for config namespace
+- Assert: `invalidateNamespace()` called with correct namespace
+
+### AC-2: invalid HMR payload
+- Simulate HMR payload with invalid format
+- Assert: ConfigManager logs error, preserves stale cache
+
+### AC-3: HMR error handling
+- Simulate HMR with exception in payload processing
+- Assert: game does not crash, error logged
+
 ## Test Evidence
-
-**Story Type**: Integration
-**Required evidence**: `tests/integration/config-manager-hmr-wiring.test.ts` OR documented verification
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: Story 003a (needs `invalidateNamespace()` to exist)

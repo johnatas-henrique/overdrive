@@ -95,15 +95,32 @@ _Handled by neighbouring stories — do not implement here:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/config-manager.test.ts`
+
+### AC-1: env var overrides default
+- Set `OVERDRIVE__TEAMS__MACKLEN__MOTOR=3` env var, register default with value `1`
+- Call `get('teams.macklen.motor')`
+- Assert: returns `3`
+
+### AC-2: override on nonexistent namespace
+- Set env var `OVERDRIVE__NONEXISTENT__KEY=5`
+- Assert: silently ignored (no error, no namespace created)
+
+### AC-3: empty env var key
+- Set `OVERDRIVE___=3`
+- Assert: `console.warn` called, ignored
+
+### AC-4: type coercion
+- Set `OVERDRIVE__COUNT=3` (string), register `count` with default number `0`
+- Assert: `get('count')` returns `3` (number, coerced)
+
+### AC-5: env var cleanup
+- Run test with env var set, verify after test env var is restored
+- Assert: no cross-test contamination
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/config-manager-env.test.ts` — must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: Story 001 (needs core register + get to be implemented)

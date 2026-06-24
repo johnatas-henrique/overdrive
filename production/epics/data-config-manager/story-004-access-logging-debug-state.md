@@ -80,15 +80,28 @@ _Handled by neighbouring stories — do not implement here:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/config-manager.test.ts`
+
+### AC-1: getDebugState() returns registered namespaces
+- Register `teams` namespace with values
+- Call `getDebugState()`
+- Assert: returned object contains `teams` with correct values
+
+### AC-2: access log records get() calls
+- Call `get('teams.macklen.motor')` multiple times
+- Assert: access log contains each call with timestamp and key
+
+### AC-3: debug state reflects env overrides
+- Set env var, register namespace
+- Assert: `getDebugState()` shows overridden value
+
+### AC-4: getDebugState() before any register
+- Call `getDebugState()` on initialized but empty ConfigManager
+- Assert: returns empty state (no crash)
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/config-manager-logging.test.ts` — must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: Story 001 (needs core register + get)

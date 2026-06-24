@@ -105,15 +105,36 @@ _Handled by neighbouring stories — do not implement here:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/config-manager.test.ts`
+
+### AC-1: init() without errors
+- Call `ConfigManager.init()`
+- Assert: no exception thrown
+
+### AC-2: register + get returns correct value
+- Call `register('teams', { macklen: { motor: 'F1-001' } })`
+- Call `get('teams.macklen.motor')`
+- Assert: returns `'F1-001'`
+
+### AC-3: get() nonexistent key throws
+- Call `get('nonexistent.key')`
+- Assert: throws `ConfigError('Key not found: nonexistent.key')`
+
+### AC-4: Duplicate register throws
+- Call `register('teams', {...})` twice
+- Assert: second call throws `ConfigError('Namespace already registered: teams')`
+
+### AC-5: get() before init() throws
+- Call `get('anything')` on uninitialized instance
+- Assert: throws `ConfigError('ConfigManager not initialized')`
+
+### AC-6: get() after init but before register
+- Initialize, then `get('teams.macklen.motor')` before any register
+- Assert: throws `ConfigError` with hint about init ordering
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/config-manager.test.ts` — must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: None (Foundation root)

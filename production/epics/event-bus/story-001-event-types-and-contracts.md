@@ -128,18 +128,20 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/event-bus.test.ts`
+
+### AC-1: compile-time type safety
+- Declare typed event map with known keys and payload shapes
+- Assert: emitting with wrong payload type causes compile error (`@ts-expect-error`)
+- Assert: subscribing to nonexistent event key causes compile error
+
+### AC-2: runtime type checking
+- Define event with required payload field
+- Assert: emitting with missing required field logs warning or throws
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**:
-
-- Logic: `tests/unit/event-bus/event-types.test.ts` — must exist and pass
-- File contains `@ts-expect-error` annotations to verify type errors (compile-time test pattern)
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: None (foundational — pure types used by all other Event Bus stories)

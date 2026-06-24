@@ -151,17 +151,45 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/event-bus.test.ts`
+
+### AC-1: init() and dispose()
+- Call `EventBus.init()`
+- Assert: bus operational (subscribing and emitting works)
+- Call `EventBus.dispose()`
+- Assert: all subscriptions cleaned up
+
+### AC-2: on() + emit()
+- Subscribe to `'race.finish'` with handler
+- Emit `'race.finish'` with payload
+- Assert: handler executes with correct payload
+
+### AC-3: multiple subscribers
+- Subscribe 3 handlers to same event
+- Emit event
+- Assert: all 3 fire in registration order
+
+### AC-4: once() fires once
+- Subscribe with `once('race.finish', handler)`
+- Emit twice
+- Assert: handler fires exactly once
+
+### AC-5: off() removes subscription
+- Subscribe, then `off()` before emit
+- Assert: handler does not fire
+
+### AC-6: subscribe during dispatch
+- Start dispatch, handler A subscribes handler B for same event
+- Assert: handler B does not receive current event (activates next dispatch only)
+
+### AC-7: unsubscribe during dispatch
+- Start dispatch, handler A unsubscribes itself
+- Assert: handler A runs to completion for current dispatch
+- Assert: handler A removed from future dispatches
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**:
-
-- Logic: `tests/unit/event-bus/core-event-bus.test.ts` — must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: Story 001 (Event Types and Contracts — provides `EventMap`, `IEventBus`, `Subscription`, `EventBusError`)

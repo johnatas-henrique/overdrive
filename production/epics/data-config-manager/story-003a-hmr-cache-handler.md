@@ -85,15 +85,25 @@ _Handled by neighbouring stories — do not implement here:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/config-manager.test.ts`
+
+### AC-1: invalidateNamespace clears cache
+- Register namespace, get a value (cached)
+- Call `invalidateNamespace('teams')`
+- Assert: next `get('teams...')` re-fetches from source
+
+### AC-2: other namespaces unaffected
+- Register `teams` and `settings` namespaces
+- Invalidate `teams`
+- Assert: `get('settings...')` still returns cached value
+
+### AC-3: invalidate nonexistent namespace
+- Call `invalidateNamespace('nonexistent')`
+- Assert: no error, no side effects
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/config-manager-hmr-handler.test.ts` — must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: Story 001 (needs core register + get)
