@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/johnatas-henrique/overdrive/compare/overdrive-v0.1.0...overdrive-v0.2.0) (2026-06-24)
+
+
+### Features
+
+* Technical Setup — architecture, epics/stories, UX specs, gate pass ([3807c1b](https://github.com/johnatas-henrique/overdrive/commit/3807c1bcb20f33e1c0a766527952eb73a0303bb8))
+
+
+### Bug Fixes
+
+* **art:** correct palette.json lastUpdated ([ad599f1](https://github.com/johnatas-henrique/overdrive/commit/ad599f1b70efd51c96210122ffd528778705e680))
+* **ci:** update Node to 24 and remove empty FUNDING.yml ([f6476cf](https://github.com/johnatas-henrique/overdrive/commit/f6476cf272d2f3b1bd4af23f9ff76cc2a0fdcabb))
+* **config:** add node: protocol to builtin imports ([6f730bd](https://github.com/johnatas-henrique/overdrive/commit/6f730bd6ad3155a086dcafdde69c5e9c0f62e53c))
+
 ## [0.1.0](https://github.com/johnatas-henrique/overdrive/compare/overdrive-v0.0.1...overdrive-v0.1.0) (2026-06-21)
 
 
