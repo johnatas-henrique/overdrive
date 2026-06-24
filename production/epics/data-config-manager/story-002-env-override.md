@@ -1,7 +1,8 @@
 # Story 002: Environment Variable Override
 
 > **Epic**: Data & Config Manager
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -128,3 +129,11 @@ Test evidence: `tests/unit/config-manager.test.ts` — verify all acceptance cri
 
 - Depends on: Story 001 (needs core register + get to be implemented)
 - Unlocks: None
+
+## Completion Notes
+
+**Completed**: 2026-06-24
+**Criteria**: 5/5 passing (all auto-verified via unit tests)
+**Deviations**: None
+**Test Evidence**: Logic — `tests/unit/config-manager.test.ts` (30 tests, 100% coverage)
+**Code Review**: Complete — APPROVED (engine-programmer review v2)
