@@ -2,6 +2,21 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConfigError, ConfigManager } from "../../src/foundation/config";
 
 describe("ConfigManager", () => {
+  // Shared env var tracking — used by env override and invalidateNamespace suites
+  const _envKeys: string[] = [];
+
+  afterEach(() => {
+    for (const key of _envKeys) {
+      delete process.env[key];
+    }
+    _envKeys.length = 0;
+  });
+
+  function _setEnv(key: string, value: string): void {
+    process.env[key] = value;
+    _envKeys.push(key);
+  }
+
   describe("init()", () => {
     it("should be idempotent when called twice", () => {
       const cm = new ConfigManager();
@@ -162,21 +177,6 @@ describe("ConfigManager", () => {
   });
 
   describe("env override", () => {
-    // Track env keys set during each test for cleanup
-    const _envKeys: string[] = [];
-
-    afterEach(() => {
-      for (const key of _envKeys) {
-        delete process.env[key];
-      }
-      _envKeys.length = 0;
-    });
-
-    function _setEnv(key: string, value: string): void {
-      process.env[key] = value;
-      _envKeys.push(key);
-    }
-
     // ── AC-1: Env var overrides default ──
 
     it("AC-1: should override default with env var value", () => {
@@ -341,6 +341,247 @@ describe("ConfigManager", () => {
       cm.init();
       cm.register("teams", { macklen: { motor: 250 } });
       // No override applied because there's no key path
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+    });
+  });
+
+  describe("invalidateNamespace", () => {
+    // ── AC-1: Cache cleared after invalidation ──
+
+    it("AC-1: should return updated value after invalidation and raw store change", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Populate resolved cache
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+
+      // Invalidate cache
+      cm.invalidateNamespace("teams");
+
+      // Simulate HMR updating the raw config
+      (cm as any)._store.set("teams", { macklen: { motor: 300 } });
+
+      // Next get should read the updated value
+      expect(cm.get<number>("teams.macklen.motor")).toBe(300);
+    });
+
+    it("AC-1: invalidation before any get() on a fresh registration", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Invalidate before any get (no resolved cache yet — should be no-op)
+      cm.invalidateNamespace("teams");
+
+      // Simulate HMR updating the raw config
+      (cm as any)._store.set("teams", { macklen: { motor: 300 } });
+
+      // Read should pick up the updated raw value
+      expect(cm.get<number>("teams.macklen.motor")).toBe(300);
+    });
+
+    // ── AC-2: Env vars survive invalidation ──
+
+    it("AC-2: env vars still apply after invalidation", () => {
+      _setEnv("OVERDRIVE__TEAMS__MACKLEN__MOTOR", "999");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Verify env override works initially
+      expect(cm.get<number>("teams.macklen.motor")).toBe(999);
+
+      // Invalidate cache
+      cm.invalidateNamespace("teams");
+
+      // Env override should still apply after rebuild
+      expect(cm.get<number>("teams.macklen.motor")).toBe(999);
+    });
+
+    it("AC-2: env vars re-read from process.env on rebuild", () => {
+      _setEnv("OVERDRIVE__TEAMS__MACKLEN__MOTOR", "999");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Populate cache
+      expect(cm.get<number>("teams.macklen.motor")).toBe(999);
+
+      // Change env var before re-read
+      process.env.OVERDRIVE__TEAMS__MACKLEN__MOTOR = "777";
+
+      // Invalidate and re-read
+      cm.invalidateNamespace("teams");
+      expect(cm.get<number>("teams.macklen.motor")).toBe(777);
+    });
+
+    // ── AC-3: Unregistered namespace no-op ──
+
+    it("AC-3: invalidateNamespace on nonexistent namespace does not throw", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      expect(() => cm.invalidateNamespace("nonexistent")).not.toThrow();
+    });
+
+    it("AC-3: invalidateNamespace with empty string does not throw", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Empty string isn't a registered namespace — should be no-op
+      expect(() => cm.invalidateNamespace("")).not.toThrow();
+    });
+
+    // ── AC-4: Invalid payload preserves stale cache ──
+
+    it("AC-4: invalid payload (null) preserves stale cache and logs error", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Populate resolved cache
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+
+      // Corrupt the raw store with invalid payload
+      (cm as any)._store.set("teams", null);
+
+      // Invalidate — should log error and preserve stale cache
+      cm.invalidateNamespace("teams");
+
+      expect(errorSpy).toHaveBeenCalled();
+      expect(errorSpy.mock.calls[0][0]).toContain("invalid payload");
+
+      // Stale cache should still be accessible
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+
+      errorSpy.mockRestore();
+    });
+
+    it("AC-4: invalid payload (array) preserves stale cache and logs error", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Populate resolved cache
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+
+      // Replace raw store with array (invalid)
+      (cm as any)._store.set("teams", [1, 2, 3]);
+
+      cm.invalidateNamespace("teams");
+
+      expect(errorSpy).toHaveBeenCalled();
+      expect(errorSpy.mock.calls[0][0]).toContain("invalid payload");
+
+      // Stale cache preserved
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+
+      errorSpy.mockRestore();
+    });
+
+    it("AC-4: other namespaces unaffected when one has invalid payload", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.register("settings", { volume: 80 });
+
+      // Populate both caches
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+      expect(cm.get<number>("settings.volume")).toBe(80);
+
+      // Corrupt teams raw store
+      (cm as any)._store.set("teams", null);
+
+      cm.invalidateNamespace("teams");
+
+      expect(errorSpy).toHaveBeenCalled();
+
+      // Teams stale cache preserved
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+
+      // Settings unaffected
+      expect(cm.get<number>("settings.volume")).toBe(80);
+
+      errorSpy.mockRestore();
+    });
+
+    // ── Edge cases ──
+
+    it("should handle multiple invalidations of the same namespace", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Populate cache
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+
+      // Double invalidation — should not throw
+      cm.invalidateNamespace("teams");
+      cm.invalidateNamespace("teams");
+
+      // Simulate HMR update
+      (cm as any)._store.set("teams", { macklen: { motor: 400 } });
+      expect(cm.get<number>("teams.macklen.motor")).toBe(400);
+    });
+
+    it("should handle invalidation of a namespace that was never read", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Invalidate before any get — no resolved cache to clear, should be safe no-op
+      expect(() => cm.invalidateNamespace("teams")).not.toThrow();
+
+      // Subsequent get should still work
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+    });
+
+    it("should throw ConfigError when raw config becomes invalid after manual store manipulation", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.get("teams.macklen.motor"); // populate resolved
+
+      // Wipe resolved + corrupt raw to trigger _buildResolved failure
+      (cm as any)._resolved.delete("teams");
+      (cm as any)._store.set("teams", null);
+
+      // _buildResolved logs error, resolved stays empty → ConfigError thrown
+      expect(() => cm.get("teams.macklen.motor")).toThrow(ConfigError);
+
+      // Verify _buildResolved logged the error
+      expect(errorSpy).toHaveBeenCalled();
+      expect(errorSpy.mock.calls[0][0]).toContain(
+        "cannot build resolved config"
+      );
+
+      errorSpy.mockRestore();
+    });
+
+    it("should not break other namespaces when one is invalidated", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.register("physics", { gravity: 9.81 });
+
+      // Populate both caches
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+      expect(cm.get<number>("physics.gravity")).toBe(9.81);
+
+      // Invalidate only teams
+      cm.invalidateNamespace("teams");
+
+      // Physics cache should still be intact
+      expect(cm.get<number>("physics.gravity")).toBe(9.81);
+
+      // Teams gets rebuilt
       expect(cm.get<number>("teams.macklen.motor")).toBe(250);
     });
   });
