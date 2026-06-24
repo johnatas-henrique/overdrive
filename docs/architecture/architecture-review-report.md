@@ -54,7 +54,7 @@ See `tr-registry.yaml` for full registry.
 
 ## Phase 3: Traceability Matrix
 
-See `architecture-traceability.md` for full TR-ID × ADR matrix.
+See `requirements-traceability.md` for full TR-ID × ADR matrix.
 
 ### Coverage Summary
 

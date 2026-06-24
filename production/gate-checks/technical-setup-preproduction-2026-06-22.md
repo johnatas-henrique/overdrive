@@ -17,7 +17,7 @@
 | 7   | CI/CD workflow              | ✅     | `.github/workflows/tests.yml`                                     |
 | 8   | Example test                | ✅     | `tests/unit/determinism.test.ts` — 4 vitest specs                 |
 | 9   | Architecture document       | ✅     | `docs/architecture/architecture.md` (900+ lines)                  |
-| 10  | Traceability index          | ✅     | `docs/architecture/architecture-traceability.md` (208 TRs mapped) |
+| 10  | Traceability index          | ✅     | `docs/architecture/requirements-traceability.md` (208 TRs mapped) |
 | 11  | Architecture review report  | ✅     | PASS verdict                                                      |
 | 12  | Accessibility requirements  | ✅     | `design/accessibility-requirements.md` — Standard tier            |
 | 13  | Interaction pattern library | ✅     | `design/ux/interaction-patterns.md` — 31 patterns                 |

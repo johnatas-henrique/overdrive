@@ -278,6 +278,7 @@ Skill: "Writing design/concept.md..."
 ### Good Question Patterns
 
 ✅ **Multiple Choice with Reasoning:**
+
 ```
 "Should enemies telegraph attacks?
  A) Yes, 0.5s before (accessible, rhythm-based)
@@ -287,6 +288,7 @@ Skill: "Writing design/concept.md..."
 ```
 
 ✅ **Constrained Options with Trade-offs:**
+
 ```
 "Inventory system options:
  1. Grid-based (Resident Evil, Diablo): Deep space management, slower
@@ -297,6 +299,7 @@ Skill: "Writing design/concept.md..."
 ```
 
 ✅ **Open-Ended with Context:**
+
 ```
 "The design doc doesn't specify what happens when a player dies while crafting.
  Some options:
@@ -310,18 +313,21 @@ Skill: "Writing design/concept.md..."
 ### Bad Question Patterns
 
 ❌ **Too Open-Ended:**
+
 ```
 "What should the combat system be like?"
 ← Too broad, user doesn't know where to start
 ```
 
 ❌ **Leading/Assuming:**
+
 ```
 "I'll make combat real-time since that's standard for this genre."
 ← Didn't ask, just assumed
 ```
 
 ❌ **Binary Without Context:**
+
 ```
 "Should we have a skill tree? Yes or no?"
 ← No pros/cons, no reference to game pillars
@@ -329,9 +335,9 @@ Skill: "Writing design/concept.md..."
 
 ---
 
-## 🎛️ Structured Decision UI (AskUserQuestion)
+## 🎛️ Structured Decision UI (question)
 
-Use the `AskUserQuestion` tool to present decisions as a **selectable UI** instead
+Use the `question` tool to present decisions as a **selectable UI** instead
 of plain markdown text. This gives the user a clean interface to pick from options
 (or type "Other" for a custom answer).
 
@@ -344,12 +350,13 @@ pattern:
    detailed pros/cons, theory references, example games, pillar alignment. This is
    where the reasoning lives.
 
-2. **Capture the decision** — Call `AskUserQuestion` with concise option labels
+2. **Capture the decision** — Call `question` with concise option labels
    and short descriptions. The user picks from the UI or types a custom answer.
 
-### When to Use AskUserQuestion
+### When to Use question
 
 ✅ **Use it for:**
+
 - Every decision point where you'd present 2-4 options
 - Initial clarifying questions with constrained answers
 - Batching up to 4 independent questions in one call
@@ -358,6 +365,7 @@ pattern:
 - Strategic choices ("Simplify scope, slip deadline, or cut feature?")
 
 ❌ **Don't use it for:**
+
 - Open-ended discovery questions ("What excites you about roguelikes?")
 - Single yes/no confirmations ("May I write to file?")
 - When running as a Task subagent (tool may not be available)
@@ -375,7 +383,7 @@ pattern:
 After introducing the topic in conversation, batch constrained questions:
 
 ```
-AskUserQuestion:
+question:
   questions:
     - question: "Should crafting recipes be discovered or learned?"
       header: "Discovery"
@@ -402,7 +410,7 @@ AskUserQuestion:
 After writing the full pros/cons analysis in conversation text:
 
 ```
-AskUserQuestion:
+question:
   questions:
     - question: "Which crafting approach fits your vision?"
       header: "Approach"
@@ -420,7 +428,7 @@ AskUserQuestion:
 After presenting the full strategic analysis with pillar alignment:
 
 ```
-AskUserQuestion:
+question:
   questions:
     - question: "How should we handle crafting scope for Alpha?"
       header: "Scope"
@@ -436,12 +444,12 @@ AskUserQuestion:
 ### Team Skill Orchestration
 
 In team skills, subagents return their analysis as text. The **orchestrator**
-(main session) calls `AskUserQuestion` at each decision point between phases:
+(main session) calls `question` at each decision point between phases:
 
 ```
 [game-designer returns 3 combat approaches with analysis]
 
-Orchestrator uses AskUserQuestion:
+Orchestrator uses question:
   question: "Which combat approach should we develop?"
   options: [concise summaries of the 3 approaches]
 
@@ -531,25 +539,30 @@ Agent: "This implementation requires changes to 3 files:
 Agents should be:
 
 ### ✅ Collaborative Consultants
+
 - "Let me suggest three approaches and you pick"
 - "Here's my recommendation based on [reasoning], but you decide"
 - "I need your input on [specific decision]"
 
 ### ✅ Experts Who Explain
+
 - "I recommend Option A because [reasoning with game design theory]"
 - "This approach aligns with your 'Meaningful Choices' pillar because..."
 - "Here's how [reference game] handles this, and why that works"
 
 ### ✅ Patient Iterators
+
 - "No problem, I'll adjust that formula. How does this look?"
 - "Would you like me to explore that edge case more, or is this resolution good?"
 
 ### ❌ NOT Autonomous Executors
+
 - ❌ "I've designed your combat system [done]"
 - ❌ "Implemented and committed"
 - ❌ "I decided to use approach X"
 
 ### ❌ NOT Passive Order-Takers
+
 - ❌ "Okay" [does it without any questions]
 - ❌ [Doesn't ask about ambiguities]
 - ❌ [Doesn't flag potential issues]
@@ -628,6 +641,7 @@ If you answered "No" to any, the agent wasn't collaborative enough!
 ### For Users:
 
 ✅ **Good User Prompts:**
+
 ```
 "I want to design a skill tree. Ask me questions about how it should work,
  then present options based on my answers."
@@ -639,6 +653,7 @@ If you answered "No" to any, the agent wasn't collaborative enough!
 ```
 
 ❌ **Bad User Prompts (Enable Autonomous Behavior):**
+
 ```
 "Create a combat system" ← No guidance, agent forced to guess
 
@@ -685,4 +700,4 @@ This principle has been fully embedded across the project:
 - **All skills** — Updated to require approval before writing
 - **WORKFLOW-GUIDE.md** — Rewritten with collaborative examples
 - **README.md** — Clarifies collaborative (not autonomous) design
-- **AskUserQuestion tool** — Integrated into 16 skills for structured option UI
+- **question tool** — Integrated into 16 skills for structured option UI
