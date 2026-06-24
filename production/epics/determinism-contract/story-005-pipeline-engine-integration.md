@@ -143,15 +143,21 @@ _Handled by neighbouring stories — do not implement here:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/integration/determinism.test.ts`
+
+### AC-1: pipeline runs inside render loop
+- Start Babylon.js engine with pipeline registered
+- Assert: `executeTick()` called from `engine.runRenderLoop()`
+- Assert: tick executed at 60 FPS target
+
+### AC-2: dev assertions in __DEV__
+- In `__DEV__` mode, use `Date.now()` inside pipeline tick
+- Assert: dev assertion fires
+- In production mode, same operation does not fire assertion
+
 ## Test Evidence
-
-**Story Type**: Integration
-**Required evidence**: `tests/integration/determinism/pipeline-engine-integration.test.ts` — must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: Story 002 (FixedUpdatePipeline — the pipeline instance), Story 004 (Accumulator — the `accumulate()` pure function)

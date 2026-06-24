@@ -146,15 +146,23 @@ _Handled by neighbouring stories — do not implement here:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/determinism.test.ts`
+
+### AC-1: dev assertions fire
+- Inside pipeline tick, call `Date.now()` or `Math.random()`
+- Assert: dev assertion fires in `__DEV__` mode
+
+### AC-2: byte-identical output
+- Run two `fixedUpdate()` sequences with same seed
+- Assert: `SimulationSnapshot.hash()` produces identical output for every system
+
+### AC-3: production mode
+- In production mode (`vi.stubEnv` or similar), call non-deterministic function
+- Assert: no assertion fires (guards compiled out)
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/determinism/dev-assertions.test.ts` — must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: Story 002 (FixedUpdatePipeline — guard hooks into pipeline lifecycle)

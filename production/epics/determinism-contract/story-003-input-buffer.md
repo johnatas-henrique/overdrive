@@ -159,15 +159,29 @@ _Handled by neighbouring stories — do not implement here:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/determinism.test.ts`
+
+### AC-1: buffer and consume
+- Push input event between tick N and tick N+1
+- Execute tick N+1
+- Assert: input consumed exactly once during tick N+1
+
+### AC-2: input not lost
+- Push 3 inputs between ticks
+- Assert: each input consumed in subsequent ticks (none lost)
+
+### AC-3: input not duplicated
+- Push 1 input
+- Execute 2 ticks
+- Assert: input consumed exactly once (not duplicated)
+
+### AC-4: empty buffer
+- Execute tick with no buffered input
+- Assert: no error, no input processed
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/determinism/input-buffer.test.ts` — must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: None (standalone — pure TypeScript data structure)

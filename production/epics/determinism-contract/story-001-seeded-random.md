@@ -109,15 +109,25 @@ _Handled by neighbouring stories — do not implement here:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/determinism.test.ts`
+
+### AC-1: deterministic sequence
+- Create `SeededRandom(42)`
+- Call `next()` 1000 times
+- Assert: same sequence on every run (CI-verified)
+
+### AC-2: different seeds differ
+- Create `SeededRandom(42)` and `SeededRandom(43)`
+- Assert: first 10 values differ between instances
+
+### AC-3: range
+- Create `SeededRandom()` with any seed
+- Call `next()` 10000 times
+- Assert: all values in [0, 1) range
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/determinism/seeded-random.test.ts` — must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: None (Foundation root — pure math)

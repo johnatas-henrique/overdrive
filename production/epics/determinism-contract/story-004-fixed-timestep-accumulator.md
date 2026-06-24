@@ -134,15 +134,26 @@ _Handled by neighbouring stories — do not implement here:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/determinism.test.ts`
+
+### AC-1: normal frame
+- Frame delta = exactly 1/60s
+- Assert: exactly 1 tick processed
+
+### AC-2: large frame (catch-up capped)
+- Frame delta = 5/60s
+- Assert: exactly 4 ticks processed (cap applied)
+- Assert: remaining time used for rendering interpolation
+
+### AC-3: accumulator carries across frames
+- Frame 1 delta = 0.5/60s (half tick, no tick processed, accumulator = 0.5/60)
+- Frame 2 delta = 0.6/60s (accumulator = 1.1/60 → 1 tick processed, remainder 0.1/60)
+- Assert: correct tick count based on accumulator
+- Assert: remainder preserved for next frame
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/determinism/accumulator.test.ts` — must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: None (standalone — pure math function)

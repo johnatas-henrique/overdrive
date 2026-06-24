@@ -159,15 +159,30 @@ _Handled by neighbouring stories — do not implement here:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/determinism.test.ts`
+
+### AC-1: systems execute in order
+- Register spy systems A, B, C
+- Call `executeTick(1/60)`
+- Assert: call order is A → B → C
+
+### AC-2: executeTick runs all registered
+- Register 3 systems
+- Call `executeTick(1/60)`
+- Assert: all 3 systems receive tick call
+
+### AC-3: invalid system rejected
+- Attempt to register object with wrong signature
+- Assert: pipeline rejects with clear error
+
+### AC-4: empty pipeline
+- Create pipeline with no systems
+- Call `executeTick(1/60)`
+- Assert: no error
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/determinism/fixed-update-pipeline.test.ts` — must exist and pass
-
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - Depends on: None (standalone — pipeline class is pure TypeScript)
