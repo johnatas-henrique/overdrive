@@ -190,6 +190,9 @@ _Written by qa-lead at story creation. The developer implements against these �
 - Assert: handler A removed from future dispatches
 
 ## Test Evidence
+
+Test evidence: `tests/unit/event-bus.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 001 (Event Types and Contracts — provides `EventMap`, `IEventBus`, `Subscription`, `EventBusError`)

@@ -182,6 +182,9 @@ _Written by qa-lead at story creation. The developer implements against these �
 - Assert: third depth succeeds, fourth exceeds limit
 
 ## Test Evidence
+
+Test evidence: `tests/unit/event-bus.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 002 (Core Event Bus — provides the `EventBus` class with `init()`, `emit()`, `on()`, `off()`, `dispose()`)

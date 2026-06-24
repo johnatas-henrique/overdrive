@@ -142,6 +142,9 @@ _Written by qa-lead at story creation. The developer implements against these �
 - Assert: emitting with missing required field logs warning or throws
 
 ## Test Evidence
+
+Test evidence: `tests/unit/event-bus.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: None (foundational — pure types used by all other Event Bus stories)
