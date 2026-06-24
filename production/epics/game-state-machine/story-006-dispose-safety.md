@@ -97,14 +97,23 @@ _Derived from ADR-0024 Implementation Guidelines:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/gsm.test.ts`
+
+### AC-1: dispose during mid-transition
+- Start transition A → B
+- Call `dispose()` mid-transition
+- Assert: source state `onExit()` runs
+- Assert: target state `onEnter()` does NOT run
+- Assert: transition aborted cleanly
+
+### AC-2: post-dispose transition
+- Dispose GSM
+- Call `transition('AnyState')`
+- Assert: no crash, call is ignored or throws gracefully
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/foundation/gsm/006-dispose-safety.test.ts` — must exist and pass
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires currentState and transition(); Story 002 (async-lifecycle-hooks) — requires onExit/onEnter hooks; Story 004 (transition-throttling) — requires tick() and transition queue

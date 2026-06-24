@@ -104,14 +104,24 @@ _Derived from ADR-0024 Implementation Guidelines:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/gsm.test.ts`
+
+### AC-1: one transition per tick
+- Call `GSM.transition('A')`, then immediately `GSM.transition('B')` in same tick
+- Assert: only first transition executes
+- Assert: second call is queued for next tick
+
+### AC-2: queue execution
+- After tick boundary, queued transition executes
+- Assert: state changes to queued target
+
+### AC-3: queue overflow
+- Queue more transitions than max allowed
+- Assert: excess calls dropped or oldest dropped (defined behavior)
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/foundation/gsm/004-transition-throttling.test.ts` — must exist and pass
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires working transition table and `currentState`; Story 003 (event-bus-integration) — queued transitions must emit events when executed

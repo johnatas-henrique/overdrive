@@ -114,14 +114,25 @@ _Derived from ADR-0024 Implementation Guidelines:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/gsm.test.ts`
+
+### AC-1: history records transitions
+- Execute N transitions
+- Assert: ring buffer contains all N entries
+
+### AC-2: buffer wrap
+- Execute more transitions than buffer capacity
+- Assert: oldest entries are overwritten
+- Assert: most recent N entries preserved
+
+### AC-3: history accessible
+- Call `getHistory()` or equivalent
+- Assert: returns ordered list of transitions
+- Assert: each entry has source state, target state, and timestamp
+
 ## Test Evidence
-
-**Story Type**: Logic
-**Required evidence**: `tests/unit/foundation/gsm/005-state-history-ring-buffer.test.ts` — must exist and pass
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires working transitions to record; Story 003 (event-bus-integration) — for event-based recording; Story 004 (transition-throttling) — for tick-based sequencing

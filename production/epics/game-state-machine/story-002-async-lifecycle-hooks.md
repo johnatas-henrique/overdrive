@@ -104,14 +104,26 @@ _Derived from ADR-0024 Implementation Guidelines:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/unit/gsm.test.ts`
+
+### AC-1: async onExit/onEnter called
+- Transition PreRace → Racing
+- Assert: `PreRace.onExit()` completes, then `Racing.onEnter()` starts
+
+### AC-2: async onEnter failure rolls back
+- Configure `Racing.onEnter()` to reject
+- Call `transition('Racing')` from PreRace
+- Assert: error caught and logged
+- Assert: GSM remains in PreRace (rollback)
+
+### AC-3: onEnter error isolation
+- Configure `Racing.onEnter()` to throw synchronously
+- Call `transition('Racing')`
+- Assert: error caught, logged, state rolled back
+
 ## Test Evidence
-
-**Story Type**: Logic (mixed: AC5 requires mock Event Bus)
-**Required evidence**: `tests/unit/foundation/gsm/002-async-lifecycle-hooks.test.ts` — must exist and pass
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires State type, transition table, and `currentState` accessor

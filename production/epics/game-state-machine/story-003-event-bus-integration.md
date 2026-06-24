@@ -114,14 +114,24 @@ _Derived from ADR-0024 Implementation Guidelines:_
 
 ---
 
+## QA Test Cases
+
+**Test file**: `tests/integration/gsm.test.ts`
+
+### AC-1: events emitted on Event Bus
+- Transition Loading → Menu
+- Assert: `gsm.state.exited` event on Event Bus with `from: 'Loading'`
+- Assert: `gsm.state.entered` event on Event Bus with `from: 'Loading', to: 'Menu'`
+
+### AC-2: event payload structure
+- Verify `gsm.state.entered` payload contains `from` and `to` state names
+- Assert: both fields are strings, `to` matches target state
+
+### AC-3: all transitions visible
+- Execute all valid transitions in GSM table
+- Assert: each transition produces corresponding events on Event Bus
+
 ## Test Evidence
-
-**Story Type**: Integration
-**Required evidence**: `tests/integration/foundation/gsm/003-event-bus-integration.test.ts` — must exist and pass
-**Status**: [ ] Not yet created
-
----
-
 ## Dependencies
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires working transitions; Story 002 (async-lifecycle-hooks) — requires hook execution and rollback re-emission
