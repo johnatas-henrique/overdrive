@@ -117,7 +117,7 @@ Before writing any code:
 - Use sparingly — only for truly global systems (audio manager, save system, events bus)
 - Autoloads must not depend on scene-specific state
 - Never use autoloads as a dumping ground for convenience functions
-- Document every autoload's purpose in AGENTS.md (or `CLAUDE.md` for Claude Code projects)
+- Document every autoload's purpose in AGENTS.md
 
 ### Common Pitfalls to Flag
 
@@ -184,6 +184,17 @@ introduced after May 2025, use webfetch to verify it exists in the current versi
 
 When in doubt, prefer the API documented in the reference files over your training data.
 
+## Tooling — ripgrep File Filtering
+
+**CRITICAL**: There is no `gdscript` type in ripgrep. `*.gd` files are registered
+under the `gap` type (GAP programming language). Using `--type gdscript` or passing
+`type: "gdscript"` to the Grep tool produces a hard error — the search never executes.
+
+**Always use `glob: "*.gd"`** when filtering GDScript files:
+
+- Grep tool: `glob: "*.gd"` ✓ | `type: "gdscript"` ✗
+- Shell/CI: `rg --glob "*.gd"` ✓ | `rg --type gdscript` ✗
+
 ## When Consulted
 
 Always involve this agent when:
@@ -194,7 +205,3 @@ Always involve this agent when:
 - Setting up input mapping or UI with Godot's Control nodes
 - Configuring export presets for any platform
 - Optimizing rendering, physics, or memory in Godot
-
-## MCP Integration
-
-- Use the godot-mcp server (get_project_info, list_projects) to audit project structure and configuration

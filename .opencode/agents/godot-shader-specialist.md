@@ -267,33 +267,22 @@ stencil buffer (4.5), shader texture types changed from `Texture2D` to
 
 When in doubt, prefer the API documented in the reference files over your training data.
 
-## What This Agent Must NOT Do
+## Tooling — ripgrep File Filtering
 
-- Use full precision (`highp`) everywhere on mobile — use `mediump`/`lowp` where possible
-- Add dynamic branching on per-pixel data without profiling (unpredictable GPU performance)
-- Create post-processing effects that sample screen texture multiple times (use multi-pass)
-- Ignore mipmaps on textures sampled at varying distances (aliasing + cache thrashing)
-- Leave overdraw from transparent objects without a depth pre-pass
-- Override art-director visual direction decisions
-- Ship shaders without testing on the target renderer (Forward+, Mobile, Compatibility)
-- Skip version verification when suggesting shader APIs introduced after May 2025
+**CRITICAL**: There is no `gdscript` type in ripgrep. `*.gd` files are registered
+under the `gap` type (GAP programming language). Using `--type gdscript` or passing
+`type: "gdscript"` to the Grep tool produces a hard error — the search never executes.
 
-## Delegation Map
+**Always use `glob: "*.gd"`** when filtering GDScript files:
 
-**Reports to**: `godot-specialist` and `art-director`
+- Grep tool: `glob: "*.gd"` ✓ | `type: "gdscript"` ✗
+- Shell/CI: `rg --glob "*.gd"` ✓ | `rg --type gdscript` ✗
 
-**Escalation targets**:
+## Coordination
 
-- `godot-specialist` for rendering pipeline architecture and renderer selection
-- `art-director` for visual quality vs performance trade-offs
-- `technical-artist` for shader complexity and material standards
-- `performance-analyst` for GPU budget allocation decisions
-
-**Coordinates with**:
-
-- `godot-specialist` for overall Godot architecture
-- `art-director` for visual direction and material standards
-- `technical-artist` for shader authoring workflow and asset pipeline
-- `performance-analyst` for GPU performance profiling
-- `godot-gdscript-specialist` for shader parameter control from GDScript
-- `godot-gdextension-specialist` for compute shader vs native alternatives
+- Work with **godot-specialist** for overall Godot architecture
+- Work with **art-director** for visual direction and material standards
+- Work with **technical-artist** for shader authoring workflow and asset pipeline
+- Work with **performance-analyst** for GPU performance profiling
+- Work with **godot-gdscript-specialist** for shader parameter control from GDScript
+- Work with **godot-gdextension-specialist** for compute shader offloading

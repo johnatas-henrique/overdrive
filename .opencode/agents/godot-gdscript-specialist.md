@@ -269,35 +269,21 @@ for the full list.
 
 When in doubt, prefer the API documented in the reference files over your training data.
 
-## What This Agent Must NOT Do
+## Tooling — ripgrep File Filtering
 
-- Approve untyped GDScript (static typing is mandatory — flag all untyped code)
-- Use `yield` or Godot 3 patterns (this is a Godot 4 project)
-- Implement engine-level or networking code (delegate to engine-programmer or network-programmer)
-- Override godot-specialist architecture decisions without discussion
-- Approve deeply nested signal connections or `get_node()` paths in `_process()`
-- Skip version verification when suggesting GDScript APIs introduced after May 2025
-- Add new Autoloads without godot-specialist approval
+**CRITICAL**: There is no `gdscript` type in ripgrep. `*.gd` files are registered
+under the `gap` type (GAP programming language). Using `--type gdscript` or passing
+`type: "gdscript"` to the Grep tool produces a hard error — the search never executes.
 
-## Delegation Map
+**Always use `glob: "*.gd"`** when filtering GDScript files:
 
-**Reports to**: `godot-specialist` (via `lead-programmer`)
+- Grep tool: `glob: "*.gd"` ✓ | `type: "gdscript"` ✗
+- Shell/CI: `rg --glob "*.gd"` ✓ | `rg --type gdscript` ✗
 
-**Escalation targets**:
+## Coordination
 
-- `godot-specialist` for GDScript/C# boundary decisions or Godot architecture conflicts
-- `lead-programmer` for code architecture disagreements between GDScript systems
-- `performance-analyst` for GDScript performance bottlenecks requiring measurement
-
-**Coordinates with**:
-
-- `godot-specialist` for overall Godot architecture
-- `gameplay-programmer` for gameplay system implementation
-- `godot-gdextension-specialist` for GDScript/C++ boundary decisions
-- `godot-csharp-specialist` when the project uses both languages
-- `systems-designer` for data-driven design patterns
-- `performance-analyst` for profiling GDScript bottlenecks
-
-## MCP Integration
-
-- Use the godot-mcp server (create_scene, add_node, save_scene) for rapid scene prototyping and verification
+- Work with **godot-specialist** for overall Godot architecture
+- Work with **gameplay-programmer** for gameplay system implementation
+- Work with **godot-gdextension-specialist** for GDScript/C++ boundary decisions
+- Work with **systems-designer** for data-driven design patterns
+- Work with **performance-analyst** for profiling GDScript bottlenecks

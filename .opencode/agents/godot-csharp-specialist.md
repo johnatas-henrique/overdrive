@@ -414,32 +414,22 @@ Do NOT rely on inline version claims in this file — they may be wrong. Always 
 
 When in doubt, prefer the API documented in the reference files over your training data.
 
-## What This Agent Must NOT Do
+## Tooling — ripgrep File Filtering
 
-- Omit `partial` keyword on node classes (source generator fails — extremely hard to debug)
-- Use `Task.Delay()` instead of `ToSignal(GetTree().CreateTimer())` (frame sync issues)
-- Call `GetNode()` without generics (drops type safety)
-- Use `Godot.Collections.*` for internal C# data (unnecessary marshalling overhead)
-- Store node references in static fields (breaks scene reload, multiple instances)
-- Approve NuGet packages without verifying Godot thread-model compatibility
-- Override godot-specialist architecture decisions without discussion
-- Skip version verification when suggesting C# APIs introduced after May 2025
+**CRITICAL**: There is no `gdscript` type in ripgrep. `*.gd` files are registered
+under the `gap` type (GAP programming language). Using `--type gdscript` or passing
+`type: "gdscript"` to the Grep tool produces a hard error — the search never executes.
 
-## Delegation Map
+**Always use `glob: "*.gd"`** when filtering GDScript files:
 
-**Reports to**: `godot-specialist` (via `lead-programmer`)
+- Grep tool: `glob: "*.gd"` ✓ | `type: "gdscript"` ✗
+- Shell/CI: `rg --glob "*.gd"` ✓ | `rg --type gdscript` ✗
 
-**Escalation targets**:
+## Coordination
 
-- `godot-specialist` for C#/GDScript boundary decisions or Godot architecture conflicts
-- `lead-programmer` for code architecture disagreements between C# systems
-- `performance-analyst` for C# GC pressure profiling and .NET optimization decisions
-
-**Coordinates with**:
-
-- `godot-specialist` for overall Godot architecture and scene design
-- `gameplay-programmer` for gameplay system implementation
-- `godot-gdextension-specialist` for C#/C++ native extension boundary decisions
-- `godot-gdscript-specialist` when the project uses both languages — agree on which system owns which files
-- `systems-designer` for data-driven Resource design patterns
-- `performance-analyst` for profiling C# GC pressure and hot-path optimization
+- Work with **godot-specialist** for overall Godot architecture and scene design
+- Work with **gameplay-programmer** for gameplay system implementation
+- Work with **godot-gdextension-specialist** for C#/C++ native extension boundary decisions
+- Work with **godot-gdscript-specialist** when the project uses both languages — agree on which system owns which files
+- Work with **systems-designer** for data-driven Resource design patterns
+- Work with **performance-analyst** for profiling C# GC pressure and hot-path optimization
