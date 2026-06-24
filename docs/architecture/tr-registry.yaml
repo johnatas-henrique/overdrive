@@ -611,12 +611,12 @@ requirements:
   - id: TR-DET-005
     system: determinism
     gdd: design/gdd/determinism.md
-    requirement: "Input buffered between ticks consumed exactly once per tick — never lost, never applied twice."
+    requirement: "Input buffer accumulates presses between FixedUpdate ticks and is consumed exactly once per tick. Buffer is never lost between ticks (persists) and never applied twice (cleared after consumption). Empty buffer is a safe no-op. Implementation in determinism-contract/story-003-input-buffer.md."
     domain: Pipeline
     coverage_adrs: [ADR-0002]
     engine_risk: LOW
     created: 2026-06-21
-    revised: ""
+    revised: "2026-06-24 — prose expanded, covered by story-003"
     status: active
   - id: TR-DET-006
     system: determinism
@@ -693,12 +693,12 @@ requirements:
   - id: TR-AM-006
     system: asset-manager
     gdd: design/gdd/asset-manager.md
-    requirement: "Emit 'asset.load.progress' (loaded, total) and 'asset.load.complete' events on Event Bus for loading screen progress."
+    requirement: "Emit 'asset.load.progress' (loaded, total) and 'asset.load.complete' events on Event Bus for loading screen progress. Used by loading screen to display per-asset progress without polling. Implementation in asset-manager/story-003-loading-events.md."
     domain: Assets
     coverage_adrs: [ADR-0003]
     engine_risk: LOW
     created: 2026-06-21
-    revised: ""
+    revised: "2026-06-24 — prose expanded, covered by story-003"
     status: active
   - id: TR-AM-007
     system: asset-manager
@@ -713,12 +713,12 @@ requirements:
   - id: TR-AM-008
     system: asset-manager
     gdd: design/gdd/asset-manager.md
-    requirement: "Subscribe to 'gsm.state.entered' to trigger preloading during Loading→Menu, track load during Menu→PreRace, scene switch, and unload during PostRace→Menu."
+    requirement: "Subscribe to 'gsm.state.entered' to trigger preloading during Loading→Menu, track load during Menu→PreRace, scene switch, and unload during PostRace→Menu. Uses Event Bus (not procedural calls) for loose coupling. Implementation in asset-manager/story-005b-gsm-orchestration.md."
     domain: Assets
     coverage_adrs: [ADR-0003]
     engine_risk: LOW
     created: 2026-06-21
-    revised: ""
+    revised: "2026-06-24 — prose expanded, covered by story-005b"
     status: active
   - id: TR-AM-009
     system: asset-manager
@@ -733,12 +733,12 @@ requirements:
   - id: TR-AM-010
     system: asset-manager
     gdd: design/gdd/asset-manager.md
-    requirement: "On dispose(), dispose all containers and clear the entire cache. Animation groups from disposed scenes are invalid — must re-clone from cached container each race."
+    requirement: "On dispose(), dispose all containers and clear the entire cache. Animation groups from disposed scenes are invalid — must re-clone from cached container each race via instantiateModelsToScene(). Container.dispose() frees all meshes, materials, and textures. Container.removeAllFromScene() only unparents (container remains valid for re-add). Covered by asset-manager/story-004-unload-dispose-edge-cases.md."
     domain: Assets
     coverage_adrs: [ADR-0003]
     engine_risk: MEDIUM
     created: 2026-06-21
-    revised: ""
+    revised: "2026-06-24 — prose expanded, covered by story-004"
     status: active
 
   # ─── Input ─────────────────────────────────────────────────────────
@@ -795,12 +795,12 @@ requirements:
   - id: TR-INP-006
     system: input
     gdd: design/gdd/input.md
-    requirement: "Subscribe to gsm.state.entered and gsm.state.exited on Event Bus; maintain local currentState copy (never call gsm.getCurrent()). Block all inputs during the transition window."
+    requirement: "Subscribe to gsm.state.entered and gsm.state.exited on Event Bus; maintain local currentState copy (never call gsm.getCurrent()). Block all inputs during the transition window to prevent input leaking across state boundaries. Implementation in input/story-005-gsm-state-integration.md."
     domain: Input
     coverage_adrs: [ADR-0006]
     engine_risk: LOW
     created: 2026-06-21
-    revised: ""
+    revised: "2026-06-24 — prose expanded, covered by story-005"
     status: active
   - id: TR-INP-007
     system: input
