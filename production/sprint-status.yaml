@@ -16,7 +16,7 @@ end: "2026-07-29"
 generated: "2026-06-24"
 updated: "2026-06-24"
 
-# Completed: Story 002 — Environment Variable Override
+# Completed: Story 003a — HMR Cache Handler
 
 stories:
   - id: "1-1"
@@ -43,11 +43,11 @@ stories:
     name: "Story 003a: HMR Cache Handler (invalidateNamespace)"
     file: "production/epics/data-config-manager/story-003a-hmr-cache-handler.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-4"
     name: "Story 003b: HMR Vite Wiring"

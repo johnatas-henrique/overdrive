@@ -1,7 +1,7 @@
 # Story 003a: HMR Cache Handler (invalidateNamespace)
 
 > **Epic**: Data & Config Manager
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -14,6 +14,7 @@
 
 **ADR Governing Implementation**: ADR-0023: Data & Config Manager
 **ADR Decision Summary**: Per-namespace cache invalidation on Vite HMR. Namespace fully replaced on reload (no deep merge). HMR failure preserves stale cache.
+**ADR Decision Reference**: ADR-0023 Decision 4 (HMR Cache Invalidation)
 
 **Engine**: Babylon.js 9.12.0 | **Risk**: LOW
 **Engine Notes**: Zero Babylon.js APIs — pure TypeScript Foundation layer.
@@ -111,3 +112,11 @@ Test evidence: `tests/unit/config-manager.test.ts` — verify all acceptance cri
 
 - Depends on: Story 001 (needs core register + get)
 - Unlocks: Story 003b (Vite wiring uses invalidateNamespace)
+
+## Completion Notes
+
+**Completed**: 2026-06-24
+**Criteria**: 4/4 passing (all auto-verified via unit tests)
+**Deviations**: None
+**Test Evidence**: Logic — `tests/unit/config-manager.test.ts` (47 tests, 100% coverage)
+**Code Review**: Complete — APPROVED (engine-programmer review v2)
