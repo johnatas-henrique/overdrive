@@ -1,7 +1,7 @@
 # Art Bible — Overdrive
 
 _Created: 2026-06-16_
-_Status: Draft (Sections 1-N completed incrementally)_
+_Status: Signed Off (AD-ART-BIBLE: 2026-06-22 ✅ | Version 1.0)_
 
 ---
 
@@ -76,6 +76,8 @@ The net effect: the cutscene doesn't look like a different game — it looks lik
 **Pillar connection**: Bold colour fields pivot to utilitarian greys, steel blues, and signal-orange accents — the palette of a real pit lane but rendered with flat, posterized geometry. Flat shading keeps UI elements (upgrade trees, stat bars, crew portraits) readable at a glance.
 
 ### 2.3 Victory / Podium
+
+> **MVP scope**: Results screen is static text (position, time, rival reaction). Full podium ceremony (confetti, champagne, golden-hour lighting, 3D podium) is **Alpha** scope.
 
 **Primary emotion**: Triumphant release — the payoff. Confetti, champagne, roar of the crowd. Deserved, earned, and absolutely unapologetic.
 
@@ -420,12 +422,10 @@ Parody names are used to avoid licensing issues; the geometry is real.
 
 | Track (Parody) | Real Circuit                            | Country | Landscape                                        | Climate              | Signature Landmarks                                                        |
 | -------------- | --------------------------------------- | ------- | ------------------------------------------------ | -------------------- | -------------------------------------------------------------------------- |
-| **TBD**        | Spa-Francorchamps                       | Belgium | Ardennes forest — dense trees, rolling elevation | Cool, overcast       | Eau Rouge/Raidillon climb, bus stop chicane, Pouhon through trees          |
-| **TBD**        | Monza                                   | Italy   | Royal park — flat, open, formal gardens          | Warm, sunny          | Parabolica grandstand, Lesmo curves, twin-front straight with gantry       |
-| **TBD**        | Monaco                                  | Monaco  | City streets — tower-topped, harbour backdrop    | Sunny, Mediterranean | Tunnel exit (dark→light), harbour chicane, fairmont hairpin, swimming pool |
-| **TBD**        | Interlagos (Autódromo José Carlos Pace) | Brazil  | Hillside bowl — elevation changes, reservoir     | Warm, humid          | Senna's S grandstands, downhill Mergulho, reservoir infield, café          |
-
-_Parody names to be defined during GDD phase using the same letter-swap technique as team names._
+| **Ardennes**   | Spa-Francorchamps                       | Belgium | Ardennes forest — dense trees, rolling elevation | Cool, overcast       | Eau Rouge/Raidillon climb, bus stop chicane, Pouhon through trees          |
+| **Brianza**    | Monza                                   | Italy   | Royal park — flat, open, formal gardens          | Warm, sunny          | Parabolica grandstand, Lesmo curves, twin-front straight with gantry       |
+| **Riviera**    | Monaco                                  | Monaco  | City streets — tower-topped, harbour backdrop    | Sunny, Mediterranean | Tunnel exit (dark→light), harbour chicane, fairmont hairpin, swimming pool |
+| **Interlakes** | Interlagos (Autódromo José Carlos Pace) | Brazil  | Hillside bowl — elevation changes, reservoir     | Warm, humid          | Senna's S grandstands, downhill Mergulho, reservoir infield, café          |
 
 **Phase 2 adds 4 more tracks** (8 total, completing the 1.0 championship). Selection will be announced during the GDD phase.
 **Phase 3 adds 8 more** (16 total — full 1991 season).
@@ -434,10 +434,10 @@ _Parody names to be defined during GDD phase using the same letter-swap techniqu
 
 The world outside the track is **stylized** — simplified buildings, geometric terrain, simplified trees. No photorealistic textures. The contrast between the smooth track surface and the stylized surroundings guides the player's eye.
 
-- **Forest tracks** (Spa-clone): layered geometric trees, dark green/blue palette, mist band at treeline
-- **Park tracks** (Monza-clone): formal gardens (hedge cubes, geometric flowerbeds), open sky, warm colours
-- **City tracks** (Monaco-clone): blocky buildings with lit windows (emissive quads), harbour water as flat dark blue plane
-- **Inland tracks** (Interlagos-clone): sculpted terrain with simplified hills, reservoir as flat reflective plane
+- **Forest tracks** (Ardennes-clone): layered geometric trees, dark green/blue palette, mist band at treeline
+- **Park tracks** (Brianza-clone): formal gardens (hedge cubes, geometric flowerbeds), open sky, warm colours
+- **City tracks** (Riviera-clone): blocky buildings with lit windows (emissive quads), harbour water as flat dark blue plane
+- **Inland tracks** (Interlakes-clone): sculpted terrain with simplified hills, reservoir as flat reflective plane
 
 ### 6.5 Paddock & Garage (Hybrid)
 
@@ -556,14 +556,17 @@ Every menu screen follows this skeleton:
 └─────────────────────────────────────────────┘
 ```
 
-| Zone          | Position     | Content                                                                   | Visual                                                              | Repositonable                      |
-| ------------- | ------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------- |
-| **Mini map**  | Top-left     | Simplified track outline with position dots in team colours               | 240×240px container, dark background (rgba(0,0,0,0.5)), label muted | Yes — whole zone moves             |
-| **Speed**     | Top-center   | Speed (km/h)                                                              | 72px bold white, rgba(0,0,0,0.35) background                        | Yes — whole zone moves             |
-| **Lap**       | Center-left  | Lap counter                                                               | 28px bold, muted white, rgba(0,0,0,0.35) background                 | Yes — zone moves relative to speed |
-| **Position**  | Center-right | Grid position                                                             | 32px bold, muted white, rgba(0,0,0,0.35) background                 | Yes — zone moves relative to speed |
-| **Resources** | Top-right    | Fuel bar (Fuel Blue #00BFFF) + Tyre bar (Tyre Cyan #00E5FF) + percentages | 320×160px, rgba(0,0,0,0.3) background, 24px bar height, 92% width   | Yes — whole zone moves             |
-| **Menu**      | ESC key      | No button on screen                                                       | Accessed via keyboard only                                          | N/A                                |
+| Zone              | Position       | Content                                                                          | Visual                                                                 | Repositonable                      |
+| ----------------- | -------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------- |
+| **Speed**         | Top-center     | Speed (km/h), no unit label                                                      | 72px bold white, every frame read (no throttle), direct from Physics   | Yes — whole zone moves             |
+| **Position + Lap**| Top-right      | Position format (current/total), lap counter (current/total)                     | 32px bold, muted white, position above lap                             | Yes — whole zone moves             |
+| **Lap Times**     | Top-left       | Current lap time, last lap time, fastest lap time in MM:SS.mmm                   | 16px monospace, muted white, stacked vertically                        | Yes — whole zone moves             |
+| **Fuel + Tire**   | Lower-right    | Fuel bar (0-100%) with icon (pump), Tire bar (0-100%) with icon (tire)           | ~40px bar height, flat colour shifts (no gradient), green→yellow→red  | Yes — whole zone moves             |
+| **Gap Info**      | Contextual     | Delta to car ahead AND behind, in seconds                                        | Shown only when in P2+ position, updates 20Hz via Event Bus           | Yes — whole zone moves             |
+| **Minimap**       | Center-right   | Simplified track outline with position dots in team colours, below position block| 240×240px container, dark background (rgba(0,0,0,0.5)), toggleable     | Yes — whole zone moves             |
+| **Countdown**     | Center-top     | 5 circles (24px diameter), red off / green on, 1s interval                       | Disappears after green flag (LIGHT_INTERVAL_TICKS=60)                 | Fixed position                     |
+| **Alert Block**   | Center-center  | Max 2 simultaneous alerts (PIT READY, FUEL EMPTY, CAR AHEAD/BEHIND, ±1 POS)      | 16px uppercase sans-serif, FIFO replacement                           | Fixed position                     |
+| **Menu**          | ESC key        | No button on screen                                                              | Accessed via keyboard only                                             | N/A                                |
 
 **Design rules for HUD:**
 
@@ -594,7 +597,10 @@ Default is always Minimal HUD. The detailed toggle is saved per player profile.
 | **Menu items**          | Inter or system sans-serif | 500 (Medium)   | 13px    | Sentence                |
 | **Labels**              | Inter or system sans-serif | 500            | 10–11px | Uppercase, spaced 1–2px |
 | **Values (stats)**      | Inter or system sans-serif | 600 (Semibold) | 13px    | Numeric                 |
-| **HUD speed/pos**       | Inter or system sans-serif | 700            | 14–16px | Numeric                 |
+| **HUD speed**           | Inter or system sans-serif | 700            | **72px** | Numeric                 |
+| **HUD position/lap**    | Inter or system sans-serif | 700 (Bold)     | **32px** | Numeric                 |
+| **HUD lap times**       | Inter or system sans-serif | 400 (Regular)  | **16px** | Numeric, monospace      |
+| **Alert block**         | Inter or system sans-serif | 600 (Semibold) | **16px** | Uppercase               |
 | **Body / descriptions** | Inter or system sans-serif | 400 (Regular)  | 12px    | Sentence                |
 
 No decorative or display fonts. No monospaced fonts (avoid the "90s terminal" look). Everything is clean, geometric, and readable at a glance.
