@@ -11,6 +11,7 @@ When this skill is invoked:
 ## 0. Parse Arguments — Detect Retrofit Mode
 
 Resolve the review mode (once, store for all gate spawns this run):
+
 1. If `--review [full|lean|solo]` was passed → use that
 2. Else read `production/review-mode.txt` → use that value
 3. Else → default to `lean`
@@ -29,6 +30,7 @@ Enter **retrofit mode**:
    - `## Engine Compatibility` — HIGH if missing: post-cutoff risk unknown
    - `## GDD Requirements Addressed` — MEDIUM if missing: traceability lost
 3. Present to the user:
+
    ```
    ## Retrofit: [ADR title]
    File: [path]
@@ -42,13 +44,14 @@ Enter **retrofit mode**:
    ✗ ADR Dependencies — HIGH
    ✗ Engine Compatibility — HIGH
    ```
+
 4. Ask: "Shall I add the [N] missing sections? I will not modify any existing content."
 5. If yes:
    - For **Status**: ask the user — "What is the current status of this decision?"
      Options: "Proposed", "Accepted", "Deprecated", "Superseded by ADR-XXXX"
    - For **ADR Dependencies**: ask — "Does this decision depend on any other ADR?
      Does it enable or block any other ADR or epic?" Accept "None" for each field.
-   - For **Engine Compatibility**: read the engine reference docs (same as Step 0 below)
+   - For **Engine Compatibility**: read the engine reference docs (same as Step 1 below)
      and ask the user to confirm the domain. Then generate the table with verified data.
    - For **GDD Requirements Addressed**: ask — "Which GDD systems motivated this decision?
      What specific requirement in each GDD does this ADR address?"
@@ -58,7 +61,7 @@ Enter **retrofit mode**:
 7. Suggest: "Run `/architecture-review` to re-validate coverage now that this ADR
    has its Status and Dependencies fields."
 
-If NOT in retrofit mode, proceed to Step 0 below (normal ADR authoring).
+If NOT in retrofit mode, proceed to Step 1 below (normal ADR authoring).
 
 **No-argument guard**: If no argument was provided (title is empty), ask before
 running Phase 0:
@@ -66,11 +69,11 @@ running Phase 0:
 > "What technical decision are you documenting? Please provide a short title
 > (e.g., `event-system-architecture`, `physics-engine-choice`)."
 
-Use the user's response as the title, then proceed to Step 0.
+Use the user's response as the title, then proceed to Step 1.
 
 ---
 
-## 0. Load Engine Context (ALWAYS FIRST)
+## 1. Load Engine Context (ALWAYS FIRST)
 
 Before doing anything else, establish the engine environment:
 
@@ -114,17 +117,17 @@ Before doing anything else, establish the engine environment:
 
 ---
 
-## 1. Determine the next ADR number
+## 2. Determine the next ADR number
 
 Scan `docs/architecture/` for existing ADRs to find the next number.
 
 ---
 
-## 2. Gather context
+## 3. Gather context
 
 Read related code, existing ADRs, and relevant GDDs from `design/gdd/`.
 
-### 2a: Architecture Registry Check (BLOCKING gate)
+### 3a: Architecture Registry Check (BLOCKING gate)
 
 Read `docs/registry/architecture.yaml`. Extract entries relevant to this ADR's
 domain and decision (grep by system name, domain keyword, or state being touched).
@@ -160,18 +163,19 @@ the conflict immediately:
 > Options: (1) Align with the existing stance, (2) Supersede ADR-[NNNN] with
 > an explicit replacement, (3) Explain why this case is an exception."
 
-Do not proceed to Step 3 (collaborative design) until any conflict is resolved
+Do not proceed to Step 4 (collaborative design) until any conflict is resolved
 or explicitly accepted as an intentional exception.
 
 ---
 
-## 3. Guide the decision collaboratively
+## 4. Guide the decision collaboratively
 
 Before asking anything, derive the skill's best guesses from the context already
 gathered (GDDs read, engine reference loaded, existing ADRs scanned). Then present
 a **confirm/adjust** prompt using `question` — not open-ended questions.
 
 **Derive assumptions first:**
+
 - **Problem**: Infer from the title + GDD context what decision needs to be made
 - **Alternatives**: Propose 2-3 concrete options from engine reference + GDD requirements
 - **Dependencies**: Scan existing ADRs for upstream dependencies; assume None if unclear
@@ -205,7 +209,7 @@ Status: Proposed
 
 Do not generate the ADR until the user confirms assumptions or provides corrections.
 
-**After engine specialist and TD reviews return** (Step 4.5/4.6), if unresolved
+**After engine specialist and TD reviews return** (Step 5.5/5.6), if unresolved
 decisions remain, present each one as a separate `question` with the proposed
 options as choices plus a free-text escape:
 
@@ -217,6 +221,7 @@ Decision: [specific unresolved point]
 ```
 
 **ADR Dependencies** — derive from existing ADRs, then confirm:
+
 - Does this decision depend on any other ADR not yet Accepted?
 - Does it unlock or unblock any other ADR or epic?
 - Does it block any specific epic from starting?
@@ -225,7 +230,7 @@ Record answers in the **ADR Dependencies** section. Write "None" for each field 
 
 ---
 
-## 4. Generate the ADR
+## 5. Generate the ADR
 
 Following this format:
 
@@ -233,43 +238,48 @@ Following this format:
 # ADR-[NNNN]: [Title]
 
 ## Status
+
 [Proposed | Accepted | Deprecated | Superseded by ADR-XXXX]
 
 ## Date
+
 [Date of decision]
 
 ## Engine Compatibility
 
-| Field | Value |
-|-------|-------|
-| **Engine** | [e.g. Godot 4.6] |
-| **Domain** | [Physics / Rendering / UI / Audio / Navigation / Animation / Networking / Core / Input] |
-| **Knowledge Risk** | [LOW / MEDIUM / HIGH — from VERSION.md] |
-| **References Consulted** | [List engine-reference docs read, e.g. `docs/engine-reference/godot/modules/physics.md`] |
-| **Post-Cutoff APIs Used** | [Any APIs from post-LLM-cutoff versions this decision depends on, or "None"] |
-| **Verification Required** | [Specific behaviours to test before shipping, or "None"] |
+| Field                     | Value                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| **Engine**                | [e.g. Godot 4.6]                                                                         |
+| **Domain**                | [Physics / Rendering / UI / Audio / Navigation / Animation / Networking / Core / Input]  |
+| **Knowledge Risk**        | [LOW / MEDIUM / HIGH — from VERSION.md]                                                  |
+| **References Consulted**  | [List engine-reference docs read, e.g. `docs/engine-reference/godot/modules/physics.md`] |
+| **Post-Cutoff APIs Used** | [Any APIs from post-LLM-cutoff versions this decision depends on, or "None"]             |
+| **Verification Required** | [Specific behaviours to test before shipping, or "None"]                                 |
 
 ## ADR Dependencies
 
-| Field | Value |
-|-------|-------|
-| **Depends On** | [ADR-NNNN (must be Accepted before this can be implemented), or "None"] |
-| **Enables** | [ADR-NNNN (this ADR unlocks that decision), or "None"] |
-| **Blocks** | [Epic/Story name — cannot start until this ADR is Accepted, or "None"] |
-| **Ordering Note** | [Any sequencing constraint that isn't captured above] |
+| Field             | Value                                                                   |
+| ----------------- | ----------------------------------------------------------------------- |
+| **Depends On**    | [ADR-NNNN (must be Accepted before this can be implemented), or "None"] |
+| **Enables**       | [ADR-NNNN (this ADR unlocks that decision), or "None"]                  |
+| **Blocks**        | [Epic/Story name — cannot start until this ADR is Accepted, or "None"]  |
+| **Ordering Note** | [Any sequencing constraint that isn't captured above]                   |
 
 ## Context
 
 ### Problem Statement
+
 [What problem are we solving? Why does this decision need to be made now?]
 
 ### Constraints
+
 - [Technical constraints]
 - [Timeline constraints]
 - [Resource constraints]
 - [Compatibility requirements]
 
 ### Requirements
+
 - [Must support X]
 - [Must perform within Y budget]
 - [Must integrate with Z]
@@ -280,20 +290,24 @@ Following this format:
 to implement it.]
 
 ### Architecture Diagram
+
 [ASCII diagram or description of the system architecture this creates]
 
 ### Key Interfaces
+
 [API contracts or interface definitions this decision creates]
 
 ## Alternatives Considered
 
 ### Alternative 1: [Name]
+
 - **Description**: [How this would work]
 - **Pros**: [Advantages]
 - **Cons**: [Disadvantages]
 - **Rejection Reason**: [Why this was not chosen]
 
 ### Alternative 2: [Name]
+
 - **Description**: [How this would work]
 - **Pros**: [Advantages]
 - **Cons**: [Disadvantages]
@@ -302,63 +316,72 @@ to implement it.]
 ## Consequences
 
 ### Positive
+
 - [Good outcomes of this decision]
 
 ### Negative
+
 - [Trade-offs and costs accepted]
 
 ### Risks
+
 - [Things that could go wrong]
 - [Mitigation for each risk]
 
 ## GDD Requirements Addressed
 
-| GDD System | Requirement | How This ADR Addresses It |
-|------------|-------------|--------------------------|
+| GDD System       | Requirement                                                       | How This ADR Addresses It        |
+| ---------------- | ----------------------------------------------------------------- | -------------------------------- |
 | [system-name].md | [specific rule, formula, or performance constraint from that GDD] | [how this decision satisfies it] |
 
 ## Performance Implications
+
 - **CPU**: [Expected impact]
 - **Memory**: [Expected impact]
 - **Load Time**: [Expected impact]
 - **Network**: [Expected impact, if applicable]
 
 ## Migration Plan
+
 [If this changes existing code, how do we get from here to there?]
 
 ## Validation Criteria
+
 [How will we know this decision was correct? What metrics or tests?]
 
 ## Related Decisions
+
 - [Links to related ADRs]
 - [Links to related design documents]
 ```
 
-4.5. **Engine Specialist Validation** — Before saving, spawn the **primary engine specialist** via Task to validate the drafted ADR:
-   - Read `.opencode/docs/technical-preferences.md` `Engine Specialists` section to get the primary specialist
-   - If no engine is configured (`[TO BE CONFIGURED]`), skip this step
-   - Spawn `subagent_type: [primary specialist]` with: the ADR's Engine Compatibility section, Decision section, Key Interfaces, and the engine reference docs path. Ask them to:
-     1. Confirm the proposed approach is idiomatic for the pinned engine version
-     2. Flag any APIs or patterns that are deprecated or changed post-training-cutoff
-     3. Identify engine-specific risks or gotchas not captured in the current ADR draft
-   - If the specialist identifies a **blocking issue** (wrong API, deprecated approach, engine version incompatibility): revise the Decision and Engine Compatibility sections accordingly, then confirm the changes with the user before proceeding
-   - If the specialist finds **minor notes** only: incorporate them into the ADR's Risks subsection
+5.5. **Engine Specialist Validation** — Before saving, spawn the **primary engine specialist** via Task to validate the drafted ADR:
+
+- Read `.opencode/docs/technical-preferences.md` `Engine Specialists` section to get the primary specialist
+- If no engine is configured (`[TO BE CONFIGURED]`), skip this step
+- Spawn `subagent_type: [primary specialist]` with: the ADR's Engine Compatibility section, Decision section, Key Interfaces, and the engine reference docs path. Ask them to:
+  1.  Confirm the proposed approach is idiomatic for the pinned engine version
+  2.  Flag any APIs or patterns that are deprecated or changed post-training-cutoff
+  3.  Identify engine-specific risks or gotchas not captured in the current ADR draft
+- If the specialist identifies a **blocking issue** (wrong API, deprecated approach, engine version incompatibility): revise the Decision and Engine Compatibility sections accordingly, then confirm the changes with the user before proceeding
+- If the specialist finds **minor notes** only: incorporate them into the ADR's Risks subsection
 
 **Review mode check** — apply before spawning TD-ADR:
-- `solo` → skip. Note: "TD-ADR skipped — Solo mode." Proceed to Step 4.7 (GDD sync check).
-- `lean` → skip (not a PHASE-GATE). Note: "TD-ADR skipped — Lean mode." Proceed to Step 4.7 (GDD sync check).
+
+- `solo` → skip. Note: "TD-ADR skipped — Solo mode." Proceed to Step 5.7 (GDD sync check).
+- `lean` → skip (not a PHASE-GATE). Note: "TD-ADR skipped — Lean mode." Proceed to Step 5.7 (GDD sync check).
 - `full` → spawn as normal.
 
-4.6. **Technical Director Strategic Review** — After the engine specialist validation, spawn `technical-director` via Task using gate **TD-ADR** (`.opencode/docs/director-gates.md`):
-   - Pass: the ADR file path (or draft content), engine version, domain, any existing ADRs in the same domain
-   - The TD validates architectural coherence (is this decision consistent with the whole system?) — distinct from the engine specialist's API-level check
-   - If CONCERNS or REJECT: revise the Decision or Alternatives sections accordingly before proceeding
+  5.6. **Technical Director Strategic Review** — After the engine specialist validation, spawn `technical-director` via Task using gate **TD-ADR** (`.opencode/docs/director-gates.md`):
+  - Pass: the ADR file path (or draft content), engine version, domain, any existing ADRs in the same domain
+  - The TD validates architectural coherence (is this decision consistent with the whole system?) — distinct from the engine specialist's API-level check
+  - If CONCERNS or REJECT: revise the Decision or Alternatives sections accordingly before proceeding
 
-4.7. **GDD Sync Check** — Before presenting the write approval, scan all GDDs
-referenced in the "GDD Requirements Addressed" section for naming inconsistencies
-with the ADR's Key Interfaces and Decision sections (renamed signals, API methods,
-or data types). If any are found, surface them as a **prominent warning block**
-immediately before the write approval — not as a footnote:
+  5.7. **GDD Sync Check** — Before presenting the write approval, scan all GDDs
+  referenced in the "GDD Requirements Addressed" section for naming inconsistencies
+  with the ADR's Key Interfaces and Decision sections (renamed signals, API methods,
+  or data types). If any are found, surface them as a **prominent warning block**
+  immediately before the write approval — not as a footnote:
 
 ```
 ⚠️ GDD SYNC REQUIRED
@@ -371,15 +394,17 @@ developers reading the GDD from implementing the wrong interface.
 
 If no inconsistencies: skip this block silently.
 
-5. **Write approval** — Use `question`:
+6. **Write approval** — Use `question`:
 
 If GDD sync issues were found:
+
 - "ADR draft is complete. How would you like to proceed?"
   - [A] Write ADR + update GDD in the same pass
   - [B] Write ADR only — I'll update the GDD manually
   - [C] Not yet — I need to review further
 
 If no GDD sync issues:
+
 - "ADR draft is complete. May I write it?"
   - [A] Write ADR to `docs/architecture/adr-[NNNN]-[slug].md`
   - [B] Not yet — I need to review further
@@ -387,9 +412,10 @@ If no GDD sync issues:
 If yes to any write option, write the file, creating the directory if needed.
 For option [A] with GDD update: also update the GDD file(s) to use the new names.
 
-6. **Update Architecture Registry**
+7. **Update Architecture Registry**
 
 Scan the written ADR for new architectural stances that should be registered:
+
 - State it claims ownership of
 - Interface contracts it defines (signal signatures, method APIs)
 - Performance budget it claims
@@ -397,6 +423,7 @@ Scan the written ADR for new architectural stances that should be registered:
 - Patterns it bans (Consequences → Negative or explicit "do not use X")
 
 Present candidates:
+
 ```
 Registry candidates from this ADR:
   NEW state ownership:      player_stamina → stamina-system
@@ -407,6 +434,7 @@ Registry candidates from this ADR:
 ```
 
 **Registry append logic**: When writing to `docs/registry/architecture.yaml`, do NOT assume sections are empty. The file may already have entries from previous ADRs written in this session. Before each Edit call:
+
 1. Read the current state of `docs/registry/architecture.yaml`
 2. Find the correct section (state_ownership, interfaces, forbidden_patterns, api_decisions)
 3. Append the new entry AFTER the last existing entry in that section — do not try to replace a `[]` placeholder that may no longer exist
@@ -415,6 +443,7 @@ Registry candidates from this ADR:
 **BLOCKING — do not write to `docs/registry/architecture.yaml` without explicit user approval.**
 
 Ask using `question`:
+
 - "May I update `docs/registry/architecture.yaml` with these [N] new stances?"
   - Options: "Yes — update the registry", "Not yet — I want to review the candidates", "Skip registry update"
 
@@ -423,16 +452,18 @@ changing, set the old entry to `status: superseded_by: ADR-[NNNN]` and add the n
 
 ---
 
-## 7. Closing Next Steps
+## 8. Closing Next Steps
 
 After the ADR is written (and registry optionally updated), close with `question`.
 
 Before generating the widget:
+
 1. Read `docs/registry/architecture.yaml` — check if any priority ADRs are still unwritten (look for ADRs flagged in technical-preferences.md or systems-index.md as prerequisites)
 2. Check if all prerequisite ADRs are now written. If yes, include a "Start writing GDDs" option.
 3. List ALL remaining priority ADRs as individual options — not just the next one or two.
 
 Widget format:
+
 ```
 ADR-[NNNN] written and registry updated. What would you like to do next?
 [1] Write [next-priority-adr-name] — [brief description from prerequisites list]

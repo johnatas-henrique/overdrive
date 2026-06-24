@@ -16,6 +16,7 @@ the project's pinned engine version. It is the quality gate between Technical Se
 and Pre-Production.
 
 **Argument modes:**
+
 - **No argument / `full`**: Full review — all phases
 - **`coverage`**: Traceability only — which GDD requirements have no ADR
 - **`consistency`**: Cross-ADR conflict detection only
@@ -54,20 +55,24 @@ For `coverage` or `full` mode: proceed to full-read everything below.
 Read all inputs appropriate to the mode:
 
 ### Design Documents
+
 - All in-scope GDDs in `design/gdd/` — read every file completely
 - `design/gdd/systems-index.md` — the authoritative list of systems
 
 ### Architecture Documents
+
 - All in-scope ADRs in `docs/architecture/` — read every file completely
 - `docs/architecture/architecture.md` if it exists
 
 ### Engine Reference
+
 - `docs/engine-reference/[engine]/VERSION.md`
 - `docs/engine-reference/[engine]/breaking-changes.md`
 - `docs/engine-reference/[engine]/deprecated-apis.md`
 - All files in `docs/engine-reference/[engine]/modules/`
 
 ### Project Standards
+
 - `.opencode/docs/technical-preferences.md`
 
 Report a count: "Loaded [N] GDDs, [M] ADRs, engine: [name + version]."
@@ -88,6 +93,7 @@ if it exists. Index existing entries by `id` and by normalized `requirement`
 text (lowercase, trimmed). This prevents ID renumbering across review runs.
 
 For each requirement you extract, the matching rule is:
+
 1. **Exact/near match** to an existing registry entry for the same system →
    reuse that entry's TR-ID unchanged. Update the `requirement` text in the
    registry only if the GDD wording changed (same intent, clearer phrasing) —
@@ -97,7 +103,7 @@ For each requirement you extract, the matching rule is:
 3. **Ambiguous** (partial match, intent unclear) → ask the user:
    > "Does '[new requirement text]' refer to the same requirement as
    > `TR-[system]-NNN: [existing text]'`, or is it a new requirement?"
-   User answers: "Same requirement" (reuse ID) or "New requirement" (new ID).
+   > User answers: "Same requirement" (reuse ID) or "New requirement" (new ID).
 
 For any requirement with `status: deprecated` in the registry — skip it.
 It was removed from the GDD intentionally.
@@ -108,15 +114,15 @@ statement that implies a specific architectural decision.
 
 Categories to extract:
 
-| Category | Example |
-|----------|---------|
-| **Data structures** | "Each entity has health, max health, status effects" → needs a component/data schema |
-| **Performance constraints** | "Collision detection must run at 60fps with 200 entities" → physics budget ADR |
-| **Engine capability** | "Inverse kinematics for character animation" → IK system ADR |
+| Category                       | Example                                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------ |
+| **Data structures**            | "Each entity has health, max health, status effects" → needs a component/data schema |
+| **Performance constraints**    | "Collision detection must run at 60fps with 200 entities" → physics budget ADR       |
+| **Engine capability**          | "Inverse kinematics for character animation" → IK system ADR                         |
 | **Cross-system communication** | "Damage system notifies UI and audio simultaneously" → event/signal architecture ADR |
-| **State persistence** | "Player progress persists between sessions" → save system ADR |
-| **Threading/timing** | "AI decisions happen off the main thread" → concurrency ADR |
-| **Platform requirements** | "Supports keyboard, gamepad, touch" → input system ADR |
+| **State persistence**          | "Player progress persists between sessions" → save system ADR                        |
+| **Threading/timing**           | "AI decisions happen off the main thread" → concurrency ADR                          |
+| **Platform requirements**      | "Supports keyboard, gamepad, touch" → input system ADR                               |
 
 For each GDD, produce a structured list:
 
@@ -142,11 +148,11 @@ For each technical requirement extracted in Phase 2, search the ADRs:
 3. Check if the ADR's decision text implicitly covers the requirement
 4. Mark coverage status:
 
-| Status | Meaning |
-|--------|---------|
-| ✅ **Covered** | An ADR explicitly addresses this requirement |
+| Status         | Meaning                                                |
+| -------------- | ------------------------------------------------------ |
+| ✅ **Covered** | An ADR explicitly addresses this requirement           |
 | ⚠️ **Partial** | An ADR partially covers this, or coverage is ambiguous |
-| ❌ **Gap** | No ADR addresses this requirement |
+| ❌ **Gap**     | No ADR addresses this requirement                      |
 
 Build the full matrix:
 
@@ -166,7 +172,7 @@ Count the totals: X covered, Y partial, Z gaps.
 
 ## Phase 3b: Story and Test Linkage (RTM mode only)
 
-*Skip this phase unless the argument is `rtm` or `full` with stories present.*
+_Skip this phase unless the argument is `rtm` or `full` with stories present._
 
 This phase extends the Phase 3 matrix to include the story that implements
 each requirement and the test that verifies it — producing the full
@@ -176,6 +182,7 @@ Requirements Traceability Matrix (RTM).
 
 Glob `production/epics/**/*.md` (excluding EPIC.md index files). For each
 story file:
+
 - Extract `TR-ID` from the story's Context section
 - Extract story file path, title, Status
 - Extract `## Test Evidence` section — the stated test file path
@@ -191,6 +198,7 @@ actually exists. Note MISSING if the stated path does not exist.
 ### Step 3b-3 — Build the extended RTM
 
 For each TR-ID in the Phase 3 matrix, add:
+
 - **Story**: the story file path(s) that reference this TR-ID (may be multiple)
 - **Test File**: the test file path stated in the story's Test Evidence section
 - **Test Status**: COVERED (test file exists) / MISSING (path stated but not
@@ -210,6 +218,7 @@ Extended matrix format:
 ```
 
 RTM coverage summary:
+
 - COVERED: [N] — requirements with ADR + story + passing test
 - MISSING test: [N] — story exists but test file not found
 - NO STORY: [N] — requirements with ADR but no story yet
@@ -287,23 +296,28 @@ After conflict detection, analyse the dependency graph across all ADRs:
 Across all ADRs, check for engine consistency:
 
 ### Version Consistency
+
 - Do all ADRs that mention an engine version agree on the same version?
 - If any ADR was written for an older engine version, flag it as potentially stale
 
 ### Post-Cutoff API Consistency
+
 - Collect all "Post-Cutoff APIs Used" fields from all ADRs
 - For each, verify against the relevant module reference doc
 - Check that no two ADRs make contradictory assumptions about the same post-cutoff API
 
 ### Deprecated API Check
+
 - Grep all ADRs for API names listed in `deprecated-apis.md`
 - Flag any ADR referencing a deprecated API
 
 ### Missing Engine Compatibility Sections
+
 - List all ADRs that are missing the Engine Compatibility section entirely
 - These are blind spots — their engine assumptions are unknown
 
 Output format:
+
 ```
 ### Engine Audit Results
 Engine: [name + version]
@@ -324,6 +338,7 @@ Post-Cutoff API Conflicts:
 ### Engine Specialist Consultation
 
 After completing the engine audit above, spawn the **primary engine specialist** via Task for a domain-expert second opinion:
+
 - Read `.opencode/docs/technical-preferences.md` `Engine Specialists` section to get the primary specialist
 - If no engine is configured, skip this consultation
 - Spawn `subagent_type: [primary specialist]` with: all ADRs that contain engine-specific decisions or `Post-Cutoff APIs Used` fields, the engine reference docs, and the Phase 5 audit findings. Ask them to:
@@ -369,12 +384,18 @@ The GDD should be revised before its system enters implementation.
 If no revision flags are found, write: "No GDD revision flags — all GDD assumptions
 are consistent with verified engine behaviour."
 
-Ask: "Should I flag these GDDs for revision in the systems index?"
-- If yes: update the relevant systems' Status field to "Needs Revision"
-  and add a short inline note in the adjacent Notes/Description column explaining the conflict.
-  Ask for approval before writing.
-  (Do NOT use parentheticals like "Needs Revision (Architecture Feedback)" — other skills
-  match the exact string "Needs Revision" and parentheticals break that match.)
+Before asking, display the proposed change inline — show the current systems-index row for each flagged GDD and the proposed updated row side by side so the user can see exactly what will change.
+
+Then use `question`:
+
+- "I found [N] GDD revision flag(s). May I update the systems index?"
+  - [A] Yes — apply all [N] updates to the systems index now
+  - [B] Show me the full diff first, then ask again
+  - [C] No — leave the systems index unchanged for now
+
+If [A]: apply the updates. Status field must be exactly `Needs Revision` — no parentheticals
+(other skills match that exact string and parentheticals break the match).
+If [B]: display the complete proposed systems-index section, then re-ask with `question`.
 
 ---
 
@@ -452,6 +473,7 @@ FAIL: Critical gaps (Foundation/Core layer requirements uncovered),
 ## Phase 8: Write and Update Traceability Index
 
 Use `question` for the write approval:
+
 - "Review complete. What would you like to write?"
   - [A] Write all three files (review report + traceability index + TR registry)
   - [B] Write review report only — `docs/architecture/architecture-review-[date].md`
@@ -459,8 +481,11 @@ Use `question` for the write approval:
 
 ### RTM Output (rtm mode only)
 
-For `rtm` mode, additionally ask: "May I write the full Requirements Traceability
-Matrix to `docs/architecture/requirements-traceability.md`?"
+For `rtm` mode, use `question`:
+
+- "May I write the full Requirements Traceability Matrix?"
+  - [A] Yes — write to `docs/architecture/requirements-traceability.md`
+  - [B] Not yet — show me the full RTM data first, then ask again
 
 RTM file format:
 
@@ -473,49 +498,53 @@ RTM file format:
 
 ## How to read this matrix
 
-| Column | Meaning |
-|--------|---------|
-| TR-ID | Stable requirement ID from tr-registry.yaml |
-| GDD | Source design document |
-| ADR | Architectural decision governing implementation |
-| Story | Story file that implements this requirement |
-| Test File | Automated test file path |
-| Test Status | COVERED / MISSING / NONE / NO STORY |
+| Column      | Meaning                                         |
+| ----------- | ----------------------------------------------- |
+| TR-ID       | Stable requirement ID from tr-registry.yaml     |
+| GDD         | Source design document                          |
+| ADR         | Architectural decision governing implementation |
+| Story       | Story file that implements this requirement     |
+| Test File   | Automated test file path                        |
+| Test Status | COVERED / MISSING / NONE / NO STORY             |
 
 ## Full Traceability Matrix
 
 | TR-ID | GDD | Requirement | ADR | Story | Test File | Status |
-|-------|-----|-------------|-----|-------|-----------|--------|
+| ----- | --- | ----------- | --- | ----- | --------- | ------ |
+
 [Full matrix rows from Phase 3b]
 
 ## Coverage Summary
 
-| Status | Count | % |
-|--------|-------|---|
-| COVERED — full chain complete | [N] | [%] |
-| MISSING test — story exists, no test | [N] | [%] |
-| NO STORY — ADR exists, not yet implemented | [N] | [%] |
-| NO ADR — architectural gap | [N] | [%] |
-| **Total requirements** | **[N]** | **100%** |
+| Status                                     | Count   | %        |
+| ------------------------------------------ | ------- | -------- |
+| COVERED — full chain complete              | [N]     | [%]      |
+| MISSING test — story exists, no test       | [N]     | [%]      |
+| NO STORY — ADR exists, not yet implemented | [N]     | [%]      |
+| NO ADR — architectural gap                 | [N]     | [%]      |
+| **Total requirements**                     | **[N]** | **100%** |
 
 ## Uncovered Requirements (Priority Fix List)
 
 Requirements where the full chain is broken, prioritised by layer:
 
 ### Foundation layer gaps
+
 [list with suggested action per gap]
 
 ### Core layer gaps
+
 [list]
 
 ### Feature / Presentation layer gaps
+
 [list — lower priority]
 
 ## History
 
-| Date | Full Chain % | Notes |
-|------|-------------|-------|
-| [date] | [%] | Initial RTM |
+| Date   | Full Chain % | Notes       |
+| ------ | ------------ | ----------- |
+| [date] | [%]          | Initial RTM |
 ```
 
 ### TR Registry Update
@@ -524,6 +553,7 @@ Also ask: "May I update `docs/architecture/tr-registry.yaml` with new requiremen
 IDs from this review?"
 
 If yes:
+
 - **Append** any new TR-IDs that weren't in the registry before this review
 - **Update** `requirement` text and `revised` date for any entries whose GDD
   wording changed (ID stays the same)
@@ -542,6 +572,7 @@ to `docs/consistency-failures.md` (if the file exists):
 
 ```markdown
 ### [YYYY-MM-DD] — /architecture-review — 🔴 CONFLICT
+
 **Domain**: Architecture / [specific domain e.g. State Ownership, Performance]
 **Documents involved**: [ADR-NNNN] vs [ADR-MMMM]
 **What happened**: [specific conflict — what each ADR claims]
@@ -573,22 +604,27 @@ The traceability index format:
 
 ```markdown
 # Architecture Traceability Index
+
 Last Updated: [date]
 Engine: [name + version]
 
 ## Coverage Summary
+
 - Total requirements: [N]
 - Covered: [X] ([%])
 - Partial: [Y]
 - Gaps: [Z]
 
 ## Full Matrix
+
 [Complete traceability matrix from Phase 3]
 
 ## Known Gaps
+
 [All ❌ items with suggested ADRs]
 
 ## Superseded Requirements
+
 [Requirements whose GDD was changed after the ADR was written]
 ```
 
@@ -600,16 +636,29 @@ After completing the review and writing approved files, present:
 
 1. **Immediate actions**: List the top 3 ADRs to create (highest-impact gaps first,
    Foundation layer before Feature layer)
-2. **Gate guidance**: "When all blocking issues are resolved, run `/gate-check
-   pre-production` to advance"
+2. **Pre-gate checklist**: Check whether these exist via Glob and mark each ✅ or ❌:
+   - `tests/unit/` and `tests/integration/` directories — if ❌: run `/test-setup`
+   - `.github/workflows/tests.yml` — if ❌: run `/test-setup`
+   - `design/accessibility-requirements.md` — if ❌: run `/ux-design`
+   - `design/ux/interaction-patterns.md` — if ❌: run `/ux-design`
+     Present ❌ items as required steps before gate-check. Do not offer `/gate-check`
+     as an option if any item is ❌ — offer the missing skill to run instead.
 3. **Rerun trigger**: "Re-run `/architecture-review` after each new ADR is written
    to verify coverage improves"
 
-Then close with `question`:
-- "Architecture review complete. What would you like to do next?"
-  - [A] Write a missing ADR — open a fresh session and run `/architecture-decision [system]`
-  - [B] Run `/gate-check pre-production` — if all blocking gaps are resolved
-  - [C] Stop here for this session
+Then close with `question` tailored to the pre-gate checklist state:
+
+- If ADR gaps remain or any pre-gate item is ❌:
+  - "Architecture review complete. What would you like to do next?"
+    - [A] Write a missing ADR — open a fresh session and run `/architecture-decision [system]`
+    - [B] Run `/test-setup` — required before gate-check (only show if test infrastructure is ❌)
+    - [C] Run `/ux-design` — required before gate-check (only show if UX/accessibility files are ❌)
+    - [D] Stop here for this session
+- If all pre-gate checklist items are ✅ and no blocking ADR gaps remain:
+  - "Architecture review complete. All pre-gate items confirmed. What would you like to do next?"
+    - [A] Run `/gate-check pre-production`
+    - [B] Write a missing ADR — open a fresh session and run `/architecture-decision [system]`
+    - [C] Stop here for this session
 
 ---
 
@@ -634,6 +683,13 @@ If any spawned agent returns BLOCKED, errors, or fails to complete:
    anything; let the user see the state
 3. **Don't guess** — if a requirement is ambiguous, ask: "Is [X] a technical
    requirement or a design preference?"
-4. **Ask before writing** — always confirm before writing the report file
-5. **Non-blocking** — the verdict is advisory; the user decides whether to continue
+4. **Draft before approval** — always show the content that will be written (the
+   report, the updated ADR section, the systems-index row) inline in the conversation
+   before requesting approval. Never ask to write something the user has not yet seen.
+5. **Use `question` for write approvals** — plain text "May I?" is not
+   sufficient. Use the structured tool with labeled options [A]/[B]/[C] so the
+   user can choose between "write now", "show full draft first", and "not yet".
+   Multi-file changesets must list every file and what changes, then ask once
+   with grouped options — not a separate plain-text question per file.
+6. **Non-blocking** — the verdict is advisory; the user decides whether to continue
    despite CONCERNS or even FAIL findings

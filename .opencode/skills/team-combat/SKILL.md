@@ -1,13 +1,15 @@
 ---
 name: team-combat
 description: "Orchestrate the combat team: coordinates game-designer, gameplay-programmer, ai-programmer, technical-artist, sound-designer, and qa-tester to design, implement, and validate a combat feature end-to-end."
-argument-hint: "[combat feature description]"
+argument-hint: "[combat feature description] [--review full|lean|solo]"
 user-invocable: true
 allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Task, question, TodoWrite
 ---
+
 **Argument check:** If no combat feature description is provided, output:
+
 > "Usage: `/team-combat [combat feature description]` — Provide a description of the combat feature to design and implement (e.g., `melee parry system`, `ranged weapon spread`)."
-Then stop immediately without spawning any subagents or reading any files.
+> Then stop immediately without spawning any subagents or reading any files.
 
 When this skill is invoked with a valid argument, orchestrate the combat team through a structured pipeline.
 
@@ -16,7 +18,22 @@ the user with the subagent's proposals as selectable options. Write the agent's
 full analysis in conversation, then capture the decision with concise labels.
 The user must approve before moving to the next phase.
 
+## Phase 0: Resolve Review Mode
+
+1. If `--review [mode]` was passed as an argument, use that mode.
+2. Else read `production/review-mode.txt` — use whatever is written there.
+3. Else default to `lean`.
+
+Modes:
+
+- `full` — spawn all director and lead gates as described
+- `lean` — skip director gates unless they are PHASE-GATE type (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE)
+- `solo` — skip all director gate spawning entirely; run the skill without any agent gates
+
+Store the resolved mode for use in all subsequent phases.
+
 ## Team Composition
+
 - **game-designer** — Design the mechanic, define formulas and edge cases
 - **gameplay-programmer** — Implement the core gameplay code
 - **ai-programmer** — Implement NPC/enemy AI behavior for the feature
@@ -28,6 +45,7 @@ The user must approve before moving to the next phase.
 ## How to Delegate
 
 Use the Task tool to spawn each team member as a subagent:
+
 - `subagent_type: game-designer` — Design the mechanic, define formulas and edge cases
 - `subagent_type: gameplay-programmer` — Implement the core gameplay code
 - `subagent_type: ai-programmer` — Implement NPC/enemy AI behavior
@@ -41,43 +59,64 @@ Always provide full context in each agent's prompt (design doc path, relevant co
 ## Pipeline
 
 ### Phase 1: Design
+
 Delegate to **game-designer**:
+
 - Create or update the design document in `design/gdd/` covering: mechanic overview, player fantasy, detailed rules, formulas with variable definitions, edge cases, dependencies, tuning knobs with safe ranges, and acceptance criteria
 - Output: completed design document
 
 ### Phase 2: Architecture
+
 Delegate to **gameplay-programmer** (with **ai-programmer** if AI is involved):
+
 - Review the design document
 - Design the code architecture: class structure, interfaces, data flow
 - Identify integration points with existing systems
 - Output: architecture sketch with file list and interface definitions
 
 Then spawn the **primary engine specialist** to validate the proposed architecture:
+
 - Is the class/node/component structure idiomatic for the pinned engine? (e.g., Godot node hierarchy, Unity MonoBehaviour vs DOTS, Unreal Actor/Component design)
 - Are there engine-native systems that should be used instead of custom implementations?
 - Any proposed APIs that are deprecated or changed in the pinned engine version?
 - Output: engine architecture notes — incorporate into the architecture before Phase 3 begins
 
+Use `question`:
+
+- Prompt: "Architecture sketch complete. Approve to proceed with parallel implementation."
+- Options:
+  - `[A] Proceed — spawn implementation agents (gameplay-programmer, ai-programmer, technical-artist, sound-designer)`
+  - `[B] Revise the architecture first — I'll describe what needs to change`
+  - `[C] Stop here — I'll continue later`
+
+Only spawn implementation agents if user selects [A].
+
 ### Phase 3: Implementation (parallel where possible)
+
 Delegate in parallel:
+
 - **gameplay-programmer**: Implement core combat mechanic code
 - **ai-programmer**: Implement AI behaviors (if the feature involves NPC reactions)
 - **technical-artist**: Create VFX and shader effects
 - **sound-designer**: Define audio event list and mixing notes
 
 ### Phase 4: Integration
+
 - Wire together gameplay code, AI, VFX, and audio
 - Ensure all tuning knobs are exposed and data-driven
 - Verify the feature works with existing combat systems
 
 ### Phase 5: Validation
+
 Delegate to **qa-tester**:
+
 - Write test cases from the acceptance criteria
 - Test all edge cases documented in the design
 - Verify performance impact is within budget
 - File bug reports for any issues found
 
 ### Phase 6: Sign-off
+
 - Collect results from all team members
 - Report feature status: COMPLETE / NEEDS WORK / BLOCKED
 - List any outstanding issues and their assigned owners
@@ -95,6 +134,7 @@ If any spawned agent (via Task) returns BLOCKED, errors, or cannot complete:
 4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.
 
 Common blockers:
+
 - Input file missing (story not found, GDD absent) → redirect to the skill that creates it
 - ADR status is Proposed → do not implement; run `/architecture-decision` first
 - Scope too large → split into two stories via `/create-stories`

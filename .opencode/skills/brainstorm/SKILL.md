@@ -31,8 +31,8 @@ When this skill is invoked:
    - Concept selection ("Which 2-3 concepts resonate?") after presenting options
    - Direction choices ("Develop further, explore more, or prototype?")
    - Pillar ranking after concepts are refined
-   Write full creative analysis in conversation text first, then use
-   `question` to capture the decision with concise labels.
+     Write full creative analysis in conversation text first, then use
+     `question` to capture the decision with concise labels.
 
    Professional studio brainstorming principles to follow:
    - Withhold judgment — no idea is bad during exploration
@@ -49,21 +49,24 @@ Start by understanding the person, not the game. Ask these questions
 conversationally (not as a checklist):
 
 **Emotional anchors**:
+
 - What's a moment in a game that genuinely moved you, thrilled you, or made
   you lose track of time? What specifically created that feeling?
 - Is there a fantasy or power trip you've always wanted in a game but never
   quite found?
 
 **Taste profile**:
+
 - What 3 games have you spent the most time with? What kept you coming back?
-  *(Ask this as plain text — the user must be able to type specific game names freely.
-  Do NOT put this in an question with preset options.)*
+  _(Ask this as plain text — the user must be able to type specific game names freely.
+  Do NOT put this in an question with preset options.)_
 - Are there genres you love? Genres you avoid? Why?
 - Do you prefer games that challenge you, relax you, tell you stories,
-  or let you express yourself? *(Use `question` for this — constrained choice.)*
+  or let you express yourself? _(Use `question` for this — constrained choice.)_
 
 **Practical constraints** (shape the sandbox before brainstorming).
 Bundle these into a single multi-tab `question` with these exact tab labels:
+
 - Tab "Experience" — "What kind of experience do you most want players to have?" (Challenge & Mastery / Story & Discovery / Expression & Creativity / Relaxation & Flow)
 - Tab "Timeline" — "What's your realistic development timeline?" (Weeks / Months / 1-2 years / Multi-year)
 - Tab "Dev level" — "Where are you in your dev journey?" (First game / Shipped before / Professional background)
@@ -96,6 +99,7 @@ sensation, fantasy, narrative, challenge, fellowship, discovery, expression,
 submission) and work backward to the dynamics and mechanics that produce it.
 
 For each concept, present:
+
 - **Working Title**
 - **Elevator Pitch** (1-2 sentences — must pass the "10-second test")
 - **Core Verb** (the single most common player action)
@@ -146,20 +150,24 @@ Ask these as `question` calls — derive the options from the chosen concept, do
 After capturing answers, analyze: Is this action intrinsically satisfying? What makes it feel good? (Audio feedback, visual juice, timing satisfaction, tactical depth?)
 
 **5-Minute Loop** (short-term goals):
+
 - What structures the moment-to-moment play into cycles?
 - Where does "one more turn" / "one more run" psychology kick in?
 - What choices does the player make at this level?
 
 **Session Loop** (30-120 minutes):
+
 - What does a complete session look like?
 - Where are the natural stopping points?
 - What's the "hook" that makes them think about the game when not playing?
 
 **Progression Loop** (days/weeks):
+
 - How does the player grow? (Power? Knowledge? Options? Story?)
 - What's the long-term goal? When is the game "done"?
 
 **Player Motivation Analysis** (based on Self-Determination Theory):
+
 - **Autonomy**: How much meaningful choice does the player have?
 - **Competence**: How does the player feel their skill growing?
 - **Relatedness**: How does the player feel connected (to characters,
@@ -175,28 +183,33 @@ same direction. Even for solo developers, pillars prevent scope creep and
 keep the vision sharp.
 
 Collaboratively define **3-5 pillars**:
+
 - Each pillar has a **name** and **one-sentence definition**
 - Each pillar has a **design test**: "If we're debating between X and Y,
-  this pillar says we choose __"
+  this pillar says we choose \_\_"
 - Pillars should feel like they create tension with each other — if all
   pillars point the same way, they're not doing enough work
 
 Then define **3+ anti-pillars** (what this game is NOT):
+
 - Anti-pillars prevent the most common form of scope creep: "wouldn't it
   be cool if..." features that don't serve the core vision
 - Frame as: "We will NOT do [thing] because it would compromise [pillar]"
 
 **Pillar confirmation**: After presenting the full pillar set, use `question`:
+
 - Prompt: "Do these pillars feel right for your game?"
 - Options: `[A] Lock these in` / `[B] Rename or reframe one` / `[C] Swap a pillar out` / `[D] Something else`
 
 If the user selects B, C, or D, make the revision, then use `question` again:
+
 - Prompt: "Pillars updated. Ready to lock these in?"
 - Options: `[A] Lock these in` / `[B] Revise another pillar` / `[C] Something else`
 
 Repeat until the user selects [A] Lock these in.
 
 **Review mode check** — apply before spawning CD-PILLARS and AD-CONCEPT-VISUAL:
+
 - `solo` → skip both. Note: "CD-PILLARS skipped — Solo mode. AD-CONCEPT-VISUAL skipped — Solo mode." Proceed to Phase 5.
 - `lean` → skip both (not PHASE-GATEs). Note: "CD-PILLARS skipped — Lean mode. AD-CONCEPT-VISUAL skipped — Lean mode." Proceed to Phase 5.
 - `full` → spawn as normal.
@@ -210,6 +223,7 @@ Repeat until the user selects [A] Lock these in.
   Pass: game concept elevator pitch, full pillar set with design tests, target platform (if known), any reference games or visual touchstones the user mentioned.
 
 Collect both verdicts, then present them together using a two-tab `question`:
+
 - Tab **"Pillars"**: present creative-director feedback. Options mirror the standard CD-PILLARS handling — `Lock in as-is` / `Revise [specific pillar]` / `Discuss further`.
 - Tab **"Visual anchor"**: present the art-director's 2-3 named visual direction options. Options: each named direction (one per option) + `Combine elements across directions` + `Describe my own direction`.
 
@@ -255,6 +269,7 @@ Ground the concept in reality:
 - **Scope tiers**: What's the full vision vs. what ships if time runs out?
 
 **Review mode check** — apply before spawning TD-FEASIBILITY:
+
 - `solo` → skip. Note: "TD-FEASIBILITY skipped — Solo mode." Proceed directly to scope tier definition.
 - `lean` → skip (not a PHASE-GATE). Note: "TD-FEASIBILITY skipped — Lean mode." Proceed directly to scope tier definition.
 - `full` → spawn as normal.
@@ -266,6 +281,7 @@ Pass: core loop description, platform target, engine choice (or "undecided"), li
 Present the assessment to the user. If HIGH RISK, offer to revisit scope before finalising. If CONCERNS, note them and continue.
 
 **Review mode check** — apply before spawning PR-SCOPE:
+
 - `solo` → skip. Note: "PR-SCOPE skipped — Solo mode." Proceed to document generation.
 - `lean` → skip (not a PHASE-GATE). Note: "PR-SCOPE skipped — Lean mode." Proceed to document generation.
 - `full` → spawn as normal.
@@ -293,6 +309,7 @@ Present the assessment to the user. If UNREALISTIC, offer to adjust the MVP defi
    move" decision before it can be forgotten between sessions.
 
 5. Use `question` for write approval:
+
 - Prompt: "Game concept is ready. May I write it to `design/gdd/game-concept.md`?"
 - Options: `[A] Yes — write it` / `[B] Not yet — revise a section first`
 
@@ -308,21 +325,30 @@ If yes, generate the document using the template at `.opencode/docs/templates/ga
 
 6. **Suggest next steps** (in this order — this is the professional studio
    pre-production pipeline). List ALL steps — do not abbreviate or truncate:
-   1. "Run `/setup-engine` to configure the engine and populate version-aware reference docs"
-   2. "Run `/art-bible` to create the visual identity specification — do this BEFORE writing GDDs. The art bible gates asset production and shapes technical architecture decisions (rendering, VFX, UI systems)."
-   3. "Use `/design-review design/gdd/game-concept.md` to validate concept completeness before going downstream"
-   4. "Discuss vision with the `creative-director` agent for pillar refinement"
-   5. "Decompose the concept into individual systems with `/map-systems` — maps dependencies, assigns priorities, and creates the systems index"
-   5. "Author per-system GDDs with `/design-system` — guided, section-by-section GDD writing for each system identified in step 4"
-   6. "Plan the technical architecture with `/create-architecture` — produces the master architecture blueprint and Required ADR list"
-   7. "Record key architectural decisions with `/architecture-decision (×N)` — write one ADR per decision in the Required ADR list from `/create-architecture`"
-   8. "Validate readiness to advance with `/gate-check` — phase gate before committing to production"
-   9. "Prototype the riskiest system with `/prototype [core-mechanic]` — validate the core loop before full implementation"
-   10. "Run `/playtest-report` after the prototype to validate the core hypothesis"
-   11. "If validated, plan the first sprint with `/sprint-plan new`"
 
-7. **Output a summary** with the chosen concept's elevator pitch, pillars,
-   primary player type, engine recommendation, biggest risk, and file path.
+**Path A — Design-First** (recommended if the concept is well-defined):
+
+1.  "Run `/setup-engine` to configure the engine and populate version-aware reference docs"
+2.  "Run `/art-bible` to create the visual identity specification — do this BEFORE writing GDDs. **The art bible is required before the Technical Setup gate.** It gates asset production and shapes technical architecture decisions (rendering, VFX, UI systems)."
+3.  "Use `/design-review design/gdd/game-concept.md` to validate concept completeness before going downstream"
+4.  "Discuss vision with the `creative-director` agent for pillar refinement"
+5.  "Decompose the concept into individual systems with `/map-systems` — maps dependencies, assigns priorities, and creates the systems index"
+6.  "Author per-system GDDs with `/design-system` — guided, section-by-section GDD writing for each system identified in step 5"
+7.  "Plan the technical architecture with `/create-architecture` — produces the master architecture blueprint and Required ADR list"
+8.  "Record key architectural decisions with `/architecture-decision (×N)` — write one ADR per decision in the Required ADR list from `/create-architecture`"
+9.  "Run `/architecture-review` — bootstraps the TR registry and Requirements Traceability Matrix from your GDDs and ADRs (required before the Pre-Production gate)"
+10. "Validate readiness to advance with `/gate-check` — phase gate before committing to production"
+
+**Path B — Prototype-First** (use if the core mechanic is unproven or the concept needs validation):
+
+1.  "Run `/setup-engine` to configure the engine"
+2.  "Run `/prototype [core-mechanic]` — validate the core idea is fun before writing any GDDs (1–3 days throwaway code)"
+3.  "If prototype PROCEEDS: run `/art-bible`, then continue with Path A steps 5–10 above, using prototype learnings to inform your GDDs"
+4.  "If prototype PIVOTS: return to `/brainstorm` with the learnings and reshape the concept"
+5.  "After full design and architecture, build the `/vertical-slice` to validate production readiness before committing to sprints"
+
+6.  **Output a summary** with the chosen concept's elevator pitch, pillars,
+    primary player type, engine recommendation, biggest risk, and file path.
 
 Verdict: **COMPLETE** — game concept created and handed off for next steps.
 
@@ -342,9 +368,11 @@ append this notice to the current response before continuing:
 ## Recommended Next Steps
 
 After the game concept is written, follow the pre-production pipeline in order:
+
 1. `/setup-engine` — configure the engine and populate version-aware reference docs
 2. `/art-bible` — establish visual identity before writing any GDDs
 3. `/map-systems` — decompose the concept into individual systems with dependencies
 4. `/design-system [first-system]` — author per-system GDDs in dependency order
 5. `/create-architecture` — produce the master architecture blueprint
-6. `/gate-check pre-production` — validate readiness before committing to production
+6. `/architecture-review` — bootstrap TR registry and Requirements Traceability Matrix
+7. `/gate-check pre-production` — validate readiness before committing to production

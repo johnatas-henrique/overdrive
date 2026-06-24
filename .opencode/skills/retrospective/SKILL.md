@@ -3,9 +3,7 @@ name: retrospective
 description: "Generates a sprint or milestone retrospective by analyzing completed work, velocity, blockers, and patterns. Produces actionable insights for the next iteration."
 argument-hint: "[sprint-N|milestone-name]"
 user-invocable: true
-allowed-tools: Read, Glob, Grep, Write
-context: |
-  !git log --oneline --since="2 weeks ago" 2>/dev/null
+allowed-tools: Read, Glob, Grep, Write, Bash, question
 ---
 
 ## Phase 1: Parse Arguments
@@ -22,17 +20,15 @@ Before loading any data, glob for an existing retrospective file:
   (also check `production/sprints/sprint-[N]-retrospective.md` as an alternate location)
 - For milestone retrospectives: `production/retrospectives/retro-[milestone-name]-*.md`
 
-If a matching file is found, present the user with:
+If a matching file is found, use `question`:
 
-```
-An existing retrospective was found: [filename]
+- Prompt: "An existing retrospective was found: [filename]. How do you want to proceed?"
+- Options:
+  - `[A] Update existing — load it and add/revise sections with new data`
+  - `[B] Start fresh — generate a new retrospective (archive the old one)`
 
-[A] Update existing retrospective — load it and add/revise sections
-[B] Start fresh — generate a new retrospective, archiving the old one
-```
-
-Wait for user selection before continuing. If updating, read the existing file and
-carry its content forward into the generation phase, revising sections with new data.
+If [A]: read the existing file and carry its content forward, revising sections with new data.
+If [B]: continue to Phase 2 with a blank slate. Before writing the new file, rename the existing one with a `-archived-[date]` suffix.
 
 ---
 
@@ -42,6 +38,8 @@ Read the sprint or milestone plan from the appropriate location:
 
 - Sprint plans: `production/sprints/`
 - Milestone definitions: `production/milestones/`
+
+**Also check for `production/sprint-status.yaml`**: if it exists, read it alongside the sprint plan. It is the authoritative source for actual story completion status (status: done, completed dates, blockers). Use it as the primary source for completion metrics in Phase 3. Fall back to markdown scanning only if the yaml does not exist. Note discrepancies between the yaml and the sprint plan (e.g., stories in yaml not in plan, or vice versa).
 
 **If the file does not exist or is empty**, output:
 
@@ -59,7 +57,13 @@ If the user chooses [B], stop here.
 
 Extract: planned tasks, estimated effort, owners, and goals.
 
-Read the git log for the period covered by the sprint or milestone to understand what was actually committed and when.
+Run git log for the sprint period to understand what was actually committed and when. Use the Bash tool (which uses Git Bash on Windows — the `2>/dev/null` is bash syntax, not PowerShell):
+
+```
+Bash: git log --oneline --since="4 weeks ago" 2>/dev/null || git log --oneline -20
+```
+
+Adjust the `--since` date to match the sprint duration if known from the sprint plan.
 
 ---
 
@@ -79,7 +83,7 @@ Scan the codebase for TODO/FIXME trends:
 - Compare to previous sprint counts if available (check previous retrospectives)
 - Note whether technical debt is growing or shrinking
 
-Read previous retrospectives (if any) from `production/sprints/` or `production/milestones/` to check:
+Read previous retrospectives (if any) from `production/retrospectives/` to check:
 
 - Were previous action items addressed?
 - Are the same problems recurring?
@@ -91,38 +95,41 @@ Read previous retrospectives (if any) from `production/sprints/` or `production/
 
 ```markdown
 ## Retrospective: [Sprint N / Milestone Name]
+
 Period: [Start Date] -- [End Date]
 Generated: [Date]
 
 ### Metrics
 
-| Metric | Planned | Actual | Delta |
-|--------|---------|--------|-------|
-| Tasks | [X] | [Y] | [+/- Z] |
-| Completion Rate | -- | [Z%] | -- |
-| Story Points / Effort Days | [X] | [Y] | [+/- Z] |
-| Bugs Found | -- | [N] | -- |
-| Bugs Fixed | -- | [N] | -- |
-| Unplanned Tasks Added | -- | [N] | -- |
-| Commits | -- | [N] | -- |
+| Metric                     | Planned | Actual | Delta   |
+| -------------------------- | ------- | ------ | ------- |
+| Tasks                      | [X]     | [Y]    | [+/- Z] |
+| Completion Rate            | --      | [Z%]   | --      |
+| Story Points / Effort Days | [X]     | [Y]    | [+/- Z] |
+| Bugs Found                 | --      | [N]    | --      |
+| Bugs Fixed                 | --      | [N]    | --      |
+| Unplanned Tasks Added      | --      | [N]    | --      |
+| Commits                    | --      | [N]    | --      |
 
 ### Velocity Trend
 
-| Sprint | Planned | Completed | Rate |
-|--------|---------|-----------|------|
-| [N-2] | [X] | [Y] | [Z%] |
-| [N-1] | [X] | [Y] | [Z%] |
-| [N] (current) | [X] | [Y] | [Z%] |
+| Sprint        | Planned | Completed | Rate |
+| ------------- | ------- | --------- | ---- |
+| [N-2]         | [X]     | [Y]       | [Z%] |
+| [N-1]         | [X]     | [Y]       | [Z%] |
+| [N] (current) | [X]     | [Y]       | [Z%] |
 
 **Trend**: [Increasing / Stable / Decreasing]
 [One sentence explaining the trend]
 
 ### What Went Well
+
 - [Observation backed by specific data or examples]
 - [Another positive observation]
 - [Recognize specific contributions or decisions that paid off]
 
 ### What Went Poorly
+
 - [Specific issue with measurable impact -- e.g., "Feature X took 5 days
   instead of estimated 2, blocking tasks Y and Z"]
 - [Another issue with impact]
@@ -130,16 +137,16 @@ Generated: [Date]
 
 ### Blockers Encountered
 
-| Blocker | Duration | Resolution | Prevention |
-|---------|----------|------------|------------|
+| Blocker                 | Duration   | Resolution            | Prevention                  |
+| ----------------------- | ---------- | --------------------- | --------------------------- |
 | [What blocked progress] | [How long] | [How it was resolved] | [How to prevent recurrence] |
 
 ### Estimation Accuracy
 
-| Task | Estimated | Actual | Variance | Likely Cause |
-|------|-----------|--------|----------|--------------|
-| [Most overestimated task] | [X] | [Y] | [+Z] | [Why] |
-| [Most underestimated task] | [X] | [Y] | [-Z] | [Why] |
+| Task                       | Estimated | Actual | Variance | Likely Cause |
+| -------------------------- | --------- | ------ | -------- | ------------ |
+| [Most overestimated task]  | [X]       | [Y]    | [+Z]     | [Why]        |
+| [Most underestimated task] | [X]       | [Y]    | [-Z]     | [Why]        |
 
 **Overall estimation accuracy**: [X%] of tasks within +/- 20% of estimate
 
@@ -148,11 +155,12 @@ tasks? What adjustment should we apply?]
 
 ### Carryover Analysis
 
-| Task | Original Sprint | Times Carried | Reason | Action |
-|------|----------------|---------------|--------|--------|
-| [Task that was not completed] | [Sprint N-X] | [N] | [Why] | [Complete / Descope / Redesign] |
+| Task                          | Original Sprint | Times Carried | Reason | Action                          |
+| ----------------------------- | --------------- | ------------- | ------ | ------------------------------- |
+| [Task that was not completed] | [Sprint N-X]    | [N]           | [Why]  | [Complete / Descope / Redesign] |
 
 ### Technical Debt Status
+
 - Current TODO count: [N] (previous: [N])
 - Current FIXME count: [N] (previous: [N])
 - Current HACK count: [N] (previous: [N])
@@ -161,22 +169,24 @@ tasks? What adjustment should we apply?]
 
 ### Previous Action Items Follow-Up
 
-| Action Item (from Sprint N-1) | Status | Notes |
-|-------------------------------|--------|-------|
-| [Previous action] | [Done / In Progress / Not Started] | [Context] |
+| Action Item (from Sprint N-1) | Status                             | Notes     |
+| ----------------------------- | ---------------------------------- | --------- |
+| [Previous action]             | [Done / In Progress / Not Started] | [Context] |
 
 ### Action Items for Next Iteration
 
-| # | Action | Owner | Priority | Deadline |
-|---|--------|-------|----------|----------|
-| 1 | [Specific, measurable action] | [Who] | [High/Med/Low] | [When] |
-| 2 | [Another action] | [Who] | [Priority] | [When] |
+| #   | Action                        | Owner | Priority       | Deadline |
+| --- | ----------------------------- | ----- | -------------- | -------- |
+| 1   | [Specific, measurable action] | [Who] | [High/Med/Low] | [When]   |
+| 2   | [Another action]              | [Who] | [Priority]     | [When]   |
 
 ### Process Improvements
+
 - [Specific change to how we work, with expected benefit]
 - [Another improvement -- keep it to 2-3 actionable items, not a wish list]
 
 ### Summary
+
 [2-3 sentence overall assessment: Was this a good sprint/milestone? What is
 the single most important thing to change going forward?]
 ```
@@ -187,9 +197,9 @@ the single most important thing to change going forward?]
 
 Present the retrospective and top findings to the user (completion rate, velocity trend, top blocker, most important action item).
 
-Ask: "May I write this to `production/sprints/sprint-[N]-retrospective.md`?" (or the milestone path if applicable)
+Ask: "May I write this to `production/retrospectives/retro-sprint-[N]-[date].md`?" (or `production/retrospectives/retro-[milestone-name]-[date].md` for milestone retrospectives)
 
-If yes, write the file, creating the directory if needed. Verdict: **COMPLETE** — retrospective saved.
+If yes, write the file, creating the `production/retrospectives/` directory if needed. Verdict: **COMPLETE** — retrospective saved.
 
 If no, stop here. Verdict: **BLOCKED** — user declined write.
 
@@ -197,7 +207,15 @@ If no, stop here. Verdict: **BLOCKED** — user declined write.
 
 ## Phase 6: Next Steps
 
-- Run `/sprint-plan` to incorporate the action items and velocity data into the next sprint.
+Use `question`:
+
+- Prompt: "Retrospective complete. The action items and velocity data are ready. Would you like to start sprint planning now with this data pre-loaded?"
+- Options:
+  - `[A] Yes — open sprint planning with retro action items and velocity delta pre-populated`
+  - `[B] No — I'll reference the retrospective file manually when I'm ready`
+
+If the user selects [A]: Proceed to invoke `/sprint-plan new`, passing the retrospective file path and a summary of the action items and velocity change so the sprint planner can reference them.
+
 - If this was a milestone retrospective, run `/gate-check` to formally assess readiness for the next phase.
 
 ### Guidelines

@@ -3,18 +3,28 @@ name: hotfix
 description: "Emergency fix workflow that bypasses normal sprint processes with a full audit trail. Creates hotfix branch, tracks approvals, and ensures the fix is backported correctly."
 argument-hint: "[bug-id or description]"
 user-invocable: true
-allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Task
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Task, question
 ---
 
 > **Explicit invocation only**: This skill should only run when the user explicitly requests it with `/hotfix`. Do not auto-invoke based on context matching.
 
 ## Phase 1: Assess Severity
 
-Read the bug description or ID. Determine severity:
+Read the bug description or ID. Assess severity using these criteria:
 
-- **S1 (Critical)**: Game unplayable, data loss, security vulnerability — hotfix immediately
-- **S2 (Major)**: Significant feature broken, workaround exists — hotfix within 24 hours
-- If severity is S3 or lower, recommend using the normal bug fix workflow instead and stop.
+- **S1 (Critical)**: Game unplayable, data loss, security vulnerability
+- **S2 (Major)**: Significant feature broken, workaround exists
+- **S3 or lower**: Minor issue — normal bug fix workflow applies
+
+Confirm with `question`:
+
+- Prompt: "I've assessed this as **[assessed severity]** — [brief rationale]. Confirm severity to proceed:"
+- Options:
+  - `[A] S1 (Critical) — game unplayable, data loss, or security issue`
+  - `[B] S2 (Major) — significant feature broken, workaround exists`
+  - `[C] S3 or lower — redirect to normal bug fix workflow`
+
+If [C]: stop. Verdict: **REDIRECTED** — use the normal bug fix workflow for S3 and below.
 
 ---
 
@@ -24,29 +34,36 @@ Draft the hotfix record:
 
 ```markdown
 ## Hotfix: [Short Description]
+
 Date: [Date]
 Severity: [S1/S2]
 Reporter: [Who found it]
 Status: IN PROGRESS
 
 ### Problem
+
 [Clear description of what is broken and the player impact]
 
 ### Root Cause
+
 [To be filled during investigation]
 
 ### Fix
+
 [To be filled during implementation]
 
 ### Testing
+
 [What was tested and how]
 
 ### Approvals
+
 - [ ] Fix reviewed by lead-programmer
 - [ ] Regression test passed (qa-tester)
 - [ ] Release approved (producer)
 
 ### Rollback Plan
+
 [How to revert if the fix causes new issues]
 ```
 
@@ -58,11 +75,21 @@ If yes, write the file, creating the directory if needed.
 
 ## Phase 3: Create Hotfix Branch
 
-If git is initialized, create the hotfix branch:
+Check whether this is a git repository:
 
-```
-git checkout -b hotfix/[short-name] [release-tag-or-main]
-```
+`Bash: git rev-parse --is-inside-work-tree 2>/dev/null`
+
+If this command fails or returns empty: note "Not a git repository — create the branch manually." and skip branch creation.
+
+If the check passes, use `question` before creating the branch:
+
+- Prompt: "Ready to create hotfix branch 'hotfix/[short-name]' from [base-ref]?"
+- Options:
+  - `[A] Yes — create branch`
+  - `[B] Use a different base ref — I'll specify it`
+  - `[C] Skip — I'll create the branch myself`
+
+Only run `git checkout -b hotfix/[short-name] [base-ref]` if user selects [A]. If [B]: ask the user for the base ref, then run the command with that ref. If [C]: skip branch creation and proceed to Phase 4.
 
 ---
 
@@ -91,6 +118,7 @@ All three must return APPROVE before proceeding. If any returns CONCERNS or REJE
 ## Phase 5b: QA Re-Entry Gate
 
 After approvals, determine the QA scope required before deploying the hotfix. Spawn `qa-lead` via Task with:
+
 - The hotfix description and affected system
 - The regression test results from Phase 5
 - A list of all systems that touch the changed files (use Grep to find callers)
@@ -98,6 +126,7 @@ After approvals, determine the QA scope required before deploying the hotfix. Sp
 Ask qa-lead: **Is a full smoke check sufficient, or does this fix require a targeted team-qa pass?**
 
 Apply the verdict:
+
 - **Smoke check sufficient** — run `/smoke-check` against the hotfix build. If PASS, proceed to Phase 6.
 - **Targeted QA pass required** — run `/team-qa [affected-system]` scoped to the changed system only. If QA returns APPROVED or APPROVED WITH CONDITIONS, proceed to Phase 6.
 - **Full QA required** — S1 fixes that touch core systems may require a full `/team-qa sprint`. This delays deployment but prevents a bad patch.
@@ -112,6 +141,7 @@ Update the original bug file if one exists:
 
 ```markdown
 ## Fix Record
+
 **Fixed in**: hotfix/[branch-name] — [commit hash or description]
 **Fixed date**: [date]
 **Status**: Fixed — Pending Verification
@@ -136,6 +166,7 @@ Next: /bug-report verify [BUG-ID] after deploy to confirm resolution
 ```
 
 ### Rules
+
 - Hotfixes must be the MINIMUM change to fix the issue — no cleanup, no refactoring
 - Every hotfix must have a rollback plan documented before deployment
 - Hotfix branches merge to BOTH the release branch AND the development branch
@@ -152,3 +183,11 @@ If VERIFIED FIXED: run `/bug-report close [BUG-ID]` to formally close it.
 If STILL PRESENT: the hotfix failed — immediately re-open, assess rollback, and escalate.
 
 Schedule a post-incident review within 48 hours using `/retrospective hotfix`.
+
+Use `question`:
+
+- Prompt: "Hotfix complete. What's the next step?"
+- Options:
+  - `[A] Run /smoke-check to verify the fix`
+  - `[B] Run /patch-notes to document this hotfix`
+  - `[C] Stop here`

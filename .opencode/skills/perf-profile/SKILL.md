@@ -18,7 +18,7 @@ Read the argument:
 
 ## Phase 2: Load Performance Budgets
 
-Check for existing performance targets in design docs or AGENTS.md (or `CLAUDE.md` for Claude Code projects):
+Check for existing performance targets in design docs or AGENTS.md:
 
 - Target FPS (e.g., 60fps = 16.67ms frame budget)
 - Memory budget (total and per-system)
@@ -31,6 +31,7 @@ Check for existing performance targets in design docs or AGENTS.md (or `CLAUDE.m
 ## Phase 3: Analyze Codebase
 
 **CPU Profiling Targets:**
+
 - `_process()` / `Update()` / `Tick()` functions — list all and estimate cost
 - Nested loops over large collections
 - String operations in hot paths
@@ -39,6 +40,7 @@ Check for existing performance targets in design docs or AGENTS.md (or `CLAUDE.m
 - Expensive physics queries (raycasts, overlaps) every frame
 
 **Memory Profiling Targets:**
+
 - Large data structures and their growth patterns
 - Texture/asset memory footprint estimates
 - Object pool vs instantiate/destroy patterns
@@ -46,6 +48,7 @@ Check for existing performance targets in design docs or AGENTS.md (or `CLAUDE.m
 - Cache sizes and eviction policies
 
 **Rendering Targets (if applicable):**
+
 - Draw call estimates
 - Overdraw from overlapping transparent objects
 - Shader complexity
@@ -53,6 +56,7 @@ Check for existing performance targets in design docs or AGENTS.md (or `CLAUDE.m
 - Missing LODs or occlusion culling
 
 **I/O Targets:**
+
 - Save/load performance
 - Asset loading patterns (sync vs async)
 - Network message frequency and size
@@ -63,21 +67,25 @@ Check for existing performance targets in design docs or AGENTS.md (or `CLAUDE.m
 
 ```markdown
 ## Performance Profile: [System or Full]
+
 Generated: [Date]
 
 ### Performance Budgets
-| Metric | Budget | Estimated Current | Status |
-|--------|--------|-------------------|--------|
-| Frame time | [16.67ms] | [estimate] | [OK/WARNING/OVER] |
-| Memory | [target] | [estimate] | [OK/WARNING/OVER] |
-| Load time | [target] | [estimate] | [OK/WARNING/OVER] |
-| Draw calls | [target] | [estimate] | [OK/WARNING/OVER] |
+
+| Metric     | Budget    | Estimated Current | Status            |
+| ---------- | --------- | ----------------- | ----------------- |
+| Frame time | [16.67ms] | [estimate]        | [OK/WARNING/OVER] |
+| Memory     | [target]  | [estimate]        | [OK/WARNING/OVER] |
+| Load time  | [target]  | [estimate]        | [OK/WARNING/OVER] |
+| Draw calls | [target]  | [estimate]        | [OK/WARNING/OVER] |
 
 ### Hotspots Identified
-| # | Location | Issue | Estimated Impact | Fix Effort |
-|---|----------|-------|------------------|------------|
+
+| #   | Location | Issue | Estimated Impact | Fix Effort |
+| --- | -------- | ----- | ---------------- | ---------- |
 
 ### Optimization Recommendations (Priority Order)
+
 1. **[Title]** — [Description]
    - Location: [file:line]
    - Expected gain: [estimate]
@@ -85,9 +93,11 @@ Generated: [Date]
    - Approach: [How to implement]
 
 ### Quick Wins (< 1 hour each)
+
 - [Simple optimization 1]
 
 ### Requires Investigation
+
 - [Area that needs actual runtime profiling to confirm impact]
 ```
 
@@ -119,6 +129,7 @@ This skill is read-only — no files are written. Verdict: **COMPLETE** — perf
 - To schedule optimizations: run `/sprint-plan update`.
 
 ### Rules
+
 - Never optimize without measuring first — gut feelings about performance are unreliable
 - Recommendations must include estimated impact — "make it faster" is not actionable
 - Profile on target hardware, not just development machines

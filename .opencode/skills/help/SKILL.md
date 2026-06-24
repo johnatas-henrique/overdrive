@@ -5,7 +5,7 @@ argument-hint: "[optional: what you just finished, e.g. 'finished design-review'
 user-invocable: true
 allowed-tools: Read, Glob, Grep
 context: |
-  Static help skill — reads production artifacts directly to determine project state and next steps.
+  !echo "=== Live Project State ===" && echo "Stage: $(cat production/stage.txt 2>/dev/null | tr -d '[:space:]' || echo 'not set')" && echo "Latest sprint: $(ls -t production/sprints/*.md 2>/dev/null | head -1 || echo 'none')" && echo "Session state: $(head -5 production/session-state/active.md 2>/dev/null || echo 'none')"
 model: opencode-go/deepseek-v4-flash
 ---
 
@@ -63,7 +63,6 @@ Check in this order:
    - "Production" → `production`
    - "Polish" → `polish`
    - "Release" → `release`
-   - "exploration" → `exploration` (pre-workflow, not in catalog)
 
 2. **If stage.txt is missing**, infer phase from artifacts (most-advanced match wins):
    - `src/` has 10+ source files → `production`
@@ -71,41 +70,14 @@ Check in this order:
    - `docs/architecture/adr-*.md` exists → `technical-setup`
    - `design/gdd/systems-index.md` exists → `systems-design`
    - `design/gdd/game-concept.md` exists → `concept`
-   - `prototypes/explore/*/REPORT.md` exists → `exploration` (pre-workflow, no concept yet)
-   - `prototypes/explore/` directory exists (any files) → `exploration`
    - Nothing → `concept` (fresh project)
-
-3. **If phase is `exploration`**: Return early with exploration-specific guidance.
-   This phase is not in the catalog — skip Steps 4-8 and go directly to reporting.
-
-   Read `prototypes/explore/` to find existing reports. Count how many ideas
-   have been prototyped and list their verdicts.
-
-   ```
-   ## Where You Are: Pre-Workflow Exploration
-
-   You are prototyping game ideas before committing to a development workflow.
-   No workflow is selected yet — no GDDs, no architecture, no sprint plans.
-
-   **Exploration prototypes found: [N]**
-   [List each with verdict from REPORT.md]
-
-   ### → Next up
-   **[Explore another idea]** — Run `/explore [description]` to prototype a new idea.
-   **[Or: Select a workflow]** — When you're done exploring, run
-   `/gate-check workflow-selection` to compare your prototypes and choose
-   between Hybrid (lean, iterative) and Full OCGS (formal, structured).
-
-   ### ~ Also available
-   - `/gate-check workflow-selection` — compare prototypes and choose workflow
-   - `/explore [idea]` — prototype another idea
-   ```
 
 ---
 
 ## Step 3: Read Session Context
 
 Read `production/session-state/active.md` if it exists. Extract:
+
 - What was most recently worked on
 - Any in-progress tasks or open questions
 - Current epic/feature/task from STATUS block (if present)
@@ -122,6 +94,7 @@ For each step in the current phase (from the catalog):
 ### Artifact-based checks
 
 If the step has `artifact.glob`:
+
 - Use Glob to check if files matching the pattern exist
 - If `min_count` is specified, verify at least that many files match
 - If `artifact.pattern` is specified, use Grep to verify the pattern exists in the matched file
@@ -129,9 +102,11 @@ If the step has `artifact.glob`:
 - **Incomplete** = artifact is missing or pattern not found
 
 If the step has `artifact.note` (no glob):
+
 - Mark as **MANUAL** — cannot auto-detect, will ask user
 
 If the step has no `artifact` field:
+
 - Mark as **UNKNOWN** — completion not trackable (e.g. repeatable implementation work)
 
 ### Special case: production phase — read `sprint-status.yaml`
@@ -150,7 +125,7 @@ artifact check for the `implement` and `story-done` steps — the YAML is author
 ### Special case: `repeatable: true` (non-production)
 
 For repeatable steps outside production (e.g. "System GDDs"), the artifact
-check tells you whether *any* work has been done, not whether it's finished.
+check tells you whether _any_ work has been done, not whether it's finished.
 Label these differently — show what's been detected, then note it may be ongoing.
 
 ---
@@ -160,9 +135,9 @@ Label these differently — show what's been detected, then note it may be ongoi
 From the completion data, determine:
 
 1. **Last confirmed complete step** — the furthest completed required step
-2. **Current blocker** — the first incomplete *required* step (this is what the
+2. **Current blocker** — the first incomplete _required_ step (this is what the
    user must do next)
-3. **Optional opportunities** — incomplete *optional* steps that can be done
+3. **Optional opportunities** — incomplete _optional_ steps that can be done
    before or alongside the blocker
 4. **Upcoming required steps** — required steps after the current blocker
    (show as "coming up" so user can plan ahead)
@@ -175,6 +150,7 @@ to advance past the step they named even if the artifact check is ambiguous.
 ## Step 6: Check for In-Progress Work
 
 If `active.md` shows an active task or epic:
+
 - Surface it prominently at the top: "It looks like you were working on [X]"
 - Suggest continuing it or confirm if it's done
 
@@ -210,6 +186,7 @@ Approaching **[next phase]** gate → run `/gate-check` when ready.
 ```
 
 **Formatting rules:**
+
 - `✓` for confirmed complete
 - `→` for the current required next step (only one — the first blocker)
 - `~` for optional steps available now
@@ -224,6 +201,7 @@ Verdict: **COMPLETE** — next steps identified.
 ## Step 8: Gate Warning (if close)
 
 After the current phase's steps, check if the user is likely approaching a gate:
+
 - If all required steps in the current phase are complete (or nearly complete),
   add: "You're close to the **[Current] → [Next]** gate. Run `/gate-check` when ready."
 - If multiple required steps remain, skip the gate warning — it's not relevant yet.
