@@ -121,6 +121,9 @@ _Handled by neighbouring stories — do not implement here:_
 - Assert: no cross-test contamination
 
 ## Test Evidence
+
+Test evidence: `tests/unit/config-manager.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 001 (needs core register + get to be implemented)

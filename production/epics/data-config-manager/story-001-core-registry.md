@@ -135,6 +135,9 @@ _Handled by neighbouring stories — do not implement here:_
 - Assert: throws `ConfigError` with hint about init ordering
 
 ## Test Evidence
+
+Test evidence: `tests/unit/config-manager.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: None (Foundation root)

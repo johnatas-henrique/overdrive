@@ -77,6 +77,9 @@ _Handled by neighbouring stories — do not implement here:_
 - Assert: game does not crash, error logged
 
 ## Test Evidence
+
+Test evidence: `tests/unit/config-manager.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 003a (needs `invalidateNamespace()` to exist)
