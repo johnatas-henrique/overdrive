@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConfigError, ConfigManager } from "../../src/foundation/config";
 
 describe("ConfigManager", () => {
@@ -158,6 +158,190 @@ describe("ConfigManager", () => {
       expect(() => cm.get("teams.macklen.motor")).toThrow(
         "Possible init ordering issue"
       );
+    });
+  });
+
+  describe("env override", () => {
+    // Track env keys set during each test for cleanup
+    const _envKeys: string[] = [];
+
+    afterEach(() => {
+      for (const key of _envKeys) {
+        delete process.env[key];
+      }
+      _envKeys.length = 0;
+    });
+
+    function _setEnv(key: string, value: string): void {
+      process.env[key] = value;
+      _envKeys.push(key);
+    }
+
+    // ── AC-1: Env var overrides default ──
+
+    it("AC-1: should override default with env var value", () => {
+      _setEnv("OVERDRIVE__TEAMS__MACKLEN__MOTOR", "3");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      expect(cm.get<number>("teams.macklen.motor")).toBe(3);
+    });
+
+    it("AC-1: should override with '0' (falsy but valid)", () => {
+      _setEnv("OVERDRIVE__TEAMS__MACKLEN__MOTOR", "0");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      expect(cm.get<number>("teams.macklen.motor")).toBe(0);
+    });
+
+    it("AC-1: should override with negative number", () => {
+      _setEnv("OVERDRIVE__TEAMS__MACKLEN__MOTOR", "-5");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      expect(cm.get<number>("teams.macklen.motor")).toBe(-5);
+    });
+
+    // ── AC-2: Env var for non-existent namespace ──
+
+    it("AC-2: should ignore env var for non-existent namespace", () => {
+      _setEnv("OVERDRIVE__UNKNOWN__KEY", "999");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+    });
+
+    it("AC-2: partial namespace match must not override", () => {
+      _setEnv("OVERDRIVE__TEAM", "5");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+    });
+
+    // ── AC-3: Type coercion ──
+
+    it("AC-3: should coerce numeric env var to number type", () => {
+      _setEnv("OVERDRIVE__TEAMS__MACKLEN__MOTOR", "3");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      const val = cm.get("teams.macklen.motor");
+      expect(typeof val).toBe("number");
+      expect(val).toBe(3);
+    });
+
+    it("AC-3: non-numeric env var stays as string", () => {
+      _setEnv("OVERDRIVE__TEAMS__NAME", "Macklen");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { name: "Default", macklen: { motor: 250 } });
+      expect(typeof cm.get("teams.name")).toBe("string");
+      expect(cm.get("teams.name")).toBe("Macklen");
+    });
+
+    // ── AC-4: Empty key segment ──
+
+    it("AC-4: empty key segment should warn and be skipped", () => {
+      // OVERDRIVE__TEAMS____MOTOR splits as ["OVERDRIVE", "TEAMS", "", "MOTOR"]
+      _setEnv("OVERDRIVE__TEAMS____MOTOR", "5");
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      expect(warnSpy).toHaveBeenCalled();
+      expect(warnSpy.mock.calls[0][0]).toContain("empty key segment");
+
+      // Verify override was NOT applied
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+
+      warnSpy.mockRestore();
+    });
+
+    it("AC-4: multiple empty segments should warn and be skipped", () => {
+      // OVERDRIVE_______TEAMS__MOTOR splits as ["OVERDRIVE", "", "", "TEAMS", "MOTOR"]
+      _setEnv("OVERDRIVE_______TEAMS__MOTOR", "5");
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      expect(warnSpy).toHaveBeenCalled();
+      expect(warnSpy.mock.calls[0][0]).toContain("empty key segment");
+
+      // Verify override was NOT applied
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+
+      warnSpy.mockRestore();
+    });
+
+    // ── AC-5: Env var cleanup ──
+
+    it("AC-5: env vars from previous tests are cleaned up", () => {
+      // No env vars set in this test — if AC-1's env var leaked, this would
+      // return 3 instead of 250
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+    });
+
+    // ── Additional coverage ──
+
+    it("should skip override when env var targets an object leaf", () => {
+      _setEnv("OVERDRIVE__TEAMS__MACKLEN", '{"motor":999}');
+      // Note: existing value is an object { motor: 250 }, so override is skipped
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // macklen is an object — skip override, keep original
+      expect(cm.get<object>("teams.macklen")).toEqual({ motor: 250 });
+    });
+
+    it("should skip override when intermediate path does not exist", () => {
+      _setEnv("OVERDRIVE__TEAMS__MACKLEN__NONEXISTENT", "99");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // nonexistent key doesn't exist in config — skip silently
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+    });
+
+    it("should skip override when deep intermediate path does not exist", () => {
+      // 3+ levels deep where level 2 doesn't exist — hits pathExists=false
+      _setEnv("OVERDRIVE__TEAMS__MACKLEN__DEEPER__X", "1");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+    });
+
+    it("should handle Infinity as non-numeric string", () => {
+      _setEnv("OVERDRIVE__TEAMS__MACKLEN__MOTOR", "Infinity");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      const val = cm.get("teams.macklen.motor");
+      expect(typeof val).toBe("string");
+      expect(val).toBe("Infinity");
+    });
+
+    it("should skip env var with matching namespace but no key path", () => {
+      // OVERDRIVE__TEAMS has no trailing __KEY — pathSegments will be empty
+      _setEnv("OVERDRIVE__TEAMS", "5");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      // No override applied because there's no key path
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
     });
   });
 });
