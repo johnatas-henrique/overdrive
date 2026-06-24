@@ -127,6 +127,54 @@ ctx.fillRect(0, 0, 512, 512);
 dt.update();
 ```
 
+### Asset Containers — Load Once, Instantiate Many
+
+For racing games where the same car/track models are loaded per race, use `SceneLoader.LoadAssetContainerAsync` (not `AssetsManager`). Containers parse once and re-add to scenes without re-parsing:
+
+```typescript
+import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
+import { AssetContainer } from "@babylonjs/core/assetContainer";
+import "@babylonjs/loaders/glTF/2.0/glTFLoader"; // Side-effect import — REQUIRED for GLB
+
+async function loadCarContainer(scene: Scene): Promise<AssetContainer> {
+  // Load into a temporary working scene (not the visual scene)
+  const container = await SceneLoader.LoadAssetContainerAsync(
+    "assets/cars/",
+    "macklen.glb",
+    scene  // Pass the target scene — containers are scene-independent
+  );
+
+  // Container has .meshes, .materials, .transformNodes, .animationGroups
+  // All are NOT yet added to the scene
+  return container;
+}
+
+// On race start — instantiate from cached container:
+const raceCarMesh = macklenContainer.instantiateModelsToScene(
+  (name) => `car_player_${name}`,  // Name prefix for unique IDs
+  // Optional: doNotInstantiate — function to skip specific node types
+);
+// Returns: { rootNodes: AbstractMesh[], meshes: AbstractMesh[], ... }
+// Each root node is a clone — shared materials by default
+
+// Cleanup between races:
+container.removeAllFromScene(); // Unparents meshes (container stays valid)
+// OR
+container.dispose();           // Frees all GPU memory — container invalid after this
+
+// Important: Animation groups from a DISPOSED scene/container are invalid.
+// Must re-clone via instantiateModelsToScene() each race.
+```
+
+**Key points:**
+- `LoadAssetContainerAsync` is preferred over `AssetsManager` for racing games — containers avoid re-parsing GLB files per race
+- Side-effect import `@babylonjs/loaders/glTF/2.0/glTFLoader` is required or GLB loading fails silently
+- `container.instantiateModelsToScene()` clones meshes with shared materials — clone materials individually if per-instance customization is needed
+- `removeAllFromScene()` keeps container valid for re-add (used for Race Again flow)
+- `dispose()` frees everything — container cannot be reused
+
+Source: ADR-0003 (Two-Scene Architecture), ADR-0019 (Menu LITE).
+
 ### Scene Management
 
 ```typescript
