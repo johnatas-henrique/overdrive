@@ -114,6 +114,9 @@ _Derived from ADR-0024 Implementation Guidelines:_
 - Assert: no crash, call is ignored or throws gracefully
 
 ## Test Evidence
+
+Test evidence: `tests/unit/gsm.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires currentState and transition(); Story 002 (async-lifecycle-hooks) — requires onExit/onEnter hooks; Story 004 (transition-throttling) — requires tick() and transition queue

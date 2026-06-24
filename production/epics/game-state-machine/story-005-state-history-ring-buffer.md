@@ -133,6 +133,9 @@ _Derived from ADR-0024 Implementation Guidelines:_
 - Assert: each entry has source state, target state, and timestamp
 
 ## Test Evidence
+
+Test evidence: `tests/unit/gsm.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires working transitions to record; Story 003 (event-bus-integration) — for event-based recording; Story 004 (transition-throttling) — for tick-based sequencing

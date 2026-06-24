@@ -132,6 +132,9 @@ _Derived from ADR-0024 Implementation Guidelines:_
 - Assert: each transition produces corresponding events on Event Bus
 
 ## Test Evidence
+
+Test evidence: `tests/unit/gsm.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires working transitions; Story 002 (async-lifecycle-hooks) — requires hook execution and rollback re-emission

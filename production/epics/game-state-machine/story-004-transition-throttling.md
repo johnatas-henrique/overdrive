@@ -122,6 +122,9 @@ _Derived from ADR-0024 Implementation Guidelines:_
 - Assert: excess calls dropped or oldest dropped (defined behavior)
 
 ## Test Evidence
+
+Test evidence: `tests/unit/gsm.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires working transition table and `currentState`; Story 003 (event-bus-integration) — queued transitions must emit events when executed

@@ -132,6 +132,9 @@ _Derived from ADR-0024 Implementation Guidelines:_
 - Assert: no events emitted, state unchanged
 
 ## Test Evidence
+
+Test evidence: `tests/unit/gsm.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - **Depends on**: None (first GSM story)

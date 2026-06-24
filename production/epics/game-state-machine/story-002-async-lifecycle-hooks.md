@@ -124,6 +124,9 @@ _Derived from ADR-0024 Implementation Guidelines:_
 - Assert: error caught, logged, state rolled back
 
 ## Test Evidence
+
+Test evidence: `tests/unit/gsm.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires State type, transition table, and `currentState` accessor
