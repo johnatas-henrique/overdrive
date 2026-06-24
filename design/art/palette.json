@@ -6,11 +6,26 @@
     "lastUpdated": "2025-06-18"
   },
   "gamePalette": {
-    "raceRed": { "hex": "#E8301A", "use": "Alert, danger, player damage, critical fuel" },
-    "trackBlack": { "hex": "#2A2A2A", "use": "Asphalt base (adjusted per track, ±1 step)" },
-    "kerbWhite": { "hex": "#F0F0F0", "use": "Track edges, start/finish line, UI text" },
-    "asphaltGrey": { "hex": "#4A4A4A", "use": "Runoff areas, secondary track surfaces" },
-    "signalYellow": { "hex": "#F5C800", "use": "Caution, kerbs, flag, highlight" }
+    "raceRed": {
+      "hex": "#E8301A",
+      "use": "Alert, danger, player damage, critical fuel"
+    },
+    "trackBlack": {
+      "hex": "#2A2A2A",
+      "use": "Asphalt base (adjusted per track, ±1 step)"
+    },
+    "kerbWhite": {
+      "hex": "#F0F0F0",
+      "use": "Track edges, start/finish line, UI text"
+    },
+    "asphaltGrey": {
+      "hex": "#4A4A4A",
+      "use": "Runoff areas, secondary track surfaces"
+    },
+    "signalYellow": {
+      "hex": "#F5C800",
+      "use": "Caution, kerbs, flag, highlight"
+    }
   },
   "skyPalettes": [
     {
@@ -189,12 +204,32 @@
     }
   ],
   "hudPalette": [
-    { "name": "Pure White", "hex": "#FFFFFF", "use": "Primary text, speed, revs" },
-    { "name": "Alert Red", "hex": "#E8301A", "use": "Critical fuel, warning, low tyres" },
+    {
+      "name": "Pure White",
+      "hex": "#FFFFFF",
+      "use": "Primary text, speed, revs"
+    },
+    {
+      "name": "Alert Red",
+      "hex": "#E8301A",
+      "use": "Critical fuel, warning, low tyres"
+    },
     { "name": "Fuel Blue", "hex": "#00BFFF", "use": "Fuel gauge" },
     { "name": "Tach Yellow", "hex": "#F5C800", "use": "Rev limiter zone" },
-    { "name": "Tyre Cyan", "hex": "#00E5FF", "use": "Tyre temperature indicator" },
-    { "name": "Position Ghost", "hex": "#808080", "use": "Ghost car / opponent delta" },
-    { "name": "Overtake Green", "hex": "#00FF66", "use": "Overtake streak, positive delta" }
+    {
+      "name": "Tyre Cyan",
+      "hex": "#00E5FF",
+      "use": "Tyre temperature indicator"
+    },
+    {
+      "name": "Position Ghost",
+      "hex": "#808080",
+      "use": "Ghost car / opponent delta"
+    },
+    {
+      "name": "Overtake Green",
+      "hex": "#00FF66",
+      "use": "Overtake streak, positive delta"
+    }
   ]
 }
