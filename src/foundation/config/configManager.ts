@@ -32,10 +32,13 @@ function _coerceEnvValue(value: string): string | number {
  * - Namespace uniqueness enforced — duplicate register throws
  * - Init ordering hint when namespace not yet registered
  * - Env override via `OVERDRIVE__NS__KEY` on register()
+ * - Two-tier storage: raw config in `_store`, env-overridden clone in `_resolved`
+ * - Per-namespace cache invalidation via `invalidateNamespace()` for HMR
  */
 export class ConfigManager {
   private _initialized = false;
   private _store: ConfigStore = new Map();
+  private _resolved: ConfigStore = new Map();
 
   /**
    * Initialize the ConfigManager.
@@ -49,8 +52,8 @@ export class ConfigManager {
   /**
    * Register a config namespace.
    *
-   * Stores the config object under the given namespace, then applies
-   * any matching environment variable overrides (ADR-0023 Decision 3).
+   * Stores the raw config object under the given namespace, then builds
+   * a resolved (env-overridden) copy in the internal cache.
    *
    * @param namespace - Unique namespace key (e.g., "teams", "physics")
    * @param config - Config object to store under this namespace
@@ -64,11 +67,14 @@ export class ConfigManager {
       throw new ConfigError(`Namespace already registered: ${namespace}`);
     }
     this._store.set(namespace, config);
-    this._applyEnvOverrides(namespace);
+    this._buildResolved(namespace);
   }
 
   /**
    * Get a config value by dot-separated key path.
+   *
+   * Reads from the resolved (env-overridden) config cache. If the namespace
+   * has not been resolved yet, it is built lazily from the raw config.
    *
    * @param key - Dot-separated path (e.g., "teams.macklen.motor")
    * @returns The value at the resolved path
@@ -84,12 +90,22 @@ export class ConfigManager {
     const namespace = parts[0];
     const rest = parts.slice(1);
 
-    // Check if the root namespace exists to provide init ordering hint
-    const root = this._store.get(namespace);
+    // Ensure resolved cache is built for this namespace
+    if (!this._resolved.has(namespace)) {
+      const rawExists = this._store.has(namespace);
+      if (!rawExists) {
+        throw new ConfigError(
+          `Key not found: ${key}. Possible init ordering issue — namespace not yet registered: ${namespace}`
+        );
+      }
+      this._buildResolved(namespace);
+    }
+
+    const root = this._resolved.get(namespace);
     if (!root) {
-      throw new ConfigError(
-        `Key not found: ${key}. Possible init ordering issue — namespace not yet registered: ${namespace}`
-      );
+      // Resolved is empty — raw store contained invalid data
+      // _buildResolved already logged console.error
+      throw new ConfigError(`Key not found: ${key}`);
     }
 
     // Traverse remaining path segments from the namespace root
@@ -111,8 +127,87 @@ export class ConfigManager {
   }
 
   /**
+   * Invalidate the resolved cache for a single namespace.
+   *
+   * When a Vite HMR update replaces a config file, call this to clear
+   * the cached resolved config. The next `get()` will re-read from the
+   * raw registered config (with env overrides still applied).
+   *
+   * If the raw config for the namespace is invalid (null, undefined,
+   * not a plain object), the stale cache is preserved and an error is
+   * logged to assist debugging.
+   *
+   * Invalidating an unregistered namespace is a safe no-op.
+   *
+   * @param namespace - Namespace to invalidate
+   */
+  invalidateNamespace(namespace: string): void {
+    if (!this._store.has(namespace)) {
+      return;
+    }
+
+    const raw = this._store.get(namespace);
+    if (!this._isValidConfig(raw)) {
+      console.error(
+        `ConfigManager: invalid payload for namespace '${namespace}' — cache not cleared (stale value preserved)`
+      );
+      return;
+    }
+
+    this._resolved.delete(namespace);
+  }
+
+  /**
+   * Build the resolved (env-overridden) config for a namespace and
+   * store it in the internal resolved cache.
+   *
+   * Clones the raw config from `_store` so env overrides never mutate
+   * the registered config object. Applies `OVERDRIVE__`-prefixed env
+   * var overrides to the clone, then caches the result in `_resolved`.
+   *
+   * If the raw config is invalid (not a plain object), an error is
+   * logged and the resolved cache is NOT updated — any existing stale
+   * cache remains accessible.
+   *
+   * @param namespace - The namespace to build
+   */
+  private _buildResolved(namespace: string): void {
+    const raw = this._store.get(namespace);
+
+    if (!this._isValidConfig(raw)) {
+      console.error(
+        `ConfigManager: cannot build resolved config for namespace '${namespace}' — raw config is invalid`
+      );
+      return;
+    }
+
+    // Deep clone: config objects are always JSON-serializable
+    // (no functions, Dates, Maps, Sets — per ADR-0023 constraint)
+    const resolved = JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
+
+    // Apply env overrides to the clone
+    this._applyEnvOverridesToClone(namespace, resolved);
+
+    this._resolved.set(namespace, resolved);
+  }
+
+  /**
+   * Validate that a payload is a non-null, non-array, plain object
+   * suitable as a config namespace value.
+   */
+  private _isValidConfig(payload: unknown): payload is object {
+    return (
+      payload !== null &&
+      payload !== undefined &&
+      typeof payload === "object" &&
+      !Array.isArray(payload)
+    );
+  }
+
+  /**
    * Scan process.env for `OVERDRIVE__` prefixed keys matching this namespace
-   * and apply leaf-level overrides to the stored config.
+   * and apply leaf-level overrides to the provided resolved config object
+   * (a clone, not the raw store entry).
    *
    * Env var format: `OVERDRIVE__{NAMESPACE}__{KEY_PATH}`
    * Example: `OVERDRIVE__TEAMS__MACKLEN__MOTOR=3` overrides
@@ -121,12 +216,11 @@ export class ConfigManager {
    * Empty key segments (e.g. `OVERDRIVE__TEAMS____MOTOR`) trigger a
    * `console.warn` and are skipped. Only leaf values (string, number) are
    * overridden — object values are skipped.
-   *
-   * Note: overrides are applied in-place on the registered config object
-   * (not a clone). This is intentional — env var &gt; default per ADR-0023.
-   * If the config object is frozen, this method will throw at runtime.
    */
-  private _applyEnvOverrides(namespace: string): void {
+  private _applyEnvOverridesToClone(
+    namespace: string,
+    resolved: Record<string, unknown>
+  ): void {
     const namespaceUpper = namespace.toUpperCase();
 
     for (const [envKey, envValue] of Object.entries(process.env)) {
@@ -152,9 +246,8 @@ export class ConfigManager {
 
       if (pathSegments.length === 0) continue;
 
-      // Traverse stored config to the parent of the leaf
-      const config = this._store.get(namespace) as Record<string, unknown>;
-      let current: Record<string, unknown> = config;
+      // Traverse resolved config to the parent of the leaf
+      let current: Record<string, unknown> = resolved;
       let pathExists = true;
 
       for (let i = 0; i < pathSegments.length - 1; i++) {
