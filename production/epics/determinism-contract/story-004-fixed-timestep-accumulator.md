@@ -154,6 +154,9 @@ _Handled by neighbouring stories — do not implement here:_
 - Assert: remainder preserved for next frame
 
 ## Test Evidence
+
+Test evidence: `tests/unit/determinism.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: None (standalone — pure math function)

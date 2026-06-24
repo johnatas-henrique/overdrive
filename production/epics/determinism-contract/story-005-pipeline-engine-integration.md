@@ -158,6 +158,9 @@ _Handled by neighbouring stories — do not implement here:_
 - In production mode, same operation does not fire assertion
 
 ## Test Evidence
+
+Test evidence: `tests/unit/determinism.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 002 (FixedUpdatePipeline — the pipeline instance), Story 004 (Accumulator — the `accumulate()` pure function)

@@ -163,6 +163,9 @@ _Handled by neighbouring stories — do not implement here:_
 - Assert: no assertion fires (guards compiled out)
 
 ## Test Evidence
+
+Test evidence: `tests/unit/determinism.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 002 (FixedUpdatePipeline — guard hooks into pipeline lifecycle)

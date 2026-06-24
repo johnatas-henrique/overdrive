@@ -183,6 +183,9 @@ _Handled by neighbouring stories — do not implement here:_
 - Assert: no error
 
 ## Test Evidence
+
+Test evidence: `tests/unit/determinism.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: None (standalone — pipeline class is pure TypeScript)

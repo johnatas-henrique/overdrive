@@ -128,6 +128,9 @@ _Handled by neighbouring stories — do not implement here:_
 - Assert: all values in [0, 1) range
 
 ## Test Evidence
+
+Test evidence: `tests/unit/determinism.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: None (Foundation root — pure math)
