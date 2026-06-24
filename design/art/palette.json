@@ -3,7 +3,7 @@
     "game": "Overdrive",
     "version": "1.0",
     "description": "Single source of truth for all palette colours. No values should be hardcoded in game code — import from this file.",
-    "lastUpdated": "2025-06-18"
+    "lastUpdated": "2026-06-24"
   },
   "gamePalette": {
     "raceRed": {
