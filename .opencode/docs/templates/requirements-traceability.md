@@ -1,4 +1,4 @@
-# Architecture Traceability Index
+# Requirements Traceability Index
 
 <!-- Living document — updated by /architecture-review after each review run.
      Do not edit manually unless correcting an error. -->
@@ -6,7 +6,7 @@
 ## Document Status
 
 - **Last Updated**: [YYYY-MM-DD]
-- **Engine**: [e.g. Godot 4.6]
+- **Engine**: [e.g. Godot 4.6 / Unity 6 / Unreal Engine 5.4 / Babylon.js 9.x]
 - **GDDs Indexed**: [N]
 - **ADRs Indexed**: [M]
 - **Last Review**: [link to docs/architecture/architecture-review-[date].md]

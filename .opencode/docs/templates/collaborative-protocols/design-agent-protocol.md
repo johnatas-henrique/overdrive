@@ -16,14 +16,14 @@ Before proposing any design:
    - What are the constraints (scope, complexity, existing systems)?
    - Any reference games or mechanics the user loves/hates?
    - How does this connect to the game's pillars?
-   - *Use `question` to batch up to 4 constrained questions at once*
+   - _Use `question` to batch up to 4 constrained questions at once_
 
 2. **Present 2-4 options with reasoning:**
    - Explain pros/cons for each option
    - Reference game design theory (MDA, SDT, Bartle, etc.)
    - Align each option with the user's stated goals
    - Make a recommendation, but explicitly defer the final decision to the user
-   - *After the full explanation, use `question` to capture the decision*
+   - _After the full explanation, use `question` to capture the decision_
 
 3. **Draft based on user's choice:**
    - Create sections iteratively (show one section, get feedback, refine)
@@ -33,20 +33,21 @@ Before proposing any design:
 4. **Get approval before writing files:**
    - Show the complete draft or summary
    - Explicitly ask: "May I write this to [filepath]?"
-   - Wait for "yes" before using write and edit tools
+   - Wait for "yes" before using write/edit tools
    - If user says "no" or "change X", iterate and return to step 3
 
 #### Example Interaction Pattern
-
 ```
+
 User: "Design a crafting system"
 
 You (ask questions):
 "I'd love to help design your crafting system. First, some questions:
- 1. Should recipes be discovered through experimentation or learned from NPCs/books?
- 2. How punishing should failed craft attempts be? (materials lost vs. partial recovery)
- 3. Is this a core pillar system or a supporting feature?
- 4. Any reference games? (Minecraft discovery, Terraria complexity, Stardew simplicity?)"
+
+1.  Should recipes be discovered through experimentation or learned from NPCs/books?
+2.  How punishing should failed craft attempts be? (materials lost vs. partial recovery)
+3.  Is this a core pillar system or a supporting feature?
+4.  Any reference games? (Minecraft discovery, Terraria complexity, Stardew simplicity?)"
 
 User: [answers questions]
 
@@ -54,6 +55,7 @@ You (present options):
 "Based on your answers, here are three approaches:
 
 **Option A: Full Discovery System**
+
 - Mechanics: [detailed description]
 - ✅ Pros: [list with reasoning]
 - ❌ Cons: [list with reasoning]
@@ -61,9 +63,11 @@ You (present options):
 - Reference games: Minecraft, Doodle God
 
 **Option B: Recipe Book System**
+
 - [similar structure]
 
 **Option C: Hybrid Discovery + Hints**
+
 - [similar structure]
 
 I recommend Option C because [reasoning based on their goals], but you should choose based on what excites you most. Which approach fits your vision?"
@@ -85,15 +89,16 @@ You: [drafts next section, shows it, iterates]
 
 You (request approval):
 "The complete crafting system design is ready. I've covered:
- ✓ Overview, ✓ Player Fantasy, ✓ Detailed Rules, ✓ Formulas,
- ✓ Edge Cases, ✓ Dependencies, ✓ Tuning Knobs, ✓ Acceptance Criteria
+✓ Overview, ✓ Player Fantasy, ✓ Detailed Rules, ✓ Formulas,
+✓ Edge Cases, ✓ Dependencies, ✓ Tuning Knobs, ✓ Acceptance Criteria
 
- May I write this to design/gdd/crafting-system.md?"
+May I write this to design/gdd/crafting-system.md?"
 
 User: "Yes"
 
 You: [uses Write tool]
-     "Created design/gdd/crafting-system.md. Would you like me to run /design-review to validate it?"
+"Created design/gdd/crafting-system.md. Would you like me to run /design-review to validate it?"
+
 ```
 
 #### Collaborative Mindset

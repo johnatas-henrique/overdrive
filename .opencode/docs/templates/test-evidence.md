@@ -19,11 +19,11 @@ the acceptance criteria numbers from the story that this evidence covers.]
 
 ## Acceptance Criteria Results
 
-| # | Criterion (from story) | Result | Notes |
-|---|----------------------|--------|-------|
+| #    | Criterion (from story) | Result      | Notes              |
+| ---- | ---------------------- | ----------- | ------------------ |
 | AC-1 | [exact criterion text] | PASS / FAIL | [any observations] |
-| AC-2 | [exact criterion text] | PASS / FAIL | |
-| AC-3 | [exact criterion text] | PASS / FAIL | |
+| AC-2 | [exact criterion text] | PASS / FAIL |                    |
+| AC-3 | [exact criterion text] | PASS / FAIL |                    |
 
 ---
 
@@ -32,12 +32,12 @@ the acceptance criteria numbers from the story that this evidence covers.]
 List all captured evidence below. Store files in the same directory as this
 document or in `production/qa/evidence/[story-slug]/`.
 
-| # | Filename | What It Shows | Acceptance Criterion |
-|---|----------|--------------|----------------------|
-| 1 | `[filename.png]` | [brief description of what is visible] | AC-1 |
-| 2 | `[filename.png]` | | AC-2 |
+| #   | Filename         | What It Shows                          | Acceptance Criterion |
+| --- | ---------------- | -------------------------------------- | -------------------- |
+| 1   | `[filename.png]` | [brief description of what is visible] | AC-1                 |
+| 2   | `[filename.png]` |                                        | AC-2                 |
 
-*If video: note the timestamp and what it demonstrates.*
+_If video: note the timestamp and what it demonstrates._
 
 ---
 
@@ -59,21 +59,25 @@ but felt slightly off. These become candidates for polish work.]
 - [Observation 1]
 - [Observation 2]
 
-If nothing notable: *No significant observations.*
+If nothing notable: _No significant observations._
 
 ---
 
 ## Sign-Off
 
-All three sign-offs are required before the story can be marked COMPLETE via
-`/story-done`. Visual/Feel stories require the designer or art-lead sign-off.
-UI stories require the UX lead or designer sign-off.
+All roles must sign off before the story can be marked COMPLETE via `/story-done`.
+Visual/Feel stories require the designer or art-lead sign-off. UI stories require
+the UX lead or designer sign-off.
 
-| Role | Name | Date | Signature |
-|------|------|------|-----------|
-| Developer (implemented) | | | [ ] Approved |
-| Designer / Art Lead / UX Lead | | | [ ] Approved |
-| QA Lead | | | [ ] Approved |
+**Solo developers**: all sign-offs may be by the same person in each role. The
+intent is that someone deliberately reviews the evidence before marking complete —
+not that three separate people must participate.
+
+| Role                          | Name | Date | Signature    |
+| ----------------------------- | ---- | ---- | ------------ |
+| Developer (implemented)       |      |      | [ ] Approved |
+| Designer / Art Lead / UX Lead |      |      | [ ] Approved |
+| QA Lead                       |      |      | [ ] Approved |
 
 **Any sign-off can be marked "Deferred — [reason]"** if the person is
 unavailable. Deferred sign-offs must be resolved before the story advances
@@ -81,6 +85,6 @@ past the sprint review.
 
 ---
 
-*Template: `.opencode/docs/templates/test-evidence.md`*
-*Used for: Visual/Feel and UI story type evidence records*
-*Location: `production/qa/evidence/[story-slug]-evidence.md`*
+_Template: `.opencode/docs/templates/test-evidence.md`_
+_Used for: Visual/Feel and UI story type evidence records_
+_Location: `production/qa/evidence/[story-slug]-evidence.md`_
