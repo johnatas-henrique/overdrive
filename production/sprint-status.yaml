@@ -63,11 +63,11 @@ stories:
     name: "Story 004: Access Logging + Debug State"
     file: "production/epics/data-config-manager/story-004-access-logging-debug-state.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-6"
     name: "Story 001: Event Types and Contracts"
