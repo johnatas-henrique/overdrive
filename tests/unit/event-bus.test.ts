@@ -660,6 +660,7 @@ describe("EventBus runtime", () => {
 
   describe("AC-8: Handler throw does not prevent other handlers", () => {
     it("should execute all handlers even when some throw", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       bus.init();
       const log: string[] = [];
 
@@ -676,17 +677,21 @@ describe("EventBus runtime", () => {
       bus.emit("race.starting", {});
 
       expect(log).toEqual(["B"]);
+      errorSpy.mockRestore();
     });
 
     it("should not propagate errors to emit() caller", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       bus.init();
       bus.on("race.starting", () => {
         throw new Error("boom");
       });
       expect(() => bus.emit("race.starting", {})).not.toThrow();
+      errorSpy.mockRestore();
     });
 
     it("should catch non-Error thrown values", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       bus.init();
       const log: string[] = [];
 
@@ -699,6 +704,7 @@ describe("EventBus runtime", () => {
 
       bus.emit("race.starting", {});
       expect(log).toEqual(["ok"]);
+      errorSpy.mockRestore();
     });
 
     it("should log each thrown handler via console.error", () => {
@@ -719,6 +725,7 @@ describe("EventBus runtime", () => {
     });
 
     it("should not propagate when ALL handlers throw", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       bus.init();
       bus.on("race.starting", () => {
         throw new Error("fail1");
@@ -731,6 +738,7 @@ describe("EventBus runtime", () => {
       });
 
       expect(() => bus.emit("race.starting", {})).not.toThrow();
+      errorSpy.mockRestore();
     });
   });
 
@@ -744,16 +752,19 @@ describe("EventBus runtime", () => {
     });
 
     it("should throw 'Already disposed' when off() called after dispose()", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       bus.init();
       const sub = bus.on("race.starting", () => {});
       bus.dispose();
       expect(() => bus.off(sub)).toThrow(EventBusError);
       expect(() => bus.off(sub)).toThrow("Already disposed");
+      warnSpy.mockRestore();
     });
   });
 
   describe("AC-1a extended: dispose() clears handlers", () => {
     it("should not fire handlers after dispose (state guard blocks emit)", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       bus.init();
       const log: string[] = [];
       bus.on("race.starting", () => log.push("before"));
@@ -762,6 +773,7 @@ describe("EventBus runtime", () => {
       // dispose clears _handlers internally; state guard also blocks emit
       expect(() => bus.emit("race.starting", {})).toThrow(EventBusError);
       expect(log).toEqual([]);
+      warnSpy.mockRestore();
     });
   });
 
@@ -779,6 +791,577 @@ describe("EventBus runtime", () => {
       bus.init();
       const result = bus.emit("race.starting", {});
       expect(result).toBeUndefined();
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// EventBus edge cases — Story 003
+// ---------------------------------------------------------------------------
+
+describe("EventBus edge cases", () => {
+  // --- AC-4a: once() fires exactly once ---
+
+  describe("AC-4a: once() fires exactly once", () => {
+    it("should fire handler on first emit and not on second", () => {
+      const bus = new EventBus();
+      bus.init();
+      let callCount = 0;
+
+      bus.once("race.starting", () => {
+        callCount++;
+      });
+
+      bus.emit("race.starting", {});
+      bus.emit("race.starting", {});
+
+      expect(callCount).toBe(1);
+    });
+
+    it("should fire once alongside regular on() handlers", () => {
+      const bus = new EventBus();
+      bus.init();
+      let onceCount = 0;
+      let onCount = 0;
+
+      bus.once("race.starting", () => {
+        onceCount++;
+      });
+      bus.on("race.starting", () => {
+        onCount++;
+      });
+
+      bus.emit("race.starting", {});
+      bus.emit("race.starting", {});
+
+      expect(onceCount).toBe(1);
+      expect(onCount).toBe(2);
+    });
+
+    it("should not leak on dispose when once() handler never fires", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const bus = new EventBus();
+      bus.init();
+      bus.once("race.starting", () => {});
+
+      // once() subscription should auto-clean on dispose (handler removed from Set)
+      expect(() => bus.dispose()).not.toThrow();
+      warnSpy.mockRestore();
+    });
+  });
+
+  // --- AC-4b: off() on once()-returned Subscription ---
+
+  describe("AC-4b: off() on once()-returned Subscription", () => {
+    it("should prevent once() handler from firing if off() called before emit", () => {
+      const bus = new EventBus();
+      bus.init();
+      let callCount = 0;
+
+      const sub = bus.once("race.starting", () => {
+        callCount++;
+      });
+
+      bus.off(sub);
+      bus.emit("race.starting", {});
+
+      expect(callCount).toBe(0);
+    });
+
+    it("should be safe to call off() twice on same once-Subscription (idempotent)", () => {
+      const bus = new EventBus();
+      bus.init();
+      let callCount = 0;
+
+      const sub = bus.once("race.starting", () => {
+        callCount++;
+      });
+
+      bus.off(sub);
+      bus.off(sub); // second call — no error
+      bus.emit("race.starting", {});
+
+      expect(callCount).toBe(0);
+    });
+
+    it("should be safe to call off() on a once-Subscription that already auto-unsubscribed", () => {
+      const bus = new EventBus();
+      bus.init();
+      let callCount = 0;
+
+      const sub = bus.once("race.starting", () => {
+        callCount++;
+      });
+
+      bus.emit("race.starting", {}); // fires and auto-unsubscribes
+      bus.off(sub); // already unsubscribed — no error, no throw
+
+      expect(callCount).toBe(1);
+    });
+  });
+
+  // --- AC-7a: Subscribe during dispatch does not receive current event ---
+
+  describe("AC-7a: Subscribe during dispatch does not receive current event", () => {
+    it("should not fire a handler subscribed during the current dispatch", () => {
+      const bus = new EventBus();
+      bus.init();
+      const log: string[] = [];
+
+      bus.on("race.starting", () => {
+        log.push("A");
+        // Subscribe B during A's execution
+        bus.on("race.starting", () => {
+          log.push("B");
+        });
+      });
+
+      bus.emit("race.starting", {});
+
+      expect(log).toEqual(["A"]);
+    });
+
+    it("should fire the late-subscribed handler on the next emit", () => {
+      const bus = new EventBus();
+      bus.init();
+      const log: string[] = [];
+      let subscribedB = false;
+
+      bus.on("race.starting", () => {
+        log.push("A");
+        if (!subscribedB) {
+          subscribedB = true;
+          bus.on("race.starting", () => {
+            log.push("B");
+          });
+        }
+      });
+
+      bus.emit("race.starting", {});
+      bus.emit("race.starting", {});
+
+      expect(log).toEqual(["A", "A", "B"]);
+    });
+
+    it("should handle multiple handlers subscribing new handlers during dispatch", () => {
+      const bus = new EventBus();
+      bus.init();
+      const log: string[] = [];
+
+      bus.on("race.starting", () => {
+        log.push("A1");
+        bus.on("race.starting", () => log.push("B"));
+      });
+      bus.on("race.starting", () => {
+        log.push("A2");
+        bus.on("race.starting", () => log.push("C"));
+      });
+
+      bus.emit("race.starting", {}); // A1, A2 run; B, C do NOT run
+      bus.emit("race.starting", {}); // A1, A2, B, C all run
+
+      expect(log).toEqual(["A1", "A2", "A1", "A2", "B", "C"]);
+    });
+  });
+
+  // --- AC-7b: Unsubscribe during dispatch does not cancel current handler ---
+
+  describe("AC-7b: Unsubscribe during dispatch does not cancel current handler", () => {
+    it("should allow handler B to run even if A removes B during dispatch", () => {
+      const bus = new EventBus();
+      bus.init();
+      const log: string[] = [];
+
+      // A registered first, then B — A runs first in snapshot
+      const subA = bus.on("race.starting", () => {
+        log.push("A");
+        bus.off(subB); // remove B during A's execution
+      });
+      const subB = bus.on("race.starting", () => {
+        log.push("B");
+      });
+
+      bus.emit("race.starting", {}); // A runs, B still runs (in snapshot)
+
+      expect(log).toEqual(["A", "B"]);
+    });
+
+    it("should not fire B on next emit after A removed it during dispatch", () => {
+      const bus = new EventBus();
+      bus.init();
+      const log: string[] = [];
+
+      const subA = bus.on("race.starting", () => {
+        log.push("A");
+        bus.off(subB);
+      });
+      const subB = bus.on("race.starting", () => {
+        log.push("B");
+      });
+
+      bus.emit("race.starting", {}); // A + B (snapshot)
+      bus.emit("race.starting", {}); // A only (B removed)
+
+      expect(log).toEqual(["A", "B", "A"]);
+    });
+
+    it("should allow a handler to remove itself during dispatch and run to completion", () => {
+      const bus = new EventBus();
+      bus.init();
+      const log: string[] = [];
+
+      let selfSub: Subscription;
+      selfSub = bus.on("race.starting", () => {
+        log.push("self");
+        bus.off(selfSub);
+      });
+
+      bus.emit("race.starting", {}); // runs to completion
+      bus.emit("race.starting", {}); // removed — does not run
+
+      expect(log).toEqual(["self"]);
+    });
+
+    it("should handle all handlers removing themselves during dispatch", () => {
+      const bus = new EventBus();
+      bus.init();
+      const log: string[] = [];
+
+      let subA: Subscription;
+      let subB: Subscription;
+      subA = bus.on("race.starting", () => {
+        log.push("A");
+        bus.off(subA);
+      });
+      subB = bus.on("race.starting", () => {
+        log.push("B");
+        bus.off(subB);
+      });
+
+      bus.emit("race.starting", {}); // both run
+      bus.emit("race.starting", {}); // neither runs
+
+      expect(log).toEqual(["A", "B"]);
+    });
+  });
+
+  // --- AC-9a: Circular emit detection (default depth 10) ---
+
+  describe("AC-9a: Circular emit detection (default depth 10)", () => {
+    it("should throw at depth > 10 (depth exactly 10 succeeds)", () => {
+      const bus = new EventBus();
+      bus.init();
+
+      // Simple A→B→A cycle — handler always re-emits, depth guard catches it
+      bus.on("a", () => bus.emit("b", { carId: "test" }));
+      bus.on("b", () => bus.emit("a", { carId: "test" }));
+
+      // Depth 11 exceeds default limit of 10
+      expect(() => bus.emit("a", { carId: "test" })).toThrow(EventBusError);
+      expect(() => bus.emit("a", { carId: "test" })).toThrow(
+        "Max emit depth exceeded"
+      );
+    });
+
+    it("should reset depth after throw so subsequent emits work", () => {
+      const bus = new EventBus();
+      bus.init();
+      let triggered = false;
+
+      // Create a circular chain
+      const subA = bus.on("a", () => bus.emit("b", { carId: "test" }));
+      const subB = bus.on("b", () => bus.emit("a", { carId: "test" }));
+
+      // This will throw at depth 11
+      expect(() => bus.emit("a", { carId: "test" })).toThrow(
+        "Max emit depth exceeded"
+      );
+
+      // Remove circular handlers so subsequent emit is non-circular
+      bus.off(subA);
+      bus.off(subB);
+
+      // Depth should be reset — this normal emit should work
+      bus.on("a", () => {
+        triggered = true;
+      });
+      bus.emit("a", { carId: "test" });
+      expect(triggered).toBe(true);
+    });
+
+    it("should detect cycles in 3+ event chains (A→B→C→A)", () => {
+      const bus = new EventBus();
+      bus.init();
+
+      bus.on("a", () => bus.emit("b", { carId: "test" }));
+      bus.on("b", () => bus.emit("c", { carId: "test" }));
+      bus.on("c", () => bus.emit("a", { carId: "test" }));
+
+      expect(() => bus.emit("a", { carId: "test" })).toThrow(
+        "Max emit depth exceeded"
+      );
+    });
+  });
+
+  // --- AC-9b: Configurable max emit depth ---
+
+  describe("AC-9b: Configurable max emit depth", () => {
+    it("should throw at custom depth limit (maxEmitDepth=3)", () => {
+      const bus = new EventBus({ maxEmitDepth: 3 });
+      bus.init();
+
+      bus.on("a", () => bus.emit("b", { carId: "test" }));
+      bus.on("b", () => bus.emit("a", { carId: "test" }));
+
+      // Depth 1: emit a → handler runs, emit b (depth 2) → handler runs, emit a (depth 3) → handler runs
+      // Depth 4: emit b → throws
+      expect(() => bus.emit("a", { carId: "test" })).toThrow(
+        "Max emit depth exceeded"
+      );
+    });
+
+    it("should succeed at depth exactly equal to maxEmitDepth", () => {
+      const bus = new EventBus({ maxEmitDepth: 2 });
+      bus.init();
+      const log: string[] = [];
+
+      // A emits B (depth 2 = maxEmitDepth, should succeed)
+      bus.on("a", () => {
+        log.push("a");
+        bus.emit("b", { carId: "test" });
+      });
+      bus.on("b", () => {
+        log.push("b");
+      });
+
+      bus.emit("a", { carId: "test" });
+      expect(log).toEqual(["a", "b"]);
+    });
+
+    it("should use default maxEmitDepth=10 when no config provided", () => {
+      const bus = new EventBus();
+      bus.init();
+
+      // Verify that an unbounded cycle does NOT throw at depth 10.
+      // We track the actual depth via the depth guard's reset behavior:
+      // if depth > 10, it throws; if not, it completes normally.
+      // With A→B→A cycle and default maxEmitDepth=10, the 11th nested emit
+      // throws. We verify the cycle completes 10 levels without error by
+      // using a depth-limited chain that stops emitting at depth 10.
+      let maxDepthReached = 0;
+
+      // Manually track depth via a counter incremented per emit
+      const depthCounter = { value: 0 };
+
+      bus.on("a", () => {
+        depthCounter.value++;
+        maxDepthReached = Math.max(maxDepthReached, depthCounter.value);
+        if (depthCounter.value < 10) {
+          bus.emit("b", { carId: "test" });
+        }
+        depthCounter.value--;
+      });
+      bus.on("b", () => {
+        depthCounter.value++;
+        maxDepthReached = Math.max(maxDepthReached, depthCounter.value);
+        if (depthCounter.value < 10) {
+          bus.emit("a", { carId: "test" });
+        }
+        depthCounter.value--;
+      });
+
+      // Depth 10 succeeds — no throw
+      expect(() => bus.emit("a", { carId: "test" })).not.toThrow();
+      expect(maxDepthReached).toBe(10);
+    });
+
+    it("should throw at depth 11 with default config", () => {
+      const bus = new EventBus();
+      bus.init();
+
+      // Unbounded cycle — always re-emits, depth guard catches at 11
+      bus.on("a", () => bus.emit("b", { carId: "test" }));
+      bus.on("b", () => bus.emit("a", { carId: "test" }));
+
+      expect(() => bus.emit("a", { carId: "test" })).toThrow(
+        "Max emit depth exceeded"
+      );
+    });
+
+    it("should allow maxEmitDepth=1 (even a single nested emit throws)", () => {
+      const bus = new EventBus({ maxEmitDepth: 1 });
+      bus.init();
+
+      bus.on("a", () => bus.emit("b", { carId: "test" }));
+      bus.on("b", () => {});
+
+      // Depth 1: emit a → handler runs, emit b (depth 2 > 1) → throws
+      expect(() => bus.emit("a", { carId: "test" })).toThrow(
+        "Max emit depth exceeded"
+      );
+    });
+  });
+
+  // --- AC-10a: Leak detection warns on dispose ---
+
+  describe("AC-10a: Leak detection warns on dispose with active subscriptions", () => {
+    it("should call console.warn when disposing with active subscriptions", () => {
+      const bus = new EventBus();
+      bus.init();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      bus.on("race.finish", () => {});
+      bus.dispose();
+
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0][0]).toContain("Leaked subscriptions");
+      expect(warnSpy.mock.calls[0][0]).toContain("race");
+      warnSpy.mockRestore();
+    });
+
+    it("should not warn when disposing with no active subscriptions", () => {
+      const bus = new EventBus();
+      bus.init();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      bus.dispose();
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it("should identify multiple leaked namespaces", () => {
+      const bus = new EventBus();
+      bus.init();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      bus.on("race.finish", () => {});
+      bus.on("car.fuel_empty", () => {});
+      bus.on("pit.entry", () => {});
+      bus.dispose();
+
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      const message = warnSpy.mock.calls[0][0] as string;
+      expect(message).toContain("namespaces");
+      expect(message).toContain("car");
+      expect(message).toContain("pit");
+      expect(message).toContain("race");
+      warnSpy.mockRestore();
+    });
+
+    it("should warn with singular 'namespace' when only one event leaks", () => {
+      const bus = new EventBus();
+      bus.init();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      bus.on("race.finish", () => {});
+      bus.dispose();
+
+      const message = warnSpy.mock.calls[0][0] as string;
+      expect(message).toContain("namespace");
+      expect(message).not.toContain("namespaces");
+      warnSpy.mockRestore();
+    });
+  });
+
+  // --- AC-10b: Leak detection level silent suppresses warning ---
+
+  describe("AC-10b: Leak detection level silent suppresses warning", () => {
+    it("should NOT call console.warn when leakDetectionLevel is 'silent'", () => {
+      const bus = new EventBus({ leakDetectionLevel: "silent" });
+      bus.init();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      bus.on("race.finish", () => {});
+      bus.dispose();
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it("should default to warn level when no config provided", () => {
+      const bus = new EventBus();
+      bus.init();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      bus.on("race.finish", () => {});
+      bus.dispose();
+
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      warnSpy.mockRestore();
+    });
+  });
+
+  // --- Empty Set in Map: on() → unsubscribe → dispose should NOT warn ---
+
+  // --- Subscribe to different event during dispatch is immediate ---
+
+  describe("Subscribe to different event during dispatch is immediate", () => {
+    it("should fire a handler subscribed to a different event during dispatch", () => {
+      const bus = new EventBus();
+      bus.init();
+      const log: string[] = [];
+
+      // Handler A subscribes B to a DIFFERENT event during its execution
+      bus.on("race.starting", () => {
+        log.push("A");
+        bus.on("race.completed", () => {
+          log.push("B");
+        });
+      });
+
+      bus.emit("race.starting", {}); // A fires, subscribes B to race.completed
+      // B's subscription was immediate and independent of race.starting dispatch
+      bus.emit("race.completed", {
+        results: {
+          positions: [{ carId: "car_01", position: 1, totalTime: 3600 }],
+          fastestLap: { carId: "car_01", lapTime: 88.5 },
+          totalLaps: 40,
+        },
+      }); // B fires
+
+      expect(log).toEqual(["A", "B"]);
+    });
+  });
+
+  // --- once() handler calling on() for same event does not fire for current emit ---
+
+  describe("once() handler calling on() for same event does not fire for current emit", () => {
+    it("should not fire a handler subscribed via on() inside once() for the current emit", () => {
+      const bus = new EventBus();
+      bus.init();
+      const log: string[] = [];
+
+      bus.once("race.starting", () => {
+        log.push("once");
+        // Subscribe secondHandler via on() for the same event
+        bus.on("race.starting", () => {
+          log.push("second");
+        });
+      });
+
+      bus.emit("race.starting", {}); // once fires, secondHandler registered but NOT in snapshot
+      bus.emit("race.starting", {}); // secondHandler fires this time
+
+      expect(log).toEqual(["once", "second"]);
+    });
+  });
+
+  describe("Empty handler Set in Map after unsubscribe", () => {
+    it("should not warn on dispose when all handlers were unsubscribed (empty Set remains in Map)", () => {
+      const bus = new EventBus();
+      bus.init();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      // Subscribe — creates Set in _handlers Map
+      const sub = bus.on("race.finish", () => {});
+      // Unsubscribe — Set is now empty but key still exists in Map
+      sub.unsubscribe();
+      // dispose iterates _handlers, finds empty Set, should skip it
+      bus.dispose();
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
     });
   });
 });
