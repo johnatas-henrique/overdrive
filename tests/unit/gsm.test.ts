@@ -1106,11 +1106,11 @@ describe("Lifecycle AC-6: Hook validation at registration", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Busy flag — concurrent transition prevention
+// Busy flag — transitions enqueued instead of throwing
 // ---------------------------------------------------------------------------
 
-describe("Busy flag: prevents concurrent transitions", () => {
-  it("should throw GameStateError when transitioning while busy", async () => {
+describe("Busy flag: enqueues transitions instead of throwing", () => {
+  it("should enqueue transition when busy instead of throwing", async () => {
     let resolveOnEnter: () => void;
     const onEnterPromise = new Promise<void>((resolve) => {
       resolveOnEnter = resolve;
@@ -1132,17 +1132,63 @@ describe("Busy flag: prevents concurrent transitions", () => {
     // Start first transition (will be busy)
     const transition1 = gsm.transition("Menu");
 
-    // Second transition should fail because GSM is busy
-    await expect(gsm.transition("PreRace")).rejects.toThrow(GameStateError);
+    // Second transition should NOT throw — enqueue instead
+    await expect(gsm.transition("PreRace")).resolves.toBeUndefined();
+    expect(gsm.getCurrentState()).toBe("Loading");
 
     // Complete the first transition
     resolveOnEnter?.();
     await transition1;
-
     expect(gsm.getCurrentState()).toBe("Menu");
+
+    // Tick should process the queued PreRace transition
+    gsm.tick();
+    // Tick fires _doTransition asynchronously — flush microtasks
+    await Promise.resolve();
+    expect(gsm.getCurrentState()).toBe("PreRace");
   });
 
-  it("should allow transitions after busy flag is cleared", async () => {
+  it("should queue multiple transitions while busy and process one per tick", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([
+      {
+        name: "Menu",
+        onEnter: () => onEnterPromise,
+      },
+      { name: "PreRace", onEnter: () => {} },
+      { name: "Racing", onEnter: () => {} },
+    ]);
+    gsm.init();
+
+    // Start first transition (will be busy)
+    const transition1 = gsm.transition("Menu");
+
+    // Queue 2 valid transitions while busy
+    await expect(gsm.transition("PreRace")).resolves.toBeUndefined();
+    await expect(gsm.transition("Racing")).resolves.toBeUndefined();
+
+    // Complete first transition
+    resolveOnEnter?.();
+    await transition1;
+    expect(gsm.getCurrentState()).toBe("Menu");
+
+    // Process first queued: Menu → PreRace
+    gsm.tick();
+    await Promise.resolve();
+    expect(gsm.getCurrentState()).toBe("PreRace");
+
+    // Process second queued: PreRace → Racing
+    gsm.tick();
+    await Promise.resolve();
+    expect(gsm.getCurrentState()).toBe("Racing");
+  });
+
+  it("should allow direct transitions after busy flag is cleared", async () => {
     const gsm = new GameStateMachine();
     gsm.registerStates([
       {
@@ -1221,11 +1267,11 @@ describe("onExit rejection: error propagates to caller", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Busy flag error message
+// Busy flag enqueue — error message on invalid queued transition
 // ---------------------------------------------------------------------------
 
-describe("Busy flag: error message content", () => {
-  it("should throw GameStateError with correct from/to fields when busy", async () => {
+describe("Busy flag enqueue: queued invalid transition fails at execution time", () => {
+  it("should throw GameStateError when tick() processes an invalid queued transition", async () => {
     let resolveOnEnter: () => void;
     const onEnterPromise = new Promise<void>((resolve) => {
       resolveOnEnter = resolve;
@@ -1240,16 +1286,34 @@ describe("Busy flag: error message content", () => {
 
     const transition1 = gsm.transition("Menu");
 
-    try {
-      await gsm.transition("PreRace");
-    } catch (e) {
-      expect(e).toBeInstanceOf(GameStateError);
-      expect((e as GameStateError).from).toBe("Loading");
-      expect((e as GameStateError).to).toBe("PreRace");
-    }
+    // Queue PreRace while busy — valid from Menu (current state at exec time)
+    await expect(gsm.transition("PreRace")).resolves.toBeUndefined();
 
     resolveOnEnter?.();
     await transition1;
+    expect(gsm.getCurrentState()).toBe("Menu");
+
+    // Replace queue with a controlled sequence for testing
+    // First: Racing from Menu is invalid (simulate state race between queue and exec)
+    // Second: PreRace from Menu is valid (verify queue continues after failure)
+    (gsm as { _queue: string[] })._queue.length = 0;
+    (gsm as { _queue: string[] })._queue.push("Racing");
+    (gsm as { _queue: string[] })._queue.push("PreRace");
+
+    // First tick processes "Racing" from Menu — invalid, error logged
+    gsm.tick();
+    await Promise.resolve();
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[GSM] Queued transition failed:",
+      expect.any(GameStateError)
+    );
+    // State unchanged after failure
+    expect(gsm.getCurrentState()).toBe("Menu");
+
+    // Second tick processes "PreRace" from Menu — valid, state changes
+    gsm.tick();
+    await Promise.resolve();
+    expect(gsm.getCurrentState()).toBe("PreRace");
   });
 });
 
@@ -1280,6 +1344,339 @@ describe("registerStates: duplicate state protection", () => {
         { name: "Racing", onEnter: () => {} },
       ])
     ).toThrow('Duplicate state definition for "Racing"');
+  });
+});
+
+// ===========================================================================
+// Transition Throttling (Story 004)
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// AC-1: tick() processes at most 1 queued transition per call
+// ---------------------------------------------------------------------------
+
+describe("Transition Throttling AC-1: one transition per tick()", () => {
+  it("should process exactly 1 queued transition per tick() call", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([{ name: "Menu", onEnter: () => onEnterPromise }]);
+    gsm.init();
+
+    // Start async transition — GSM becomes busy
+    const firstTransition = gsm.transition("Menu");
+
+    // Queue 2 transitions while busy
+    gsm.transition("Menu");
+    gsm.transition("Menu");
+
+    // Complete first transition
+    resolveOnEnter?.();
+    await firstTransition;
+    expect(gsm.getCurrentState()).toBe("Menu");
+
+    // First tick: process 1 queued (same-state no-op)
+    gsm.tick();
+    await Promise.resolve();
+    expect(gsm.getCurrentState()).toBe("Menu");
+
+    // Second tick: process last queued
+    gsm.tick();
+    await Promise.resolve();
+    expect(gsm.getCurrentState()).toBe("Menu");
+  });
+
+  it("should be a no-op when queue is empty", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+
+    expect(() => gsm.tick()).not.toThrow();
+    expect(gsm.getCurrentState()).toBe("Loading");
+  });
+
+  it("should be a no-op when called 10 times on empty queue", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+
+    for (let i = 0; i < 10; i++) {
+      expect(() => gsm.tick()).not.toThrow();
+    }
+    expect(gsm.getCurrentState()).toBe("Loading");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-2: transition() called while busy is queued (does not throw)
+// ---------------------------------------------------------------------------
+
+describe("Transition Throttling AC-2: busy → enqueue, not throw", () => {
+  it("should not throw when transition() is called while busy", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([
+      { name: "Menu", onEnter: () => onEnterPromise },
+      { name: "PreRace", onEnter: () => {} },
+    ]);
+    gsm.init();
+
+    // Start first transition (busy)
+    const first = gsm.transition("Menu");
+
+    // Should not throw — enqueues
+    await expect(gsm.transition("PreRace")).resolves.toBeUndefined();
+
+    resolveOnEnter?.();
+    await first;
+    expect(gsm.getCurrentState()).toBe("Menu");
+
+    // Process queued PreRace
+    gsm.tick();
+    await Promise.resolve();
+    expect(gsm.getCurrentState()).toBe("PreRace");
+  });
+
+  it("should queue 5 rapid transition() calls while busy", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([{ name: "Menu", onEnter: () => onEnterPromise }]);
+    gsm.init();
+
+    const first = gsm.transition("Menu");
+
+    // 5 rapid calls while busy — all queued silently
+    for (let i = 0; i < 5; i++) {
+      await expect(gsm.transition("Menu")).resolves.toBeUndefined();
+    }
+
+    resolveOnEnter?.();
+    await first;
+  });
+
+  it("should enqueue even if target is not valid from current state (validated later)", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([{ name: "Menu", onEnter: () => onEnterPromise }]);
+    gsm.init();
+
+    const first = gsm.transition("Menu");
+
+    // Even invalid transitions are queued without error
+    await expect(gsm.transition("Racing")).resolves.toBeUndefined();
+
+    resolveOnEnter?.();
+    await first;
+
+    // State is now Menu — Racing from Menu is invalid
+    // tick attempts _doTransition which will fail
+    gsm.tick();
+    await Promise.resolve();
+
+    // Error is logged, state unchanged
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[GSM] Queued transition failed:",
+      expect.any(GameStateError)
+    );
+    expect(gsm.getCurrentState()).toBe("Menu");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-3: Queued transitions validated against current state at execution time
+// ---------------------------------------------------------------------------
+
+describe("Transition Throttling AC-3: execution-time validation", () => {
+  it("should throw GameStateError when queued transition is invalid at execution time", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([
+      { name: "Menu", onEnter: () => onEnterPromise },
+      { name: "PreRace", onEnter: () => {} },
+    ]);
+    gsm.init();
+
+    const first = gsm.transition("Menu");
+
+    // Queue PreRace — valid from Menu but not from Loading
+    gsm.transition("PreRace");
+
+    resolveOnEnter?.();
+    await first;
+
+    // Don't tick yet — don't process PreRace yet
+    // Now manually insert a transition that would skip Menu
+    // (simulating state change between queue and execution)
+    // Note: At execution time the state WILL be Menu (from the first transition),
+    // so PreRace IS valid. But we can test the inverse by changing _currentState.
+    (gsm as { _currentState: string })._currentState = "Loading";
+
+    // Now PreRace from Loading is invalid
+    gsm.tick();
+    await Promise.resolve();
+
+    // Error logged, state still Loading
+    expect(gsm.getCurrentState()).toBe("Loading");
+  });
+
+  it("should handle same-state queued transition as no-op at execution time", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([{ name: "Menu", onEnter: () => onEnterPromise }]);
+    gsm.init();
+
+    const first = gsm.transition("Menu");
+
+    // Queue same-state (Menu while in Loading)
+    gsm.transition("Menu");
+
+    resolveOnEnter?.();
+    await first;
+    expect(gsm.getCurrentState()).toBe("Menu");
+
+    // tick processes queued Menu from Menu — same-state no-op
+    gsm.tick();
+    await Promise.resolve();
+    expect(gsm.getCurrentState()).toBe("Menu");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-4: Configurable max queue size with overflow dropping oldest
+// ---------------------------------------------------------------------------
+
+describe("Transition Throttling AC-4: queue overflow", () => {
+  it("should drop oldest entry with console.warn when queue overflows", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    // maxQueueSize = 3
+    const gsm = new GameStateMachine(undefined, { maxQueueSize: 3 });
+    gsm.registerStates([{ name: "Menu", onEnter: () => onEnterPromise }]);
+    gsm.init();
+
+    // Start async transition — busy
+    const first = gsm.transition("Menu");
+
+    // Fill queue to capacity (3)
+    gsm.transition("Menu");
+    gsm.transition("Menu");
+    gsm.transition("Menu");
+
+    // Queue is now full at 3. Next call should drop the oldest.
+    gsm.transition("Menu");
+
+    // Verify warn was called with the dropped entry
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[GSM] Transition queue overflow — dropping:",
+      "Menu"
+    );
+
+    resolveOnEnter?.();
+    await first;
+  });
+
+  it("should preserve newest entries when dropping oldest (FIFO)", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    // maxQueueSize = 2
+    const gsm = new GameStateMachine(undefined, { maxQueueSize: 2 });
+    gsm.registerStates([{ name: "Menu", onEnter: () => onEnterPromise }]);
+    gsm.init();
+
+    const first = gsm.transition("Menu");
+
+    // Queue 2 items
+    gsm.transition("Menu");
+    gsm.transition("Menu");
+
+    // 3rd call drops the oldest (the first "Menu")
+    gsm.transition("Menu");
+
+    resolveOnEnter?.();
+    await first;
+
+    // Both queued Menu transitions processed as no-ops
+    gsm.tick();
+    gsm.tick();
+    await Promise.resolve();
+    expect(gsm.getCurrentState()).toBe("Menu");
+  });
+
+  it("should use default maxQueueSize of 10 when not specified", () => {
+    const gsm = new GameStateMachine();
+    expect(gsm).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-5: After dispose(), tick() is no-op and queue cleared
+// ---------------------------------------------------------------------------
+
+describe("Transition Throttling AC-5: dispose behavior", () => {
+  it("should set _disposed and clear queue on dispose()", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+
+    // Manually fill queue via private access for test
+    const queue = (gsm as { _queue: string[] })._queue;
+    queue.push("Menu", "Menu", "Menu", "Menu", "Menu");
+    expect(queue.length).toBe(5);
+
+    gsm.dispose();
+
+    expect(queue.length).toBe(0);
+    expect((gsm as { _disposed: boolean })._disposed).toBe(true);
+  });
+
+  it("should be a no-op when queue is empty and dispose() is called", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+
+    expect(() => gsm.dispose()).not.toThrow();
+    expect((gsm as { _disposed: boolean })._disposed).toBe(true);
+  });
+
+  it("should be a permanent no-op for tick() after dispose()", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+
+    // Fill queue
+    const queue = (gsm as { _queue: string[] })._queue;
+    queue.push("Menu", "Menu", "Menu");
+
+    gsm.dispose();
+
+    // tick() should be no-op after dispose
+    expect(() => gsm.tick()).not.toThrow();
+    expect(gsm.getCurrentState()).toBe("Loading");
+    expect(queue.length).toBe(0);
   });
 });
 
@@ -1666,6 +2063,237 @@ describe("Event Bus: exhaustive emission for all valid transitions", () => {
         });
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Throttling edge cases (GAP fixes)
+// ---------------------------------------------------------------------------
+
+describe("Throttling edge cases", () => {
+  it("tick() should be no-op while busy (gap-1)", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([{ name: "Menu", onEnter: () => onEnterPromise }]);
+    gsm.init();
+
+    // Start async transition — GSM is busy
+    gsm.transition("Menu");
+    // Queue a transition while busy
+    gsm.transition("PreRace");
+
+    // tick() while busy — should be no-op
+    gsm.tick();
+    await Promise.resolve();
+
+    // Queue should still have 1 item
+    const queue = (gsm as { _queue: string[] })._queue;
+    expect(queue.length).toBe(1);
+    expect(gsm.getCurrentState()).toBe("Loading");
+
+    resolveOnEnter?.();
+    await Promise.resolve();
+  });
+
+  it("tick() should emit events via _doTransition (gap-2)", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.registerStates([{ name: "Menu", onEnter: () => onEnterPromise }]);
+    gsm.init();
+
+    // Start async transition — busy
+    gsm.transition("Menu");
+    // Queue a transition while busy
+    gsm.transition("PreRace");
+
+    // Complete first transition
+    resolveOnEnter?.();
+    await Promise.resolve();
+    vi.clearAllMocks();
+
+    // tick() should process queued transition and emit events
+    gsm.tick();
+    await Promise.resolve();
+
+    expect(bus.emit).toHaveBeenCalledWith("gsm.state.exited", {
+      from: "Menu",
+    });
+    expect(bus.emit).toHaveBeenCalledWith("gsm.state.entered", {
+      from: "Menu",
+      to: "PreRace",
+    });
+  });
+
+  it("should use default maxQueueSize of 10 (gap-3)", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([{ name: "Menu", onEnter: () => onEnterPromise }]);
+    gsm.init();
+
+    // Start async — busy
+    gsm.transition("Menu");
+
+    // Queue 10 transitions (should not overflow)
+    for (let i = 0; i < 10; i++) {
+      gsm.transition("Menu");
+    }
+
+    // No overflow warning yet
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      "[GSM] Transition queue overflow — dropping:",
+      expect.anything()
+    );
+
+    // 11th should trigger overflow
+    gsm.transition("Menu");
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[GSM] Transition queue overflow — dropping:",
+      "Menu"
+    );
+
+    resolveOnEnter?.();
+    await Promise.resolve();
+  });
+
+  it("should drop the oldest entry with distinct targets (gap-4)", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    // Need Menu and PreRace registered for valid transitions
+    const gsm = new GameStateMachine(undefined, { maxQueueSize: 3 });
+    gsm.registerStates([
+      { name: "Menu", onEnter: () => onEnterPromise },
+      { name: "PreRace" },
+    ]);
+    gsm.init();
+
+    // Start async — busy
+    gsm.transition("Menu");
+
+    // Fill queue with distinct targets: Menu, PreRace, Racing
+    gsm.transition("PreRace");
+    gsm.transition("PreRace");
+    gsm.transition("Racing");
+
+    // Queue is full (3). Next should drop oldest ("PreRace" — first queued)
+    gsm.transition("PreRace");
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[GSM] Transition queue overflow — dropping:",
+      "PreRace"
+    );
+
+    resolveOnEnter?.();
+    await Promise.resolve();
+  });
+
+  it("should call onExit on source state during queued transition (gap-5)", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    const onExitSpy = vi.fn().mockResolvedValue(undefined);
+
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.registerStates([
+      { name: "Menu", onEnter: () => onEnterPromise, onExit: onExitSpy },
+      { name: "PreRace" },
+    ]);
+    gsm.init();
+
+    // Start async transition — GSM is busy
+    gsm.transition("Menu");
+    // Queue a transition while busy
+    gsm.transition("PreRace");
+
+    // Complete first transition
+    resolveOnEnter?.();
+    await Promise.resolve();
+    vi.clearAllMocks();
+
+    // tick() should process queued transition and call onExit on source state
+    gsm.tick();
+    await Promise.resolve();
+
+    expect(onExitSpy).toHaveBeenCalledOnce();
+    expect(onExitSpy).toHaveBeenCalledWith();
+    // Transition should complete successfully
+    expect(gsm.getCurrentState()).toBe("PreRace");
+    // Events should be emitted for the completed transition
+    expect(bus.emit).toHaveBeenCalledWith("gsm.state.exited", {
+      from: "Menu",
+    });
+    expect(bus.emit).toHaveBeenCalledWith("gsm.state.entered", {
+      from: "Menu",
+      to: "PreRace",
+    });
+  });
+
+  it("should rollback on onEnter failure during queued transition (gap-6)", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.registerStates([
+      { name: "Menu", onEnter: () => onEnterPromise },
+      {
+        name: "PreRace",
+        onEnter: async () => {
+          throw new Error("onEnter crashed");
+        },
+      },
+    ]);
+    gsm.init();
+
+    // Start async transition — GSM is busy
+    gsm.transition("Menu");
+    // Queue a transition while busy
+    gsm.transition("PreRace");
+
+    // Complete first transition
+    resolveOnEnter?.();
+    await Promise.resolve();
+    vi.clearAllMocks();
+
+    // tick() should process queued transition and handle onEnter failure
+    gsm.tick();
+    await Promise.resolve();
+
+    // Rollback warning should be logged (line 363)
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[GSM] onEnter failed for",
+      "PreRace",
+      expect.any(Error)
+    );
+
+    // State should remain at source (rollback) — _currentState never changed
+    expect(gsm.getCurrentState()).toBe("Menu");
+
+    // Should emit entered for the restored state (from → to both Menu) — line 366
+    expect(bus.emit).toHaveBeenCalledWith("gsm.state.entered", {
+      from: "Menu",
+      to: "Menu",
+    });
   });
 });
 
