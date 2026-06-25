@@ -253,7 +253,7 @@ stories:
     name: "Story 004: Degraded Mode + retry()"
     file: "production/epics/persistence/story-004-degraded-mode-retry.md"
     priority: must-have
-    status: ready-for-dev
+    status: in_progress
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
