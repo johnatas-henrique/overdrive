@@ -25,6 +25,7 @@
  * @see F-G2 — Pipeline: < 0.001ms overhead per tick
  */
 
+import { DeterminismGuard } from "./dev-guard";
 import { PipelineError } from "./pipeline-error";
 
 /**
@@ -176,6 +177,9 @@ export class FixedUpdatePipeline implements IFixedUpdatePipeline {
   /** Number of ticks executed since the last `start()` call. */
   private _currentTick = 0;
 
+  /** Dev-mode determinism guard. Installed on start, uninstalled on stop/dispose. */
+  private readonly _guard = new DeterminismGuard();
+
   /**
    * @inheritdoc
    */
@@ -213,6 +217,7 @@ export class FixedUpdatePipeline implements IFixedUpdatePipeline {
     }
     this._state = "ready";
     this._currentTick = 0;
+    this._guard.install();
   }
 
   /**
@@ -221,6 +226,7 @@ export class FixedUpdatePipeline implements IFixedUpdatePipeline {
   stop(): void {
     if (this._state === "ready" || this._state === "stopped") {
       this._state = "stopped";
+      this._guard.uninstall();
     }
   }
 
@@ -260,6 +266,7 @@ export class FixedUpdatePipeline implements IFixedUpdatePipeline {
    * @inheritdoc
    */
   dispose(): void {
+    this._guard.uninstall();
     this._state = "disposed";
   }
 }

@@ -13,6 +13,8 @@ export {
   MAX_CATCHUP,
   MAX_FRAME_DELTA,
 } from "./accumulator";
+export { DeterminismGuard } from "./dev-guard";
+export { DeterminismError } from "./errors";
 export type { IFixedUpdatePipeline } from "./fixed-update-pipeline";
 export { FixedUpdatePipeline } from "./fixed-update-pipeline";
 export { InputBuffer } from "./input-buffer";
