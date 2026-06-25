@@ -243,7 +243,7 @@ stories:
     name: "Story 003: Error Isolation"
     file: "production/epics/persistence/story-003-error-isolation.md"
     priority: must-have
-    status: ready-for-dev
+    status: in_progress
     owner: "solo-dev"
     estimate_days: 0.25
     blocker: ""

@@ -1,7 +1,8 @@
 # Story 003: Error Isolation
 
 > **Epic**: Persistence Interface
-> **Status**: Ready
+> **Status**: In Progress
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
