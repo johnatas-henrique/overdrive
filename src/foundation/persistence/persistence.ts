@@ -307,8 +307,17 @@ export class Persistence {
       timestamp: Date.now(),
     };
 
+    let json: string;
     try {
-      const json = JSON.stringify(entry);
+      json = JSON.stringify(entry);
+    } catch (error) {
+      console.warn(
+        `[Persistence] Failed to serialize key "${key}": ${error instanceof Error ? error.message : "Unknown serialization error"}`
+      );
+      return;
+    }
+
+    try {
       localStorage.setItem(this._prefix + key, json);
     } catch (error) {
       this._lastError = error instanceof Error ? error.name : "UnknownError";
@@ -350,25 +359,29 @@ export class Persistence {
     }
 
     // Ready state
+    const raw = localStorage.getItem(this._prefix + key);
+
+    if (raw === null) {
+      return null;
+    }
+
     try {
-      const raw = localStorage.getItem(this._prefix + key);
-
-      if (raw === null) {
-        return null;
-      }
-
       const parsed: unknown = JSON.parse(raw);
 
       if (parsed !== null && typeof parsed === "object" && "data" in parsed) {
         return (parsed as PersistedEntry).data as T;
       }
 
-      // Valid JSON but not a PersistedEntry shape — treat as miss
-      // (full error isolation is handled by Story 003)
+      // Valid JSON but not a PersistedEntry shape — warn and treat as miss
+      console.warn(
+        `[Persistence] Corrupted entry for key "${key}" (${raw.length} bytes)`
+      );
       return null;
     } catch {
       // JSON parse failure — corrupted or non-JSON data
-      // Error logging is added by Story 003
+      console.warn(
+        `[Persistence] Corrupted entry for key "${key}" (${raw.length} bytes)`
+      );
       return null;
     }
   }
