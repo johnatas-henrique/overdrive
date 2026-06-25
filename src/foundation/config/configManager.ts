@@ -2,6 +2,20 @@ import { ConfigError } from "./configError";
 
 type ConfigStore = Map<string, object>;
 
+/** Entry in the access log ring buffer. */
+interface AccessEntry {
+  key: string;
+  caller: string;
+  timestamp: number;
+}
+
+/** Read-only debug snapshot returned by getDebugState(). */
+interface DebugState {
+  namespaces: Record<string, object>;
+  accessLog: AccessEntry[];
+  envOverrides: string[];
+}
+
 /**
  * Coerce an environment variable string to a number if it represents
  * a finite numeric value, otherwise return the string as-is.
@@ -39,6 +53,8 @@ export class ConfigManager {
   private _initialized = false;
   private _store: ConfigStore = new Map();
   private _resolved: ConfigStore = new Map();
+  private _accessLog: AccessEntry[] = [];
+  private _logAllAccess: boolean = true;
 
   /**
    * Initialize the ConfigManager.
@@ -70,19 +86,9 @@ export class ConfigManager {
     this._buildResolved(namespace);
   }
 
-  /**
-   * Get a config value by dot-separated key path.
-   *
-   * Reads from the resolved (env-overridden) config cache. If the namespace
-   * has not been resolved yet, it is built lazily from the raw config.
-   *
-   * @param key - Dot-separated path (e.g., "teams.macklen.motor")
-   * @returns The value at the resolved path
-   * @throws {ConfigError} If ConfigManager is not initialized
-   * @throws {ConfigError} If the key path cannot be resolved
-   */
   get<T>(key: string): T {
     if (!this._initialized) {
+      this._recordAccess(key, "production");
       throw new ConfigError("ConfigManager not initialized");
     }
 
@@ -94,6 +100,7 @@ export class ConfigManager {
     if (!this._resolved.has(namespace)) {
       const rawExists = this._store.has(namespace);
       if (!rawExists) {
+        this._recordAccess(key, "production");
         throw new ConfigError(
           `Key not found: ${key}. Possible init ordering issue — namespace not yet registered: ${namespace}`
         );
@@ -105,6 +112,7 @@ export class ConfigManager {
     if (!root) {
       // Resolved is empty — raw store contained invalid data
       // _buildResolved already logged console.error
+      this._recordAccess(key, "production");
       throw new ConfigError(`Key not found: ${key}`);
     }
 
@@ -112,6 +120,7 @@ export class ConfigManager {
     const value = rest.reduce<unknown>(
       (acc, part) => {
         if (!acc || typeof acc !== "object") {
+          this._recordAccess(key, "production");
           throw new ConfigError(`Key not found: ${key}`);
         }
         return (acc as Record<string, unknown>)[part];
@@ -120,7 +129,14 @@ export class ConfigManager {
     );
 
     if (value === undefined) {
+      this._recordAccess(key, "production");
       throw new ConfigError(`Key not found: ${key}`);
+    }
+
+    // Log successful access (only when logAllAccess is true)
+    if (this._logAllAccess) {
+      const caller = (new Error().stack as string).split("\n")[2].trim();
+      this._recordAccess(key, caller);
     }
 
     return value as T;
@@ -202,6 +218,70 @@ export class ConfigManager {
       typeof payload === "object" &&
       !Array.isArray(payload)
     );
+  }
+
+  /**
+   * Record a single access in the ring buffer.
+   *
+   * Pushes `{ key, caller, timestamp }` into `_accessLog`. When the buffer
+   * exceeds 500 entries, the oldest (first) entry is evicted.
+   */
+  private _recordAccess(key: string, caller: string): void {
+    this._accessLog.push({ key, caller, timestamp: Date.now() });
+    if (this._accessLog.length > 500) {
+      this._accessLog.shift();
+    }
+  }
+
+  /**
+   * Control whether successful get() calls are logged.
+   *
+   * When disabled, only errors and invalid-key lookups are recorded in
+   * the access log. The Dev Tools overlay can toggle this to reduce
+   * memory overhead when the access log is not actively inspected.
+   *
+   * @param enabled - true to log all access (default), false to log only errors
+   */
+  setLogAllAccess(enabled: boolean): void {
+    this._logAllAccess = enabled;
+  }
+
+  /**
+   * Return a read-only snapshot of the current config state for debug/dev
+   * tool overlays.
+   *
+   * The returned object contains:
+   * - `namespaces` — every registered namespace, showing env-overridden values
+   *   when the resolved cache is available, or the raw config otherwise.
+   * - `accessLog` — a snapshot copy of the ring buffer (up to 500 entries).
+   * - `envOverrides` — all active `OVERDRIVE__`-prefixed environment variables.
+   *
+   * This method NEVER throws.
+   */
+  getDebugState(): DebugState {
+    const namespaces: Record<string, object> = {};
+
+    for (const [ns, raw] of this._store) {
+      const resolved = this._resolved.get(ns);
+      if (resolved !== undefined) {
+        namespaces[ns] = JSON.parse(JSON.stringify(resolved));
+      } else {
+        namespaces[ns] = JSON.parse(JSON.stringify(raw));
+      }
+    }
+
+    const envOverrides: string[] = [];
+    for (const key of Object.keys(process.env)) {
+      if (key.startsWith("OVERDRIVE__")) {
+        envOverrides.push(key);
+      }
+    }
+
+    return {
+      namespaces,
+      accessLog: this._accessLog.map((e) => ({ ...e })),
+      envOverrides,
+    };
   }
 
   /**
