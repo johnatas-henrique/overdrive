@@ -5,6 +5,14 @@
  *
  * @see ADR-0002 — Fixed Timestep & Determinism Pipeline
  */
+
+export type { TickResult } from "./accumulator";
+export {
+  accumulate,
+  FIXED_DT,
+  MAX_CATCHUP,
+  MAX_FRAME_DELTA,
+} from "./accumulator";
 export type { IFixedUpdatePipeline } from "./fixed-update-pipeline";
 export { FixedUpdatePipeline } from "./fixed-update-pipeline";
 export { InputBuffer } from "./input-buffer";
