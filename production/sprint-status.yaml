@@ -183,11 +183,11 @@ stories:
     name: "Story 003: InputBuffer"
     file: "production/epics/determinism-contract/story-003-input-buffer.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-18"
     name: "Story 004: Fixed Timestep Accumulator"

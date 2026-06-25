@@ -1,7 +1,8 @@
 # Story 003: InputBuffer
 
 > **Epic**: Determinism Contract
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -189,3 +190,11 @@ Test evidence: `tests/unit/determinism.test.ts` — verify all acceptance criter
 
 - Depends on: None (standalone — pure TypeScript data structure)
 - Unlocks: Story 005 (Pipeline Engine Integration wires `flip()` into the render loop)
+
+## Completion Notes
+
+**Completed**: 2026-06-24
+**Criteria**: 6/6 passing
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/determinism.test.ts` — 80/80 tests, 100% coverage on input-buffer.ts + types.ts, tsc clean, lint clean
+**Code Review**: Complete (APPROVED — 0 BLOCKING, 0 WARNING)
