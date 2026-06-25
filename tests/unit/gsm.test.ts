@@ -1675,7 +1675,7 @@ describe("Transition Throttling AC-5: dispose behavior", () => {
 
     // tick() should be no-op after dispose
     expect(() => gsm.tick()).not.toThrow();
-    expect(gsm.getCurrentState()).toBe("Loading");
+    expect(gsm.getCurrentState()).toBeUndefined();
     expect(queue.length).toBe(0);
   });
 });
@@ -2648,9 +2648,694 @@ describe("State History AC-6: dispose() clears history", () => {
     await gsm.transition("Menu");
     gsm.dispose();
 
-    // transition() still works after dispose per existing design (only tick() is blocked).
-    // But history should remain empty from the clear.
+    // transition() is a no-op after dispose (Story 006 — dispose safety).
+    // History should remain empty from the clear.
     expect(gsm.getHistory()).toHaveLength(0);
+  });
+});
+
+// ===========================================================================
+// Dispose Safety (Story 006)
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// AC-1: dispose() sets disposed flag, prevents new transitions
+// ---------------------------------------------------------------------------
+
+describe("Dispose Safety AC-1: dispose prevents new transitions", () => {
+  it("should set disposed flag and make transition() a no-op", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    gsm.dispose();
+    expect((gsm as { _disposed: boolean })._disposed).toBe(true);
+    // transition() should be no-op after dispose
+    expect(() => gsm.transition("Menu")).not.toThrow();
+    expect(gsm.getCurrentState()).toBeUndefined();
+  });
+
+  it("should return undefined from getCurrentState() after dispose", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    gsm.dispose();
+    expect(gsm.getCurrentState()).toBeUndefined();
+  });
+
+  it("should handle double dispose() without error", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    gsm.dispose();
+    expect(() => gsm.dispose()).not.toThrow();
+  });
+
+  it("should make 10 consecutive transition() calls after dispose all no-ops", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    gsm.dispose();
+    for (let i = 0; i < 10; i++) {
+      await expect(gsm.transition("Menu")).resolves.toBeUndefined();
+    }
+    expect(gsm.getCurrentState()).toBeUndefined();
+  });
+
+  it("should not allow init() after dispose", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    gsm.dispose();
+    // init() after dispose should be a no-op
+    gsm.init();
+    expect(gsm.getCurrentState()).toBeUndefined();
+  });
+
+  it("should handle init() on pristine GSM, dispose, then init() again", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    expect(gsm.getCurrentState()).toBe("Loading");
+    gsm.dispose();
+    expect(gsm.getCurrentState()).toBeUndefined();
+    // init() after dispose is no-op
+    gsm.init();
+    expect(gsm.getCurrentState()).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-2: Dispose mid-transition — onExit initiates, onEnter skipped
+// ---------------------------------------------------------------------------
+
+describe("Dispose Safety AC-2: mid-transition dispose", () => {
+  it("should initiate onExit but skip onEnter when disposed during onExit await", async () => {
+    let resolveOnExit: () => void;
+    const onExitPromise = new Promise<void>((resolve) => {
+      resolveOnExit = resolve;
+    });
+    const onExitSpy = vi.fn().mockReturnValue(onExitPromise);
+    const onEnterSpy = vi.fn();
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([
+      { name: "Loading", onExit: onExitSpy },
+      { name: "Menu", onEnter: onEnterSpy },
+    ]);
+    gsm.init();
+
+    // Start transition — will await the slow onExit
+    const transPromise = gsm.transition("Menu");
+
+    // onExit spy was called (initiated)
+    expect(onExitSpy).toHaveBeenCalledTimes(1);
+    // onEnter spy NOT called yet
+    expect(onEnterSpy).not.toHaveBeenCalled();
+
+    // Dispose mid-transition (while onExit is pending)
+    gsm.dispose();
+
+    // Resolve onExit — transition code resumes, sees _disposed, returns early
+    resolveOnExit?.();
+    await transPromise;
+
+    // onEnter should never have been called
+    expect(onEnterSpy).not.toHaveBeenCalled();
+    // State is undefined (disposed)
+    expect(gsm.getCurrentState()).toBeUndefined();
+  });
+
+  it("should skip events when disposed during mid-transition", async () => {
+    let resolveOnExit: () => void;
+    const onExitPromise = new Promise<void>((resolve) => {
+      resolveOnExit = resolve;
+    });
+
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.registerStates([
+      { name: "Loading", onExit: () => onExitPromise },
+      { name: "Menu", onEnter: () => {} },
+    ]);
+    gsm.init();
+
+    vi.clearAllMocks();
+
+    // Start transition — will await slow onExit
+    gsm.transition("Menu");
+
+    // Dispose mid-transition
+    gsm.dispose();
+
+    // Resolve onExit
+    resolveOnExit?.();
+    await Promise.resolve();
+
+    // No events should have been emitted
+    expect(bus.emit).not.toHaveBeenCalled();
+  });
+
+  it("should clean up properly when disposed during async onEnter", async () => {
+    const onExitSpy = vi.fn();
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+    const onEnterSpy = vi.fn().mockReturnValue(onEnterPromise);
+
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.registerStates([
+      { name: "Loading", onExit: onExitSpy },
+      { name: "Menu", onEnter: onEnterSpy },
+    ]);
+    gsm.init();
+
+    // Start transition — onExit is sync, proceeds to await onEnter
+    gsm.transition("Menu");
+    // Flush microtasks — transition code continues past `await undefined`
+    // (the yield from awaiting a non-thenable onExit result)
+    // Now the async onEnter has been initiated and is pending
+    await Promise.resolve();
+
+    // Both hooks were initiated (dispose during onEnter await)
+    expect(onExitSpy).toHaveBeenCalledTimes(1);
+    expect(onEnterSpy).toHaveBeenCalledTimes(1);
+
+    // Dispose during onEnter
+    gsm.dispose();
+
+    // Resolve onEnter
+    resolveOnEnter?.();
+    await Promise.resolve();
+
+    // State is undefined after dispose
+    expect(gsm.getCurrentState()).toBeUndefined();
+    // No events emitted
+    expect(bus.emit).not.toHaveBeenCalled();
+  });
+
+  // Coverage: transition() inner catch block at line 293-294 —
+  // onEnter rejection is caught after dispose, disposed guard suppresses rollback
+  it("should suppress rollback events when disposed during async onEnter rejection in transition()", async () => {
+    let rejectOnEnter: (reason: Error) => void;
+    const onEnterPromise = new Promise<void>((_resolve, reject) => {
+      rejectOnEnter = reject;
+    });
+    const onEnterSpy = vi.fn().mockReturnValue(onEnterPromise);
+    const onExitSpy = vi.fn();
+
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.registerStates([
+      { name: "Loading", onExit: onExitSpy },
+      { name: "Menu", onEnter: onEnterSpy },
+    ]);
+    gsm.init();
+
+    // Start transition — onExit is sync, proceeds to await onEnter
+    const transPromise = gsm.transition("Menu");
+    // Flush microtasks — transition continues past `await undefined`
+    // (the yield from awaiting a non-thenable onExit result)
+    await Promise.resolve();
+
+    expect(onExitSpy).toHaveBeenCalledTimes(1);
+    expect(onEnterSpy).toHaveBeenCalledTimes(1);
+
+    // Dispose while onEnter is pending — _disposed = true
+    gsm.dispose();
+
+    // Reject onEnter — catch block fires, sees _disposed, returns at line 294
+    rejectOnEnter!(new Error("onEnter failed after dispose"));
+    await transPromise;
+
+    // State is undefined (disposed)
+    expect(gsm.getCurrentState()).toBeUndefined();
+    // No events emitted — both resolved and rollback paths suppressed
+    expect(bus.emit).not.toHaveBeenCalled();
+    // No rollback warning logged
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      "[GSM] onEnter failed for",
+      expect.anything()
+    );
+  });
+
+  it("should not call onExit twice when disposed mid-transition with onExit fire-and-forget", async () => {
+    let resolveOnExit: () => void;
+    const onExitPromise = new Promise<void>((resolve) => {
+      resolveOnExit = resolve;
+    });
+    const onExitSpy = vi.fn().mockReturnValue(onExitPromise);
+    const onEnterSpy = vi.fn();
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([
+      { name: "Loading", onExit: onExitSpy },
+      { name: "Menu", onEnter: onEnterSpy },
+    ]);
+    gsm.init();
+
+    // Start transition — awaiting slow onExit
+    const transPromise = gsm.transition("Menu");
+    expect(onExitSpy).toHaveBeenCalledTimes(1);
+
+    // Dispose mid-transition — dispose also calls onExit fire-and-forget
+    // because _busy is true. This means onExit is called a second time
+    // (by design — Story 006 Implementation Note 3 says to call onExit during
+    // dispose). Hook authors should make onExit idempotent.
+    gsm.dispose();
+
+    // onExit was called twice: once by transition code, once by dispose() fire-and-forget
+    expect(onExitSpy).toHaveBeenCalledTimes(2);
+
+    // Resolve onExit
+    resolveOnExit?.();
+    await transPromise;
+
+    // onEnter should never have been called
+    expect(onEnterSpy).not.toHaveBeenCalled();
+  });
+
+  // Coverage: dispose() falsy branch of sourceDef?.onExit at line 362 —
+  // sourceDef is undefined when the current state has no registered definition
+  it("should handle dispose while busy when current state has no onExit hook", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    const gsm = new GameStateMachine();
+    // Register only Menu state (with async onEnter) — Loading has NO definition
+    gsm.registerStates([{ name: "Menu", onEnter: () => onEnterPromise }]);
+    gsm.init();
+
+    // Start transition Loading → Menu — GSM becomes busy (async onEnter)
+    // Loading has no state definition, so in dispose():
+    //   sourceDef = _stateDefinitions.get("Loading") → undefined
+    //   sourceDef?.onExit → undefined → falsy branch
+    const transPromise = gsm.transition("Menu");
+
+    // Dispose while busy — no onExit triggered (Loading has no definition)
+    expect(() => gsm.dispose()).not.toThrow();
+
+    // State cleaned up after dispose
+    expect(gsm.getCurrentState()).toBeUndefined();
+
+    // Clean up the pending onEnter promise
+    resolveOnEnter?.();
+    await transPromise;
+  });
+
+  it("should suppress onExit rejection during dispose (fire-and-forget catch)", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const onEnterSpy = vi.fn();
+    let callCount = 0;
+    const onExitSpy = vi.fn(() => {
+      callCount++;
+      if (callCount === 1) {
+        // First call (from transition) — pending promise, never resolves
+        return new Promise<void>(() => {
+          /* pending forever */
+        });
+      }
+      // Second call (from dispose fire-and-forget) — rejects immediately
+      return Promise.reject(new Error("onExit rejected during dispose"));
+    });
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([
+      { name: "Loading", onExit: onExitSpy },
+      { name: "Menu", onEnter: onEnterSpy },
+    ]);
+    gsm.init();
+
+    // Start transition — onExit is pending (never resolves)
+    const transPromise = gsm.transition("Menu");
+
+    // Dispose mid-transition — dispose calls onExit (2nd call), gets rejecting promise
+    // The .catch() in dispose() suppresses the floating rejection
+    gsm.dispose();
+
+    // Resolve the first onExit promise so transition can finish
+    // The transition code sees _disposed and returns early
+    // We need to resolve the first promise — but we can't because it never resolves.
+    // Instead, since dispose already set _currentState = undefined, the transition
+    // code will see _disposed at line 266 and return.
+    // But the first promise never resolves, so transPromise hangs...
+    // We need to resolve it somehow. Let's use a different approach.
+
+    // Actually, let's just verify no unhandled rejection and onEnter not called
+    // The transition promise will eventually be garbage collected
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(onEnterSpy).not.toHaveBeenCalled();
+    expect(onExitSpy).toHaveBeenCalledTimes(2);
+    warnSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-3: After dispose, transition() is no-op (no error)
+// ---------------------------------------------------------------------------
+
+describe("Dispose Safety AC-3: transition no-op after dispose", () => {
+  it("should not throw when calling transition() after dispose", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    gsm.dispose();
+    await expect(gsm.transition("Menu")).resolves.toBeUndefined();
+  });
+
+  it("should not change state when calling transition() after dispose", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    gsm.dispose();
+    await gsm.transition("Menu");
+    expect(gsm.getCurrentState()).toBeUndefined();
+  });
+
+  it("should be no-op for every possible state after dispose", async () => {
+    const states: State[] = [
+      "Loading",
+      "Menu",
+      "PreRace",
+      "Racing",
+      "Paused",
+      "PostRace",
+    ];
+    const gsm = new GameStateMachine();
+    gsm.init();
+    gsm.dispose();
+    for (const state of states) {
+      await expect(gsm.transition(state)).resolves.toBeUndefined();
+    }
+  });
+
+  it("should be no-op after double dispose", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    gsm.dispose();
+    gsm.dispose(); // double dispose
+    await expect(gsm.transition("Menu")).resolves.toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-4: After dispose, GSM emits no further events on Event Bus
+// ---------------------------------------------------------------------------
+
+describe("Dispose Safety AC-4: no events after dispose", () => {
+  it("should not emit events when transition() called after dispose", async () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+
+    // Navigate to a state first
+    await gsm.transition("Menu");
+    vi.clearAllMocks();
+
+    gsm.dispose();
+
+    // Any transition after dispose should not emit events
+    await gsm.transition("PreRace");
+    expect(bus.emit).not.toHaveBeenCalled();
+  });
+
+  it("should not emit events from tick() after dispose", () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+
+    gsm.dispose();
+    gsm.tick();
+    expect(bus.emit).not.toHaveBeenCalled();
+  });
+
+  it("should not emit events after dispose mid-transition", async () => {
+    let resolveOnExit: () => void;
+    const onExitPromise = new Promise<void>((resolve) => {
+      resolveOnExit = resolve;
+    });
+
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.registerStates([
+      { name: "Loading", onExit: () => onExitPromise },
+      { name: "Menu" },
+    ]);
+    gsm.init();
+    vi.clearAllMocks();
+
+    // Start transition — will await slow onExit
+    gsm.transition("Menu");
+
+    // Dispose mid-transition (busy with onExit in-flight)
+    gsm.dispose();
+
+    // Resolve onExit
+    resolveOnExit?.();
+    await Promise.resolve();
+
+    // No events emitted — state transition aborted
+    expect(bus.emit).not.toHaveBeenCalled();
+  });
+
+  it("should not emit events when Event Bus reference is nulled", () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+
+    // After dispose, _eventBus is null — no emit calls can fire
+    gsm.dispose();
+
+    // Even if we somehow got to _emitExited, optional chaining prevents call
+    expect((gsm as { _eventBus: unknown })._eventBus).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-5: After dispose, tick() is no-op and queue cleared
+// ---------------------------------------------------------------------------
+
+describe("Dispose Safety AC-5: tick no-op after dispose", () => {
+  it("should be a no-op when tick() called after dispose", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+
+    // Fill queue via private access
+    const queue = (gsm as { _queue: string[] })._queue;
+    queue.push("Menu", "Menu");
+
+    gsm.dispose();
+    expect(() => gsm.tick()).not.toThrow();
+    // Queue should have been cleared by dispose
+    expect(queue.length).toBe(0);
+    expect(gsm.getCurrentState()).toBeUndefined();
+  });
+
+  it("should be no-op for 10 consecutive tick() calls after dispose", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    gsm.dispose();
+    for (let i = 0; i < 10; i++) {
+      expect(() => gsm.tick()).not.toThrow();
+    }
+    expect(gsm.getCurrentState()).toBeUndefined();
+  });
+
+  it("should have queue cleared even with items before dispose", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+
+    const queue = (gsm as { _queue: string[] })._queue;
+    queue.push("Menu", "PreRace", "Racing");
+    expect(queue.length).toBe(3);
+
+    gsm.dispose();
+
+    // Queue cleared by dispose
+    expect(queue.length).toBe(0);
+  });
+
+  it("should be no-op for tick when disposed mid-transition with queued items", async () => {
+    let resolveOnExit: () => void;
+    const onExitPromise = new Promise<void>((resolve) => {
+      resolveOnExit = resolve;
+    });
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([
+      { name: "Loading", onExit: () => onExitPromise },
+      { name: "Menu" },
+    ]);
+    gsm.init();
+
+    // Start async transition — GSM busy
+    gsm.transition("Menu");
+
+    // Queue a transition while busy
+    gsm.transition("PreRace");
+
+    // Dispose mid-transition
+    gsm.dispose();
+
+    // Resolve onExit
+    resolveOnExit?.();
+    await Promise.resolve();
+
+    // tick should be no-op after dispose (queue is cleared)
+    gsm.tick();
+    await Promise.resolve();
+
+    expect(gsm.getCurrentState()).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-6: Tick-path dispose guards (tick() → _doTransition())
+// ---------------------------------------------------------------------------
+// Existing AC-2 tests exercise dispose guards via transition() (direct path).
+// These tests exercise the same guards via tick() → _doTransition() (queued
+// path), which hit _doTransition's inline guards at different source lines.
+// ---------------------------------------------------------------------------
+
+describe("Dispose Safety AC-6: tick → _doTransition guarded returns", () => {
+  // Coverage line 138: init() after dispose without prior init
+  it("should be no-op when init() called after dispose on pristine GSM", () => {
+    const gsm = new GameStateMachine();
+    // Dispose before any init() — pristine GSM
+    gsm.dispose();
+    // init() after dispose should be a no-op (guard at _disposed check)
+    gsm.init();
+    expect(gsm.getCurrentState()).toBeUndefined();
+  });
+
+  // _doTransition guard: disposed after onExit (line 453–454)
+  it("should skip onEnter when disposed during onExit in _doTransition via tick", async () => {
+    let resolveOnExit: () => void;
+    const onExitPromise = new Promise<void>((resolve) => {
+      resolveOnExit = resolve;
+    });
+    const menuOnExitSpy = vi.fn().mockReturnValue(onExitPromise);
+    const preRaceOnEnterSpy = vi.fn();
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([
+      { name: "Loading", onExit: vi.fn() },
+      { name: "Menu", onExit: menuOnExitSpy },
+      { name: "PreRace", onEnter: preRaceOnEnterSpy },
+    ]);
+    gsm.init();
+
+    // Fast transition to Menu
+    await gsm.transition("Menu");
+    expect(gsm.getCurrentState()).toBe("Menu");
+    vi.clearAllMocks();
+
+    // Directly enqueue so tick() processes via _doTransition
+    const queue = (gsm as { _queue: string[] })._queue;
+    queue.push("PreRace");
+
+    // tick() → _doTransition("PreRace"):
+    //   source=Menu (slow onExit), target=PreRace
+    //   await menuOnExitSpy() → yields, _doTransition suspended
+    gsm.tick();
+
+    expect(menuOnExitSpy).toHaveBeenCalledTimes(1);
+    expect(preRaceOnEnterSpy).not.toHaveBeenCalled();
+
+    // Dispose while _doTransition awaits onExit
+    gsm.dispose();
+
+    // Resolve onExit → _doTransition resumes → guard fires (line 453–454)
+    resolveOnExit?.();
+    await Promise.resolve();
+
+    // onEnter never called; state is undefined (disposed)
+    expect(preRaceOnEnterSpy).not.toHaveBeenCalled();
+    expect(gsm.getCurrentState()).toBeUndefined();
+  });
+
+  // _doTransition guard: disposed after onEnter (line 464–465)
+  it("should not change state when disposed during onEnter in _doTransition via tick", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+    const menuOnExitSpy = vi.fn();
+    const preRaceOnEnterSpy = vi.fn().mockReturnValue(onEnterPromise);
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([
+      { name: "Loading", onExit: vi.fn() },
+      { name: "Menu", onExit: menuOnExitSpy },
+      { name: "PreRace", onEnter: preRaceOnEnterSpy },
+    ]);
+    gsm.init();
+
+    await gsm.transition("Menu");
+    expect(gsm.getCurrentState()).toBe("Menu");
+    vi.clearAllMocks();
+
+    // Enqueue for tick() processing
+    const queue = (gsm as { _queue: string[] })._queue;
+    queue.push("PreRace");
+
+    // tick() → _doTransition("PreRace"):
+    //   onExit (Menu) sync → await undefined yields microtask
+    gsm.tick();
+
+    // Flush microtask: sync onExit completes, async onEnter begins (pending)
+    await Promise.resolve();
+
+    expect(menuOnExitSpy).toHaveBeenCalledTimes(1);
+    expect(preRaceOnEnterSpy).toHaveBeenCalledTimes(1);
+
+    // Dispose while _doTransition awaits onEnter
+    gsm.dispose();
+
+    // Resolve onEnter → _doTransition resumes → guard fires (line 464–465)
+    resolveOnEnter?.();
+    await Promise.resolve();
+
+    // State is undefined after dispose
+    expect(gsm.getCurrentState()).toBeUndefined();
+  });
+
+  // _doTransition guard: disposed during rollback (line 480–481)
+  it("should not emit rollback events when disposed during onEnter failure in _doTransition via tick", async () => {
+    const menuOnExitSpy = vi.fn();
+    const preRaceOnEnterSpy = vi.fn().mockRejectedValue(new Error("rollback"));
+
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.registerStates([
+      { name: "Loading", onExit: vi.fn() },
+      { name: "Menu", onExit: menuOnExitSpy },
+      { name: "PreRace", onEnter: preRaceOnEnterSpy },
+    ]);
+    gsm.init();
+
+    await gsm.transition("Menu");
+    expect(gsm.getCurrentState()).toBe("Menu");
+    vi.clearAllMocks();
+
+    // Enqueue for tick() processing
+    const queue = (gsm as { _queue: string[] })._queue;
+    queue.push("PreRace");
+
+    // tick() → _doTransition("PreRace")
+    gsm.tick();
+
+    // Flush: sync onExit resolves, onEnter returns rejected promise (microtask queued)
+    await Promise.resolve();
+
+    expect(menuOnExitSpy).toHaveBeenCalledTimes(1);
+    expect(preRaceOnEnterSpy).toHaveBeenCalledTimes(1);
+
+    // Dispose before rejection propagates into catch block
+    gsm.dispose();
+
+    // Flush rejection microtask — catch block sees disposed, returns (line 480–481)
+    await Promise.resolve();
+
+    // No rollback events (warn/entered) should have been emitted
+    expect(bus.emit).not.toHaveBeenCalled();
+    expect(gsm.getCurrentState()).toBeUndefined();
   });
 });
 
