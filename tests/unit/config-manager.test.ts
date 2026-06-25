@@ -345,6 +345,205 @@ describe("ConfigManager", () => {
     });
   });
 
+  describe("getDebugState", () => {
+    // ── AC-1: Ring buffer FIFO eviction ──
+
+    it("AC-1: should keep exactly 500 entries after 600 get() calls", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      for (let i = 0; i < 600; i++) {
+        cm.get("teams.macklen.motor");
+      }
+
+      const state = cm.getDebugState();
+      expect(state.accessLog.length).toBe(500);
+    });
+
+    it("AC-1: 0 calls → empty log", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      expect(cm.getDebugState().accessLog.length).toBe(0);
+    });
+
+    it("AC-1: 500 calls exactly → buffer full", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      for (let i = 0; i < 500; i++) {
+        cm.get("teams.macklen.motor");
+      }
+
+      expect(cm.getDebugState().accessLog.length).toBe(500);
+    });
+
+    it("AC-1: 501 calls → first entry evicted (length stays 500)", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      for (let i = 0; i < 501; i++) {
+        cm.get("teams.macklen.motor");
+      }
+
+      expect(cm.getDebugState().accessLog.length).toBe(500);
+    });
+
+    // ── AC-2: getDebugState returns full structure ──
+
+    it("AC-2: should return full structure with namespaces, accessLog, envOverrides", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", {
+        macklen: { motor: 250, color: "#FF0000" },
+      });
+
+      cm.get("teams.macklen.motor");
+      const state = cm.getDebugState();
+
+      expect(state).toHaveProperty("namespaces");
+      expect(state).toHaveProperty("accessLog");
+      expect(state).toHaveProperty("envOverrides");
+      expect(state.namespaces.teams).toEqual({
+        macklen: { motor: 250, color: "#FF0000" },
+      });
+      expect(state.accessLog.length).toBeGreaterThanOrEqual(1);
+      expect(state.accessLog[0].key).toBe("teams.macklen.motor");
+      expect(state.accessLog[0]).toHaveProperty("caller");
+      expect(state.accessLog[0].caller.length).toBeGreaterThan(0);
+      expect(state.accessLog[0]).toHaveProperty("timestamp");
+      expect(typeof state.accessLog[0].timestamp).toBe("number");
+    });
+
+    // ── AC-3: getDebugState before any register ──
+
+    it("AC-3: should return empty state before any register()", () => {
+      const cm = new ConfigManager();
+      cm.init();
+
+      const state = cm.getDebugState();
+      expect(state).toEqual({
+        namespaces: {},
+        accessLog: [],
+        envOverrides: [],
+      });
+    });
+
+    it("AC-3: should never throw when no namespaces are registered", () => {
+      const cm = new ConfigManager();
+      cm.init();
+
+      expect(() => cm.getDebugState()).not.toThrow();
+    });
+
+    // ── Edge cases ──
+
+    it("should return a snapshot that does not leak mutations to internal state", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.get("teams.macklen.motor");
+
+      const state = cm.getDebugState();
+      // Mutate the returned snapshot
+      state.namespaces.teams = { hacked: true } as object;
+
+      // Verify the internal state is unchanged
+      const state2 = cm.getDebugState();
+      expect(state2.namespaces.teams).toEqual({
+        macklen: { motor: 250 },
+      });
+    });
+
+    it("should still work after invalidateNamespace with rebuilt values", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.get("teams.macklen.motor");
+      cm.invalidateNamespace("teams");
+
+      const state = cm.getDebugState();
+      expect(state.namespaces.teams).toEqual({ macklen: { motor: 250 } });
+      expect(state.accessLog.length).toBe(1);
+    });
+
+    it("should list OVERDRIVE__ env vars in envOverrides", () => {
+      _setEnv("OVERDRIVE__TEAMS__MACKLEN__MOTOR", "999");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      const state = cm.getDebugState();
+      expect(state.envOverrides).toContain("OVERDRIVE__TEAMS__MACKLEN__MOTOR");
+    });
+
+    it("should show env-overridden values in namespaces (GAP-1)", () => {
+      _setEnv("OVERDRIVE__TEAMS__MACKLEN__MOTOR", "999");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      const state = cm.getDebugState();
+      // Namespace values must reflect env overrides, not raw defaults
+      expect(state.namespaces.teams).toEqual({ macklen: { motor: 999 } });
+    });
+
+    it("should exclude non-OVERDRIVE__ env vars from envOverrides (GAP-4)", () => {
+      _setEnv("OTHER__TEAMS__MOTOR", "123");
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      const state = cm.getDebugState();
+      expect(state.envOverrides).not.toContain("OTHER__TEAMS__MOTOR");
+    });
+
+    it("should return empty state before init() (GAP-2)", () => {
+      const cm = new ConfigManager();
+
+      // getDebugState() before init() — never throws, returns empty
+      expect(() => cm.getDebugState()).not.toThrow();
+      const state = cm.getDebugState();
+      expect(state).toEqual({
+        namespaces: {},
+        accessLog: [],
+        envOverrides: [],
+      });
+    });
+
+    it("should log both successful and error get() calls", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      cm.get("teams.macklen.motor"); // success
+      expect(() => cm.get("teams.macklen.motor.invalid")).toThrow(ConfigError); // error
+
+      const state = cm.getDebugState();
+      expect(state.accessLog.length).toBe(2);
+      expect(state.accessLog[0].key).toBe("teams.macklen.motor");
+      expect(state.accessLog[1].key).toBe("teams.macklen.motor.invalid");
+    });
+
+    it("should not log successful access when logAllAccess is disabled", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      cm.setLogAllAccess(false);
+      cm.get("teams.macklen.motor"); // success — not logged
+      expect(() => cm.get("nonexistent.key")).toThrow(ConfigError); // error — logged
+
+      const state = cm.getDebugState();
+      expect(state.accessLog.length).toBe(1);
+      expect(state.accessLog[0].key).toBe("nonexistent.key");
+    });
+  });
+
   describe("invalidateNamespace", () => {
     // ── AC-1: Cache cleared after invalidation ──
 
