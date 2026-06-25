@@ -223,7 +223,7 @@ stories:
     name: "Story 001: Persistence State Machine + Init"
     file: "production/epics/persistence/story-001-persistence-state-machine-init.md"
     priority: must-have
-    status: ready-for-dev
+    status: in_progress
     owner: "solo-dev"
     estimate_days: 0.375
     blocker: ""
