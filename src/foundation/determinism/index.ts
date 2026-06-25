@@ -5,4 +5,7 @@
  *
  * @see ADR-0002 — Fixed Timestep & Determinism Pipeline
  */
+export type { IFixedUpdatePipeline } from "./fixed-update-pipeline";
+export { FixedUpdatePipeline } from "./fixed-update-pipeline";
+export { PipelineError } from "./pipeline-error";
 export { SeededRandom } from "./seeded-random";
