@@ -47,6 +47,9 @@ export class GameStateMachine {
   private _busy = false;
   private readonly _eventBus: IEventBus | null | undefined;
   private _warnedEbMissing = false;
+  private readonly _queue: State[] = [];
+  private readonly _maxQueueSize: number;
+  private _disposed = false;
 
   /**
    * Create a new GameStateMachine.
@@ -54,6 +57,9 @@ export class GameStateMachine {
    * @param eventBus - Optional Event Bus instance for emitting state-change
    *   events. If null or undefined, transitions still complete but no events
    *   are emitted and a one-time warning is logged.
+   * @param options - Optional configuration:
+   *   - `maxQueueSize`: Max queued transitions (default 10). Oldest dropped
+   *     on overflow with a console.warn.
    *
    * @example
    * ```typescript
@@ -62,10 +68,17 @@ export class GameStateMachine {
    *
    * // Without Event Bus (transitions work but no events emitted)
    * const gsm = new GameStateMachine();
+   *
+   * // Custom queue size
+   * const gsm = new GameStateMachine(eventBus, { maxQueueSize: 20 });
    * ```
    */
-  constructor(eventBus?: IEventBus | null) {
+  constructor(
+    eventBus?: IEventBus | null,
+    options?: { maxQueueSize?: number }
+  ) {
     this._eventBus = eventBus;
+    this._maxQueueSize = options?.maxQueueSize ?? 10;
   }
 
   /**
@@ -154,11 +167,11 @@ export class GameStateMachine {
    * Transition the GSM to a new state.
    *
    * - If `target` equals the current state, this is a silent no-op.
-   * - If `target` is a valid transition from the current state, the state changes.
-   * - If `target` is not in the transition table for the current state,
-   *   a `GameStateError` is thrown and the state is unchanged.
-   * - If a transition is already in progress (`_busy`), a `GameStateError`
-   *   is thrown. Story 004 will add queue management for this case.
+   * - If a transition is already in progress (`_busy`), the request is
+   *   enqueued and executed on a future `tick()` call. Validation against
+   *   the transition table happens at execution time, not queue time.
+   * - If `target` is a valid transition from the current state and GSM is
+   *   not busy, the state changes immediately.
    *
    * On successful transition, two Event Bus events are emitted in order:
    * `gsm.state.exited` (payload: `{ from: previousState }`) then
@@ -176,13 +189,11 @@ export class GameStateMachine {
    *
    * @param target - The state to transition to
    * @returns A Promise that resolves when the transition completes
-   * @throws {GameStateError} If the transition is not defined in the table,
-   *   or if the GSM is busy with another transition
    *
    * @example
    * ```typescript
-   * gsm.init();         // Loading
-   * await gsm.transition("Menu"); // Loading → Menu (succeeds)
+   * gsm.init();              // Loading
+   * await gsm.transition("Menu");  // Loading → Menu (succeeds)
    * gsm.transition("Racing"); // Menu → Racing (throws GameStateError)
    * ```
    */
@@ -196,9 +207,10 @@ export class GameStateMachine {
       return;
     }
 
-    // Prevent concurrent transitions (Story 004 will queue these)
+    // If busy, enqueue for later execution
     if (this._busy) {
-      throw new GameStateError(this._currentState, target);
+      this._enqueue(target);
+      return;
     }
 
     const allowed = TRANSITIONS[this._currentState];
@@ -209,6 +221,121 @@ export class GameStateMachine {
     const sourceDef = this._stateDefinitions.get(this._currentState);
     const targetDef = this._stateDefinitions.get(target);
     const previousState = this._currentState;
+
+    this._busy = true;
+
+    try {
+      // Call source onExit — errors propagate to caller
+      if (sourceDef?.onExit) {
+        await sourceDef.onExit();
+      }
+
+      // Call target onEnter — errors trigger rollback
+      try {
+        if (targetDef?.onEnter) {
+          await targetDef.onEnter();
+        }
+
+        // Transition complete — update state
+        this._currentState = target;
+
+        // Emit Event Bus events (exited before entered, both resilient to failure)
+        this._warnIfEbMissing();
+        this._emitExited(previousState);
+        this._emitEntered(previousState, target);
+      } catch (error) {
+        // Rollback: stay in previous state
+        console.warn("[GSM] onEnter failed for", target, error);
+        // Re-emit gsm.state.entered for previous state (restored)
+        this._warnIfEbMissing();
+        this._emitEntered(previousState, previousState);
+      }
+    } finally {
+      this._busy = false;
+    }
+  }
+
+  /**
+   * Process at most 1 queued transition per call.
+   *
+   * Called externally by the FixedUpdatePipeline at the start of each frame.
+   * If no transitions are queued, this is a no-op. If the GSM is busy with
+   * an in-flight transition, this is a no-op (the next tick will pick up).
+   *
+   * If the dequeued transition is invalid against the **current** state
+   * (state may have changed since the call was queued), the error is logged
+   * and the GSM continues — the queue is not corrupted.
+   *
+   * After `dispose()`, `tick()` is a permanent no-op.
+   *
+   * @example
+   * ```typescript
+   * // Called once per frame by FixedUpdatePipeline
+   * pipeline.on("frame", () => gsm.tick());
+   * ```
+   */
+  tick(): void {
+    if (this._disposed || this._busy || this._queue.length === 0) return;
+    const next = this._queue.shift()!;
+    // Fire and forget — errors are logged internally; caller does not await
+    this._doTransition(next).catch((error) => {
+      console.warn("[GSM] Queued transition failed:", error);
+    });
+  }
+
+  /**
+   * Dispose the GSM — discards all queued transitions and marks the
+   * machine as disposed. Subsequent `tick()` calls are permanent no-ops.
+   *
+   * Note: `transition()` is NOT blocked after `dispose()`. The GSM
+   * remains functional for direct transitions — only queued transitions
+   * via `tick()` are affected. This asymmetry exists because `dispose()`
+   * is intended to stop the pipeline's tick-based processing, not to
+   * prevent direct state changes during cleanup.
+   *
+   * Does NOT clear definitions, event bus reference, or current state — that
+   * is handled by Story 006 (dispose safety).
+   */
+  dispose(): void {
+    this._disposed = true;
+    this._queue.length = 0;
+  }
+
+  /**
+   * Add a target state to the transition queue.
+   *
+   * If the queue is at capacity (`maxQueueSize`), the oldest entry is
+   * dropped (FIFO) and a warning is logged.
+   */
+  private _enqueue(target: State): void {
+    if (this._queue.length >= this._maxQueueSize) {
+      const dropped = this._queue.shift()!;
+      console.warn("[GSM] Transition queue overflow — dropping:", dropped);
+    }
+    this._queue.push(target);
+  }
+
+  /**
+   * Execute a queued transition: validate against the **current** state
+   * and run lifecycle hooks. Does NOT check `_busy` — that is the caller's
+   * responsibility (checked by `tick()` and `transition()`).
+   *
+   * Same-state transitions are silent no-ops.
+   */
+  private async _doTransition(target: State): Promise<void> {
+    // Same-state at execution time: no-op
+    if (target === this._currentState) {
+      return;
+    }
+
+    const allowed = TRANSITIONS[this._currentState as State];
+    if (!allowed?.includes(target)) {
+      throw new GameStateError(this._currentState as State, target);
+    }
+
+    const sourceDef = this._stateDefinitions.get(this._currentState as State);
+    const targetDef = this._stateDefinitions.get(target);
+    const previousState = this._currentState as State;
 
     this._busy = true;
 
