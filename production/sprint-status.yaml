@@ -213,7 +213,7 @@ stories:
     name: "Story 006: Determinism Enforcement (Dev Assertions)"
     file: "production/epics/determinism-contract/story-006-determinism-enforcement.md"
     priority: must-have
-    status: ready-for-dev
+    status: in_progress
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
