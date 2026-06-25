@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   FixedUpdatePipeline,
+  InputBuffer,
+  InputState,
   PipelineError,
   SeededRandom,
 } from "../../src/foundation/determinism";
@@ -714,5 +716,534 @@ describe("pipeline edge cases", () => {
     pipeline.dispose();
     // stop() after dispose — should not throw, just no-op
     expect(() => pipeline.stop()).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// InputBuffer — AC-1: write then read returns state
+// ---------------------------------------------------------------------------
+
+describe("InputBuffer AC-1: write then read returns state", () => {
+  it("write({ steer: 0.5, throttle: 1, brake: 0 }) then read() returns that state", () => {
+    const buf = new InputBuffer();
+    buf.write({
+      steer: 0.5,
+      throttle: 1,
+      brake: 0,
+      gearDelta: 0,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    });
+    const state = buf.read();
+    expect(state.steer).toBe(0.5);
+    expect(state.throttle).toBe(1);
+    expect(state.brake).toBe(0);
+    expect(state.gearDelta).toBe(0);
+    expect(state.confirm).toBe(false);
+    expect(state.pauseToggle).toBe(false);
+    expect(state.cameraToggle).toBe(false);
+    expect(state.cancel).toBe(false);
+    expect(state.navUp).toBe(false);
+    expect(state.navDown).toBe(false);
+  });
+
+  it("write with extreme steer value (-1) returns exactly -1", () => {
+    const buf = new InputBuffer();
+    buf.write({
+      steer: -1,
+      throttle: 0,
+      brake: 0.5,
+      gearDelta: 0,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    });
+    expect(buf.read().steer).toBe(-1);
+  });
+
+  it("write with boolean true values round-trips correctly", () => {
+    const buf = new InputBuffer();
+    buf.write({
+      steer: 0,
+      throttle: 0,
+      brake: 0,
+      gearDelta: 0,
+      confirm: true,
+      pauseToggle: true,
+      cameraToggle: true,
+      cancel: true,
+      navUp: true,
+      navDown: true,
+    });
+    const state = buf.read();
+    expect(state.confirm).toBe(true);
+    expect(state.pauseToggle).toBe(true);
+    expect(state.cameraToggle).toBe(true);
+    expect(state.cancel).toBe(true);
+    expect(state.navUp).toBe(true);
+    expect(state.navDown).toBe(true);
+  });
+
+  it("write with gearDelta extreme values round-trips correctly", () => {
+    const buf = new InputBuffer();
+    buf.write({
+      steer: 0,
+      throttle: 0,
+      brake: 0,
+      gearDelta: 1,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    });
+    expect(buf.read().gearDelta).toBe(1);
+
+    const buf2 = new InputBuffer();
+    buf2.write({
+      steer: 0,
+      throttle: 0,
+      brake: 0,
+      gearDelta: -1,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    });
+    expect(buf2.read().gearDelta).toBe(-1);
+  });
+
+  it("write with full throttle (1) and brake (0) returns those values", () => {
+    const buf = new InputBuffer();
+    buf.write({
+      steer: 0,
+      throttle: 1,
+      brake: 0,
+      gearDelta: 0,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    });
+    expect(buf.read().throttle).toBe(1);
+    expect(buf.read().brake).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// InputBuffer — AC-2: read before any write returns ZERO
+// ---------------------------------------------------------------------------
+
+describe("InputBuffer AC-2: read before any write returns ZERO", () => {
+  it("fresh buffer read() returns InputState.ZERO", () => {
+    const buf = new InputBuffer();
+    const state = buf.read();
+    expect(state).toEqual(InputState.ZERO);
+  });
+
+  it("read() after flip() but before write() returns ZERO", () => {
+    const buf = new InputBuffer();
+    // Write something, flip, then read without writing
+    buf.write({
+      steer: 0.5,
+      throttle: 1,
+      brake: 0,
+      gearDelta: 0,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    });
+    buf.flip();
+    const state = buf.read();
+    expect(state).toEqual(InputState.ZERO);
+  });
+
+  it("read() immediately after constructor returns ZERO", () => {
+    const buf = new InputBuffer();
+    expect(buf.read()).toEqual(InputState.ZERO);
+  });
+
+  it("two consecutive flip() calls without write() — read() returns ZERO", () => {
+    const buf = new InputBuffer();
+    buf.flip();
+    buf.flip();
+    expect(buf.read()).toEqual(InputState.ZERO);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// InputBuffer — AC-3: last write wins in same tick
+// ---------------------------------------------------------------------------
+
+describe("InputBuffer AC-3: last write wins in same tick", () => {
+  it("write(A) then write(B) before read — read() returns B (last write wins)", () => {
+    const buf = new InputBuffer();
+    const stateA: InputState = {
+      steer: -1,
+      throttle: 0.3,
+      brake: 0.7,
+      gearDelta: -1,
+      confirm: true,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+    const stateB: InputState = {
+      steer: 0.8,
+      throttle: 1,
+      brake: 0,
+      gearDelta: 1,
+      confirm: false,
+      pauseToggle: true,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+
+    buf.write(stateA);
+    buf.write(stateB);
+    const result = buf.read();
+    // B overwrote A in the same buffer — last write wins
+    expect(result).toEqual(stateB);
+  });
+
+  it("write(A) then write(B) then read() — A is overwritten, not readable", () => {
+    const buf = new InputBuffer();
+    const stateA: InputState = {
+      steer: -1,
+      throttle: 0.3,
+      brake: 0.7,
+      gearDelta: -1,
+      confirm: true,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+    const stateB: InputState = {
+      steer: 0.8,
+      throttle: 1,
+      brake: 0,
+      gearDelta: 1,
+      confirm: false,
+      pauseToggle: true,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+
+    buf.write(stateA);
+    buf.write(stateB);
+    // A is overwritten and cannot be retrieved
+    expect(buf.read()).not.toEqual(stateA);
+    expect(buf.read()).toEqual(stateB);
+  });
+
+  it("write once then read — normal single-write operation", () => {
+    const buf = new InputBuffer();
+    const state: InputState = {
+      steer: 0,
+      throttle: 0.5,
+      brake: 0,
+      gearDelta: 1,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+
+    buf.write(state);
+    expect(buf.read()).toEqual(state);
+  });
+
+  it("write three times before read — last one wins", () => {
+    const buf = new InputBuffer();
+    const first: InputState = {
+      steer: 0.1,
+      throttle: 0,
+      brake: 0,
+      gearDelta: 0,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+    const second: InputState = {
+      steer: 0.2,
+      throttle: 0,
+      brake: 0,
+      gearDelta: 0,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+    const third: InputState = {
+      steer: 0.9,
+      throttle: 0,
+      brake: 0,
+      gearDelta: 0,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+
+    buf.write(first);
+    buf.write(second);
+    buf.write(third);
+    expect(buf.read().steer).toBe(0.9);
+  });
+
+  it("after flip — read() returns ZERO (next tick buffer is clean)", () => {
+    const buf = new InputBuffer();
+    const stateA: InputState = {
+      steer: -1,
+      throttle: 1,
+      brake: 0,
+      gearDelta: 0,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+    const stateB: InputState = {
+      steer: 1,
+      throttle: 0,
+      brake: 0.5,
+      gearDelta: 0,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+
+    buf.write(stateA);
+    buf.write(stateB);
+    // flip() toggles buffers — the new write buffer is null
+    buf.flip();
+    // Next tick, before any write: read() returns ZERO
+    expect(buf.read()).toEqual(InputState.ZERO);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// InputBuffer — AC-4: buffer isolation across ticks
+// ---------------------------------------------------------------------------
+
+describe("InputBuffer AC-4: buffer isolation across ticks", () => {
+  it("write(A) → read() → flip() → write(B) → read() returns B, not A", () => {
+    const buf = new InputBuffer();
+    const tick1State: InputState = {
+      steer: -1,
+      throttle: 1,
+      brake: 0,
+      gearDelta: 1,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+    const tick2State: InputState = {
+      steer: 0,
+      throttle: 0,
+      brake: 1,
+      gearDelta: -1,
+      confirm: true,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+
+    buf.write(tick1State);
+    expect(buf.read()).toEqual(tick1State);
+    buf.flip();
+
+    buf.write(tick2State);
+    const result = buf.read();
+    expect(result).toEqual(tick2State);
+    // Ensure tick1 data is gone
+    expect(result.steer).not.toBe(tick1State.steer);
+  });
+
+  it("flip() twice without write in between — read() returns ZERO", () => {
+    const buf = new InputBuffer();
+    buf.write({
+      steer: 0.5,
+      throttle: 1,
+      brake: 0,
+      gearDelta: 0,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    });
+    buf.flip();
+    // Flip again without writing — the new buffer was cleared on first flip
+    // and cleared again on second flip (same index, already null)
+    buf.flip();
+    expect(buf.read()).toEqual(InputState.ZERO);
+  });
+
+  it("write after flip but before next flip — normal operation", () => {
+    const buf = new InputBuffer();
+    const tick1: InputState = {
+      steer: -1,
+      throttle: 0,
+      brake: 0,
+      gearDelta: 0,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+    const tick2: InputState = {
+      steer: 1,
+      throttle: 0.5,
+      brake: 0,
+      gearDelta: 0,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+
+    // Tick 1
+    buf.write(tick1);
+    buf.flip();
+    // Tick 2
+    buf.write(tick2);
+    expect(buf.read()).toEqual(tick2);
+    // Flip again and verify tick2 is isolated
+    buf.flip();
+    expect(buf.read()).toEqual(InputState.ZERO);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// InputBuffer — AC-5: read is non-destructive
+// ---------------------------------------------------------------------------
+
+describe("InputBuffer AC-5: read is non-destructive", () => {
+  it("read() twice after write returns same state both times", () => {
+    const buf = new InputBuffer();
+    const state: InputState = {
+      steer: 0.75,
+      throttle: 0.8,
+      brake: 0.2,
+      gearDelta: 0,
+      confirm: true,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: false,
+      navUp: false,
+      navDown: false,
+    };
+
+    buf.write(state);
+    const first = buf.read();
+    const second = buf.read();
+    expect(first).toEqual(second);
+  });
+
+  it("read() five times in a row — all return same value", () => {
+    const buf = new InputBuffer();
+    const state: InputState = {
+      steer: -0.3,
+      throttle: 0,
+      brake: 0.9,
+      gearDelta: -1,
+      confirm: false,
+      pauseToggle: false,
+      cameraToggle: false,
+      cancel: true,
+      navUp: false,
+      navDown: false,
+    };
+
+    buf.write(state);
+    const results = Array.from({ length: 5 }, () => buf.read());
+    for (let i = 1; i < results.length; i++) {
+      expect(results[i]).toEqual(results[0]);
+    }
+  });
+
+  it("read() after flip and write — subsequent reads still non-destructive", () => {
+    const buf = new InputBuffer();
+    const state: InputState = {
+      steer: 0.1,
+      throttle: 0.2,
+      brake: 0.3,
+      gearDelta: 0,
+      confirm: true,
+      pauseToggle: true,
+      cameraToggle: true,
+      cancel: true,
+      navUp: true,
+      navDown: true,
+    };
+
+    buf.write(state);
+    buf.flip();
+    // Next tick
+    buf.write(state);
+    expect(buf.read()).toEqual(buf.read());
+    expect(buf.read()).toEqual(buf.read());
+  });
+});
+
+// ---------------------------------------------------------------------------
+// InputBuffer — AC-6: Zero dependencies (verified by tsc --noEmit)
+// ---------------------------------------------------------------------------
+
+describe("InputBuffer AC-6: zero external dependencies", () => {
+  it("InputBuffer is instantiatable without any engine imports", () => {
+    // Runtime verification: no Babylon.js or npm types required.
+    // The real gate is `tsc --noEmit` (no transitive engine imports
+    // in Foundation layer files).
+    const buf = new InputBuffer();
+    expect(buf).toBeInstanceOf(InputBuffer);
   });
 });
