@@ -8,6 +8,7 @@ import {
   MAX_CATCHUP,
   MAX_FRAME_DELTA,
   PipelineError,
+  PipelineRuntime,
   SeededRandom,
 } from "../../src/foundation/determinism";
 
@@ -1536,5 +1537,477 @@ describe("Accumulator edge cases", () => {
     expect(result.ticks).toBe(0);
     expect(Number.isNaN(result.newAccumulator)).toBe(true);
     expect(result.clamped).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PipelineRuntime — AC-1: attach installs callback
+// ---------------------------------------------------------------------------
+
+describe("PipelineRuntime AC-1: attach installs callback", () => {
+  it("calls engine.runRenderLoop with a function argument", () => {
+    const runtime = new PipelineRuntime();
+    const engine = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67), // ~1/60s in ms
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+
+    expect(engine.runRenderLoop).toHaveBeenCalledTimes(1);
+    expect(engine.runRenderLoop).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it("attach stores the callback for later detach", () => {
+    const runtime = new PipelineRuntime();
+    const engine = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67), // ~1/60s in ms
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+
+    const callback = engine.runRenderLoop.mock.calls[0][0];
+    expect(typeof callback).toBe("function");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PipelineRuntime — AC-2: render loop calls pipeline and scene.render
+// ---------------------------------------------------------------------------
+
+describe("PipelineRuntime AC-2: render loop calls pipeline and scene.render", () => {
+  it("calls pipeline.executeTick once and scene.render once", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PipelineRuntime();
+    const tickSpy = vi.spyOn(runtime.pipeline, "executeTick");
+
+    let capturedCallback: () => void;
+    const engine = {
+      runRenderLoop: vi.fn((fn: () => void) => {
+        capturedCallback = fn;
+      }),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67), // real API: milliseconds
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    capturedCallback!();
+
+    expect(tickSpy).toHaveBeenCalledTimes(1);
+    expect(tickSpy).toHaveBeenCalledWith(FIXED_DT);
+    expect(scene.render).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
+
+  it("scene.render is called even when 0 ticks are processed", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PipelineRuntime();
+    const tickSpy = vi.spyOn(runtime.pipeline, "executeTick");
+
+    let capturedCallback: () => void;
+    const engine = {
+      runRenderLoop: vi.fn((fn: () => void) => {
+        capturedCallback = fn;
+      }),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 0),
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    capturedCallback!();
+
+    expect(tickSpy).toHaveBeenCalledTimes(0);
+    expect(scene.render).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PipelineRuntime — AC-3: normal single tick execution
+// ---------------------------------------------------------------------------
+
+describe("PipelineRuntime AC-3: normal single tick execution", () => {
+  it("getDeltaTime() = 16.67ms (1/60s) produces exactly 1 tick", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PipelineRuntime();
+    const tickSpy = vi.spyOn(runtime.pipeline, "executeTick");
+
+    let capturedCallback: () => void;
+    const engine = {
+      runRenderLoop: vi.fn((fn: () => void) => {
+        capturedCallback = fn;
+      }),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67), // ~1/60s in ms
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    capturedCallback!();
+
+    expect(tickSpy).toHaveBeenCalledTimes(1);
+    expect(tickSpy).toHaveBeenCalledWith(FIXED_DT);
+    warnSpy.mockRestore();
+  });
+
+  it("getDeltaTime() returns FIXED_DT in ms exactly — boundary condition, 1 tick", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PipelineRuntime();
+    const tickSpy = vi.spyOn(runtime.pipeline, "executeTick");
+
+    let capturedCallback: () => void;
+    const engine = {
+      runRenderLoop: vi.fn((fn: () => void) => {
+        capturedCallback = fn;
+      }),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => FIXED_DT * 1000), // FIXED_DT in ms
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    capturedCallback!();
+
+    expect(tickSpy).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
+
+  it("scene.render is called after pipeline ticks", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PipelineRuntime();
+    vi.spyOn(runtime.pipeline, "executeTick");
+
+    let capturedCallback: () => void;
+    const engine = {
+      runRenderLoop: vi.fn((fn: () => void) => {
+        capturedCallback = fn;
+      }),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67),
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    capturedCallback!();
+
+    expect(scene.render).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PipelineRuntime — AC-4: catch-up cap at 4 ticks with spiral-of-death
+// ---------------------------------------------------------------------------
+
+describe("PipelineRuntime AC-4: catch-up cap at 4 ticks with spiral-of-death", () => {
+  it("83.35ms (5/60s) delta produces 4 ticks (cap) — spiral clamp fires", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PipelineRuntime();
+    const tickSpy = vi.spyOn(runtime.pipeline, "executeTick");
+
+    let capturedCallback: () => void;
+    const engine = {
+      runRenderLoop: vi.fn((fn: () => void) => {
+        capturedCallback = fn;
+      }),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 83.35), // 5/60s in ms
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    capturedCallback!();
+
+    expect(tickSpy).toHaveBeenCalledTimes(4);
+    expect(scene.render).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
+
+  it("66.67ms (4/60s) delta produces exactly 4 ticks (no cap)", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PipelineRuntime();
+    const tickSpy = vi.spyOn(runtime.pipeline, "executeTick");
+
+    let capturedCallback: () => void;
+    const engine = {
+      runRenderLoop: vi.fn((fn: () => void) => {
+        capturedCallback = fn;
+      }),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 66.67), // 4/60s in ms
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    capturedCallback!();
+
+    expect(tickSpy).toHaveBeenCalledTimes(4);
+    warnSpy.mockRestore();
+  });
+
+  it("0 delta produces 0 ticks", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PipelineRuntime();
+    const tickSpy = vi.spyOn(runtime.pipeline, "executeTick");
+
+    let capturedCallback: () => void;
+    const engine = {
+      runRenderLoop: vi.fn((fn: () => void) => {
+        capturedCallback = fn;
+      }),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 0),
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    capturedCallback!();
+
+    expect(tickSpy).toHaveBeenCalledTimes(0);
+    expect(scene.render).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
+
+  it("spiral clamp verified: after 83.35ms cap, next frame with 0 delta produces 0 ticks", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PipelineRuntime();
+    const tickSpy = vi.spyOn(runtime.pipeline, "executeTick");
+
+    let capturedCallback: () => void;
+    const getDeltaTime = vi.fn();
+    const engine = {
+      runRenderLoop: vi.fn((fn: () => void) => {
+        capturedCallback = fn;
+      }),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime,
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+
+    getDeltaTime.mockReturnValue(83.35); // 5/60s
+    capturedCallback!();
+    expect(tickSpy).toHaveBeenCalledTimes(4);
+
+    getDeltaTime.mockReturnValue(0);
+    capturedCallback!();
+    expect(tickSpy).toHaveBeenCalledTimes(4);
+    expect(scene.render).toHaveBeenCalledTimes(2);
+    warnSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PipelineRuntime — AC-5: detach removes callback
+// ---------------------------------------------------------------------------
+
+describe("PipelineRuntime AC-5: detach removes callback", () => {
+  it("stops render loop when detach() is called", () => {
+    const runtime = new PipelineRuntime();
+    const engine = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67), // ~1/60s in ms
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    const callbackRef = engine.runRenderLoop.mock.calls[0][0];
+
+    runtime.detach();
+
+    expect(engine.stopRenderLoop).toHaveBeenCalledTimes(1);
+    expect(engine.stopRenderLoop).toHaveBeenCalledWith(callbackRef);
+  });
+
+  it("detach without prior attach is safe no-op", () => {
+    const runtime = new PipelineRuntime();
+    expect(() => runtime.detach()).not.toThrow();
+  });
+
+  it("detach twice is safe no-op", () => {
+    const runtime = new PipelineRuntime();
+    const engine = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67), // ~1/60s in ms
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    runtime.detach();
+
+    expect(() => runtime.detach()).not.toThrow();
+    expect(engine.stopRenderLoop).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PipelineRuntime — AC-6: Havok auto-step suppression
+// ---------------------------------------------------------------------------
+
+describe("PipelineRuntime AC-6: Havok auto-step suppression", () => {
+  it("replaces _advancePhysicsEngineStep with a no-op function", () => {
+    const runtime = new PipelineRuntime();
+    const autoStep = vi.fn();
+    const scene = {
+      _advancePhysicsEngineStep: autoStep,
+    };
+
+    runtime.suppressHavokAutoStep(scene as any);
+
+    expect(scene._advancePhysicsEngineStep).not.toBe(autoStep);
+    expect(typeof scene._advancePhysicsEngineStep).toBe("function");
+  });
+
+  it("overridden function does nothing when called", () => {
+    const runtime = new PipelineRuntime();
+    const stepCalls: number[] = [];
+    const scene = {
+      _advancePhysicsEngineStep: () => {
+        stepCalls.push(1);
+      },
+    };
+
+    runtime.suppressHavokAutoStep(scene as any);
+
+    scene._advancePhysicsEngineStep();
+    expect(stepCalls.length).toBe(0);
+  });
+
+  it("handles scene without _advancePhysicsEngineStep defensively", () => {
+    const runtime = new PipelineRuntime();
+    const scene = {} as any;
+
+    expect(() => runtime.suppressHavokAutoStep(scene)).not.toThrow();
+    expect(typeof scene._advancePhysicsEngineStep).toBe("function");
+    expect(() => scene._advancePhysicsEngineStep()).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PipelineRuntime — AC-7: placeholder slots registration
+// ---------------------------------------------------------------------------
+
+describe("PipelineRuntime AC-7: placeholder slots registration", () => {
+  it("executeTick does not crash with only placeholder NO-OP slots", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PipelineRuntime();
+
+    expect(() => runtime.pipeline.executeTick(FIXED_DT)).not.toThrow();
+    warnSpy.mockRestore();
+  });
+
+  it("tick counter increments after executing a tick with placeholders", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PipelineRuntime();
+
+    expect(runtime.pipeline.getCurrentTick()).toBe(0);
+    runtime.pipeline.executeTick(FIXED_DT);
+    expect(runtime.pipeline.getCurrentTick()).toBe(1);
+    warnSpy.mockRestore();
+  });
+
+  it("slot 1 is empty (reserved for Input) — no function at slot 1", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PipelineRuntime();
+
+    expect(() => runtime.pipeline.executeTick(FIXED_DT)).not.toThrow();
+    warnSpy.mockRestore();
+  });
+
+  it("registering at a placeholder slot throws (slot occupied)", () => {
+    const runtime = new PipelineRuntime();
+
+    expect(() => runtime.pipeline.register("physics", vi.fn(), 2)).toThrow(
+      PipelineError
+    );
+  });
+
+  it("placeholder slots log a warning when ticked", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PipelineRuntime();
+
+    // Execute a tick — all 7 placeholders should log warnings
+    runtime.pipeline.executeTick(FIXED_DT);
+
+    // At least 7 warnings (slots 2–8)
+    expect(warnSpy).toHaveBeenCalledTimes(7);
+    warnSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PipelineRuntime — AC-8: double attach is no-op
+// ---------------------------------------------------------------------------
+
+describe("PipelineRuntime AC-8: double attach is no-op", () => {
+  it("second attach does not re-install the callback", () => {
+    const runtime = new PipelineRuntime();
+    const engine = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67), // ~1/60s in ms
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    runtime.attach(engine as any, () => scene as any);
+
+    expect(engine.runRenderLoop).toHaveBeenCalledTimes(1);
+  });
+
+  it("pipeline continues incrementing ticks after no-op second attach", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const runtime = new PipelineRuntime();
+    const tickSpy = vi.spyOn(runtime.pipeline, "executeTick");
+
+    let capturedCallback: () => void;
+    const engine = {
+      runRenderLoop: vi.fn((fn: () => void) => {
+        capturedCallback = fn;
+      }),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67), // ~1/60s in ms
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    runtime.attach(engine as any, () => scene as any);
+    capturedCallback!();
+
+    expect(tickSpy).toHaveBeenCalledTimes(1);
+    expect(runtime.pipeline.getCurrentTick()).toBe(1);
+    expect(scene.render).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
+
+  it("attach with different engine reference is also no-op", () => {
+    const runtime = new PipelineRuntime();
+    const engineA = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67), // ~1/60s in ms
+    };
+    const engineB = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67), // ~1/60s in ms
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engineA as any, () => scene as any);
+    runtime.attach(engineB as any, () => scene as any);
+
+    expect(engineA.runRenderLoop).toHaveBeenCalledTimes(1);
+    expect(engineB.runRenderLoop).toHaveBeenCalledTimes(0);
   });
 });
