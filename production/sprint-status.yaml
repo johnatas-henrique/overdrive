@@ -83,11 +83,11 @@ stories:
     name: "Story 002: Core Event Bus"
     file: "production/epics/event-bus/story-002-core-event-bus.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-8"
     name: "Story 003: Edge Cases"
