@@ -10,6 +10,9 @@
  * - Invalid transitions throw `GameStateError` (no silent ignores)
  * - Same-state transitions are silent no-ops
  * - `init()` is idempotent — safe to call multiple times
+ * - Optional lifecycle hooks (`onEnter`/`onExit`) per state definition
+ * - Async hooks are awaited; `onEnter` rejection triggers rollback
+ * - Internal `_busy` flag prevents concurrent transitions
  *
  * ## Design Decisions (from code review)
  *
@@ -29,10 +32,46 @@
 
 import { GameStateError } from "./GameStateError";
 import type { State } from "./State";
+import type { StateDefinition } from "./StateDefinition";
 import { TRANSITIONS } from "./TransitionTable";
+
+/**
+ * Options for constructing a `GameStateMachine`.
+ */
+export interface GameStateMachineOptions {
+  /**
+   * Callback invoked when `gsm.state.entered` would be emitted.
+   * Temporary mock for Story 003 (Event Bus integration).
+   *
+   * Called on rollback (when `onEnter` rejects) with the previous state.
+   * Will be replaced by the real Event Bus in Story 003.
+   *
+   * @param state - The state that was entered (re-entered on rollback)
+   */
+  onStateEntered?: (state: State) => void;
+}
 
 export class GameStateMachine {
   private _currentState: State | undefined;
+  private _stateDefinitions = new Map<State, StateDefinition>();
+  private _busy = false;
+  private readonly _onStateEntered?: (state: State) => void;
+
+  /**
+   * Create a new GameStateMachine.
+   *
+   * @param options - Optional configuration
+   *
+   * @example
+   * ```typescript
+   * const gsm = new GameStateMachine({
+   *   onStateEntered: (state) => console.log("Entered:", state),
+   * });
+   * ```
+   */
+  constructor(options?: GameStateMachineOptions) {
+    this._onStateEntered = options?.onStateEntered;
+  }
 
   /**
    * Get the current state of the machine.
@@ -72,24 +111,81 @@ export class GameStateMachine {
   }
 
   /**
+   * Register state definitions with lifecycle hooks.
+   *
+   * Must be called before `transition()` to enable hooks. States without
+   * definitions can still be transitioned to — hooks are optional.
+   *
+   * Hook values are validated at registration time: each must be `undefined`
+   * or a function. Non-function values throw `TypeError`.
+   *
+   * @param defs - Array of state definitions
+   * @throws {TypeError} If a hook is defined but is not a function
+   *
+   * @example
+   * ```typescript
+   * gsm.registerStates([
+   *   { name: "Menu", onEnter: () => console.log("Entering Menu") },
+   *   {
+   *     name: "Racing",
+   *     onEnter: () => loadRaceAssets(),
+   *     onExit: () => cleanupRace(),
+   *   },
+   * ]);
+   * ```
+   */
+  registerStates(defs: StateDefinition[]): void {
+    for (const def of defs) {
+      if (def.onEnter !== undefined && typeof def.onEnter !== "function") {
+        throw new TypeError(
+          `onEnter for state "${def.name}" must be a function, got ${typeof def.onEnter}`
+        );
+      }
+      if (def.onExit !== undefined && typeof def.onExit !== "function") {
+        throw new TypeError(
+          `onExit for state "${def.name}" must be a function, got ${typeof def.onExit}`
+        );
+      }
+      if (this._stateDefinitions.has(def.name)) {
+        throw new TypeError(
+          `Duplicate state definition for "${def.name}". Use registerStates() once per state.`
+        );
+      }
+      this._stateDefinitions.set(def.name, def);
+    }
+  }
+
+  /**
    * Transition the GSM to a new state.
    *
    * - If `target` equals the current state, this is a silent no-op.
    * - If `target` is a valid transition from the current state, the state changes.
    * - If `target` is not in the transition table for the current state,
    *   a `GameStateError` is thrown and the state is unchanged.
+   * - If a transition is already in progress (`_busy`), a `GameStateError`
+   *   is thrown. Story 004 will add queue management for this case.
+   *
+   * Lifecycle hooks (if registered) are called in order:
+   * `source.onExit()` → `target.onEnter()`. Both may be sync or async.
+   * Async hooks are awaited before the transition is marked complete.
+   *
+   * If `onEnter()` rejects, the transition rolls back: the state remains
+   * unchanged, a warning is logged, and the `onStateEntered` callback
+   * (if provided) is called with the previous state.
    *
    * @param target - The state to transition to
-   * @throws {GameStateError} If the transition is not defined in the table
+   * @returns A Promise that resolves when the transition completes
+   * @throws {GameStateError} If the transition is not defined in the table,
+   *   or if the GSM is busy with another transition
    *
    * @example
    * ```typescript
    * gsm.init();         // Loading
-   * gsm.transition("Menu"); // Loading → Menu (succeeds)
+   * await gsm.transition("Menu"); // Loading → Menu (succeeds)
    * gsm.transition("Racing"); // Menu → Racing (throws GameStateError)
    * ```
    */
-  transition(target: State): void {
+  async transition(target: State): Promise<void> {
     if (this._currentState === undefined) {
       throw new GameStateError("Uninitialized", target);
     }
@@ -99,11 +195,44 @@ export class GameStateMachine {
       return;
     }
 
-    const allowed = TRANSITIONS[this._currentState];
-    if (!allowed || !allowed.includes(target)) {
+    // Prevent concurrent transitions (Story 004 will queue these)
+    if (this._busy) {
       throw new GameStateError(this._currentState, target);
     }
 
-    this._currentState = target;
+    const allowed = TRANSITIONS[this._currentState];
+    if (!allowed?.includes(target)) {
+      throw new GameStateError(this._currentState, target);
+    }
+
+    const sourceDef = this._stateDefinitions.get(this._currentState);
+    const targetDef = this._stateDefinitions.get(target);
+    const previousState = this._currentState;
+
+    this._busy = true;
+
+    try {
+      // Call source onExit — errors propagate to caller
+      if (sourceDef?.onExit) {
+        await sourceDef.onExit();
+      }
+
+      // Call target onEnter — errors trigger rollback
+      try {
+        if (targetDef?.onEnter) {
+          await targetDef.onEnter();
+        }
+
+        // Transition complete — update state
+        this._currentState = target;
+      } catch (error) {
+        // Rollback: stay in previous state
+        console.warn("[GSM] onEnter failed for", target, error);
+        // Re-emit gsm.state.entered for previous state (mock Event Bus)
+        this._onStateEntered?.(previousState);
+      }
+    } finally {
+      this._busy = false;
+    }
   }
 }
