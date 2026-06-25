@@ -7,5 +7,7 @@
  */
 export type { IFixedUpdatePipeline } from "./fixed-update-pipeline";
 export { FixedUpdatePipeline } from "./fixed-update-pipeline";
+export { InputBuffer } from "./input-buffer";
 export { PipelineError } from "./pipeline-error";
 export { SeededRandom } from "./seeded-random";
+export { InputState } from "./types";
