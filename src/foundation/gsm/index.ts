@@ -8,7 +8,6 @@
  */
 
 export { GameStateError } from "./GameStateError";
-export type { GameStateMachineOptions } from "./GameStateMachine";
 export { GameStateMachine } from "./GameStateMachine";
 export type { State } from "./State";
 export type { StateDefinition } from "./StateDefinition";

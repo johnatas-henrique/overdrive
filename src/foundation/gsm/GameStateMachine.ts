@@ -13,64 +13,59 @@
  * - Optional lifecycle hooks (`onEnter`/`onExit`) per state definition
  * - Async hooks are awaited; `onEnter` rejection triggers rollback
  * - Internal `_busy` flag prevents concurrent transitions
+ * - Event Bus integration: emits `gsm.state.exited` then `gsm.state.entered`
+ *   on every successful transition (see TR-GSM-003)
  *
- * ## Design Decisions (from code review)
+ * ## Design Decisions
  *
- * - **`getCurrentState()` exists despite ADR-0024 Decision 6** ("no public getCurrent"):
- *   The ADR prohibits systems from *polling* state. This accessor is marked `@internal`
- *   and exists solely for test assertions and debug tooling. Game systems must subscribe
- *   to `gsm.state.entered`/`gsm.state.exited` via Event Bus (implemented in Story 003).
- * - **`init()` is a separate lifecycle step** (not in constructor):
- *   Deferred initialization allows Event Bus to be wired before GSM emits events.
- *   The constructor creates the instance; `init()` activates it.
- * - **ADR Decisions 2–5 are deferred** to subsequent stories:
- *   D2 (onEnter/onExit) → Story 002, D3 (Event Bus) → Story 003,
- *   D4 (tick queue) → Story 004, D5 (ring buffer) → Story 005.
+ * - **Event Bus is optional**: passed via constructor. If null/undefined,
+ *   transitions complete without emissions and a one-time warning is logged.
+ * - **`getCurrentState()` exists despite ADR-0024 Decision 6**: the ADR prohibits
+ *   systems from *polling* state. This accessor is marked `@internal` and exists
+ *   solely for test assertions and debug tooling. Game systems must subscribe
+ *   to `gsm.state.entered`/`gsm.state.exited` via Event Bus.
+ * - **`init()` is a separate lifecycle step** (not in constructor): deferred
+ *   initialization allows Event Bus to be wired before GSM emits events.
  *
  * @see ADR-0024 — Game State Machine
  */
 
+import type { IEventBus } from "../event-bus/types";
 import { GameStateError } from "./GameStateError";
 import type { State } from "./State";
 import type { StateDefinition } from "./StateDefinition";
 import { TRANSITIONS } from "./TransitionTable";
 
-/**
- * Options for constructing a `GameStateMachine`.
- */
-export interface GameStateMachineOptions {
-  /**
-   * Callback invoked when `gsm.state.entered` would be emitted.
-   * Temporary mock for Story 003 (Event Bus integration).
-   *
-   * Called on rollback (when `onEnter` rejects) with the previous state.
-   * Will be replaced by the real Event Bus in Story 003.
-   *
-   * @param state - The state that was entered (re-entered on rollback)
-   */
-  onStateEntered?: (state: State) => void;
-}
+/** Event name for GSM state exit. */
+const GSM_STATE_EXITED = "gsm.state.exited";
+/** Event name for GSM state entry. */
+const GSM_STATE_ENTERED = "gsm.state.entered";
 
 export class GameStateMachine {
   private _currentState: State | undefined;
   private _stateDefinitions = new Map<State, StateDefinition>();
   private _busy = false;
-  private readonly _onStateEntered?: (state: State) => void;
+  private readonly _eventBus: IEventBus | null | undefined;
+  private _warnedEbMissing = false;
 
   /**
    * Create a new GameStateMachine.
    *
-   * @param options - Optional configuration
+   * @param eventBus - Optional Event Bus instance for emitting state-change
+   *   events. If null or undefined, transitions still complete but no events
+   *   are emitted and a one-time warning is logged.
    *
    * @example
    * ```typescript
-   * const gsm = new GameStateMachine({
-   *   onStateEntered: (state) => console.log("Entered:", state),
-   * });
+   * // With Event Bus
+   * const gsm = new GameStateMachine(eventBus);
+   *
+   * // Without Event Bus (transitions work but no events emitted)
+   * const gsm = new GameStateMachine();
    * ```
    */
-  constructor(options?: GameStateMachineOptions) {
-    this._onStateEntered = options?.onStateEntered;
+  constructor(eventBus?: IEventBus | null) {
+    this._eventBus = eventBus;
   }
 
   /**
@@ -165,13 +160,19 @@ export class GameStateMachine {
    * - If a transition is already in progress (`_busy`), a `GameStateError`
    *   is thrown. Story 004 will add queue management for this case.
    *
+   * On successful transition, two Event Bus events are emitted in order:
+   * `gsm.state.exited` (payload: `{ from: previousState }`) then
+   * `gsm.state.entered` (payload: `{ from: previousState, to: newState }`).
+   * Each emit is independently wrapped in try/catch — a failure in one does
+   * not prevent the other, and the transition is never rolled back.
+   *
    * Lifecycle hooks (if registered) are called in order:
    * `source.onExit()` → `target.onEnter()`. Both may be sync or async.
    * Async hooks are awaited before the transition is marked complete.
    *
    * If `onEnter()` rejects, the transition rolls back: the state remains
-   * unchanged, a warning is logged, and the `onStateEntered` callback
-   * (if provided) is called with the previous state.
+   * unchanged, a warning is logged, and `gsm.state.entered` is emitted
+   * for the restored (previous) state via the Event Bus.
    *
    * @param target - The state to transition to
    * @returns A Promise that resolves when the transition completes
@@ -225,14 +226,55 @@ export class GameStateMachine {
 
         // Transition complete — update state
         this._currentState = target;
+
+        // Emit Event Bus events (exited before entered, both resilient to failure)
+        this._warnIfEbMissing();
+        this._emitExited(previousState);
+        this._emitEntered(previousState, target);
       } catch (error) {
         // Rollback: stay in previous state
         console.warn("[GSM] onEnter failed for", target, error);
-        // Re-emit gsm.state.entered for previous state (mock Event Bus)
-        this._onStateEntered?.(previousState);
+        // Re-emit gsm.state.entered for previous state (restored)
+        this._warnIfEbMissing();
+        this._emitEntered(previousState, previousState);
       }
     } finally {
       this._busy = false;
+    }
+  }
+
+  /**
+   * Log a one-time warning if the Event Bus is not available.
+   * Suppresses duplicate warnings across multiple transitions.
+   */
+  private _warnIfEbMissing(): void {
+    if (!this._eventBus && !this._warnedEbMissing) {
+      this._warnedEbMissing = true;
+      console.warn("[GSM] Event Bus unavailable — events will not be emitted");
+    }
+  }
+
+  /**
+   * Emit `gsm.state.exited` for the given previous state.
+   * Errors are caught and logged — they never abort the transition.
+   */
+  private _emitExited(from: State): void {
+    try {
+      this._eventBus?.emit(GSM_STATE_EXITED, { from });
+    } catch (error) {
+      console.warn("[GSM] Event Bus emit failed:", error);
+    }
+  }
+
+  /**
+   * Emit `gsm.state.entered` for the given transition.
+   * Errors are caught and logged — they never abort the transition.
+   */
+  private _emitEntered(from: State, to: State): void {
+    try {
+      this._eventBus?.emit(GSM_STATE_ENTERED, { from, to });
+    } catch (error) {
+      console.warn("[GSM] Event Bus emit failed:", error);
     }
   }
 }

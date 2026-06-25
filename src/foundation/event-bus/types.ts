@@ -35,9 +35,9 @@ export type RaceResults = {
  */
 export type EventMap = {
   /** Fired when the Game State Machine enters a new state. */
-  "gsm.state.entered": { state: string; previous: string };
+  "gsm.state.entered": { from: string; to: string };
   /** Fired when the Game State Machine exits a state. */
-  "gsm.state.exited": { state: string; next: string };
+  "gsm.state.exited": { from: string };
   /** A car entity has been spawned into the scene. */
   "entity.spawned": { carId: string };
   /** A car entity has been removed from the scene. */
