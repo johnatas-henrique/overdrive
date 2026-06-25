@@ -123,11 +123,11 @@ stories:
     name: "Story 003: Event Bus Integration"
     file: "production/epics/game-state-machine/story-003-event-bus-integration.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-12"
     name: "Story 004: Transition Throttling"
