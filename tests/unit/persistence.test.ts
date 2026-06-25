@@ -703,6 +703,213 @@ describe("AC-3: load nonexistent returns null", () => {
 });
 
 // ---------------------------------------------------------------------------
+// AC-4: Error isolation — corrupted data returns null, other keys unaffected
+// ---------------------------------------------------------------------------
+
+describe("AC-4: Error isolation — corrupted data", () => {
+  it("should return null and warn for corrupted (non-JSON) data", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem("overdrive_corrupted", "this-is-not-json{{{");
+
+    const result = await persistence.load("corrupted");
+
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[Persistence] Corrupted entry for key "corrupted" (19 bytes)'
+    );
+  });
+
+  it("should return null and warn for valid JSON that is not a PersistedEntry", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem("overdrive_plain", JSON.stringify("just a string"));
+
+    const result = await persistence.load("plain");
+
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[Persistence] Corrupted entry for key "plain" (15 bytes)'
+    );
+  });
+
+  it("should return null and warn for a plain number (not PersistedEntry)", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem("overdrive_num", JSON.stringify(42));
+
+    const result = await persistence.load("num");
+
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[Persistence] Corrupted entry for key "num" (2 bytes)'
+    );
+  });
+
+  it("should return null and warn for a null JSON value", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem("overdrive_nil", JSON.stringify(null));
+
+    const result = await persistence.load("nil");
+
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[Persistence] Corrupted entry for key "nil" (4 bytes)'
+    );
+  });
+
+  it("should load valid keys unaffected after corrupted load", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    // Seed both corrupted and valid entries
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem("overdrive_corrupt", "not-json!!!");
+    storage.setItem(
+      "overdrive_valid",
+      JSON.stringify({
+        version: "0.1.0",
+        data: { x: 1 },
+        timestamp: 100,
+      })
+    );
+
+    // Load corrupted key first — should return null
+    const corruptResult = await persistence.load("corrupt");
+    expect(corruptResult).toBeNull();
+
+    // Load valid key — should return correct data
+    const validResult = await persistence.load<{ x: number }>("valid");
+    expect(validResult).toEqual({ x: 1 });
+  });
+
+  it("should handle truncated JSON gracefully with warning", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem("overdrive_truncated", '{"ver');
+
+    const result = await persistence.load("truncated");
+
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[Persistence] Corrupted entry for key "truncated" (5 bytes)'
+    );
+  });
+
+  it("should handle empty string in localStorage with warning", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem("overdrive_empty", "");
+
+    const result = await persistence.load("empty");
+
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[Persistence] Corrupted entry for key "empty" (0 bytes)'
+    );
+  });
+
+  it("should warn for PersistedEntry missing 'data' field", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem(
+      "overdrive_nodata",
+      JSON.stringify({ version: "0.1.0", timestamp: 1000 })
+    );
+
+    const result = await persistence.load("nodata");
+
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[Persistence] Corrupted entry for key "nodata" (36 bytes)'
+    );
+  });
+
+  it("should load data with extra fields beyond PersistedEntry normally", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem(
+      "overdrive_extra",
+      JSON.stringify({
+        version: "0.1.0",
+        data: { value: 42 },
+        timestamp: 100,
+        extraField: "should be ignored",
+      })
+    );
+
+    const result = await persistence.load<{ value: number }>("extra");
+
+    expect(result).toEqual({ value: 42 });
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("should not call warn for nonexistent key (no corruption)", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const result = await persistence.load("nonexistent");
+
+    expect(result).toBeNull();
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("should log once per corrupted key loaded, not corrupt other keys", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem("overdrive_bad1", "garbage{{{");
+    storage.setItem("overdrive_bad2", "not-json");
+    storage.setItem(
+      "overdrive_good",
+      JSON.stringify({ version: "0.1.0", data: "ok", timestamp: 1 })
+    );
+
+    await persistence.load("bad1");
+    await persistence.load("bad2");
+    await persistence.load("good");
+
+    // Should be exactly 2 warnings (one per corrupted key)
+    expect(warnSpy).toHaveBeenCalledTimes(2);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[Persistence] Corrupted entry for key "bad1" (10 bytes)'
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[Persistence] Corrupted entry for key "bad2" (8 bytes)'
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // AC-8: key prefix isolation
 // ---------------------------------------------------------------------------
 
@@ -1117,5 +1324,78 @@ describe("Error transition: save failure → Degraded", () => {
     // Degraded load should return null
     const result = await persistence.load("settings");
     expect(result).toBeNull();
+  });
+
+  it("should log warning when JSON.stringify fails (circular reference)", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+
+    // Should not throw
+    await expect(
+      persistence.save("circular", circular)
+    ).resolves.toBeUndefined();
+
+    // Should log the serialization error
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '[Persistence] Failed to serialize key "circular"'
+      )
+    );
+  });
+
+  it("should NOT transition to Degraded when JSON.stringify fails", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+
+    await persistence.save("circular", circular);
+
+    // State stays Ready — only setItem failures degrade
+    expect(persistence.state).toBe(PersistenceState.Ready);
+    expect(persistence.lastError).toBeUndefined();
+  });
+
+  it("should handle non-Error throws during JSON.stringify gracefully", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    // Temporarily replace JSON.stringify to throw a non-Error value
+    vi.stubGlobal(
+      "JSON",
+      Object.assign(Object.create(null), {
+        ...JSON,
+        stringify: vi.fn(() => {
+          throw "primitive error";
+        }),
+      })
+    );
+
+    const warnBefore = warnSpy.mock.calls.length;
+
+    await persistence.save("key", { data: "value" });
+
+    // Should have logged one more warning
+    expect(warnSpy.mock.calls.length).toBe(warnBefore + 1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to serialize key "key"')
+    );
+    // Should indicate unknown serialization error (not error.message)
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Unknown serialization error")
+    );
+
+    // State should remain Ready — only setItem failures degrade
+    expect(persistence.state).toBe(PersistenceState.Ready);
+
+    // Cleanup — restore JSON
+    vi.unstubAllGlobals();
   });
 });
