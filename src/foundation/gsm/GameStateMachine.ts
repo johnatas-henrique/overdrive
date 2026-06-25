@@ -36,6 +36,22 @@ import type { State } from "./State";
 import type { StateDefinition } from "./StateDefinition";
 import { TRANSITIONS } from "./TransitionTable";
 
+/**
+ * A single recorded state transition for debug history.
+ *
+ * @see F27 — 20-entry ring buffer of last transitions for debug
+ */
+export interface TransitionRecord {
+  /** Source state */
+  readonly from: State;
+  /** Target state */
+  readonly to: State;
+  /** Date.now() when the transition completed (hooks resolved) */
+  readonly timestamp: number;
+  /** Milliseconds spent in `from` before this transition */
+  readonly durationInPreviousState: number;
+}
+
 /** Event name for GSM state exit. */
 const GSM_STATE_EXITED = "gsm.state.exited";
 /** Event name for GSM state entry. */
@@ -50,6 +66,13 @@ export class GameStateMachine {
   private readonly _queue: State[] = [];
   private readonly _maxQueueSize: number;
   private _disposed = false;
+
+  /** Ring buffer of last 20 successful transitions for debug tooling. */
+  private readonly _history: TransitionRecord[] = [];
+  /** Fixed capacity per ADR-0024 Decision 5 / F27. */
+  private static readonly _maxHistorySize = 20;
+  /** Timestamp from `init()` for computing first-transition duration. */
+  private _initTimestamp = 0;
 
   /**
    * Create a new GameStateMachine.
@@ -116,6 +139,7 @@ export class GameStateMachine {
       return; // Idempotent: already initialized
     }
     this._currentState = "Loading";
+    this._initTimestamp = Date.now();
   }
 
   /**
@@ -239,6 +263,9 @@ export class GameStateMachine {
         // Transition complete — update state
         this._currentState = target;
 
+        // Record successful transition in ring buffer (debug tooling)
+        this._recordTransition(previousState, target);
+
         // Emit Event Bus events (exited before entered, both resilient to failure)
         this._warnIfEbMissing();
         this._emitExited(previousState);
@@ -299,6 +326,25 @@ export class GameStateMachine {
   dispose(): void {
     this._disposed = true;
     this._queue.length = 0;
+    this._history.length = 0;
+  }
+
+  /**
+   * Get the recorded state transition history for debug tooling.
+   *
+   * Returns a shallow copy of the internal ring buffer. Mutations to the
+   * returned array do not affect internal state.
+   *
+   * @returns An ordered read-only array of TransitionRecord entries (newest last)
+   *
+   * @example
+   * ```typescript
+   * const history = gsm.getHistory();
+   * // history[0] => { from: 'Loading', to: 'Menu', timestamp: ..., durationInPreviousState: ... }
+   * ```
+   */
+  getHistory(): ReadonlyArray<TransitionRecord> {
+    return [...this._history];
   }
 
   /**
@@ -354,6 +400,9 @@ export class GameStateMachine {
         // Transition complete — update state
         this._currentState = target;
 
+        // Record successful transition in ring buffer (debug tooling)
+        this._recordTransition(previousState, target);
+
         // Emit Event Bus events (exited before entered, both resilient to failure)
         this._warnIfEbMissing();
         this._emitExited(previousState);
@@ -368,6 +417,36 @@ export class GameStateMachine {
     } finally {
       this._busy = false;
     }
+  }
+
+  /**
+   * Record a successful state transition in the ring buffer.
+   *
+   * Called after `onEnter` resolves and the state has been updated.
+   * NOT called for same-state no-ops or rollbacks.
+   *
+   * Duration is computed as the difference from the last recorded timestamp
+   * (or `_initTimestamp` for the first transition). FIFO eviction occurs when
+   * the buffer exceeds `_maxHistorySize`.
+   */
+  private _recordTransition(from: State, to: State): void {
+    const now = Date.now();
+    const previousEntry = this._history[this._history.length - 1];
+    const durationInPreviousState = previousEntry
+      ? now - previousEntry.timestamp
+      : now - this._initTimestamp;
+
+    const record: TransitionRecord = {
+      from,
+      to,
+      timestamp: now,
+      durationInPreviousState,
+    };
+
+    if (this._history.length >= GameStateMachine._maxHistorySize) {
+      this._history.shift();
+    }
+    this._history.push(record);
   }
 
   /**
