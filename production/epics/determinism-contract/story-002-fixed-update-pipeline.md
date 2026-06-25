@@ -1,7 +1,8 @@
 # Story 002: FixedUpdatePipeline
 
 > **Epic**: Determinism Contract
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -190,3 +191,11 @@ Test evidence: `tests/unit/determinism.test.ts` — verify all acceptance criter
 
 - Depends on: None (standalone — pipeline class is pure TypeScript)
 - Unlocks: Story 004 (Accumulator uses pipeline's tick counting interface), Story 005 (Pipeline Engine Integration), Story 006 (Determinism Enforcement hooks into pipeline lifecycle)
+
+## Completion Notes
+
+**Completed**: 2026-06-24
+**Criteria**: 10/10 passing
+**Deviations**: Added Number.isInteger() check to register() for non-integer slot index validation (AC-9 edge case — was missing from original implementation)
+**Test Evidence**: Unit test at `tests/unit/determinism.test.ts` — 59/59 tests, 100% coverage on fixed-update-pipeline.ts, tsc clean, lint clean
+**Code Review**: Complete (APPROVED — 0 BLOCKING, 2 WARNING addressed)
