@@ -153,11 +153,11 @@ stories:
     name: "Story 006: Dispose Safety"
     file: "production/epics/game-state-machine/story-006-dispose-safety.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-15"
     name: "Story 001: SeededRandom"

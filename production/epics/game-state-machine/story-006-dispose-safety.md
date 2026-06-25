@@ -1,7 +1,8 @@
 # Story 006: Dispose Safety
 
 > **Epic**: Game State Machine
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -121,3 +122,11 @@ Test evidence: `tests/unit/gsm.test.ts` — verify all acceptance criteria pass.
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires currentState and transition(); Story 002 (async-lifecycle-hooks) — requires onExit/onEnter hooks; Story 004 (transition-throttling) — requires tick() and transition queue
 - **Unlocks**: None (end of GSM story chain)
+
+## Completion Notes
+
+**Completed**: 2026-06-24
+**Criteria**: 5/5 passing
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/gsm.test.ts` — 191/191 tests, 100% coverage on GameStateMachine.ts (stmts, branches, lines), tsc clean, lint clean
+**Code Review**: Complete (APPROVED WITH SUGGESTIONS — all suggestions applied: readonly fields, flaky test fix, dead code removal, branch coverage)
