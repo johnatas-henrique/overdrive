@@ -1,7 +1,8 @@
 # Story 005: Pipeline Engine Integration
 
 > **Epic**: Determinism Contract
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
@@ -165,3 +166,11 @@ Test evidence: `tests/unit/determinism.test.ts` — verify all acceptance criter
 
 - Depends on: Story 002 (FixedUpdatePipeline — the pipeline instance), Story 004 (Accumulator — the `accumulate()` pure function)
 - Unlocks: All Core epics that register into the pipeline (Physics, AI, Collision, Fuel, Tire, Race Management, Pit Stop)
+
+## Completion Notes
+
+**Completed**: 2026-06-24
+**Criteria**: 8/8 passing
+**Deviations**: Removed unreachable defensive guard in loop callback (line 200). Removed `import.meta.env.DEV` guard from placeholder logging — always logs, suppressed in tests.
+**Test Evidence**: Unit test at `tests/unit/determinism.test.ts` — 136/136 tests, 100% coverage on pipeline-runtime.ts, tsc clean, lint clean
+**Code Review**: Complete (APPROVED — 0 BLOCKING, 0 WARNING)

@@ -203,11 +203,11 @@ stories:
     name: "Story 005: Pipeline Engine Integration"
     file: "production/epics/determinism-contract/story-005-pipeline-engine-integration.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-20"
     name: "Story 006: Determinism Enforcement (Dev Assertions)"
