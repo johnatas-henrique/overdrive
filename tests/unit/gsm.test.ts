@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { IEventBus } from "../../src/foundation/event-bus";
 import type { State } from "../../src/foundation/gsm";
 import {
   GameStateError,
@@ -19,6 +20,17 @@ afterEach(() => {
   warnSpy.mockRestore();
   errorSpy.mockRestore();
 });
+
+/** Create a mock Event Bus with a vi.fn() emit spy for testing emissions. */
+function createMockBus(): IEventBus {
+  return {
+    emit: vi.fn(),
+    on: vi.fn(),
+    once: vi.fn(),
+    off: vi.fn(),
+    dispose: vi.fn(),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Transition table
@@ -771,7 +783,8 @@ describe("Lifecycle AC-4: Async onEnter rejection rolls back", () => {
 
   it("should log a warning via console.warn on rejection", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const gsm = new GameStateMachine();
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
     gsm.registerStates([
       {
         name: "Menu",
@@ -788,7 +801,8 @@ describe("Lifecycle AC-4: Async onEnter rejection rolls back", () => {
 
   it("should log a warning on synchronous throw", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const gsm = new GameStateMachine();
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
     gsm.registerStates([
       {
         name: "Menu",
@@ -874,7 +888,8 @@ describe("Lifecycle AC-4: Async onEnter rejection rolls back", () => {
 
   it("should handle non-Error rejection values", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const gsm = new GameStateMachine();
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
     gsm.registerStates([
       {
         name: "Menu",
@@ -894,9 +909,9 @@ describe("Lifecycle AC-4: Async onEnter rejection rolls back", () => {
 // ---------------------------------------------------------------------------
 
 describe("Lifecycle AC-5: Rollback re-emits gsm.state.entered", () => {
-  it("should call onStateEntered callback with previous state on rollback", async () => {
-    const callback = vi.fn();
-    const gsm = new GameStateMachine({ onStateEntered: callback });
+  it("should emit gsm.state.entered for previous state on rollback", async () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
     gsm.registerStates([
       {
         name: "Menu",
@@ -905,28 +920,33 @@ describe("Lifecycle AC-5: Rollback re-emits gsm.state.entered", () => {
     ]);
     gsm.init();
     await gsm.transition("Menu");
-    expect(callback).toHaveBeenCalledTimes(1);
-    expect(callback).toHaveBeenCalledWith("Loading");
+    expect(bus.emit).toHaveBeenCalledTimes(1);
+    expect(bus.emit).toHaveBeenCalledWith("gsm.state.entered", {
+      from: "Loading",
+      to: "Loading",
+    });
   });
 
-  it("should NOT call onStateEntered on successful transition", async () => {
-    const callback = vi.fn();
-    const gsm = new GameStateMachine({ onStateEntered: callback });
+  it("should NOT emit gsm.state.exited on rollback (only entered)", async () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
     gsm.registerStates([
       {
         name: "Menu",
-        onEnter: () => {},
+        onEnter: () => Promise.reject(new Error("fail")),
       },
     ]);
     gsm.init();
     await gsm.transition("Menu");
-    // Callback is only called on rollback, not on normal transitions
-    expect(callback).not.toHaveBeenCalled();
+    expect(bus.emit).not.toHaveBeenCalledWith(
+      "gsm.state.exited",
+      expect.anything()
+    );
   });
 
-  it("should call onStateEntered on synchronous throw rollback", async () => {
-    const callback = vi.fn();
-    const gsm = new GameStateMachine({ onStateEntered: callback });
+  it("should emit gsm.state.entered on synchronous throw rollback", async () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
     gsm.registerStates([
       {
         name: "Menu",
@@ -937,12 +957,15 @@ describe("Lifecycle AC-5: Rollback re-emits gsm.state.entered", () => {
     ]);
     gsm.init();
     await gsm.transition("Menu");
-    expect(callback).toHaveBeenCalledTimes(1);
-    expect(callback).toHaveBeenCalledWith("Loading");
+    expect(bus.emit).toHaveBeenCalledTimes(1);
+    expect(bus.emit).toHaveBeenCalledWith("gsm.state.entered", {
+      from: "Loading",
+      to: "Loading",
+    });
   });
 
-  it("should handle missing onStateEntered callback gracefully", async () => {
-    const gsm = new GameStateMachine(); // No callback provided
+  it("should handle missing Event Bus gracefully on rollback", async () => {
+    const gsm = new GameStateMachine(); // No Event Bus
     gsm.registerStates([
       {
         name: "Menu",
@@ -950,14 +973,13 @@ describe("Lifecycle AC-5: Rollback re-emits gsm.state.entered", () => {
       },
     ]);
     gsm.init();
-    // Should not throw even without callback
     await expect(gsm.transition("Menu")).resolves.toBeUndefined();
     expect(gsm.getCurrentState()).toBe("Loading");
   });
 
-  it("should call callback once per rollback (idempotent)", async () => {
-    const callback = vi.fn();
-    const gsm = new GameStateMachine({ onStateEntered: callback });
+  it("should emit entered once per rollback", async () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
     gsm.registerStates([
       {
         name: "Menu",
@@ -970,10 +992,13 @@ describe("Lifecycle AC-5: Rollback re-emits gsm.state.entered", () => {
     await gsm.transition("Menu");
     await gsm.transition("Menu");
 
-    expect(callback).toHaveBeenCalledTimes(3);
-    expect(callback).toHaveBeenNthCalledWith(1, "Loading");
-    expect(callback).toHaveBeenNthCalledWith(2, "Loading");
-    expect(callback).toHaveBeenNthCalledWith(3, "Loading");
+    // Each rollback emits exactly one gsm.state.entered
+    expect(bus.emit).toHaveBeenCalledTimes(3);
+    expect(bus.emit.mock.calls).toEqual([
+      ["gsm.state.entered", { from: "Loading", to: "Loading" }],
+      ["gsm.state.entered", { from: "Loading", to: "Loading" }],
+      ["gsm.state.entered", { from: "Loading", to: "Loading" }],
+    ]);
   });
 });
 
@@ -1255,6 +1280,392 @@ describe("registerStates: duplicate state protection", () => {
         { name: "Racing", onEnter: () => {} },
       ])
     ).toThrow('Duplicate state definition for "Racing"');
+  });
+});
+
+// ===========================================================================
+// Event Bus Integration (Story 003)
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// AC-1: exited emitted with correct payload
+// ---------------------------------------------------------------------------
+
+describe("Event Bus AC-1: gsm.state.exited emitted", () => {
+  it("should emit gsm.state.exited on successful transition", async () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+    await gsm.transition("Menu");
+    expect(bus.emit).toHaveBeenCalledWith("gsm.state.exited", {
+      from: "Loading",
+    });
+  });
+
+  it("should use the previous state as the 'from' value", async () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+    await gsm.transition("Menu");
+    await gsm.transition("PreRace");
+    // Second transition: from Menu to PreRace
+    expect(bus.emit).toHaveBeenCalledWith("gsm.state.exited", {
+      from: "Menu",
+    });
+  });
+
+  it("should NOT emit gsm.state.exited on same-state transition (no-op)", async () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+    await gsm.transition("Loading"); // same-state no-op
+    expect(bus.emit).not.toHaveBeenCalled();
+  });
+
+  it("should NOT emit gsm.state.exited on rollback (only entered)", async () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.registerStates([
+      {
+        name: "Menu",
+        onEnter: () => Promise.reject(new Error("fail")),
+      },
+    ]);
+    gsm.init();
+    await gsm.transition("Menu");
+    expect(bus.emit).not.toHaveBeenCalledWith(
+      "gsm.state.exited",
+      expect.anything()
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-2: entered emitted with correct payload
+// ---------------------------------------------------------------------------
+
+describe("Event Bus AC-2: gsm.state.entered emitted", () => {
+  it("should emit gsm.state.entered on successful transition", async () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+    await gsm.transition("Menu");
+    expect(bus.emit).toHaveBeenCalledWith("gsm.state.entered", {
+      from: "Loading",
+      to: "Menu",
+    });
+  });
+
+  it("should carry both from and to in the payload", async () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+    await gsm.transition("Menu");
+    const enteredCalls = (
+      bus.emit as ReturnType<typeof vi.fn>
+    ).mock.calls.filter((call: unknown[]) => call[0] === "gsm.state.entered");
+    expect(enteredCalls).toHaveLength(1);
+    expect(enteredCalls[0][1]).toEqual({
+      from: "Loading",
+      to: "Menu",
+    });
+  });
+
+  it("should NOT emit gsm.state.entered on invalid transition (no state change)", async () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+    try {
+      await gsm.transition("Racing"); // Invalid from Loading
+    } catch {
+      // Expected
+    }
+    expect(bus.emit).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-3: Event ordering — exited BEFORE entered
+// ---------------------------------------------------------------------------
+
+describe("Event Bus AC-3: exited before entered ordering", () => {
+  it("should emit exited BEFORE entered on successful transition", async () => {
+    const order: string[] = [];
+    const bus = createMockBus();
+    (bus.emit as ReturnType<typeof vi.fn>).mockImplementation(
+      (event: string) => {
+        order.push(event);
+      }
+    );
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+    await gsm.transition("Menu");
+    expect(order).toEqual(["gsm.state.exited", "gsm.state.entered"]);
+  });
+
+  it("should maintain ordering across a chain of 2 transitions", async () => {
+    const order: string[] = [];
+    const bus = createMockBus();
+    (bus.emit as ReturnType<typeof vi.fn>).mockImplementation(
+      (event: string) => {
+        order.push(event);
+      }
+    );
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+    await gsm.transition("Menu");
+    await gsm.transition("PreRace");
+    expect(order).toEqual([
+      "gsm.state.exited",
+      "gsm.state.entered",
+      "gsm.state.exited",
+      "gsm.state.entered",
+    ]);
+  });
+
+  it("should not emit anything on same-state no-op (empty log)", async () => {
+    const order: string[] = [];
+    const bus = createMockBus();
+    (bus.emit as ReturnType<typeof vi.fn>).mockImplementation(
+      (event: string) => {
+        order.push(event);
+      }
+    );
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+    await gsm.transition("Loading"); // no-op
+    expect(order).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-4: Event Bus injected via constructor
+// ---------------------------------------------------------------------------
+
+describe("Event Bus AC-4: dependency injection", () => {
+  it("should accept Event Bus via constructor", () => {
+    const bus = createMockBus();
+    const gsm = new GameStateMachine(bus);
+    expect(gsm).toBeDefined();
+    // Verify the bus is used by checking emissions work
+    gsm.init();
+    gsm.transition("Menu");
+    expect(bus.emit).toHaveBeenCalled();
+  });
+
+  it("should accept undefined (no Event Bus provided)", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    expect(() => gsm.transition("Menu")).not.toThrow();
+  });
+
+  it("should accept explicit null", () => {
+    const gsm = new GameStateMachine(null);
+    gsm.init();
+    expect(() => gsm.transition("Menu")).not.toThrow();
+  });
+
+  it("should accept explicit undefined", () => {
+    const gsm = new GameStateMachine(undefined);
+    gsm.init();
+    expect(() => gsm.transition("Menu")).not.toThrow();
+  });
+
+  it("should not import Event Bus singleton in GSM module (verified by type check)", () => {
+    // Static assertion: the GSM module only imports IEventBus interface,
+    // never the concrete EventBus class. Verified by tsc --noEmit.
+    const gsm = new GameStateMachine();
+    expect(gsm).toBeInstanceOf(GameStateMachine);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-5: Event Bus unavailable — transition completes, warning logged
+// ---------------------------------------------------------------------------
+
+describe("Event Bus AC-5: unavailable Event Bus", () => {
+  it("should complete transition when Event Bus is null", async () => {
+    const gsm = new GameStateMachine(null);
+    gsm.init();
+    await gsm.transition("Menu");
+    expect(gsm.getCurrentState()).toBe("Menu");
+  });
+
+  it("should complete transition when Event Bus is undefined", async () => {
+    const gsm = new GameStateMachine(undefined);
+    gsm.init();
+    await gsm.transition("Menu");
+    expect(gsm.getCurrentState()).toBe("Menu");
+  });
+
+  it("should log a warning when Event Bus is unavailable", async () => {
+    const gsm = new GameStateMachine(null);
+    gsm.init();
+    await gsm.transition("Menu");
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[GSM] Event Bus unavailable — events will not be emitted"
+    );
+  });
+
+  it("should warn only once across multiple transitions", async () => {
+    const gsm = new GameStateMachine(null);
+    gsm.init();
+    await gsm.transition("Menu");
+    await gsm.transition("PreRace");
+    // Warning should only be logged once
+    const warnCalls = warnSpy.mock.calls.filter(
+      (call) =>
+        call[0] === "[GSM] Event Bus unavailable — events will not be emitted"
+    );
+    expect(warnCalls).toHaveLength(1);
+  });
+
+  it("should not crash when Event Bus is null and transition fails", async () => {
+    const gsm = new GameStateMachine(null);
+    gsm.init();
+    await expect(gsm.transition("Racing")).rejects.toThrow(GameStateError);
+    expect(gsm.getCurrentState()).toBe("Loading");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-6: emit() throws — error caught, transition completes
+// ---------------------------------------------------------------------------
+
+describe("Event Bus AC-6: emit() failure resilience", () => {
+  it("should complete transition when emit() throws", async () => {
+    const bus = createMockBus();
+    (bus.emit as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      throw new Error("emit failed");
+    });
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+    await expect(gsm.transition("Menu")).resolves.toBeUndefined();
+    expect(gsm.getCurrentState()).toBe("Menu");
+  });
+
+  it("should log a warning when emit() throws", async () => {
+    const bus = createMockBus();
+    (bus.emit as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      throw new Error("emit failed");
+    });
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+    await gsm.transition("Menu");
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[GSM] Event Bus emit failed:",
+      expect.any(Error)
+    );
+  });
+
+  it("should still attempt gsm.state.entered if gsm.state.exited throws", async () => {
+    let callCount = 0;
+    const bus = createMockBus();
+    (bus.emit as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        throw new Error("exited emit failed");
+      }
+      // Second call (entered) should succeed
+    });
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+    await gsm.transition("Menu");
+    // Both exited and entered should have been attempted
+    expect(bus.emit).toHaveBeenCalledTimes(2);
+    expect(bus.emit).toHaveBeenCalledWith("gsm.state.entered", {
+      from: "Loading",
+      to: "Menu",
+    });
+  });
+
+  it("should handle both emits throwing (both caught)", async () => {
+    const bus = createMockBus();
+    (bus.emit as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      throw new Error("always fails");
+    });
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+    await expect(gsm.transition("Menu")).resolves.toBeUndefined();
+    expect(gsm.getCurrentState()).toBe("Menu");
+    // Both emits were attempted
+    expect(bus.emit).toHaveBeenCalledTimes(2);
+    // Two warnings should have been logged
+    const emitFailCalls = warnSpy.mock.calls.filter(
+      (call) => call[0] === "[GSM] Event Bus emit failed:"
+    );
+    expect(emitFailCalls).toHaveLength(2);
+  });
+
+  it("should handle non-Error throw values from emit()", async () => {
+    const bus = createMockBus();
+    (bus.emit as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      // eslint-disable-next-line @typescript-eslint/no-throw-literal
+      throw "string error";
+    });
+    const gsm = new GameStateMachine(bus);
+    gsm.init();
+    await expect(gsm.transition("Menu")).resolves.toBeUndefined();
+    expect(gsm.getCurrentState()).toBe("Menu");
+  });
+
+  it("should complete transition when emit throws on rollback", async () => {
+    const bus = createMockBus();
+    (bus.emit as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      throw new Error("emit failed");
+    });
+    const gsm = new GameStateMachine(bus);
+    gsm.registerStates([
+      {
+        name: "Menu",
+        onEnter: () => Promise.reject(new Error("onEnter fail")),
+      },
+    ]);
+    gsm.init();
+    await expect(gsm.transition("Menu")).resolves.toBeUndefined();
+    expect(gsm.getCurrentState()).toBe("Loading");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Exhaustive event-emission across all valid transitions
+// ---------------------------------------------------------------------------
+
+describe("Event Bus: exhaustive emission for all valid transitions", () => {
+  it("should emit correct events for every valid transition in the table", async () => {
+    const states: State[] = [
+      "Loading",
+      "Menu",
+      "PreRace",
+      "Racing",
+      "Paused",
+      "PostRace",
+    ];
+
+    for (const from of states) {
+      for (const to of TRANSITIONS[from]) {
+        const bus = createMockBus();
+        const gsm = new GameStateMachine(bus);
+        gsm.init();
+        // Navigate to `from` state
+        if (from !== "Loading") {
+          for (const step of getPathTo(from)) {
+            await gsm.transition(step);
+          }
+        }
+        vi.clearAllMocks();
+
+        await gsm.transition(to);
+
+        expect(bus.emit).toHaveBeenCalledWith("gsm.state.exited", {
+          from,
+        });
+        expect(bus.emit).toHaveBeenCalledWith("gsm.state.entered", {
+          from,
+          to,
+        });
+      }
+    }
   });
 });
 
