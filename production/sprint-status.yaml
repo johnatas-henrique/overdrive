@@ -103,11 +103,11 @@ stories:
     name: "Story 001: Core FSM — Transition Table"
     file: "production/epics/game-state-machine/story-001-core-fsm-transition-table.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-10"
     name: "Story 002: Async Lifecycle Hooks"
