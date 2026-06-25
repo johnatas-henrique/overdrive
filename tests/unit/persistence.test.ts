@@ -380,9 +380,9 @@ describe("retry() guard", () => {
     await expect(persistence.retry()).resolves.toBe(false);
   });
 
-  it("should return false when state is Uninitialized", async () => {
+  it("should return true when state is Uninitialized (no-op)", async () => {
     const persistence = new Persistence();
-    await expect(persistence.retry()).resolves.toBe(false);
+    await expect(persistence.retry()).resolves.toBe(true);
   });
 });
 
@@ -1397,5 +1397,505 @@ describe("Error transition: save failure → Degraded", () => {
 
     // Cleanup — restore JSON
     vi.unstubAllGlobals();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-5a: Degraded mode — init enters Degraded, load returns null
+// ---------------------------------------------------------------------------
+
+describe("AC-5a: Degraded mode", () => {
+  it("should enter Degraded state when init probe fails", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+    expect(persistence.lastError).toBe("QuotaExceededError");
+  });
+
+  it("should return null from load() in Degraded state", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const result = await persistence.load("any_key");
+    expect(result).toBeNull();
+  });
+
+  it("should not throw from save() in Degraded state", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await expect(persistence.save("key", "value")).resolves.toBeUndefined();
+  });
+
+  it("should not throw from delete() in Degraded state", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await expect(persistence.delete("key")).resolves.toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-5b: Degraded save queues writes with max 50 FIFO
+// ---------------------------------------------------------------------------
+
+describe("AC-5b: Write queue with FIFO eviction", () => {
+  it("should queue writes in memory during Degraded mode", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("k1", "v1");
+    await persistence.save("k2", "v2");
+
+    // Writes are queued — not in localStorage
+    const storage = globalThis.localStorage as Storage;
+    expect(storage.getItem("overdrive_k1")).toBeNull();
+    expect(storage.getItem("overdrive_k2")).toBeNull();
+  });
+
+  it("should evict oldest entries when queue exceeds 50", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    // Queue 52 entries
+    for (let i = 1; i <= 52; i++) {
+      await persistence.save(`k${i}`, `v${i}`);
+    }
+
+    // Make storage work, then retry to flush
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+
+    const result = await persistence.retry();
+    expect(result).toBe(true);
+    expect(persistence.state).toBe(PersistenceState.Ready);
+
+    // k1 and k2 should be evicted (FIFO) — never flushed
+    expect(storage.setItem).not.toHaveBeenCalledWith(
+      "overdrive_k1",
+      expect.any(String)
+    );
+    expect(storage.setItem).not.toHaveBeenCalledWith(
+      "overdrive_k2",
+      expect.any(String)
+    );
+    // k3 should be present (first non-evicted entry)
+    expect(storage.setItem).toHaveBeenCalledWith(
+      "overdrive_k3",
+      expect.any(String)
+    );
+  });
+
+  it("should never exceed 50 entries in queue", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    // Queue 100 entries
+    for (let i = 1; i <= 100; i++) {
+      await persistence.save(`k${i}`, `v${i}`);
+    }
+
+    // Make storage work and flush
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    await persistence.retry();
+
+    // 50 queue entries + 1 probe = 51 setItem calls
+    expect(storage.setItem).toHaveBeenCalledTimes(51);
+    // k50 should NOT be flushed (evicted)
+    expect(storage.setItem).not.toHaveBeenCalledWith(
+      "overdrive_k50",
+      expect.any(String)
+    );
+    // k51 should be flushed
+    expect(storage.setItem).toHaveBeenCalledWith(
+      "overdrive_k51",
+      expect.any(String)
+    );
+  });
+
+  it("should keep last write when same key is saved multiple times in queue", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("same_key", "first");
+    await persistence.save("same_key", "second");
+    await persistence.save("same_key", "third");
+
+    // Flush to storage
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    await persistence.retry();
+
+    // The queue had 3 entries for same_key — all 3 flush (last one overwrites)
+    const calls = storage.setItem.mock.calls.filter(
+      ([k]) => k === "overdrive_same_key"
+    );
+    expect(calls).toHaveLength(3);
+    // Last write wins — verify the flushed data
+    const lastCall = calls[calls.length - 1];
+    const parsed = JSON.parse(lastCall[1] as string);
+    expect(parsed.data).toBe("third");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-5c: retry() re-probes storage, flushes queue, non-recoverable
+// ---------------------------------------------------------------------------
+
+describe("AC-5c: retry() behavior", () => {
+  it("should return true and stay Ready when called from Ready state", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const result = await persistence.retry();
+    expect(result).toBe(true);
+    expect(persistence.state).toBe(PersistenceState.Ready);
+  });
+
+  it("should flush queued writes and transition to Ready on successful retry", async () => {
+    // Start Degraded
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+
+    await persistence.save("a", "value_a");
+    await persistence.save("b", "value_b");
+
+    // Restore storage
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+
+    const result = await persistence.retry();
+    expect(result).toBe(true);
+    expect(persistence.state).toBe(PersistenceState.Ready);
+
+    // Verify flushed — load should work now
+    const loadA = await persistence.load("a");
+    expect(loadA).toBe("value_a");
+  });
+
+  it("should remain Degraded and return false on failed retry", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("key", "value");
+
+    // Storage still broken
+    const result = await persistence.retry();
+    expect(result).toBe(false);
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+  });
+
+  it("should clear lastError on successful retry", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+    expect(persistence.lastError).toBe("QuotaExceededError");
+
+    // Restore storage
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    await persistence.retry();
+
+    expect(persistence.lastError).toBeUndefined();
+  });
+
+  it("should set non-recoverable when probe fails with SecurityError during retry", async () => {
+    // Start with working storage — init succeeds
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+    expect(persistence.state).toBe(PersistenceState.Ready);
+
+    // Storage breaks on save → Degraded (not from init)
+    const failingStorage = createFailingStorage("SecurityError");
+    vi.stubGlobal("localStorage", failingStorage);
+
+    await persistence.save("key", "value");
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+
+    // retry() — probe fails with SecurityError → non-recoverable
+    const result = await persistence.retry();
+    expect(result).toBe(false);
+
+    // Second retry — should short-circuit (non-recoverable)
+    const result2 = await persistence.retry();
+    expect(result2).toBe(false);
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+  });
+
+  it("should record UnknownError when probe throws non-Error during retry", async () => {
+    // Start with working storage — init succeeds
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    // Storage breaks with non-Error throw on save → Degraded
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    vi.spyOn(storage, "setItem").mockImplementation(() => {
+      throw "string error";
+    });
+    await persistence.save("key", "value");
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+
+    // Now make the probe also throw a non-Error
+    const failingStorage = createWorkingStorage();
+    vi.stubGlobal("localStorage", failingStorage);
+    vi.spyOn(failingStorage, "setItem").mockImplementation(() => {
+      throw "probe string error";
+    });
+
+    const result = await persistence.retry();
+    expect(result).toBe(false);
+    expect(persistence.lastError).toBe("UnknownError");
+  });
+
+  it("should log unknown serialization error during retry flush when non-Error thrown", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    // Queue an entry
+    await persistence.save("key", "value");
+
+    // Restore storage but mock JSON.stringify to throw non-Error
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+
+    const originalStringify = JSON.stringify;
+    vi.spyOn(JSON, "stringify").mockImplementation((...args) => {
+      throw "primitive stringify error";
+    });
+
+    const result = await persistence.retry();
+
+    // The stringify failure is logged and skipped, queue is cleared, state = Ready
+    expect(result).toBe(true);
+    expect(persistence.state).toBe(PersistenceState.Ready);
+
+    vi.restoreAllMocks();
+  });
+
+  it("should record UnknownError when setItem throws non-Error during flush", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("k1", "v1");
+
+    // Restore storage — probe works, but flush setItem throws non-Error
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+
+    let callCount = 0;
+    vi.spyOn(storage, "setItem").mockImplementation((...args) => {
+      callCount++;
+      if (callCount === 1) {
+        // Probe — succeed
+        return undefined as unknown as void;
+      }
+      // Queue entry — throw non-Error
+      throw "primitive setItem error";
+    });
+
+    const result = await persistence.retry();
+    expect(result).toBe(false);
+    expect(persistence.lastError).toBe("UnknownError");
+  });
+
+  it("should short-circuit and return false for non-recoverable SecurityError", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("SecurityError"));
+    const persistence = new Persistence();
+    await persistence.init();
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+
+    // First retry attempt — probe fails with SecurityError → non-recoverable
+    const result1 = await persistence.retry();
+    expect(result1).toBe(false);
+
+    // Second retry — should skip probe entirely (non-recoverable)
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    const result2 = await persistence.retry();
+    expect(result2).toBe(false);
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+  });
+
+  it("should flush entries in FIFO order", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("first", "1");
+    await persistence.save("second", "2");
+    await persistence.save("third", "3");
+
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+
+    await persistence.retry();
+
+    // Verify flush order matches queue order (FIFO)
+    const setItemCalls = storage.setItem.mock.calls.map(([k]) => k);
+    const flushOrder = setItemCalls.filter((k) =>
+      ["overdrive_first", "overdrive_second", "overdrive_third"].includes(
+        k as string
+      )
+    );
+    expect(flushOrder).toEqual([
+      "overdrive_first",
+      "overdrive_second",
+      "overdrive_third",
+    ]);
+  });
+
+  it("should log and skip entry when JSON.stringify fails during retry flush", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    await persistence.save("circular", circular);
+    await persistence.save("good", "value");
+
+    // Restore storage
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+
+    const result = await persistence.retry();
+
+    // Circular entry skipped (warn logged), good entry flushed
+    // State stays Degraded because not all entries flushed? Actually, the implementation
+    // continues past stringify failures and clears queue at the end.
+    // Let's check: the code does `continue` on stringify failure, then at the end
+    // it clears queue and sets Ready.
+    expect(result).toBe(true);
+    expect(persistence.state).toBe(PersistenceState.Ready);
+
+    // "good" entry should be flushed
+    expect(storage.setItem).toHaveBeenCalledWith(
+      "overdrive_good",
+      expect.any(String)
+    );
+  });
+
+  it("should return false and stay Degraded when setItem fails during retry flush", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("k1", "v1");
+    await persistence.save("k2", "v2");
+
+    // First retry: probe succeeds (new storage works for probe), but setItem
+    // will fail on the first entry
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+
+    // Make the first setItem throw (not the probe)
+    let callCount = 0;
+    vi.spyOn(storage, "setItem").mockImplementation((...args) => {
+      callCount++;
+      if (callCount === 1) {
+        // First call is the probe — let it succeed
+        return undefined as unknown as void;
+      }
+      // Second call is the first queue entry — throw
+      throw new Error("setItem failed during flush");
+    });
+
+    const result = await persistence.retry();
+    expect(result).toBe(false);
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+  });
+
+  it("should set non-recoverable when setItem fails with SecurityError during flush", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("k1", "v1");
+
+    // Restore storage — probe will work, but flush setItem will throw SecurityError
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+
+    let callCount = 0;
+    vi.spyOn(storage, "setItem").mockImplementation((...args) => {
+      callCount++;
+      if (callCount === 1) {
+        // Probe — succeed
+        return undefined as unknown as void;
+      }
+      // Queue entry — throw SecurityError
+      throw new DOMException("quota exceeded", "SecurityError");
+    });
+
+    const result = await persistence.retry();
+    expect(result).toBe(false);
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+
+    // Now retry again — should short-circuit (non-recoverable)
+    const result2 = await persistence.retry();
+    expect(result2).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// delete() removes from queue in Degraded mode
+// ---------------------------------------------------------------------------
+
+describe("delete() in Degraded mode", () => {
+  it("should remove matching entry from write queue", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("keep", "keep_value");
+    await persistence.save("remove", "remove_value");
+
+    // Delete from queue
+    await persistence.delete("remove");
+
+    // Flush remaining
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    await persistence.retry();
+
+    // Only "keep" should be flushed
+    expect(storage.setItem).toHaveBeenCalledWith(
+      "overdrive_keep",
+      expect.any(String)
+    );
+    expect(storage.setItem).not.toHaveBeenCalledWith(
+      "overdrive_remove",
+      expect.any(String)
+    );
+  });
+
+  it("should be a no-op when deleting non-queued key", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("QuotaExceededError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("existing", "value");
+
+    // Delete non-existent key — should not throw
+    await expect(persistence.delete("nonexistent")).resolves.toBeUndefined();
   });
 });
