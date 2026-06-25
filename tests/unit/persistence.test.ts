@@ -503,3 +503,619 @@ describe("init() microtask timing", () => {
     expect(persistence.state).toBe(PersistenceState.Ready);
   });
 });
+
+// ---------------------------------------------------------------------------
+// AC-2: save/load round-trip — data integrity
+// ---------------------------------------------------------------------------
+
+describe("AC-2: save/load round-trip", () => {
+  it("should save and load a simple object", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("settings", { audio: 0.8 });
+    const result = await persistence.load<{ audio: number }>("settings");
+
+    expect(result).toEqual({ audio: 0.8 });
+  });
+
+  it("should preserve nested objects", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const data = { audio: { volume: 0.8, muted: false }, video: "1080p" };
+    await persistence.save("prefs", data);
+    const result = await persistence.load<typeof data>("prefs");
+
+    expect(result).toEqual(data);
+  });
+
+  it("should preserve arrays", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const data = [1, 2, 3, "four", true];
+    await persistence.save("arr", data);
+    const result = await persistence.load<typeof data>("arr");
+
+    expect(result).toEqual(data);
+  });
+
+  it("should save and load a primitive string", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("name", "Player1");
+    const result = await persistence.load<string>("name");
+
+    expect(result).toBe("Player1");
+  });
+
+  it("should save and load a number", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("count", 42);
+    const result = await persistence.load<number>("count");
+
+    expect(result).toBe(42);
+  });
+
+  it("should save and load a boolean", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("flag", true);
+    const result = await persistence.load<boolean>("flag");
+
+    expect(result).toBe(true);
+  });
+
+  it("should save and load an empty object", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("empty", {});
+    const result = await persistence.load<Record<string, never>>("empty");
+
+    expect(result).toEqual({});
+  });
+
+  it("should preserve data with null fields", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const data = { name: "test", value: null, count: 0 };
+    await persistence.save("nullable", data);
+    const result = await persistence.load<typeof data>("nullable");
+
+    expect(result).toEqual(data);
+  });
+
+  it("should save and load multiple keys independently", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("a", "value_a");
+    await persistence.save("b", "value_b");
+
+    const a = await persistence.load<string>("a");
+    const b = await persistence.load<string>("b");
+
+    expect(a).toBe("value_a");
+    expect(b).toBe("value_b");
+  });
+
+  it("should timestamp each saved entry", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const before = Date.now();
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("ts", "data");
+
+    // Read the raw localStorage to inspect the PersistedEntry
+    const storage = globalThis.localStorage as Storage;
+    const raw = storage.getItem("overdrive_ts");
+    expect(raw).not.toBeNull();
+
+    const entry = JSON.parse(raw!) as {
+      version: string;
+      data: unknown;
+      timestamp: number;
+    };
+    expect(entry.timestamp).toBeGreaterThanOrEqual(before);
+    expect(entry.timestamp).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("should stamp the configured version on saved entries", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence({ version: "2.0.0" });
+    await persistence.init();
+
+    await persistence.save("settings", { foo: "bar" });
+
+    const storage = globalThis.localStorage as Storage;
+    const raw = storage.getItem("overdrive_settings");
+    expect(raw).not.toBeNull();
+
+    const entry = JSON.parse(raw!) as {
+      version: string;
+      data: unknown;
+      timestamp: number;
+    };
+    expect(entry.version).toBe("2.0.0");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-3: load nonexistent returns null
+// ---------------------------------------------------------------------------
+
+describe("AC-3: load nonexistent returns null", () => {
+  it("should return null for key that was never saved", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const result = await persistence.load("nonexistent");
+
+    expect(result).toBeNull();
+  });
+
+  it("should return null for empty string key", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const result = await persistence.load("");
+
+    expect(result).toBeNull();
+  });
+
+  it("should not throw when loading a nonexistent key", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await expect(persistence.load("does_not_exist")).resolves.toBeNull();
+  });
+
+  it("should return null in Degraded state (without throwing)", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("SecurityError"));
+    const persistence = new Persistence();
+    await persistence.init();
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+
+    const result = await persistence.load("anykey");
+
+    expect(result).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-8: key prefix isolation
+// ---------------------------------------------------------------------------
+
+describe("AC-8: key prefix isolation", () => {
+  it("should prefix keys with 'overdrive_' by default on save", async () => {
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("settings", { foo: "bar" });
+
+    // Prefixed key should be set
+    expect(storage.setItem).toHaveBeenCalledWith(
+      "overdrive_settings",
+      expect.any(String)
+    );
+    // Raw key should NOT be set
+    expect(storage.getItem("settings")).toBeNull();
+  });
+
+  it("should use prefixed key on load", async () => {
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("test", "value");
+    vi.clearAllMocks();
+
+    await persistence.load("test");
+
+    expect(storage.getItem).toHaveBeenCalledWith("overdrive_test");
+  });
+
+  it("should use prefixed key on delete", async () => {
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("test", "value");
+    vi.clearAllMocks();
+
+    await persistence.delete("test");
+
+    expect(storage.removeItem).toHaveBeenCalledWith("overdrive_test");
+  });
+
+  it("should use custom prefix when configured via constructor", async () => {
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    const persistence = new Persistence({ prefix: "myapp_" });
+    await persistence.init();
+
+    await persistence.save("settings", {});
+
+    expect(storage.setItem).toHaveBeenCalledWith(
+      "myapp_settings",
+      expect.any(String)
+    );
+    // Default prefix should not be used
+    expect(storage.getItem("overdrive_settings")).toBeNull();
+  });
+
+  it("should isolate game keys from non-game localStorage entries", async () => {
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+
+    // Simulate a non-game entry in localStorage
+    storage.setItem("other_app_key", "other_data");
+
+    const persistence = new Persistence();
+    await persistence.init();
+    await persistence.save("gamekey", "game_data");
+
+    // The non-game key should not be touched
+    expect(storage.getItem("other_app_key")).toBe("other_data");
+    // The game key should be stored under prefix
+    expect(storage.getItem("overdrive_gamekey")).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-9: save/load/delete return Promise
+// ---------------------------------------------------------------------------
+
+describe("AC-9: save/load/delete return Promise", () => {
+  it("save() should return a Promise in Ready state", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+    const result = persistence.save("k", "v");
+    expect(result).toBeInstanceOf(Promise);
+  });
+
+  it("load() should return a Promise in Ready state", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const result = persistence.load("k");
+
+    expect(result).toBeInstanceOf(Promise);
+  });
+
+  it("delete() should return a Promise in Ready state", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const result = persistence.delete("k");
+
+    expect(result).toBeInstanceOf(Promise);
+  });
+
+  it("save() should return a Promise in Degraded state", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("SecurityError"));
+    const persistence = new Persistence();
+    await persistence.init();
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+
+    const result = persistence.save("k", "v");
+
+    expect(result).toBeInstanceOf(Promise);
+  });
+
+  it("load() should return a Promise in Degraded state", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("SecurityError"));
+    const persistence = new Persistence();
+    await persistence.init();
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+
+    const result = persistence.load("k");
+
+    expect(result).toBeInstanceOf(Promise);
+  });
+
+  it("delete() should return a Promise in Degraded state", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("SecurityError"));
+    const persistence = new Persistence();
+    await persistence.init();
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+
+    const result = persistence.delete("k");
+
+    expect(result).toBeInstanceOf(Promise);
+  });
+
+  it("registerMigration() should NOT return a Promise", () => {
+    const persistence = new Persistence();
+    const result = persistence.registerMigration("0.1.0", "0.2.0", (d) => d);
+    expect(result).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-10: delete removes key
+// ---------------------------------------------------------------------------
+
+describe("AC-10: delete removes key", () => {
+  it("should remove saved data so subsequent load returns null", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("test", "hello");
+    await persistence.delete("test");
+
+    const result = await persistence.load("test");
+    expect(result).toBeNull();
+  });
+
+  it("should not throw when deleting a nonexistent key", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await expect(persistence.delete("never_saved")).resolves.toBeUndefined();
+  });
+
+  it("should be safe to call delete twice (no-op on second call)", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("test", "value");
+    await persistence.delete("test");
+    // Second delete should not throw
+    await expect(persistence.delete("test")).resolves.toBeUndefined();
+    // Still returns null
+    const result = await persistence.load("test");
+    expect(result).toBeNull();
+  });
+
+  it("should not affect other keys when deleting one key", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    await persistence.save("a", "value_a");
+    await persistence.save("b", "value_b");
+
+    await persistence.delete("a");
+
+    const a = await persistence.load("a");
+    const b = await persistence.load("b");
+
+    expect(a).toBeNull();
+    expect(b).toBe("value_b");
+  });
+
+  it("should resolve without error in Degraded state", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("SecurityError"));
+    const persistence = new Persistence();
+    await persistence.init();
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+
+    await expect(persistence.delete("test")).resolves.toBeUndefined();
+  });
+
+  it("should transition to Degraded when removeItem throws during delete", async () => {
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    const persistence = new Persistence();
+    await persistence.init();
+    expect(persistence.state).toBe(PersistenceState.Ready);
+
+    // Make removeItem throw with an Error instance
+    vi.spyOn(storage, "removeItem").mockImplementation(() => {
+      throw new Error("removeItem failed");
+    });
+
+    await persistence.delete("test");
+
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+    expect(persistence.lastError).toBe("Error");
+  });
+
+  it("should record UnknownError when removeItem throws non-Error during delete", async () => {
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    const persistence = new Persistence();
+    await persistence.init();
+    expect(persistence.state).toBe(PersistenceState.Ready);
+
+    // Make removeItem throw a non-Error value
+    vi.spyOn(storage, "removeItem").mockImplementation(() => {
+      throw "string error";
+    });
+
+    await persistence.delete("test");
+
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+    expect(persistence.lastError).toBe("UnknownError");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Load edge cases: structural guard and parse failure
+// ---------------------------------------------------------------------------
+
+describe("load() edge cases", () => {
+  it("should return null when localStorage holds valid JSON that is not a PersistedEntry", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    // Manually store a plain JSON string (not a PersistedEntry wrapper)
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem("overdrive_notentry", JSON.stringify("just a string"));
+
+    const result = await persistence.load("notentry");
+
+    expect(result).toBeNull();
+  });
+
+  it("should return null when localStorage holds a plain number (not PersistedEntry)", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem("overdrive_number", JSON.stringify(42));
+
+    const result = await persistence.load("number");
+
+    expect(result).toBeNull();
+  });
+
+  it("should return null when localStorage holds a null JSON value", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem("overdrive_nullentry", JSON.stringify(null));
+
+    const result = await persistence.load("nullentry");
+
+    expect(result).toBeNull();
+  });
+
+  it("should return null when localStorage holds corrupted (non-JSON) data", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    // Manually inject non-JSON string
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem("overdrive_corrupted", "this-is-not-json{{{");
+
+    const result = await persistence.load("corrupted");
+
+    expect(result).toBeNull();
+  });
+
+  it("should return null when localStorage holds a PersistedEntry without a 'data' property", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    // Entry has version and timestamp but no data
+    storage.setItem(
+      "overdrive_nodata",
+      JSON.stringify({ version: "0.1.0", timestamp: 1000 })
+    );
+
+    const result = await persistence.load("nodata");
+
+    expect(result).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Error transitions: save failure → Degraded
+// ---------------------------------------------------------------------------
+
+describe("Error transition: save failure → Degraded", () => {
+  it("should transition to Degraded when setItem throws in Ready state", async () => {
+    const storage = createWorkingStorage();
+    // First save will succeed (probe already passed)
+    // Override setItem to throw on the second call
+    vi.stubGlobal("localStorage", storage);
+    const persistence = new Persistence();
+    await persistence.init();
+    expect(persistence.state).toBe(PersistenceState.Ready);
+
+    // Now make setItem throw
+    (storage as { setItem: (...args: unknown[]) => unknown }).setItem = vi.fn(
+      () => {
+        throw new Error("Quota exceeded");
+      }
+    );
+
+    await persistence.save("settings", { audio: 0.8 });
+
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+  });
+
+  it("should record lastError when save transitions to Degraded", async () => {
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    const persistence = new Persistence();
+    await persistence.init();
+
+    (storage as { setItem: (...args: unknown[]) => unknown }).setItem = vi.fn(
+      () => {
+        const error = new Error("Quota exceeded");
+        error.name = "QuotaExceededError";
+        throw error;
+      }
+    );
+
+    await persistence.save("settings", {});
+
+    expect(persistence.lastError).toBe("QuotaExceededError");
+  });
+
+  it("should record UnknownError when thrown value is not an Error", async () => {
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    const persistence = new Persistence();
+    await persistence.init();
+
+    (storage as { setItem: (...args: unknown[]) => unknown }).setItem = vi.fn(
+      () => {
+        throw "string error";
+      }
+    );
+
+    await persistence.save("settings", {});
+
+    expect(persistence.lastError).toBe("UnknownError");
+  });
+
+  it("should return null on load after Degraded transition from save", async () => {
+    const storage = createWorkingStorage();
+    vi.stubGlobal("localStorage", storage);
+    const persistence = new Persistence();
+    await persistence.init();
+
+    (storage as { setItem: (...args: unknown[]) => unknown }).setItem = vi.fn(
+      () => {
+        throw new Error("fail");
+      }
+    );
+
+    await persistence.save("settings", {});
+
+    // Degraded load should return null
+    const result = await persistence.load("settings");
+    expect(result).toBeNull();
+  });
+});
