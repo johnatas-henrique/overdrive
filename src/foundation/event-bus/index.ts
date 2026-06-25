@@ -10,6 +10,7 @@
 export { EventBusError } from "./errors";
 export { EventBus } from "./event-bus";
 export type {
+  EventBusConfig,
   EventMap,
   IEventBus,
   PitState,

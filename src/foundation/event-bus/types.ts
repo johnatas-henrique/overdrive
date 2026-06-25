@@ -85,6 +85,31 @@ export type EventMap = {
 };
 
 /**
+ * Configuration options for the EventBus instance.
+ *
+ * All options have sensible defaults and can be omitted for standard usage.
+ * Override via `new EventBus(config)` or the individual setter patterns.
+ *
+ * @see ADR-0001 — Circular Emit Depth, Leak Detection
+ */
+export interface EventBusConfig {
+  /**
+   * Maximum nested emit depth before throwing `EventBusError('Max emit depth exceeded')`.
+   * Depth exactly equal to this value succeeds; depth exceeding it throws.
+   * @default 10
+   */
+  maxEmitDepth: number;
+
+  /**
+   * Controls leak detection behavior at `dispose()` time.
+   * - `'warn'`: `console.warn` with active subscription namespaces (default, dev mode)
+   * - `'silent'`: no warnings (production)
+   * @default 'warn'
+   */
+  leakDetectionLevel: "warn" | "silent";
+}
+
+/**
  * Handle for unsubscribing from an event subscription.
  *
  * Returned by `IEventBus.on()` and `IEventBus.once()`.
