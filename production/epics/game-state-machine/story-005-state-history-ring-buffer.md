@@ -1,7 +1,8 @@
 # Story 005: State History Ring Buffer
 
 > **Epic**: Game State Machine
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -140,3 +141,11 @@ Test evidence: `tests/unit/gsm.test.ts` — verify all acceptance criteria pass.
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires working transitions to record; Story 003 (event-bus-integration) — for event-based recording; Story 004 (transition-throttling) — for tick-based sequencing
 - **Unlocks**: Dev Tools debug overlay (TR-DVT-005) — the history accessor is the data source for the overlay
+
+## Completion Notes
+
+**Completed**: 2026-06-24
+**Criteria**: 6/6 passing
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/gsm.test.ts` — 163/163 tests, 100% coverage on GameStateMachine.ts, tsc clean, lint clean
+**Code Review**: Complete (APPROVED WITH SUGGESTIONS — all suggestions applied: readonly fields, flaky test fix)

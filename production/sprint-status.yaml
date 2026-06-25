@@ -143,11 +143,11 @@ stories:
     name: "Story 005: State History Ring Buffer"
     file: "production/epics/game-state-machine/story-005-state-history-ring-buffer.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-14"
     name: "Story 006: Dispose Safety"
