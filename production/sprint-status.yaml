@@ -133,11 +133,11 @@ stories:
     name: "Story 004: Transition Throttling"
     file: "production/epics/game-state-machine/story-004-transition-throttling.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.625
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-13"
     name: "Story 005: State History Ring Buffer"
