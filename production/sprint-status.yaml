@@ -233,7 +233,7 @@ stories:
     name: "Story 002: save/load Round-trip + Key Prefix"
     file: "production/epics/persistence/story-002-save-load-key-prefix.md"
     priority: must-have
-    status: ready-for-dev
+    status: in_progress
     owner: "solo-dev"
     estimate_days: 0.625
     blocker: ""
