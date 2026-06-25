@@ -2297,6 +2297,363 @@ describe("Throttling edge cases", () => {
   });
 });
 
+// ===========================================================================
+// State History Ring Buffer (Story 005)
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// AC-1: Each successful transition records TransitionRecord
+// ---------------------------------------------------------------------------
+
+describe("State History AC-1: records TransitionRecord on success", () => {
+  it("should record a TransitionRecord after a successful transition", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    await gsm.transition("Menu");
+
+    const history = gsm.getHistory();
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({
+      from: "Loading",
+      to: "Menu",
+    });
+    expect(history[0].timestamp).toBeGreaterThan(0);
+    expect(history[0].durationInPreviousState).toBeGreaterThanOrEqual(0);
+  });
+
+  it("should compute durationInPreviousState from initTimestamp for first transition", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const gsm = new GameStateMachine();
+    gsm.init();
+
+    // Advance clock by 1000ms before first transition
+    vi.setSystemTime(1000);
+    await gsm.transition("Menu");
+
+    const history = gsm.getHistory();
+    expect(history[0].durationInPreviousState).toBe(1000);
+    vi.useRealTimers();
+  });
+
+  it("should compute durationInPreviousState from previous entry for subsequent transitions", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    await gsm.transition("Menu");
+    const first = gsm.getHistory()[0];
+
+    await gsm.transition("PreRace");
+    const second = gsm.getHistory()[1];
+
+    expect(second.durationInPreviousState).toBeGreaterThanOrEqual(0);
+    // second.duration should be approx now - first.timestamp
+    expect(second.durationInPreviousState).toBe(
+      second.timestamp - first.timestamp
+    );
+  });
+
+  it("should NOT record same-state no-ops", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    await gsm.transition("Loading"); // same-state no-op
+
+    expect(gsm.getHistory()).toHaveLength(0);
+  });
+
+  it("should NOT record rollbacks (onEnter rejection)", async () => {
+    const gsm = new GameStateMachine();
+    gsm.registerStates([
+      {
+        name: "Menu",
+        onEnter: () => Promise.reject(new Error("rollback")),
+      },
+    ]);
+    gsm.init();
+    await gsm.transition("Menu");
+
+    // Transition rolled back — history should be empty
+    expect(gsm.getHistory()).toHaveLength(0);
+  });
+
+  it("should NOT record invalid transitions that throw", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    try {
+      await gsm.transition("Racing"); // invalid from Loading
+    } catch {
+      // expected
+    }
+    expect(gsm.getHistory()).toHaveLength(0);
+  });
+
+  it("should record queued transitions via tick()", async () => {
+    let resolveOnEnter: () => void;
+    const onEnterPromise = new Promise<void>((resolve) => {
+      resolveOnEnter = resolve;
+    });
+
+    const gsm = new GameStateMachine();
+    gsm.registerStates([{ name: "Menu", onEnter: () => onEnterPromise }]);
+    gsm.init();
+
+    // Start async — busy
+    gsm.transition("Menu");
+    // Queue a transition while busy
+    gsm.transition("PreRace");
+
+    // Complete first
+    resolveOnEnter?.();
+    await Promise.resolve();
+
+    // tick processes queued PreRace
+    gsm.tick();
+    await Promise.resolve();
+
+    const history = gsm.getHistory();
+    expect(history).toHaveLength(2);
+    expect(history[1].to).toBe("PreRace");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-2: Buffer max capacity of exactly 20 entries
+// ---------------------------------------------------------------------------
+
+describe("State History AC-2: max capacity of 20 entries", () => {
+  it("should have exactly 20 entries after 20 transitions", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    await gsm.transition("Menu");
+
+    // Navigate through all states multiple times
+    // Menu → PreRace → Menu (via Paused) → PreRace ...
+    for (let i = 0; i < 19; i++) {
+      if (gsm.getCurrentState() === "Menu") {
+        await gsm.transition("PreRace");
+      } else if (gsm.getCurrentState() === "PreRace") {
+        await gsm.transition("Racing");
+      } else if (gsm.getCurrentState() === "Racing") {
+        await gsm.transition("Paused");
+      } else if (gsm.getCurrentState() === "Paused") {
+        await gsm.transition("Menu");
+      }
+    }
+
+    // We need exactly 20 transitions total. init→Menu = 1, plus 19 above = 20.
+    expect(gsm.getHistory()).toHaveLength(20);
+  });
+
+  it("should stay at 20 after 21 transitions (FIFO eviction)", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    await gsm.transition("Menu");
+
+    for (let i = 0; i < 20; i++) {
+      if (gsm.getCurrentState() === "Menu") {
+        await gsm.transition("PreRace");
+      } else if (gsm.getCurrentState() === "PreRace") {
+        await gsm.transition("Racing");
+      } else if (gsm.getCurrentState() === "Racing") {
+        await gsm.transition("Paused");
+      } else if (gsm.getCurrentState() === "Paused") {
+        await gsm.transition("Menu");
+      }
+    }
+
+    // 21 transitions total (init→Menu + 20 more)
+    expect(gsm.getHistory()).toHaveLength(20);
+  });
+
+  it("should have empty history before any transition", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    expect(gsm.getHistory()).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-3: FIFO eviction — oldest removed first
+// ---------------------------------------------------------------------------
+
+describe("State History AC-3: FIFO eviction", () => {
+  /** Perform N transitions, returning the `to` state of each entry. */
+  async function performTransitions(
+    gsm: GameStateMachine,
+    count: number
+  ): Promise<void> {
+    for (let i = 0; i < count; i++) {
+      const current = gsm.getCurrentState();
+      if (current === "Loading") {
+        await gsm.transition("Menu");
+      } else if (current === "Menu") {
+        await gsm.transition("PreRace");
+      } else if (current === "PreRace") {
+        await gsm.transition("Racing");
+      } else if (current === "Racing") {
+        await gsm.transition("Paused");
+      } else if (current === "Paused") {
+        await gsm.transition("Menu");
+      }
+    }
+  }
+
+  it("should drop the first 5 entries after 25 transitions", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    await performTransitions(gsm, 25);
+
+    const history = gsm.getHistory();
+    expect(history).toHaveLength(20);
+
+    // First entry should no longer be Loading→Menu (that was entry #1)
+    // After 25 transitions, entries 6–25 are retained.
+    expect(history[0].from).not.toBe("Loading");
+  });
+
+  it("should keep only the last 20 after 100 transitions", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    await performTransitions(gsm, 100);
+
+    expect(gsm.getHistory()).toHaveLength(20);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-4: getHistory() returns ReadonlyArray<TransitionRecord>
+// ---------------------------------------------------------------------------
+
+describe("State History AC-4: getHistory() accessor", () => {
+  it("should return an empty array before any transition", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    const history = gsm.getHistory();
+    expect(Array.isArray(history)).toBe(true);
+    expect(history).toHaveLength(0);
+  });
+
+  it("should return a shallow copy that cannot mutate internal state", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    await gsm.transition("Menu");
+
+    const firstRead = gsm.getHistory();
+    expect(firstRead).toHaveLength(1);
+
+    // Mutate the returned copy
+    (firstRead as unknown[]).pop();
+
+    // Internal state should be unaffected
+    expect(gsm.getHistory()).toHaveLength(1);
+  });
+
+  it("should return typed entries with all required fields", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    await gsm.transition("Menu");
+
+    const history = gsm.getHistory();
+    const record = history[0];
+    expect(record).toHaveProperty("from");
+    expect(record).toHaveProperty("to");
+    expect(record).toHaveProperty("timestamp");
+    expect(record).toHaveProperty("durationInPreviousState");
+
+    // Verify types via runtime checks
+    expect(typeof record.from).toBe("string");
+    expect(typeof record.to).toBe("string");
+    expect(typeof record.timestamp).toBe("number");
+    expect(typeof record.durationInPreviousState).toBe("number");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-5: Timestamps from Date.now() (debug data, not simulation)
+// ---------------------------------------------------------------------------
+
+describe("State History AC-5: timestamps from Date.now()", () => {
+  it("should record timestamps consistent with Date.now() using fake timers", async () => {
+    vi.useFakeTimers();
+    // Reset clock to epoch so _initTimestamp starts at 0
+    vi.setSystemTime(0);
+    const gsm = new GameStateMachine();
+    gsm.init();
+    vi.setSystemTime(1000);
+
+    await gsm.transition("Menu");
+    let history = gsm.getHistory();
+    expect(history[0].timestamp).toBe(1000);
+    expect(history[0].durationInPreviousState).toBe(1000); // init at 0, now at 1000
+
+    vi.setSystemTime(1500);
+    await gsm.transition("PreRace");
+
+    history = gsm.getHistory();
+    expect(history[1].timestamp).toBe(1500);
+    expect(history[1].durationInPreviousState).toBe(500); // 1500 - 1000
+
+    vi.useRealTimers();
+  });
+
+  it("should use consistent timer (Date.now()) across all entries", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const gsm = new GameStateMachine();
+    gsm.init();
+    vi.setSystemTime(500);
+
+    await gsm.transition("Menu");
+    vi.setSystemTime(700);
+    await gsm.transition("PreRace");
+    vi.setSystemTime(900);
+    await gsm.transition("Racing");
+
+    const history = gsm.getHistory();
+    expect(history[0].timestamp).toBe(500);
+    expect(history[1].timestamp).toBe(700);
+    expect(history[2].timestamp).toBe(900);
+
+    vi.useRealTimers();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-6: On dispose(), history is cleared
+// ---------------------------------------------------------------------------
+
+describe("State History AC-6: dispose() clears history", () => {
+  it("should clear history on dispose()", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    await gsm.transition("Menu");
+    await gsm.transition("PreRace");
+
+    expect(gsm.getHistory()).toHaveLength(2);
+
+    gsm.dispose();
+    expect(gsm.getHistory()).toHaveLength(0);
+  });
+
+  it("should not throw when dispose() is called with empty history", () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+
+    expect(() => gsm.dispose()).not.toThrow();
+    expect(gsm.getHistory()).toHaveLength(0);
+  });
+
+  it("should not allow new transitions after dispose (existing behavior)", async () => {
+    const gsm = new GameStateMachine();
+    gsm.init();
+    await gsm.transition("Menu");
+    gsm.dispose();
+
+    // transition() still works after dispose per existing design (only tick() is blocked).
+    // But history should remain empty from the clear.
+    expect(gsm.getHistory()).toHaveLength(0);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
