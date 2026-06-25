@@ -1,7 +1,8 @@
 # Story 004: Fixed Timestep Accumulator
 
 > **Epic**: Determinism Contract
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -161,3 +162,11 @@ Test evidence: `tests/unit/determinism.test.ts` — verify all acceptance criter
 
 - Depends on: None (standalone — pure math function)
 - Unlocks: Story 005 (Pipeline Engine Integration consumes accumulator output)
+
+## Completion Notes
+
+**Completed**: 2026-06-24
+**Criteria**: 7/7 passing
+**Deviations**: AC-3/AC-4 story spec discrepancies documented — implementation correct per ADR-0002. Added Number.isFinite guard for NaN/Infinity input.
+**Test Evidence**: Unit test at `tests/unit/determinism.test.ts` — 111/111 tests, 100% coverage on accumulator.ts, tsc clean, lint clean
+**Code Review**: Complete (APPROVED — 0 BLOCKING, 2 WARNING addressed)

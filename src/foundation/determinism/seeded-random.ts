@@ -17,7 +17,7 @@
  *   ensuring identical sequences across all platforms (x86, ARM, etc.).
  *   `Math.imul` is not used because the multiplicands fit in 32 bits and
  *   `>>> 0` handles the overflow correctly.
- * - **Division by `0xffffffff`**: Maps the full unsigned 32-bit range [0, 2³²-1]
+ * - **Division by `0x100000000`** (2³²): Maps the full unsigned 32-bit range [0, 2³²-1]
  *   to [0, 1). This gives maximum precision for the output float.
  * - **No `randomInt()` method**: Not in scope for this story. Use
  *   `Math.floor(randomRange(min, max + 1))` if integer range is needed.

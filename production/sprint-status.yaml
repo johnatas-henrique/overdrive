@@ -193,11 +193,11 @@ stories:
     name: "Story 004: Fixed Timestep Accumulator"
     file: "production/epics/determinism-contract/story-004-fixed-timestep-accumulator.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-19"
     name: "Story 005: Pipeline Engine Integration"
