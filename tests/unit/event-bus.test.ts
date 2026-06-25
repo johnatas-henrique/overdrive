@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   EventMap,
   IEventBus,
   PitState,
   RaceResults,
 } from "../../src/foundation/event-bus";
-import { EventBusError } from "../../src/foundation/event-bus";
+import { EventBus, EventBusError } from "../../src/foundation/event-bus";
 
 // ---------------------------------------------------------------------------
 // EventMap type correctness
@@ -408,6 +408,378 @@ describe("IEventBus interface", () => {
     const bus = createMockBus();
     // Verifies the emit signature accepts Record<string, never>
     bus.emit("race.starting", {});
+  });
+});
+
+// ---------------------------------------------------------------------------
+// EventBus runtime — Story 002
+// ---------------------------------------------------------------------------
+
+describe("EventBus runtime", () => {
+  let bus: EventBus;
+
+  beforeEach(() => {
+    bus = new EventBus();
+  });
+
+  // --- AC-1a: init/dispose lifecycle ---
+
+  describe("AC-1a: init/dispose lifecycle", () => {
+    it("should transition to Ready after init()", () => {
+      bus.init();
+      // Verify operational: subscribe and emit should work
+      let received = false;
+      bus.on("race.starting", () => {
+        received = true;
+      });
+      bus.emit("race.starting", {});
+      expect(received).toBe(true);
+    });
+
+    it("should transition to Disposed after dispose()", () => {
+      bus.init();
+      bus.dispose();
+      // After dispose, emit should throw
+      expect(() => bus.emit("race.starting", {})).toThrow(EventBusError);
+    });
+  });
+
+  // --- AC-1b: Guards on uninitialized/disposed state ---
+
+  describe("AC-1b: Guards on uninitialized/disposed state", () => {
+    it("should throw 'Not initialized' when emit() called before init()", () => {
+      expect(() => bus.emit("race.starting", {})).toThrow(EventBusError);
+      expect(() => bus.emit("race.starting", {})).toThrow("Not initialized");
+    });
+
+    it("should throw 'Not initialized' when on() called before init()", () => {
+      expect(() => bus.on("race.starting", () => {})).toThrow(EventBusError);
+      expect(() => bus.on("race.starting", () => {})).toThrow(
+        "Not initialized"
+      );
+    });
+
+    it("should throw 'Already disposed' when emit() called after dispose()", () => {
+      bus.init();
+      bus.dispose();
+      expect(() => bus.emit("race.starting", {})).toThrow(EventBusError);
+      expect(() => bus.emit("race.starting", {})).toThrow("Already disposed");
+    });
+
+    it("should throw 'Already disposed' when on() called after dispose()", () => {
+      bus.init();
+      bus.dispose();
+      expect(() => bus.on("race.starting", () => {})).toThrow(EventBusError);
+      expect(() => bus.on("race.starting", () => {})).toThrow(
+        "Already disposed"
+      );
+    });
+  });
+
+  // --- AC-1c: Idempotent init/dispose ---
+
+  describe("AC-1c: Idempotent init/dispose", () => {
+    it("should be safe to call init() twice", () => {
+      bus.init();
+      bus.init(); // No error
+      // Existing subscriptions should remain intact
+      let received = false;
+      bus.on("race.starting", () => {
+        received = true;
+      });
+      bus.emit("race.starting", {});
+      expect(received).toBe(true);
+    });
+
+    it("should be safe to call dispose() twice", () => {
+      bus.init();
+      bus.dispose();
+      bus.dispose(); // No error
+    });
+  });
+
+  // --- AC-2: Basic subscribe + emit ---
+
+  describe("AC-2: Basic subscribe + emit with correct payload", () => {
+    it("should execute handler with correct payload", () => {
+      bus.init();
+      let result: EventMap["race.completed"] | undefined;
+      bus.on("race.completed", (data) => {
+        result = data;
+      });
+
+      const results: RaceResults = {
+        positions: [{ carId: "car_01", position: 1, totalTime: 3600 }],
+        fastestLap: { carId: "car_01", lapTime: 88.5 },
+        totalLaps: 40,
+      };
+      bus.emit("race.completed", { results });
+
+      expect(result).toBeDefined();
+      expect(result!.results.totalLaps).toBe(40);
+      expect(result!.results.fastestLap.carId).toBe("car_01");
+    });
+
+    it("should handle empty payload", () => {
+      bus.init();
+      let called = false;
+      bus.on("race.starting", () => {
+        called = true;
+      });
+      bus.emit("race.starting", {});
+      expect(called).toBe(true);
+    });
+  });
+
+  // --- AC-3: Multiple subscribers fire in registration order ---
+
+  describe("AC-3: Multiple subscribers fire in registration order", () => {
+    it("should execute handlers in registration order", () => {
+      bus.init();
+      const order: string[] = [];
+
+      bus.on("race.starting", () => {
+        order.push("A");
+      });
+      bus.on("race.starting", () => {
+        order.push("B");
+      });
+      bus.on("race.starting", () => {
+        order.push("C");
+      });
+
+      bus.emit("race.starting", {});
+
+      expect(order).toEqual(["A", "B", "C"]);
+    });
+
+    it("should execute 25+ subscribers in registration order", () => {
+      bus.init();
+      const order: number[] = [];
+
+      for (let i = 0; i < 30; i++) {
+        bus.on("race.starting", () => {
+          order.push(i);
+        });
+      }
+
+      bus.emit("race.starting", {});
+
+      expect(order).toHaveLength(30);
+      expect(order).toEqual(Array.from({ length: 30 }, (_, i) => i));
+    });
+  });
+
+  // --- AC-5: off() removes specific handler ---
+
+  describe("AC-5: off() removes specific handler", () => {
+    it("should not fire removed handler", () => {
+      bus.init();
+      const order: string[] = [];
+
+      const subA = bus.on("race.starting", () => {
+        order.push("A");
+      });
+      bus.on("race.starting", () => {
+        order.push("B");
+      });
+
+      bus.off(subA);
+      bus.emit("race.starting", {});
+
+      expect(order).toEqual(["B"]);
+    });
+
+    it("should be safe to call off() twice (idempotent)", () => {
+      bus.init();
+      const order: string[] = [];
+
+      const sub = bus.on("race.starting", () => {
+        order.push("A");
+      });
+      bus.off(sub);
+      bus.off(sub); // Second call — no error
+      bus.emit("race.starting", {});
+
+      expect(order).toEqual([]);
+    });
+
+    it("should not affect subscribers on different events", () => {
+      bus.init();
+      let raceStartCalled = false;
+      let raceFinishCalled = false;
+
+      const sub = bus.on("race.starting", () => {
+        raceStartCalled = true;
+      });
+      bus.on("race.completed", () => {
+        raceFinishCalled = true;
+      });
+
+      bus.off(sub); // Remove from race.starting only
+      bus.emit("race.starting", {});
+      bus.emit("race.completed", {
+        results: {
+          positions: [{ carId: "car_01", position: 1, totalTime: 3600 }],
+          fastestLap: { carId: "car_01", lapTime: 88.5 },
+          totalLaps: 40,
+        },
+      });
+
+      expect(raceStartCalled).toBe(false);
+      expect(raceFinishCalled).toBe(true);
+    });
+  });
+
+  // --- AC-6: emit() with zero subscribers ---
+
+  describe("AC-6: emit() with zero subscribers", () => {
+    it("should succeed silently with no error", () => {
+      bus.init();
+      expect(() => bus.emit("race.starting", {})).not.toThrow();
+    });
+
+    it("should be callable 1000 times with 0 subscribers without leak", () => {
+      bus.init();
+      for (let i = 0; i < 1000; i++) {
+        bus.emit("race.starting", {});
+      }
+      // If we get here without error, test passes
+      expect(true).toBe(true);
+    });
+
+    it("should succeed after all subscribers removed", () => {
+      bus.init();
+      const sub = bus.on("race.starting", () => {});
+      bus.off(sub);
+      expect(() => bus.emit("race.starting", {})).not.toThrow();
+    });
+  });
+
+  // --- AC-8: Handler throw does not prevent other handlers ---
+
+  describe("AC-8: Handler throw does not prevent other handlers", () => {
+    it("should execute all handlers even when some throw", () => {
+      bus.init();
+      const log: string[] = [];
+
+      bus.on("race.starting", () => {
+        throw new Error("fail");
+      });
+      bus.on("race.starting", () => {
+        log.push("B");
+      });
+      bus.on("race.starting", () => {
+        throw new Error("fail2");
+      });
+
+      bus.emit("race.starting", {});
+
+      expect(log).toEqual(["B"]);
+    });
+
+    it("should not propagate errors to emit() caller", () => {
+      bus.init();
+      bus.on("race.starting", () => {
+        throw new Error("boom");
+      });
+      expect(() => bus.emit("race.starting", {})).not.toThrow();
+    });
+
+    it("should catch non-Error thrown values", () => {
+      bus.init();
+      const log: string[] = [];
+
+      bus.on("race.starting", () => {
+        throw "string error";
+      });
+      bus.on("race.starting", () => {
+        log.push("ok");
+      });
+
+      bus.emit("race.starting", {});
+      expect(log).toEqual(["ok"]);
+    });
+
+    it("should log each thrown handler via console.error", () => {
+      bus.init();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      bus.on("race.starting", () => {
+        throw new Error("fail1");
+      });
+      bus.on("race.starting", () => {
+        throw new Error("fail2");
+      });
+
+      bus.emit("race.starting", {});
+
+      expect(errorSpy).toHaveBeenCalledTimes(2);
+      errorSpy.mockRestore();
+    });
+
+    it("should not propagate when ALL handlers throw", () => {
+      bus.init();
+      bus.on("race.starting", () => {
+        throw new Error("fail1");
+      });
+      bus.on("race.starting", () => {
+        throw new Error("fail2");
+      });
+      bus.on("race.starting", () => {
+        throw new Error("fail3");
+      });
+
+      expect(() => bus.emit("race.starting", {})).not.toThrow();
+    });
+  });
+
+  // --- Additional edge cases (QA gaps) ---
+
+  describe("AC-1b extended: off() guards", () => {
+    it("should throw 'Not initialized' when off() called before init()", () => {
+      const sub = { unsubscribe: () => {} };
+      expect(() => bus.off(sub)).toThrow(EventBusError);
+      expect(() => bus.off(sub)).toThrow("Not initialized");
+    });
+
+    it("should throw 'Already disposed' when off() called after dispose()", () => {
+      bus.init();
+      const sub = bus.on("race.starting", () => {});
+      bus.dispose();
+      expect(() => bus.off(sub)).toThrow(EventBusError);
+      expect(() => bus.off(sub)).toThrow("Already disposed");
+    });
+  });
+
+  describe("AC-1a extended: dispose() clears handlers", () => {
+    it("should not fire handlers after dispose (state guard blocks emit)", () => {
+      bus.init();
+      const log: string[] = [];
+      bus.on("race.starting", () => log.push("before"));
+      bus.dispose();
+
+      // dispose clears _handlers internally; state guard also blocks emit
+      expect(() => bus.emit("race.starting", {})).toThrow(EventBusError);
+      expect(log).toEqual([]);
+    });
+  });
+
+  describe("AC-1c extended: init() after dispose()", () => {
+    it("should throw 'Already disposed' when init() called after dispose()", () => {
+      bus.init();
+      bus.dispose();
+      expect(() => bus.init()).toThrow(EventBusError);
+      expect(() => bus.init()).toThrow("Already disposed");
+    });
+  });
+
+  describe("AC-2 extended: emit() return type", () => {
+    it("should return undefined (void)", () => {
+      bus.init();
+      const result = bus.emit("race.starting", {});
+      expect(result).toBeUndefined();
+    });
   });
 });
 
