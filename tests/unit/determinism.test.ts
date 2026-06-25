@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { SeededRandom } from "../../src/foundation/determinism";
+import { describe, expect, it, vi } from "vitest";
+import {
+  FixedUpdatePipeline,
+  PipelineError,
+  SeededRandom,
+} from "../../src/foundation/determinism";
 
 // ---------------------------------------------------------------------------
 // AC-1: Deterministic sequence from same seed
@@ -314,5 +318,401 @@ describe("edge cases", () => {
     // The >>> 0 truncation should give us a value < 2^32
     expect(state).toBeGreaterThanOrEqual(0);
     expect(state).toBeLessThan(0x100000000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FixedUpdatePipeline — AC-1: Basic slot registration and execution
+// ---------------------------------------------------------------------------
+
+describe("AC-1: basic slot registration and execution", () => {
+  it("register('input', fn, 1) calls fn with dt on executeTick", () => {
+    const pipeline = new FixedUpdatePipeline();
+    const spy = vi.fn();
+    pipeline.register("input", spy, 1);
+    pipeline.start();
+    pipeline.executeTick(1 / 60);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(1 / 60);
+  });
+
+  it("can register at slot 8 (last slot)", () => {
+    const pipeline = new FixedUpdatePipeline();
+    const spy = vi.fn();
+    pipeline.register("last", spy, 8);
+    pipeline.start();
+    pipeline.executeTick(1 / 60);
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FixedUpdatePipeline — AC-2: Call order verification
+// ---------------------------------------------------------------------------
+
+describe("AC-2: call order verification", () => {
+  it("executes slots in ascending index order [1, 2, 3]", () => {
+    const pipeline = new FixedUpdatePipeline();
+    const order: number[] = [];
+    pipeline.register("a", () => order.push(1), 1);
+    pipeline.register("b", () => order.push(2), 2);
+    pipeline.register("c", () => order.push(3), 3);
+    pipeline.start();
+    pipeline.executeTick(1 / 60);
+    expect(order).toEqual([1, 2, 3]);
+  });
+
+  it("executes non-contiguous slots (1, 5, 8) in ascending order", () => {
+    const pipeline = new FixedUpdatePipeline();
+    const order: number[] = [];
+    pipeline.register("slot8", () => order.push(8), 8);
+    pipeline.register("slot1", () => order.push(1), 1);
+    pipeline.register("slot5", () => order.push(5), 5);
+    pipeline.start();
+    pipeline.executeTick(1 / 60);
+    expect(order).toEqual([1, 5, 8]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FixedUpdatePipeline — AC-3: Registration order independence
+// ---------------------------------------------------------------------------
+
+describe("AC-3: registration order independence", () => {
+  it("executes physics before ai regardless of registration order", () => {
+    const pipeline = new FixedUpdatePipeline();
+    const order: number[] = [];
+    pipeline.register("ai", () => order.push(3), 3);
+    pipeline.register("physics", () => order.push(2), 2);
+    pipeline.start();
+    pipeline.executeTick(1 / 60);
+    expect(order).toEqual([2, 3]);
+  });
+
+  it("executes slots 1→8 when registered in reverse order", () => {
+    const pipeline = new FixedUpdatePipeline();
+    const order: number[] = [];
+    for (let i = 8; i >= 1; i--) {
+      const spy = () => order.push(i);
+      pipeline.register(`s${i}`, spy, i);
+    }
+    pipeline.start();
+    pipeline.executeTick(1 / 60);
+    expect(order).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FixedUpdatePipeline — AC-4: register after start throws
+// ---------------------------------------------------------------------------
+
+describe("AC-4: register after start throws", () => {
+  it("throws PipelineError when registering after start()", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.start();
+    expect(() => pipeline.register("late", vi.fn(), 1)).toThrow(PipelineError);
+    expect(() => pipeline.register("late", vi.fn(), 1)).toThrow(
+      "Cannot register after pipeline has started"
+    );
+  });
+
+  it("throws PipelineError when registering after dispose()", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.start();
+    pipeline.dispose();
+    expect(() => pipeline.register("late", vi.fn(), 1)).toThrow(PipelineError);
+    expect(() => pipeline.register("late", vi.fn(), 1)).toThrow(
+      "Cannot register after pipeline has started"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FixedUpdatePipeline — AC-5: executeTick before start throws
+// ---------------------------------------------------------------------------
+
+describe("AC-5: executeTick before start throws", () => {
+  it("throws PipelineError when executeTick called in Uninitialized state", () => {
+    const pipeline = new FixedUpdatePipeline();
+    expect(() => pipeline.executeTick(1 / 60)).toThrow(PipelineError);
+    expect(() => pipeline.executeTick(1 / 60)).toThrow("Pipeline not started");
+  });
+
+  it("throws PipelineError when executeTick called after stop()", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.start();
+    pipeline.stop();
+    expect(() => pipeline.executeTick(1 / 60)).toThrow(PipelineError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FixedUpdatePipeline — AC-6: Throwing slot isolation
+// ---------------------------------------------------------------------------
+
+describe("AC-6: throwing slot isolation", () => {
+  it("continues execution after a throwing slot", () => {
+    const pipeline = new FixedUpdatePipeline();
+    const calls: number[] = [];
+    pipeline.register("slot1", () => calls.push(1), 1);
+    pipeline.register(
+      "slot2",
+      () => {
+        throw new Error("Physics fail");
+      },
+      2
+    );
+    pipeline.register("slot3", () => calls.push(3), 3);
+    pipeline.start();
+    pipeline.executeTick(1 / 60);
+    expect(calls).toEqual([1, 3]);
+  });
+
+  it("handles all 8 slots throwing without crash", () => {
+    const pipeline = new FixedUpdatePipeline();
+    for (let i = 1; i <= 8; i++) {
+      pipeline.register(
+        `s${i}`,
+        () => {
+          throw new Error(`fail ${i}`);
+        },
+        i
+      );
+    }
+    pipeline.start();
+    // Should not throw
+    expect(() => pipeline.executeTick(1 / 60)).not.toThrow();
+  });
+
+  it("handles slot 1 throwing — slots 2–8 still execute", () => {
+    const pipeline = new FixedUpdatePipeline();
+    const calls: number[] = [];
+    const slot1Spy = vi.fn(() => {
+      throw new Error("First fail");
+    });
+    pipeline.register("slot1", slot1Spy, 1);
+    for (let i = 2; i <= 8; i++) {
+      pipeline.register(`s${i}`, () => calls.push(i), i);
+    }
+    pipeline.start();
+    pipeline.executeTick(1 / 60);
+    expect(slot1Spy).toHaveBeenCalledTimes(1);
+    expect(calls).toEqual([2, 3, 4, 5, 6, 7, 8]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FixedUpdatePipeline — AC-7: Tick counting
+// ---------------------------------------------------------------------------
+
+describe("AC-7: tick counting", () => {
+  it("getCurrentTick() returns 0 before any tick", () => {
+    const pipeline = new FixedUpdatePipeline();
+    expect(pipeline.getCurrentTick()).toBe(0);
+  });
+
+  it("getCurrentTick() increments by 1 per executeTick()", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.start();
+    expect(pipeline.getCurrentTick()).toBe(0);
+    pipeline.executeTick(1 / 60);
+    expect(pipeline.getCurrentTick()).toBe(1);
+    pipeline.executeTick(1 / 60);
+    pipeline.executeTick(1 / 60);
+    pipeline.executeTick(1 / 60);
+    pipeline.executeTick(1 / 60);
+    expect(pipeline.getCurrentTick()).toBe(5);
+  });
+
+  it("counter resets after stop() + new start()", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register("a", vi.fn(), 1);
+    pipeline.start();
+    pipeline.executeTick(1 / 60);
+    pipeline.executeTick(1 / 60);
+    expect(pipeline.getCurrentTick()).toBe(2);
+    pipeline.stop();
+    pipeline.start();
+    expect(pipeline.getCurrentTick()).toBe(0);
+    pipeline.executeTick(1 / 60);
+    expect(pipeline.getCurrentTick()).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FixedUpdatePipeline — AC-8: Disposed state
+// ---------------------------------------------------------------------------
+
+describe("AC-8: disposed state", () => {
+  it("executeTick() throws PipelineError after dispose()", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.start();
+    pipeline.dispose();
+    expect(() => pipeline.executeTick(1 / 60)).toThrow(PipelineError);
+    expect(() => pipeline.executeTick(1 / 60)).toThrow("Pipeline is disposed");
+  });
+
+  it("dispose() is idempotent (safe to call twice)", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.start();
+    pipeline.dispose();
+    pipeline.dispose();
+    // Still disposed — executeTick should throw
+    expect(() => pipeline.executeTick(1 / 60)).toThrow(PipelineError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FixedUpdatePipeline — AC-9: Invalid slot index
+// ---------------------------------------------------------------------------
+
+describe("AC-9: invalid slot index", () => {
+  it("throws PipelineError for slot index 0", () => {
+    const pipeline = new FixedUpdatePipeline();
+    expect(() => pipeline.register("bad", vi.fn(), 0)).toThrow(PipelineError);
+    expect(() => pipeline.register("bad", vi.fn(), 0)).toThrow(
+      "Invalid slot index: 0"
+    );
+  });
+
+  it("throws PipelineError for slot index 9", () => {
+    const pipeline = new FixedUpdatePipeline();
+    expect(() => pipeline.register("bad", vi.fn(), 9)).toThrow(PipelineError);
+    expect(() => pipeline.register("bad", vi.fn(), 9)).toThrow(
+      "Invalid slot index: 9"
+    );
+  });
+
+  it("throws PipelineError for negative slot index (-1)", () => {
+    const pipeline = new FixedUpdatePipeline();
+    expect(() => pipeline.register("bad", vi.fn(), -1)).toThrow(PipelineError);
+    expect(() => pipeline.register("bad", vi.fn(), -1)).toThrow(
+      "Invalid slot index: -1"
+    );
+  });
+
+  it("throws PipelineError for non-integer slot index (1.5)", () => {
+    const pipeline = new FixedUpdatePipeline();
+    expect(() => pipeline.register("bad", vi.fn(), 1.5)).toThrow(PipelineError);
+    expect(() => pipeline.register("bad", vi.fn(), 1.5)).toThrow(
+      "Invalid slot index: 1.5"
+    );
+  });
+
+  it("throws PipelineError for NaN slot index", () => {
+    const pipeline = new FixedUpdatePipeline();
+    expect(() => pipeline.register("bad", vi.fn(), NaN)).toThrow(PipelineError);
+  });
+
+  it("throws PipelineError for Infinity slot index", () => {
+    const pipeline = new FixedUpdatePipeline();
+    expect(() => pipeline.register("bad", vi.fn(), Infinity)).toThrow(
+      PipelineError
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FixedUpdatePipeline — AC-10: Duplicate systemId
+// ---------------------------------------------------------------------------
+
+describe("AC-10: duplicate systemId", () => {
+  it("throws PipelineError for duplicate systemId at same slot", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register("physics", vi.fn(), 2);
+    expect(() => pipeline.register("physics", vi.fn(), 2)).toThrow(
+      PipelineError
+    );
+    expect(() => pipeline.register("physics", vi.fn(), 2)).toThrow(
+      "System already registered: physics"
+    );
+  });
+
+  it("throws PipelineError for duplicate systemId at different slot", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register("physics", vi.fn(), 2);
+    expect(() => pipeline.register("physics", vi.fn(), 3)).toThrow(
+      PipelineError
+    );
+    expect(() => pipeline.register("physics", vi.fn(), 3)).toThrow(
+      "System already registered: physics"
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Edge cases — Additional pipeline behavior
+// ---------------------------------------------------------------------------
+
+describe("pipeline edge cases", () => {
+  it("throws PipelineError when registering into an occupied slot", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register("physics", vi.fn(), 2);
+    expect(() => pipeline.register("collision", vi.fn(), 2)).toThrow(
+      PipelineError
+    );
+    expect(() => pipeline.register("collision", vi.fn(), 2)).toThrow(
+      "Slot 2 already occupied by: physics"
+    );
+  });
+
+  it("can register into slot 1 when slot 2 is already occupied", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register("physics", vi.fn(), 2);
+    // Slot 1 is unoccupied — should succeed
+    expect(() => pipeline.register("input", vi.fn(), 1)).not.toThrow();
+  });
+
+  it("can call start() from Stopped state", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register("a", vi.fn(), 1);
+    pipeline.start();
+    pipeline.executeTick(1 / 60);
+    pipeline.stop();
+    // start() from Stopped should work
+    pipeline.start();
+    pipeline.executeTick(1 / 60);
+    expect(pipeline.getCurrentTick()).toBe(1);
+  });
+
+  it("empty pipeline runs executeTick without error", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.start();
+    expect(() => pipeline.executeTick(1 / 60)).not.toThrow();
+    expect(pipeline.getCurrentTick()).toBe(1);
+  });
+
+  it("start() throws from Ready state", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.start();
+    expect(() => pipeline.start()).toThrow(PipelineError);
+  });
+
+  it("start() throws from Disposed state", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.dispose();
+    expect(() => pipeline.start()).toThrow(PipelineError);
+  });
+
+  it("stop() is idempotent when already stopped", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.start();
+    pipeline.stop();
+    // Already stopped — second stop() is a no-op
+    expect(() => pipeline.stop()).not.toThrow();
+  });
+
+  it("stop() is no-op in Uninitialized state", () => {
+    const pipeline = new FixedUpdatePipeline();
+    // stop() before start — should not throw, just no-op
+    expect(() => pipeline.stop()).not.toThrow();
+  });
+
+  it("stop() is no-op in Disposed state", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.start();
+    pipeline.dispose();
+    // stop() after dispose — should not throw, just no-op
+    expect(() => pipeline.stop()).not.toThrow();
   });
 });
