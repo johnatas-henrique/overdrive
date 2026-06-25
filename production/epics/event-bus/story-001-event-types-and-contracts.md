@@ -1,7 +1,8 @@
 # Story 001: Event Types and Contracts
 
 > **Epic**: Event Bus
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -149,3 +150,11 @@ Test evidence: `tests/unit/event-bus.test.ts` — verify all acceptance criteria
 
 - Depends on: None (foundational — pure types used by all other Event Bus stories)
 - Unlocks: Story 002 (Core Event Bus), Story 003 (Edge Cases), all other Foundation and Core systems
+
+## Completion Notes
+
+**Completed**: 2026-06-24
+**Criteria**: 4/4 passing
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/event-bus.test.ts` — 58/58 tests, tsc clean
+**Code Review**: Complete (LP-CODE-REVIEW: APPROVED)

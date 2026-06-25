@@ -16,7 +16,7 @@ end: "2026-07-29"
 generated: "2026-06-24"
 updated: "2026-06-24"
 
-# In progress: Story 004 — Access Logging + Debug State
+# In progress: (none — 5 done, 24 ready)
 
 stories:
   - id: "1-1"
@@ -73,11 +73,11 @@ stories:
     name: "Story 001: Event Types and Contracts"
     file: "production/epics/event-bus/story-001-event-types-and-contracts.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-7"
     name: "Story 002: Core Event Bus"
