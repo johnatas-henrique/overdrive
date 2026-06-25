@@ -1,7 +1,8 @@
 # Story 001: SeededRandom
 
 > **Epic**: Determinism Contract
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -135,3 +136,11 @@ Test evidence: `tests/unit/determinism.test.ts` — verify all acceptance criter
 
 - Depends on: None (Foundation root — pure math)
 - Unlocks: Story 006 (Determinism Enforcement uses SeededRandom for seed generation during tests)
+
+## Completion Notes
+
+**Completed**: 2026-06-24
+**Criteria**: 6/6 passing
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/determinism.test.ts` — 24/24 tests, 100% coverage on seeded-random.ts, tsc clean, lint clean
+**Code Review**: Complete (APPROVED — BLOCKING divisor bug fixed: 0xffffffff → 0x100000000, regression test added)
