@@ -141,6 +141,28 @@ export class Persistence {
   private _lastError: string | undefined;
 
   /**
+   * In-memory write queue used during Degraded mode.
+   *
+   * When storage is unavailable, `save()` writes are queued here instead of
+   * being sent to localStorage. On successful `retry()`, the queue is flushed
+   * to storage. Maximum 50 entries with FIFO eviction.
+   *
+   * @see F31 — Persistence: degraded mode
+   */
+  private _writeQueue: Array<{ key: string; data: unknown }> = [];
+
+  /**
+   * Whether the storage backend is considered recoverable.
+   *
+   * Set to `false` when a probe fails with `SecurityError` (private browsing,
+   * cross-origin iframe). When `false`, `retry()` skips the probe entirely
+   * and returns `false` without attempting recovery.
+   *
+   * Defaults to `true`. Reset to `true` on next `init()` / page load.
+   */
+  private _recoverable: boolean = true;
+
+  /**
    * Memoized init promise — prevents double-probing on rapid concurrent calls.
    *
    * When `init()` is called twice before the first microtask resolves,
@@ -258,6 +280,9 @@ export class Persistence {
         this._state = PersistenceState.Ready;
       } catch (error) {
         this._lastError = error instanceof Error ? error.name : "UnknownError";
+        if (this._lastError === "SecurityError") {
+          this._recoverable = false;
+        }
         this._state = PersistenceState.Degraded;
       }
     });
@@ -274,8 +299,8 @@ export class Persistence {
    *
    * **State-dependent behavior:**
    * - **Uninitialized**: throws `PersistenceError`.
-   * - **Degraded**: no-op — resolves silently (write queuing is handled
-   *   by Story 004).
+   * - **Degraded**: queues the write in an in-memory buffer (max 50 entries,
+   *   FIFO eviction). Flushed to storage on successful `retry()`.
    * - **Ready**: writes to localStorage. On storage error, transitions
    *   to Degraded mode.
    *
@@ -296,7 +321,10 @@ export class Persistence {
     }
 
     if (this._state === PersistenceState.Degraded) {
-      // Story 004: delegate to memory queue
+      if (this._writeQueue.length >= 50) {
+        this._writeQueue.shift();
+      }
+      this._writeQueue.push({ key, data });
       return;
     }
 
@@ -393,8 +421,8 @@ export class Persistence {
    *
    * **State-dependent behavior:**
    * - **Uninitialized**: throws `PersistenceError`.
-   * - **Degraded**: no-op — resolves silently (queue removal is handled
-   *   by Story 004).
+   * - **Degraded**: removes any pending entry with matching key from the
+   *   in-memory write queue. If not queued, no-op.
    * - **Ready**: removes the key from localStorage. Safe to call on
    *   nonexistent keys.
    *
@@ -414,7 +442,7 @@ export class Persistence {
     }
 
     if (this._state === PersistenceState.Degraded) {
-      // Story 004: remove from memory queue if pending
+      this._writeQueue = this._writeQueue.filter((entry) => entry.key !== key);
       return;
     }
 
@@ -453,8 +481,10 @@ export class Persistence {
    * Re-probe storage after a Degraded state.
    *
    * - **Ready**: No-op, returns `Promise.resolve(true)`.
-   * - **Degraded / Uninitialized**: Stub returns `Promise.resolve(false)`.
-   *   Actual retry logic (re-probe + queue flush) is implemented in Story 004.
+   * - **Uninitialized**: No-op, returns `Promise.resolve(true)` (caller should use `init()`).
+   * - **Degraded**: Re-probes storage. On success, flushes the write queue and
+   *     transitions to Ready. On failure, remains Degraded. Non-recoverable
+   *     errors (SecurityError) short-circuit future retries.
    *
    * @returns `true` if storage is operational, `false` otherwise
    *
@@ -467,10 +497,64 @@ export class Persistence {
    * ```
    */
   async retry(): Promise<boolean> {
-    if (this._state === PersistenceState.Ready) {
+    if (this._state !== PersistenceState.Degraded) {
       return true;
     }
-    // Stub: actual retry logic in Story 004
-    return false;
+
+    // Non-recoverable — skip probe entirely
+    if (!this._recoverable) {
+      return false;
+    }
+
+    // Re-probe storage
+    try {
+      localStorage.setItem(PROBE_KEY, PROBE_VALUE);
+      localStorage.removeItem(PROBE_KEY);
+    } catch (error) {
+      this._lastError = error instanceof Error ? error.name : "UnknownError";
+      if (this._lastError === "SecurityError") {
+        this._recoverable = false;
+      }
+      return false;
+    }
+
+    // Probe succeeded — flush the write queue
+    const pending = [...this._writeQueue];
+
+    for (const entry of pending) {
+      const entryData: PersistedEntry = {
+        version: this._currentVersion,
+        data: entry.data,
+        timestamp: Date.now(),
+      };
+
+      let json: string;
+      try {
+        json = JSON.stringify(entryData);
+      } catch (error) {
+        console.warn(
+          `[Persistence] Failed to serialize key "${entry.key}" during retry flush: ${error instanceof Error ? error.message : "Unknown serialization error"}`
+        );
+        continue;
+      }
+
+      try {
+        localStorage.setItem(this._prefix + entry.key, json);
+      } catch (error) {
+        this._lastError = error instanceof Error ? error.name : "UnknownError";
+        if (this._lastError === "SecurityError") {
+          this._recoverable = false;
+        }
+        // Queue stays intact — already-flushed entries will be overwritten
+        // on the next retry (idempotent writes).
+        return false;
+      }
+    }
+
+    // All flushed successfully
+    this._writeQueue = [];
+    this._state = PersistenceState.Ready;
+    this._lastError = undefined;
+    return true;
   }
 }
