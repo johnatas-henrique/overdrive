@@ -16,7 +16,7 @@ end: "2026-07-29"
 generated: "2026-06-24"
 updated: "2026-06-24"
 
-# Completed: Story 003a — HMR Cache Handler
+# In progress: Story 004 — Access Logging + Debug State
 
 stories:
   - id: "1-1"
@@ -53,7 +53,7 @@ stories:
     name: "Story 003b: HMR Vite Wiring"
     file: "production/epics/data-config-manager/story-003b-hmr-vite-wiring.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.25
     blocker: ""
