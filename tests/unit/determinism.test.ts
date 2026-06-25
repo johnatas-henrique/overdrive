@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  accumulate,
+  FIXED_DT,
   FixedUpdatePipeline,
   InputBuffer,
   InputState,
+  MAX_CATCHUP,
+  MAX_FRAME_DELTA,
   PipelineError,
   SeededRandom,
 } from "../../src/foundation/determinism";
@@ -1245,5 +1249,292 @@ describe("InputBuffer AC-6: zero external dependencies", () => {
     // in Foundation layer files).
     const buf = new InputBuffer();
     expect(buf).toBeInstanceOf(InputBuffer);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Accumulator — AC-1: Normal single tick
+// ---------------------------------------------------------------------------
+
+describe("Accumulator AC-1: normal single tick", () => {
+  it("accumulate(0, 1/60) produces exactly 1 tick and remainder < FIXED_DT", () => {
+    const result = accumulate(0, 1 / 60);
+    expect(result.ticks).toBe(1);
+    expect(result.newAccumulator).toBeLessThan(FIXED_DT);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("accumulate(FIXED_DT * 0.999, 0.001) — accumulator just reaches threshold", () => {
+    // Carry-over of almost a full tick + small delta crosses the threshold
+    const result = accumulate(FIXED_DT * 0.999, 0.001);
+    expect(result.ticks).toBe(1);
+    expect(result.newAccumulator).toBeLessThan(FIXED_DT);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("accumulate(0, 1/60) results in newAccumulator ≈ 0 (exact)", () => {
+    const result = accumulate(0, 1 / 60);
+    // FIXED_DT = 1/60, so accumulator goes 0 → 1/60 → 0 after one tick
+    expect(result.newAccumulator).toBeCloseTo(0, 10);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Accumulator — AC-2: Multiple ticks
+// ---------------------------------------------------------------------------
+
+describe("Accumulator AC-2: multiple ticks", () => {
+  it("accumulate(0, 3/60) produces exactly 3 ticks, accumulator near 0", () => {
+    const result = accumulate(0, 3 / 60);
+    expect(result.ticks).toBe(3);
+    expect(result.newAccumulator).toBeCloseTo(0, 10);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("accumulate(0.01, 3/60 - 0.01) — carry-over plus delta yields 3 ticks", () => {
+    const carryOver = 0.01;
+    const delta = 3 / 60 - carryOver;
+    const result = accumulate(carryOver, delta);
+    // Total accumulator = 3/60, should yield 3 ticks, remainder ~0
+    expect(result.ticks).toBe(3);
+    expect(result.newAccumulator).toBeCloseTo(0, 10);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("accumulate(0, 2/60 + FIXED_DT/2) produces 2 ticks with carry-over", () => {
+    // 2/60 = 2 ticks worth, plus half a tick for carry-over
+    const result = accumulate(0, 2 / 60 + FIXED_DT / 2);
+    expect(result.ticks).toBe(2);
+    expect(result.newAccumulator).toBeCloseTo(FIXED_DT / 2, 10);
+    expect(result.clamped).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Accumulator — AC-3: Cap enforcement at 4 ticks + AC-6: Spiral-of-death clamp
+// ---------------------------------------------------------------------------
+
+describe("Accumulator AC-3: cap enforcement at 4 ticks with spiral-of-death", () => {
+  it("accumulate(0, 5/60) produces 4 ticks (cap), spiral clamps remainder", () => {
+    // 5/60 - 4×FIXED_DT = 1/60 = FIXED_DT → remainder ≥ FIXED_DT → clamped to 0
+    const result = accumulate(0, 5 / 60);
+    expect(result.ticks).toBe(4);
+    expect(result.newAccumulator).toBe(0);
+    expect(result.clamped).toBe(true);
+  });
+
+  it("accumulate(0, 4/60) produces exactly 4 ticks, no remainder, no clamp", () => {
+    const result = accumulate(0, 4 / 60);
+    expect(result.ticks).toBe(4);
+    expect(result.newAccumulator).toBeCloseTo(0, 10);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("accumulate(FIXED_DT/2, 4/60) produces 4 ticks with remainder", () => {
+    // Half-tick carry-over + 4/60 = remainder after 4 ticks should be ~FIXED_DT/2
+    const result = accumulate(FIXED_DT / 2, 4 / 60);
+    expect(result.ticks).toBe(4);
+    expect(result.newAccumulator).toBeCloseTo(FIXED_DT / 2, 10);
+    // remainder < FIXED_DT so no spiral clamp
+    expect(result.clamped).toBe(false);
+  });
+
+  it("accumulate(0, 4.99/60) produces 4 ticks with remainder just below FIXED_DT", () => {
+    const result = accumulate(0, 4.99 / 60);
+    expect(result.ticks).toBe(4);
+    // remainder = 4.99/60 - 4/60 = 0.99/60
+    expect(result.newAccumulator).toBeCloseTo(0.99 / 60, 10);
+    expect(result.clamped).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Accumulator — AC-4: Zero frame delta
+// ---------------------------------------------------------------------------
+
+describe("Accumulator AC-4: zero frame delta", () => {
+  it("accumulate(0, 0) produces 0 ticks, accumulator 0", () => {
+    const result = accumulate(0, 0);
+    expect(result.ticks).toBe(0);
+    expect(result.newAccumulator).toBe(0);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("accumulate(FIXED_DT / 2, 0) — accumulator unchanged, 0 ticks", () => {
+    // With existing accumulator below FIXED_DT and zero delta, no ticks fire
+    const result = accumulate(FIXED_DT / 2, 0);
+    expect(result.ticks).toBe(0);
+    expect(result.newAccumulator).toBe(FIXED_DT / 2);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("accumulate(FIXED_DT * 2, 0) — existing accumulator is consumed (capped at 4)", () => {
+    // 2×FIXED_DT of carry-over, zero new delta → 2 ticks processed
+    const result = accumulate(FIXED_DT * 2, 0);
+    expect(result.ticks).toBe(2);
+    expect(result.newAccumulator).toBeCloseTo(0, 10);
+    expect(result.clamped).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Accumulator — AC-5: Tab backgrounded (large delta clamped)
+// ---------------------------------------------------------------------------
+
+describe("Accumulator AC-5: tab backgrounded (large delta)", () => {
+  it("accumulate(0, 30) clamps delta to 1s, produces 4 ticks, spiral clamp fires", () => {
+    const result = accumulate(0, 30);
+    expect(result.ticks).toBe(4);
+    expect(result.newAccumulator).toBe(0);
+    expect(result.clamped).toBe(true);
+  });
+
+  it("accumulate(0, 1.0) — exactly 1s, capped at 4 ticks, spiral clamp fires", () => {
+    const result = accumulate(0, 1.0);
+    expect(result.ticks).toBe(4);
+    expect(result.newAccumulator).toBe(0);
+    expect(result.clamped).toBe(true);
+  });
+
+  it("accumulate(0, MAX_FRAME_DELTA) — boundary, delta unchanged, 4 ticks, clamped", () => {
+    const result = accumulate(0, MAX_FRAME_DELTA);
+    expect(result.ticks).toBe(4);
+    expect(result.newAccumulator).toBe(0);
+    expect(result.clamped).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Accumulator — AC-6: Spiral-of-death safeguard
+// ---------------------------------------------------------------------------
+
+describe("Accumulator AC-6: spiral-of-death safeguard", () => {
+  it("remainder exactly equals FIXED_DT — clamped to 0", () => {
+    // Produce exactly 4 ticks with remainder = FIXED_DT
+    const result = accumulate(0, 5 / 60);
+    expect(result.ticks).toBe(4);
+    expect(result.newAccumulator).toBe(0);
+    expect(result.clamped).toBe(true);
+  });
+
+  it("remainder just below FIXED_DT — NOT clamped", () => {
+    // 4.99/60 - 4/60 = 0.99/60 < FIXED_DT → no clamp
+    const result = accumulate(0, 4.99 / 60);
+    expect(result.ticks).toBe(4);
+    expect(result.newAccumulator).toBeCloseTo(0.99 / 60, 10);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("remainder just above FIXED_DT — clamped to 0", () => {
+    // 5.001/60 - 4/60 = 1.001/60 > FIXED_DT → clamp
+    const result = accumulate(0, 5.001 / 60);
+    expect(result.ticks).toBe(4);
+    expect(result.newAccumulator).toBe(0);
+    expect(result.clamped).toBe(true);
+  });
+
+  it("massive accumulator (500 * FIXED_DT) — capped at 4 ticks, spiral clamp", () => {
+    const result = accumulate(0, 500 * FIXED_DT);
+    expect(result.ticks).toBe(4);
+    expect(result.newAccumulator).toBe(0);
+    expect(result.clamped).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Accumulator — AC-7: Negative frame delta
+// ---------------------------------------------------------------------------
+
+describe("Accumulator AC-7: negative frame delta", () => {
+  it("accumulate(0, -0.1) clamps negative to 0, produces 0 ticks", () => {
+    const result = accumulate(0, -0.1);
+    expect(result.ticks).toBe(0);
+    expect(result.newAccumulator).toBe(0);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("accumulate(FIXED_DT / 2, -0.1) — negative clamped, accumulator unchanged", () => {
+    const result = accumulate(FIXED_DT / 2, -0.1);
+    expect(result.ticks).toBe(0);
+    expect(result.newAccumulator).toBe(FIXED_DT / 2);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("accumulate(0, -100) — large negative clamped to 0, 0 ticks", () => {
+    const result = accumulate(0, -100);
+    expect(result.ticks).toBe(0);
+    expect(result.newAccumulator).toBe(0);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("accumulate(FIXED_DT, -0.001) — negative clamped, existing accumulator fires 1 tick", () => {
+    // Negative delta is clamped to 0, so accumulator stays at FIXED_DT
+    // and fires exactly 1 tick (the existing carry-over)
+    const result = accumulate(FIXED_DT, -0.001);
+    expect(result.ticks).toBe(1);
+    expect(result.newAccumulator).toBeCloseTo(0, 10);
+    expect(result.clamped).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Accumulator — Additional edge cases and value properties
+// ---------------------------------------------------------------------------
+
+describe("Accumulator edge cases", () => {
+  it("accumulate(0, FIXED_DT * MAX_CATCHUP) produces exactly MAX_CATCHUP ticks", () => {
+    // Exactly 4 ticks worth of delta, no remainder
+    const result = accumulate(0, FIXED_DT * MAX_CATCHUP);
+    expect(result.ticks).toBe(4);
+    expect(result.newAccumulator).toBeCloseTo(0, 10);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("accumulate carries across multiple frames correctly", () => {
+    // Frame 1: 0.5/60 ≈ half a tick, no tick processed
+    let result = accumulate(0, 0.5 / 60);
+    expect(result.ticks).toBe(0);
+    expect(result.newAccumulator).toBeCloseTo(0.5 / 60, 10);
+
+    // Frame 2: carry-over 0.5/60 + 0.6/60 = 1.1/60 → 1 tick, remainder 0.1/60
+    result = accumulate(result.newAccumulator, 0.6 / 60);
+    expect(result.ticks).toBe(1);
+    expect(result.newAccumulator).toBeCloseTo(0.1 / 60, 10);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("FIXED_DT, MAX_CATCHUP, MAX_FRAME_DELTA have expected values", () => {
+    expect(FIXED_DT).toBeCloseTo(0.0166667, 6);
+    expect(MAX_CATCHUP).toBe(4);
+    expect(MAX_FRAME_DELTA).toBe(1.0);
+  });
+
+  it("TickResult type shape is correct", () => {
+    const result: import("../../src/foundation/determinism").TickResult =
+      accumulate(0, 0);
+    expect(result).toHaveProperty("ticks");
+    expect(result).toHaveProperty("newAccumulator");
+    expect(result).toHaveProperty("clamped");
+  });
+
+  it("NaN frameDelta returns unchanged accumulator", () => {
+    const result = accumulate(0.5, NaN);
+    expect(result.ticks).toBe(0);
+    expect(result.newAccumulator).toBe(0.5);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("Infinity frameDelta returns unchanged accumulator", () => {
+    const result = accumulate(0.5, Infinity);
+    expect(result.ticks).toBe(0);
+    expect(result.newAccumulator).toBe(0.5);
+    expect(result.clamped).toBe(false);
+  });
+
+  it("NaN currentAccumulator returns unchanged accumulator", () => {
+    const result = accumulate(NaN, 1 / 60);
+    expect(result.ticks).toBe(0);
+    expect(Number.isNaN(result.newAccumulator)).toBe(true);
+    expect(result.clamped).toBe(false);
   });
 });
