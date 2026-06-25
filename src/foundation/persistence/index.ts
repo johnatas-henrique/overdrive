@@ -8,5 +8,9 @@
  */
 
 export { PersistenceError } from "./errors";
-export type { MigrationFn } from "./persistence";
+export type {
+  MigrationFn,
+  PersistedEntry,
+  PersistenceOptions,
+} from "./persistence";
 export { Persistence, PersistenceState } from "./persistence";

@@ -48,6 +48,28 @@ export enum PersistenceState {
 }
 
 /**
+ * Persistence construction options.
+ *
+ * @example
+ * ```typescript
+ * const persistence = new Persistence({ prefix: "myapp_", version: "1.0.0" });
+ * ```
+ */
+export interface PersistenceOptions {
+  /**
+   * Storage key prefix applied to all keys internally.
+   * @default "overdrive_"
+   */
+  prefix?: string;
+
+  /**
+   * Current schema version stamped into every saved entry.
+   * @default "0.1.0"
+   */
+  version?: string;
+}
+
+/**
  * Migration function type.
  *
  * Transforms stored data from one schema version to the next.
@@ -59,6 +81,25 @@ export enum PersistenceState {
  * @see ADR-0016 — Versioned payload with migration chain
  */
 export type MigrationFn = (data: unknown) => unknown;
+
+/**
+ * PersistedEntry — Versioned container wrapping every saved value.
+ *
+ * Every `save()` call wraps the caller's data in this container before
+ * serialization. On `load()`, the container is unwrapped and the stored
+ * `version` is compared to `CURRENT_VERSION` to decide whether migration
+ * is needed (handled by Story 005).
+ *
+ * @typeParam T - The type of `data` known at compile time (runtime value is `unknown`)
+ */
+export interface PersistedEntry {
+  /** Semver version at save time (e.g. "0.1.0"). */
+  version: string;
+  /** The caller's data. */
+  data: unknown;
+  /** `Date.now()` at save time. */
+  timestamp: number;
+}
 
 /**
  * Default sentinel key for storage probe on init.
@@ -91,9 +132,9 @@ export class Persistence {
   private _state: PersistenceState = PersistenceState.Uninitialized;
 
   /**
-   * Error name from the last failed probe.
+   * Error name from the last failed probe or storage operation.
    *
-   * Populated when `init()` enters Degraded mode. Used by Story 004
+   * Populated when `init()` or `save()` enters Degraded mode. Used by Story 004
    * (`retry()`) to distinguish recoverable failures from non-recoverable
    * ones (e.g. `SecurityError` from private browsing).
    */
@@ -106,6 +147,43 @@ export class Persistence {
    * both calls return the same promise. The probe runs exactly once.
    */
   private _initPromise: Promise<void> | null = null;
+
+  /**
+   * Key prefix prepended to all storage keys.
+   *
+   * Applied internally — callers pass short keys (e.g. `"settings"`),
+   * never the prefixed version.
+   */
+  private readonly _prefix: string;
+
+  /**
+   * Schema version stamped into every `PersistedEntry` at save time.
+   *
+   * Set at construction time and treated as immutable for the lifetime
+   * of the instance.
+   */
+  private readonly _currentVersion: string;
+
+  /**
+   * Create a new Persistence instance.
+   *
+   * @param options - Optional configuration
+   * @param options.prefix - Storage key prefix (default: `"overdrive_"`)
+   * @param options.version - Schema version stamped on every save (default: `"0.1.0"`)
+   *
+   * @example
+   * ```typescript
+   * // Defaults
+   * const p = new Persistence();
+   *
+   * // Custom prefix + version
+   * const p = new Persistence({ prefix: "myapp_", version: "2.0.0" });
+   * ```
+   */
+  constructor(options?: PersistenceOptions) {
+    this._prefix = options?.prefix ?? "overdrive_";
+    this._currentVersion = options?.version ?? "0.1.0";
+  }
 
   /**
    * Current persistence state.
@@ -126,7 +204,7 @@ export class Persistence {
   }
 
   /**
-   * Error name from the last failed probe, if any.
+   * Error name from the last failed probe or storage operation, if any.
    *
    * Returns `undefined` when no probe has failed (state is Ready or
    * init has not been called).
@@ -190,8 +268,16 @@ export class Persistence {
   /**
    * Save typed data to a namespaced key.
    *
-   * **Uninitialized guard**: throws `PersistenceError` if `init()` has not
-   * been called. Actual save logic is implemented in Story 002.
+   * Wraps the data in a `PersistedEntry` container (with current version
+   * and timestamp), serializes to JSON, and writes to localStorage under
+   * `PREFIX + key`.
+   *
+   * **State-dependent behavior:**
+   * - **Uninitialized**: throws `PersistenceError`.
+   * - **Degraded**: no-op — resolves silently (write queuing is handled
+   *   by Story 004).
+   * - **Ready**: writes to localStorage. On storage error, transitions
+   *   to Degraded mode.
    *
    * @param key - Storage key (without prefix — prefix added internally)
    * @param data - Data to store
@@ -204,21 +290,48 @@ export class Persistence {
    * await persistence.save("player.name", "Player1");
    * ```
    */
-  async save<T>(_key: string, _data: T): Promise<void> {
+  async save<T>(key: string, data: T): Promise<void> {
     if (this._state === PersistenceState.Uninitialized) {
       throw new PersistenceError("Not initialized. Call init() first.");
     }
-    // Stub: actual save logic in Story 002
+
+    if (this._state === PersistenceState.Degraded) {
+      // Story 004: delegate to memory queue
+      return;
+    }
+
+    // Ready state
+    const entry: PersistedEntry = {
+      version: this._currentVersion,
+      data,
+      timestamp: Date.now(),
+    };
+
+    try {
+      const json = JSON.stringify(entry);
+      localStorage.setItem(this._prefix + key, json);
+    } catch (error) {
+      this._lastError = error instanceof Error ? error.name : "UnknownError";
+      this._state = PersistenceState.Degraded;
+    }
   }
 
   /**
    * Load typed data from a namespaced key.
    *
-   * **Uninitialized guard**: throws `PersistenceError` if `init()` has not
-   * been called. Actual load logic is implemented in Story 002.
+   * Fetches the raw JSON from localStorage under `PREFIX + key`,
+   * deserializes it, unwraps the `PersistedEntry` container, and returns
+   * the stored data cast to `T`.
+   *
+   * **State-dependent behavior:**
+   * - **Uninitialized**: throws `PersistenceError`.
+   * - **Degraded**: returns `null` immediately.
+   * - **Ready**: fetches from localStorage. If the key does not exist,
+   *   returns `null`. If JSON parse fails, returns `null`.
    *
    * @param key - Storage key (without prefix — prefix added internally)
-   * @returns The stored data, or `null` if the key does not exist
+   * @returns The stored data, or `null` if the key does not exist or
+   *   storage is unavailable
    * @throws {PersistenceError} If state is Uninitialized
    *
    * @example
@@ -227,19 +340,50 @@ export class Persistence {
    * const name = await persistence.load<string>("player.name");
    * ```
    */
-  async load<T>(_key: string): Promise<T | null> {
+  async load<T>(key: string): Promise<T | null> {
     if (this._state === PersistenceState.Uninitialized) {
       throw new PersistenceError("Not initialized. Call init() first.");
     }
-    // Stub: actual load logic in Story 002
-    return null;
+
+    if (this._state === PersistenceState.Degraded) {
+      return null;
+    }
+
+    // Ready state
+    try {
+      const raw = localStorage.getItem(this._prefix + key);
+
+      if (raw === null) {
+        return null;
+      }
+
+      const parsed: unknown = JSON.parse(raw);
+
+      if (parsed !== null && typeof parsed === "object" && "data" in parsed) {
+        return (parsed as PersistedEntry).data as T;
+      }
+
+      // Valid JSON but not a PersistedEntry shape — treat as miss
+      // (full error isolation is handled by Story 003)
+      return null;
+    } catch {
+      // JSON parse failure — corrupted or non-JSON data
+      // Error logging is added by Story 003
+      return null;
+    }
   }
 
   /**
    * Delete a key from storage.
    *
-   * **Uninitialized guard**: throws `PersistenceError` if `init()` has not
-   * been called. Actual delete logic is implemented in Story 002.
+   * Removes the key from localStorage under `PREFIX + key`.
+   *
+   * **State-dependent behavior:**
+   * - **Uninitialized**: throws `PersistenceError`.
+   * - **Degraded**: no-op — resolves silently (queue removal is handled
+   *   by Story 004).
+   * - **Ready**: removes the key from localStorage. Safe to call on
+   *   nonexistent keys.
    *
    * @param key - Storage key to delete (without prefix)
    * @returns A Promise that resolves when the key is deleted
@@ -251,11 +395,23 @@ export class Persistence {
    * await persistence.delete("player.name");
    * ```
    */
-  async delete(_key: string): Promise<void> {
+  async delete(key: string): Promise<void> {
     if (this._state === PersistenceState.Uninitialized) {
       throw new PersistenceError("Not initialized. Call init() first.");
     }
-    // Stub: actual delete logic in Story 002
+
+    if (this._state === PersistenceState.Degraded) {
+      // Story 004: remove from memory queue if pending
+      return;
+    }
+
+    // Ready state
+    try {
+      localStorage.removeItem(this._prefix + key);
+    } catch (error) {
+      this._lastError = error instanceof Error ? error.name : "UnknownError";
+      this._state = PersistenceState.Degraded;
+    }
   }
 
   /**
