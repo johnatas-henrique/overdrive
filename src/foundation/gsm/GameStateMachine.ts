@@ -61,7 +61,7 @@ export class GameStateMachine {
   private _currentState: State | undefined;
   private _stateDefinitions = new Map<State, StateDefinition>();
   private _busy = false;
-  private readonly _eventBus: IEventBus | null | undefined;
+  private _eventBus: IEventBus | null | undefined;
   private _warnedEbMissing = false;
   private readonly _queue: State[] = [];
   private readonly _maxQueueSize: number;
@@ -135,6 +135,9 @@ export class GameStateMachine {
    * ```
    */
   init(): void {
+    if (this._disposed) {
+      return; // No-op after dispose — GSM is not reusable
+    }
     if (this._currentState !== undefined) {
       return; // Idempotent: already initialized
     }
@@ -222,6 +225,11 @@ export class GameStateMachine {
    * ```
    */
   async transition(target: State): Promise<void> {
+    // No-op after dispose — system is shut down
+    if (this._disposed) {
+      return;
+    }
+
     if (this._currentState === undefined) {
       throw new GameStateError("Uninitialized", target);
     }
@@ -254,10 +262,20 @@ export class GameStateMachine {
         await sourceDef.onExit();
       }
 
+      // Guard: disposed during onExit — skip onEnter, skip events
+      if (this._disposed) {
+        return;
+      }
+
       // Call target onEnter — errors trigger rollback
       try {
         if (targetDef?.onEnter) {
           await targetDef.onEnter();
+        }
+
+        // Guard: disposed during onEnter — skip state change, skip events
+        if (this._disposed) {
+          return;
         }
 
         // Transition complete — update state
@@ -271,6 +289,10 @@ export class GameStateMachine {
         this._emitExited(previousState);
         this._emitEntered(previousState, target);
       } catch (error) {
+        // Guard: disposed — no rollback events
+        if (this._disposed) {
+          return;
+        }
         // Rollback: stay in previous state
         console.warn("[GSM] onEnter failed for", target, error);
         // Re-emit gsm.state.entered for previous state (restored)
@@ -311,22 +333,53 @@ export class GameStateMachine {
   }
 
   /**
-   * Dispose the GSM — discards all queued transitions and marks the
-   * machine as disposed. Subsequent `tick()` calls are permanent no-ops.
+   * Dispose the GSM — marks as disposed, clears all queues and history,
+   * and prevents any further transitions, events, or tick processing.
    *
-   * Note: `transition()` is NOT blocked after `dispose()`. The GSM
-   * remains functional for direct transitions — only queued transitions
-   * via `tick()` are affected. This asymmetry exists because `dispose()`
-   * is intended to stop the pipeline's tick-based processing, not to
-   * prevent direct state changes during cleanup.
+   * After dispose:
+   * - `transition()` is a no-op (returns silently, no error)
+   * - `tick()` is a no-op
+   * - `init()` is a no-op
+   * - No further events are emitted on the Event Bus
+   * - `getCurrentState()` returns `undefined`
    *
-   * Does NOT clear definitions, event bus reference, or current state — that
-   * is handled by Story 006 (dispose safety).
+   * If called mid-transition (`_busy` is true), the current transition is
+   * aborted: onExit of the current state runs (fire-and-forget), but onEnter
+   * of the target state does NOT run and no events are emitted.
+   *
+   * Once disposed, the GSM is not reusable — create a new instance instead.
+   * Calling `init()` after `dispose()` is a no-op.
+   *
+   * @see TR-GSM-008 — Dispose during mid-transition aborts
    */
   dispose(): void {
+    // If mid-transition, initiate onExit of the current state fire-and-forget.
+    // The transition code's guard (_disposed check after onExit) will prevent
+    // onEnter from running, and the guard after onEnter will prevent state
+    // change and event emission.
+    if (this._busy && this._currentState !== undefined) {
+      const sourceDef = this._stateDefinitions.get(this._currentState);
+      if (sourceDef?.onExit) {
+        try {
+          const result = sourceDef.onExit();
+          if (result instanceof Promise) {
+            // Fire-and-forget: suppress floating promise rejection
+            result.catch(() => {
+              /* dispose: ignoring onExit rejection */
+            });
+          }
+        } catch {
+          // Ignore sync errors during dispose — we are shutting down
+        }
+      }
+    }
+
     this._disposed = true;
     this._queue.length = 0;
     this._history.length = 0;
+    this._currentState = undefined;
+    // Prevent further Event Bus emissions
+    this._eventBus = null;
   }
 
   /**
@@ -391,10 +444,20 @@ export class GameStateMachine {
         await sourceDef.onExit();
       }
 
+      // Guard: disposed during onExit — skip onEnter, skip events
+      if (this._disposed) {
+        return;
+      }
+
       // Call target onEnter — errors trigger rollback
       try {
         if (targetDef?.onEnter) {
           await targetDef.onEnter();
+        }
+
+        // Guard: disposed during onEnter — skip state change, skip events
+        if (this._disposed) {
+          return;
         }
 
         // Transition complete — update state
@@ -408,6 +471,10 @@ export class GameStateMachine {
         this._emitExited(previousState);
         this._emitEntered(previousState, target);
       } catch (error) {
+        // Guard: disposed — no rollback events
+        if (this._disposed) {
+          return;
+        }
         // Rollback: stay in previous state
         console.warn("[GSM] onEnter failed for", target, error);
         // Re-emit gsm.state.entered for previous state (restored)
