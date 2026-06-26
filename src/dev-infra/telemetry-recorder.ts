@@ -98,6 +98,49 @@ export interface TelemetrySample {
 }
 
 // ---------------------------------------------------------------------------
+// CarEntityRef
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal CarEntity reference for telemetry reads.
+ *
+ * Only exposes the fields that the Telemetry Recorder needs — physics state,
+ * runtime state, and optional AI driver state. The full CarEntity definition
+ * lives in ADR-0005 (Entity/Car Lifecycle) and its implementing ADRs.
+ *
+ * All fields are readonly: the Telemetry Recorder is a read-only observer
+ * (Dev Infra Rule D-F2) that never writes to any system.
+ */
+export interface CarEntityRef {
+  /** Stable car identifier. */
+  readonly id: string;
+
+  /** Physics subsystem state (speed, rpm, gear, lateral G). */
+  readonly physics: {
+    readonly speedKmh: number;
+    readonly rpm: number;
+    readonly gear: number;
+    readonly lateralG: number;
+  };
+
+  /** Runtime state (throttle, brake, steer, fuel, tires, spline position). */
+  readonly runtime: {
+    readonly elapsedTime: number;
+    readonly throttle: number;
+    readonly brake: number;
+    readonly steer: number;
+    readonly fuelLevel: number;
+    readonly tireCondition: number;
+    readonly splinePos: number;
+  };
+
+  /** Optional AI driver subsystem. `undefined` for player cars. */
+  readonly aiDriver?: {
+    readonly state: number;
+  };
+}
+
+// ---------------------------------------------------------------------------
 // TelemetryRecorder
 // ---------------------------------------------------------------------------
 
@@ -126,11 +169,75 @@ export class TelemetryRecorder {
   /** Per-car sample arrays. Keyed by stable car ID. */
   private _samples: Map<string, TelemetrySample[]> = new Map();
 
-  /** Total ticks processed (incremented by `tick()` in Story 002). */
+  /**
+   * Total `tick()` calls processed — used by Story 003 for console log interval.
+   * Increments on every pipeline call, not just sample ticks.
+   */
   private _tickCounter = 0;
 
   /** Total console-log outputs emitted (incremented by Story 003). */
   private _logCounter = 0;
+
+  /** Sampling interval in ticks. Every Nth tick produces a sample. */
+  private _sampleInterval: number;
+
+  /**
+   * Creates a new TelemetryRecorder with the given sampling interval.
+   *
+   * @param sampleInterval - Ticks between samples (default 3 = 20Hz at 60Hz).
+   *                         Range 1–10 per GDD tuning knobs specification.
+   */
+  constructor(sampleInterval: number = 3) {
+    this._sampleInterval = sampleInterval;
+  }
+
+  /**
+   * Called every pipeline tick. Reads {@link CarEntityRef} state and appends
+   * samples at the configured sampling interval.
+   *
+   * Guards against execution in production builds via `import.meta.env.DEV`
+   * (see file-level doc comment). In production (`import.meta.env.DEV === false`),
+   * this method is a no-op — and Vite tree-shakes the entire method body
+   * via the dev guard.
+   *
+   * The method is fully read-only with respect to game state (Dev Infra Rule
+   * D-F2): it never writes to any CarEntity field or system. It only reads
+   * from CarEntity physics/runtime fields and appends to internal arrays.
+   *
+   * No Event Bus events are emitted (Dev Infra Rule D-F3).
+   *
+   * @param _dt - Frame delta time in seconds (unused, kept for pipeline slot
+   *             signature compatibility).
+   * @param cars - Array of {@link CarEntityRef} objects to sample from.
+   * @param tickCount - Current physics pipeline tick count.
+   */
+  tick(_dt: number, cars: CarEntityRef[], tickCount: number): void {
+    if (!import.meta.env.DEV) return;
+
+    this._tickCounter++;
+
+    // Sample at configured interval — only capture on ticks divisible by the
+    // interval. Default 3 → samples on ticks 0, 3, 6, 9, ... at 60Hz.
+    if (tickCount % this._sampleInterval !== 0) return;
+
+    for (const car of cars) {
+      this.addSample(car.id, {
+        tick: tickCount,
+        t: car.runtime.elapsedTime,
+        speed: car.physics.speedKmh,
+        rpm: car.physics.rpm,
+        throttle: car.runtime.throttle,
+        brake: car.runtime.brake,
+        steer: car.runtime.steer,
+        gear: car.physics.gear,
+        lateralG: car.physics.lateralG,
+        fuel: car.runtime.fuelLevel,
+        tireCondition: car.runtime.tireCondition,
+        splinePos: car.runtime.splinePos,
+        aiState: car.aiDriver?.state ?? -1,
+      });
+    }
+  }
 
   /**
    * Appends a telemetry sample for the given car.
