@@ -321,7 +321,6 @@ describe("AC-5: currentState is a read-only getter", () => {
     const gsm = new GameStateMachine();
     gsm.init();
     // Attempt to set via type cast — should silently fail or be ignored
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (gsm as any).currentState = "Racing";
     expect(gsm.getCurrentState()).toBe("Loading");
   });
@@ -331,7 +330,6 @@ describe("AC-5: currentState is a read-only getter", () => {
     gsm.init();
     // JS private fields are runtime properties — `as any` bypasses TS privacy.
     // The contract is that no production code uses `as any` to bypass privacy.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (gsm as any)._currentState = "Racing";
     expect(gsm.getCurrentState()).toBe("Racing");
   });
@@ -352,7 +350,6 @@ describe("AC-5: currentState is a read-only getter", () => {
   it("should not be deletable via delete operator", () => {
     const gsm = new GameStateMachine();
     gsm.init();
-    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     delete (gsm as any).currentState;
     // The private field is unaffected — getter still returns Loading
     expect(gsm.getCurrentState()).toBe("Loading");
@@ -1997,7 +1994,6 @@ describe("Event Bus AC-6: emit() failure resilience", () => {
   it("should handle non-Error throw values from emit()", async () => {
     const bus = createMockBus();
     (bus.emit as ReturnType<typeof vi.fn>).mockImplementation(() => {
-      // eslint-disable-next-line @typescript-eslint/no-throw-literal
       throw "string error";
     });
     const gsm = new GameStateMachine(bus);

@@ -73,7 +73,6 @@ export interface InputState {
  * - `InputState` (interface) — the type
  * - `InputState.ZERO` (namespace constant) — the default value
  */
-// eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace InputState {
   /**
    * Default input state with all fields at zero / false.

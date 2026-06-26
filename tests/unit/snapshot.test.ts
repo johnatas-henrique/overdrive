@@ -1867,11 +1867,11 @@ describe("AC-4: Deserialize failure isolation", () => {
 
     // Throw a string (not an Error instance)
     vi.spyOn(sysA, "deserialize").mockImplementation(() => {
-      throw "corrupted"; // eslint-disable-line no-throw-literal
+      throw "corrupted";
     });
     // Throw a number
     vi.spyOn(sysB, "deserialize").mockImplementation(() => {
-      throw 42; // eslint-disable-line no-throw-literal
+      throw 42;
     });
 
     const snapshot: FullGameSnapshot = {
