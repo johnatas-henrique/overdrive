@@ -344,6 +344,37 @@ fixed. Offer to help fix the blocking items.
 
 ---
 
+## Phase 6.5: Verification Gate
+
+Before updating story status, run all verification checks. This is a hard gate — do not proceed to Phase 7 until all checks pass.
+
+### Lint / Typecheck / Test / Build
+
+Run these commands in order, stopping at first failure:
+
+1. **Lint**: `npx biome check src/ tests/` — must pass with 0 errors, 0 warnings
+2. **Typecheck**: `npx tsc --noEmit` — must pass clean
+3. **Test**: `npm test` — must pass (all tests green, 0 failures)
+4. **Build**: `npm run build` — must succeed
+
+If any check fails:
+- Stop immediately
+- Report the failure to the user
+- Do not proceed to Phase 7 until all checks pass
+
+### Tech Debt Resolution Check
+
+1. Read `docs/tech-debt-register.md`
+2. Determine the current story identifier: `SP{N}/{epic}/ST{N}` (e.g. SP2/telemetry/ST1)
+3. Check each row with Status = 🔴 (Active):
+   - If any file referenced in the `File` column was modified by this story, change Status from 🔴 to ✅ and fill the `Resolved In` column with the story identifier
+4. Write the updated register back
+5. Report how many items were resolved (if any)
+
+If no items were resolved, skip silently (do not report "no tech debt resolved").
+
+---
+
 ## Phase 7: Update Story Status
 
 Use `question` before writing anything:
@@ -373,13 +404,13 @@ If "Fix first": stop here and list what the user flagged. Do not write any files
 **Code Review**: [Pending / Complete / Skipped]
 ```
 
-4. If the user chose "Close and log tech debt": append each advisory deviation to `docs/tech-debt-register.md` in this format:
+4. If the user chose "Close and log tech debt": append each advisory deviation as a new row to `docs/tech-debt-register.md` in this format:
 
    ```
-   - **[date]** ([story title]): [deviation description] — tracked from [story file path]
+   | 🔴 | [date] | SP{N}/{epic}/ST{N} | [description] | [file] | [S/M/L] | |
    ```
 
-   Create the file with a `# Tech Debt Register` heading if it does not exist.
+   Determine the story identifier from the sprint plan (e.g. `SP2/telemetry/ST1`).
 
 5. **Update `production/sprint-status.yaml`** (if it exists):
    - Find the entry matching this story's file path or ID
