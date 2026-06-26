@@ -29,3 +29,6 @@ tools/aseprite-mcp/.venv/
 
 # Scratch files (keep for debugging)
 .opencode/scratch
+
+# AI ignore 
+.cortexkit/
