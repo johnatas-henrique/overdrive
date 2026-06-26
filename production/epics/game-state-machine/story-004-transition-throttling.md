@@ -1,7 +1,8 @@
 # Story 004: Transition Throttling
 
 > **Epic**: Game State Machine
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -122,7 +123,18 @@ _Derived from ADR-0024 Implementation Guidelines:_
 - Assert: excess calls dropped or oldest dropped (defined behavior)
 
 ## Test Evidence
+
+Test evidence: `tests/unit/gsm.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires working transition table and `currentState`; Story 003 (event-bus-integration) — queued transitions must emit events when executed
 - **Unlocks**: Story 005 (state-history-ring-buffer), Story 006 (dispose-safety)
+
+## Completion Notes
+
+**Completed**: 2026-06-24
+**Criteria**: 5/5 passing
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/gsm.test.ts` — 143/143 tests, 100% coverage on GameStateMachine.ts, tsc clean, lint clean
+**Code Review**: Complete (APPROVED WITH SUGGESTIONS — all suggestions applied: 4 gap tests, W-3 doc, 2 coverage tests)

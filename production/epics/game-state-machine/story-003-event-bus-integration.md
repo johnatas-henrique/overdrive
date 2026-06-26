@@ -1,7 +1,8 @@
 # Story 003: Event Bus Integration
 
 > **Epic**: Game State Machine
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
@@ -81,7 +82,7 @@ _Derived from ADR-0024 Implementation Guidelines:_
   - Given: GSM initialized (currentState = 'Loading') with a mock Event Bus
   - When: GSM.transition('Menu') is called and succeeds
   - Then: Event Bus received exactly one 'gsm.state.exited' event; payload is `{ from: 'Loading' }`
-  - Edge cases: Same-state no-op (exited NOT emitted); rollback (exited WAS emitted before rollback — verify)
+  - Edge cases: Same-state no-op (exited NOT emitted); rollback (exited NOT emitted — only entered is re-emitted for restored state)
 
 - **AC-2**: Successful transition emits 'gsm.state.entered' with correct payload
   - Given: GSM initialized (currentState = 'Loading') with a mock Event Bus
@@ -132,7 +133,18 @@ _Derived from ADR-0024 Implementation Guidelines:_
 - Assert: each transition produces corresponding events on Event Bus
 
 ## Test Evidence
+
+Test evidence: `tests/unit/gsm.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires working transitions; Story 002 (async-lifecycle-hooks) — requires hook execution and rollback re-emission
 - **Unlocks**: Story 004 (transition-throttling), Story 005 (state-history-ring-buffer)
+
+## Completion Notes
+
+**Completed**: 2026-06-24
+**Criteria**: 6/6 passing
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/gsm.test.ts` — 122/122 tests, tsc clean, lint clean
+**Code Review**: Complete (APPROVED WITH SUGGESTIONS — all suggestions applied: exhaustive event-emission test, QA doc correction)

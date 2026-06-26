@@ -1,7 +1,7 @@
 # Story 004: Error Isolation + Registration Edge Cases
 
 > **Epic**: Simulation Snapshot
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -219,7 +219,18 @@ _Written by qa-lead at story creation. The developer implements against these �
 - Assert: failed contains system that threw
 
 ## Test Evidence
+
+Test evidence: `tests/unit/snapshot.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 002 (uses SimulationSnapshot orchestrator, register(), restoreSnapshot())
 - Unlocks: None (edge cases on existing functionality — last story in epic)
+
+## Completion Notes
+
+**Completed**: 2026-06-25
+**Criteria**: 8/8 passing
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/snapshot.test.ts` — 143/143 tests
+**Code Review**: Complete (APPROVE — LP-CODE-REVIEW + QL-TEST-COVERAGE ADEQUATE)

@@ -1,7 +1,8 @@
 # Story 004: Degraded Mode + retry()
 
 > **Epic**: Persistence Interface
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-25
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -131,7 +132,18 @@ _Written by qa-lead at story creation. The developer implements against these �
 - Assert: short-circuits (does not retry)
 
 ## Test Evidence
+
+Test evidence: `tests/unit/persistence.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 001 (persistence-state-machine-init), Story 002 (save-load-key-prefix)
 - Unlocks: None
+
+## Completion Notes
+
+**Completed**: 2026-06-25
+**Criteria**: 3/3 passing
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/persistence.test.ts` — 159/159 tests
+**Code Review**: Complete (APPROVE — LP-CODE-REVIEW + QL-TEST-COVERAGE ADEQUATE)

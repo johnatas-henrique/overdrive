@@ -1,7 +1,8 @@
 # Story 003: Error Isolation
 
 > **Epic**: Persistence Interface
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-25
 > **Layer**: Foundation
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
@@ -106,7 +107,18 @@ _Written by qa-lead at story creation. The developer implements against these �
 - Assert: error log contains key name and size of corrupted data
 
 ## Test Evidence
+
+Test evidence: `tests/unit/persistence.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 002 (save-load-key-prefix)
 - Unlocks: None
+
+## Completion Notes
+
+**Completed**: 2026-06-25
+**Criteria**: 1/1 passing
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/persistence.test.ts` — AC-4 with 10+ edge cases. Stale reference to `tests/integration/persistence.test.ts` in story QA section (line 94).
+**Code Review**: Complete (APPROVE — LP-CODE-REVIEW + QL-TEST-COVERAGE ADEQUATE)

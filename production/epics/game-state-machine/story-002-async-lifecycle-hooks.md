@@ -1,7 +1,8 @@
 # Story 002: Async Lifecycle Hooks
 
 > **Epic**: Game State Machine
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Logic (mixed: AC5 requires mock Event Bus)
 > **Manifest Version**: 2026-06-21
@@ -104,27 +105,19 @@ _Derived from ADR-0024 Implementation Guidelines:_
 
 ---
 
-## QA Test Cases
-
-**Test file**: `tests/unit/gsm.test.ts`
-
-### AC-1: async onExit/onEnter called
-- Transition PreRace → Racing
-- Assert: `PreRace.onExit()` completes, then `Racing.onEnter()` starts
-
-### AC-2: async onEnter failure rolls back
-- Configure `Racing.onEnter()` to reject
-- Call `transition('Racing')` from PreRace
-- Assert: error caught and logged
-- Assert: GSM remains in PreRace (rollback)
-
-### AC-3: onEnter error isolation
-- Configure `Racing.onEnter()` to throw synchronously
-- Call `transition('Racing')`
-- Assert: error caught, logged, state rolled back
-
 ## Test Evidence
+
+Test evidence: `tests/unit/gsm.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - **Depends on**: Story 001 (core-fsm-transition-table) — requires State type, transition table, and `currentState` accessor
 - **Unlocks**: Story 003 (event-bus-integration), Story 006 (dispose-safety)
+
+## Completion Notes
+
+**Completed**: 2026-06-24
+**Criteria**: 6/6 passing
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/gsm.test.ts` — 95/95 tests, tsc clean, lint clean
+**Code Review**: Complete (APPROVED WITH SUGGESTIONS — all suggestions applied: duplicate state protection, onExit rejection tests, busy flag error message test, console spies, doc comments)

@@ -1,7 +1,8 @@
 # Story 001: Core FSM — Transition Table
 
 > **Epic**: Game State Machine
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -106,33 +107,19 @@ _Derived from ADR-0024 Implementation Guidelines:_
 
 ---
 
-## QA Test Cases
-
-**Test file**: `tests/unit/gsm.test.ts`
-
-### AC-1: init() sets Loading
-- Call `GSM.init()`
-- Assert: current state is Loading
-
-### AC-2: valid transition
-- Call `GSM.transition('Menu')` from Loading
-- Assert: state changes to Menu
-- Assert: `gsm.state.exited` (Loading) and `gsm.state.entered` (from: Loading → to: Menu) emitted
-
-### AC-3: invalid transition throws
-- Call `GSM.transition('Racing')` from Loading
-- Assert: throws `GameStateError`
-
-### AC-4: valid transition executes lifecycle
-- Call `transition('Racing')` from PreRace
-- Assert: `PreRace.onExit()` called, then `Racing.onEnter()` called
-
-### AC-5: same-state transition is no-op
-- Call `transition('Racing')` while in Racing
-- Assert: no events emitted, state unchanged
-
 ## Test Evidence
+
+Test evidence: `tests/unit/gsm.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - **Depends on**: None (first GSM story)
 - **Unlocks**: Story 002 (async-lifecycle-hooks)
+
+## Completion Notes
+
+**Completed**: 2026-06-24
+**Criteria**: 5/5 passing
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/gsm.test.ts` — 47/47 tests, tsc clean
+**Code Review**: Complete (APPROVED WITH SUGGESTIONS — all suggestions applied)

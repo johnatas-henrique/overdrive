@@ -14,44 +14,46 @@ goal: "Implement the complete Foundation layer (6 epics, 29 stories)"
 start: "2026-06-24"
 end: "2026-07-29"
 generated: "2026-06-24"
-updated: "2026-06-24"
+updated: "2026-06-25"
+
+# In progress: (none — 5 done, 24 ready)
 
 stories:
   - id: "1-1"
     name: "Story 001: Core Register + Get + Error Handling"
     file: "production/epics/data-config-manager/story-001-core-registry.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-2"
     name: "Story 002: Environment Variable Override"
     file: "production/epics/data-config-manager/story-002-env-override.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-3"
     name: "Story 003a: HMR Cache Handler (invalidateNamespace)"
     file: "production/epics/data-config-manager/story-003a-hmr-cache-handler.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-4"
     name: "Story 003b: HMR Vite Wiring"
     file: "production/epics/data-config-manager/story-003b-hmr-vite-wiring.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.25
     blocker: ""
@@ -61,248 +63,248 @@ stories:
     name: "Story 004: Access Logging + Debug State"
     file: "production/epics/data-config-manager/story-004-access-logging-debug-state.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-6"
     name: "Story 001: Event Types and Contracts"
     file: "production/epics/event-bus/story-001-event-types-and-contracts.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-7"
     name: "Story 002: Core Event Bus"
     file: "production/epics/event-bus/story-002-core-event-bus.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-8"
     name: "Story 003: Edge Cases"
     file: "production/epics/event-bus/story-003-edge-cases.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-9"
     name: "Story 001: Core FSM — Transition Table"
     file: "production/epics/game-state-machine/story-001-core-fsm-transition-table.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-10"
     name: "Story 002: Async Lifecycle Hooks"
     file: "production/epics/game-state-machine/story-002-async-lifecycle-hooks.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-11"
     name: "Story 003: Event Bus Integration"
     file: "production/epics/game-state-machine/story-003-event-bus-integration.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-12"
     name: "Story 004: Transition Throttling"
     file: "production/epics/game-state-machine/story-004-transition-throttling.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.625
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-13"
     name: "Story 005: State History Ring Buffer"
     file: "production/epics/game-state-machine/story-005-state-history-ring-buffer.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-14"
     name: "Story 006: Dispose Safety"
     file: "production/epics/game-state-machine/story-006-dispose-safety.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-15"
     name: "Story 001: SeededRandom"
     file: "production/epics/determinism-contract/story-001-seeded-random.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-16"
     name: "Story 002: FixedUpdatePipeline"
     file: "production/epics/determinism-contract/story-002-fixed-update-pipeline.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-17"
     name: "Story 003: InputBuffer"
     file: "production/epics/determinism-contract/story-003-input-buffer.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-18"
     name: "Story 004: Fixed Timestep Accumulator"
     file: "production/epics/determinism-contract/story-004-fixed-timestep-accumulator.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-19"
     name: "Story 005: Pipeline Engine Integration"
     file: "production/epics/determinism-contract/story-005-pipeline-engine-integration.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-20"
     name: "Story 006: Determinism Enforcement (Dev Assertions)"
     file: "production/epics/determinism-contract/story-006-determinism-enforcement.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-21"
     name: "Story 001: Persistence State Machine + Init"
     file: "production/epics/persistence/story-001-persistence-state-machine-init.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-22"
     name: "Story 002: save/load Round-trip + Key Prefix"
     file: "production/epics/persistence/story-002-save-load-key-prefix.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.625
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-23"
     name: "Story 003: Error Isolation"
     file: "production/epics/persistence/story-003-error-isolation.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-24"
     name: "Story 004: Degraded Mode + retry()"
     file: "production/epics/persistence/story-004-degraded-mode-retry.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-25"
     name: "Story 005: Migration Chain"
     file: "production/epics/persistence/story-005-migration-chain.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-26"
     name: "Story 001: ISnapshotable Interface + FNV-1a Hashing"
     file: "production/epics/simulation-snapshot/story-001-isnapshotable-fnv1a.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-27"
     name: "Story 002: Orchestrator Core Lifecycle"
     file: "production/epics/simulation-snapshot/story-002-orchestrator-lifecycle.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-28"
     name: "Story 003: SHA-256 Sync Hash + Snapshot Determinism"
     file: "production/epics/simulation-snapshot/story-003-sha256-determinism.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-29"
     name: "Story 004: Error Isolation + Registration Edge Cases"
     file: "production/epics/simulation-snapshot/story-004-error-isolation.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "solo-dev"
     estimate_days: 0.625
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"

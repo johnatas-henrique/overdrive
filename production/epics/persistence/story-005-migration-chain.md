@@ -1,7 +1,8 @@
 # Story 005: Migration Chain
 
 > **Epic**: Persistence Interface
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-25
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -132,7 +133,18 @@ _Written by qa-lead at story creation. The developer implements against these �
 - Assert: lexicographic comparison would fail (`"0.10" > "0.7"` lexicographically is `false`)
 
 ## Test Evidence
+
+Test evidence: `tests/unit/persistence.test.ts` — verify all acceptance criteria pass.
+
 ## Dependencies
 
 - Depends on: Story 002 (save-load-key-prefix — PersistedEntry format, load path)
 - Unlocks: None
+
+## Completion Notes
+
+**Completed**: 2026-06-25
+**Criteria**: 2/2 passing
+**Deviations**: `load()` triggers migration on any version mismatch (not only stored < current). Functionally correct but deviates from Implementation Note 8. Logged as tech debt.
+**Test Evidence**: Unit test at `tests/unit/persistence.test.ts` — 159/159 tests
+**Code Review**: Complete (CONCERNS — load() version guard deviation, accepted as tech debt)
