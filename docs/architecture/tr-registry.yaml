@@ -2163,12 +2163,12 @@ requirements:
   - id: TR-TELEMETRY-001
     system: telemetry-recorder
     gdd: design/gdd/telemetry-recorder.md
-    requirement: "TelemetrySample { carId: string, tick: number, speedKmh, rpm, throttle, brake, steer, gear, lateralG, accelG, fuelLevel, tireCondition, aiState }."
+    requirement: "TelemetrySample { tick: number, t: number, speed: number, rpm: number, throttle: number, brake: number, steer: number, gear: number, lateralG: number, fuel: number, tireCondition: number, splinePos: number, aiState: number }. Car ID is Map key, not a field."
     domain: Dev
     coverage_adrs: [ADR-0022]
     engine_risk: LOW
     created: 2026-06-21
-    revised: ""
+    revised: "2026-06-26"
     status: active
   - id: TR-TELEMETRY-002
     system: telemetry-recorder

@@ -32,11 +32,11 @@ stories:
     name: "Story 001: Telemetry Data Model"
     file: "production/epics/telemetry-recorder/story-001-telemetry-data-model.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-26"
 
   - id: "2-3"
     name: "Story 002: Telemetry Sampling Loop"

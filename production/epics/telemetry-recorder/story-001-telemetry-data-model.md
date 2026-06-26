@@ -1,11 +1,12 @@
 # Story 001: Telemetry Data Model & Storage
 
 > **Epic**: Telemetry Recorder
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 3h
+> **Last Updated**: 2026-06-26
 
 ## Context
 
@@ -129,7 +130,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 **Story Type**: Logic
 **Required evidence**:
 
-- Logic: `tests/unit/dev-infra/telemetry-data-model_test.ts` — must exist and pass
+- Logic: `tests/unit/dev-infra/telemetry-data-model.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 
@@ -139,3 +140,11 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 - Depends on: None (foundational data types and storage — first story in epic)
 - Unlocks: Story 002, Story 003, Story 004, Story 005, Story 006
+
+## Completion Notes
+
+**Completed**: 2026-06-26
+**Criteria**: 5/5 passing
+**Deviations**: TR-TELEMETRY-001 field names were fabricated by /architecture-review (speedKmh, fuelLevel, accelG, carId instead of speed, fuel, splinePos, t). Fixed during story-done. TR registry and story file test path corrected.
+**Test Evidence**: Logic: tests/unit/dev-infra/telemetry-data-model.test.ts (28 tests)
+**Code Review**: Complete — APPROVED (babylonjs-specialist CLEAN, qa-tester TESTABLE, lead-programmer APPROVED)
