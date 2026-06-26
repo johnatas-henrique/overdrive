@@ -303,7 +303,7 @@ stories:
     name: "Story 004: Error Isolation + Registration Edge Cases"
     file: "production/epics/simulation-snapshot/story-004-error-isolation.md"
     priority: must-have
-    status: ready-for-dev
+    status: in_progress
     owner: "solo-dev"
     estimate_days: 0.625
     blocker: ""
