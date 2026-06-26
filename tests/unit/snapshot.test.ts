@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   computeSnapshotHash,
   type FullGameSnapshot,
@@ -31,6 +31,17 @@ if (typeof crypto?.subtle === "undefined") {
     configurable: true,
   });
 }
+
+// Suppress console.warn output during tests
+let warnSpy: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+  warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+});
+
+afterEach(() => {
+  warnSpy.mockRestore();
+});
 
 // ---------------------------------------------------------------------------
 // Test system — concrete ISnapshotable implementation
@@ -1623,5 +1634,542 @@ describe("AC-6: Same tick → same snapshot content", () => {
     // deterministic regardless of any timestamp differences.
     expect(snap1.systems).toEqual(snap2.systems);
     expect(snap1.tick).toBe(snap2.tick);
+  });
+});
+
+// ===========================================================================
+// Story 004: Error Isolation + Registration Edge Cases
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// AC-1: SnapshotError extends Error with systemId and code properties
+// ---------------------------------------------------------------------------
+
+describe("AC-1: SnapshotError structure", () => {
+  it("should extend Error with systemId and code properties", () => {
+    const error = new SnapshotError(
+      "Test error",
+      "physics",
+      "SNAPSHOT_DUPLICATE_REGISTRATION"
+    );
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe("SnapshotError");
+    expect(error.message).toBe("Test error");
+    expect(error.systemId).toBe("physics");
+    expect(error.code).toBe("SNAPSHOT_DUPLICATE_REGISTRATION");
+  });
+
+  it("should support SNAPSHOT_DESERIALIZE_FAILURE code variant", () => {
+    const error = new SnapshotError(
+      "Deserialize failed",
+      "fuel",
+      "SNAPSHOT_DESERIALIZE_FAILURE"
+    );
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe("SnapshotError");
+    expect(error.message).toBe("Deserialize failed");
+    expect(error.systemId).toBe("fuel");
+    expect(error.code).toBe("SNAPSHOT_DESERIALIZE_FAILURE");
+  });
+
+  it("should have default values for systemId and code", () => {
+    const error = new SnapshotError("Not initialized");
+    expect(error.systemId).toBe("");
+    expect(error.code).toBe("SNAPSHOT_DUPLICATE_REGISTRATION");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-2: Duplicate register() throws SnapshotError
+// ---------------------------------------------------------------------------
+
+describe("AC-2: Duplicate register throws SnapshotError", () => {
+  it("should throw when registering same systemId twice", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("physics", { v: 1 }));
+
+    expect(() =>
+      ss.register(new TestSnapshotSystem("physics", { v: 2 }))
+    ).toThrow(SnapshotError);
+    expect(() =>
+      ss.register(new TestSnapshotSystem("physics", { v: 2 }))
+    ).toThrow("physics");
+  });
+
+  it("should throw SnapshotError with correct code and systemId", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("fuel", { v: 1 }));
+
+    try {
+      ss.register(new TestSnapshotSystem("fuel", { v: 2 }));
+      expect.fail("Should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(SnapshotError);
+      const err = e as SnapshotError;
+      expect(err.systemId).toBe("fuel");
+      expect(err.code).toBe("SNAPSHOT_DUPLICATE_REGISTRATION");
+      expect(err.message).toContain("fuel");
+    }
+  });
+
+  it("should allow different systemIds without conflict", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const sys = new TestSnapshotSystem("physics", { v: 1 });
+    ss.register(sys);
+    const sys2 = new TestSnapshotSystem("engine", { v: 2 });
+    ss.register(sys2);
+    const snap = ss.takeSnapshot(0);
+    expect(snap?.systems.physics).toBeDefined();
+    expect(snap?.systems.engine).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-3: Registry unchanged after duplicate registration exception
+// ---------------------------------------------------------------------------
+
+describe("AC-3: Registry unchanged on duplicate exception", () => {
+  it("should not modify registry when duplicate registration throws", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("physics", { v: 1 }));
+
+    // Attempt duplicate registration
+    try {
+      ss.register(new TestSnapshotSystem("physics", { v: 99 }));
+    } catch {
+      // expected
+    }
+
+    // Registry should still contain only the original system
+    const snap = ss.takeSnapshot(0);
+    expect(Object.keys(snap!.systems).length).toBe(1);
+    expect(snap!.systems.physics.state).toEqual({ v: 1 });
+  });
+
+  it("should not corrupt registry after multiple duplicate attempts", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("a", { v: 1 }));
+    ss.register(new TestSnapshotSystem("b", { v: 2 }));
+
+    // Attempt duplicate multiple times
+    for (let i = 0; i < 3; i++) {
+      try {
+        ss.register(new TestSnapshotSystem("a", { v: i }));
+      } catch {
+        // expected
+      }
+    }
+
+    const snap = ss.takeSnapshot(0);
+    expect(Object.keys(snap!.systems).length).toBe(2);
+    expect(snap!.systems.a.state).toEqual({ v: 1 });
+    expect(snap!.systems.b.state).toEqual({ v: 2 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-4: Deserialize failure isolation
+// ---------------------------------------------------------------------------
+
+describe("AC-4: Deserialize failure isolation", () => {
+  it("should isolate deserialize failure — other systems restore normally", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sysA = new TestSnapshotSystem("a", { v: 1 });
+    const sysB = new TestSnapshotSystem("b", { v: 2 });
+    const sysC = new TestSnapshotSystem("c", { v: 3 });
+
+    ss.register(sysA);
+    ss.register(sysB);
+    ss.register(sysC);
+
+    // Make sysB throw on deserialize
+    vi.spyOn(sysB, "deserialize").mockImplementation(() => {
+      throw new Error("Deserialize failed for B");
+    });
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        a: { state: { v: 10 }, hash: "h1" },
+        b: { state: { v: 20 }, hash: "h2" },
+        c: { state: { v: 30 }, hash: "h3" },
+      },
+      snapshotHash: "",
+    };
+
+    ss.restoreSnapshot(snapshot);
+
+    // sysA and sysC should have been deserialized
+    expect(sysA.serialize()).toEqual({ v: 10 });
+    expect(sysC.serialize()).toEqual({ v: 30 });
+    // sysB should NOT have been deserialized — retains previous state
+    expect(sysB.serialize()).toEqual({ v: 2 });
+
+    vi.restoreAllMocks();
+  });
+
+  it("should handle all systems failing deserialize", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sysA = new TestSnapshotSystem("a", { v: 1 });
+    const sysB = new TestSnapshotSystem("b", { v: 2 });
+
+    ss.register(sysA);
+    ss.register(sysB);
+
+    vi.spyOn(sysA, "deserialize").mockImplementation(() => {
+      throw new Error("A fail");
+    });
+    vi.spyOn(sysB, "deserialize").mockImplementation(() => {
+      throw new Error("B fail");
+    });
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        a: { state: { v: 99 }, hash: "h1" },
+        b: { state: { v: 88 }, hash: "h2" },
+      },
+      snapshotHash: "",
+    };
+
+    const result = ss.restoreSnapshot(snapshot);
+
+    // Both systems retain previous state
+    expect(sysA.serialize()).toEqual({ v: 1 });
+    expect(sysB.serialize()).toEqual({ v: 2 });
+    // Result reflects total failure
+    expect(result.succeeded).toEqual([]);
+    expect(result.failed).toHaveLength(2);
+
+    vi.restoreAllMocks();
+  });
+
+  it("should handle non-Error thrown values (string, number)", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sysA = new TestSnapshotSystem("a", { v: 1 });
+    const sysB = new TestSnapshotSystem("b", { v: 2 });
+
+    ss.register(sysA);
+    ss.register(sysB);
+
+    // Throw a string (not an Error instance)
+    vi.spyOn(sysA, "deserialize").mockImplementation(() => {
+      throw "corrupted"; // eslint-disable-line no-throw-literal
+    });
+    // Throw a number
+    vi.spyOn(sysB, "deserialize").mockImplementation(() => {
+      throw 42; // eslint-disable-line no-throw-literal
+    });
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        a: { state: { v: 99 }, hash: "h1" },
+        b: { state: { v: 88 }, hash: "h2" },
+      },
+      snapshotHash: "",
+    };
+
+    const result = ss.restoreSnapshot(snapshot);
+
+    // Both should be caught and wrapped
+    expect(result.failed).toHaveLength(2);
+    expect(result.failed[0].error).toBeInstanceOf(Error);
+    expect(result.failed[0].error.message).toBe("corrupted");
+    expect(result.failed[1].error).toBeInstanceOf(Error);
+    expect(result.failed[1].error.message).toBe("42");
+
+    vi.restoreAllMocks();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-5: Failed system retains previous state
+// ---------------------------------------------------------------------------
+
+describe("AC-5: Failed system retains previous state", () => {
+  it("should preserve previous state when deserialize throws", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sys = new TestSnapshotSystem("test", { state: "S1" });
+    ss.register(sys);
+
+    const preHash = sys.hash();
+
+    vi.spyOn(sys, "deserialize").mockImplementation(() => {
+      throw new Error("Corrupt data");
+    });
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        test: { state: { state: "S2" }, hash: "h1" },
+      },
+      snapshotHash: "",
+    };
+
+    ss.restoreSnapshot(snapshot);
+
+    // Hash should be unchanged (original state preserved)
+    expect(sys.hash()).toBe(preHash);
+    expect(sys.serialize()).toEqual({ state: "S1" });
+
+    vi.restoreAllMocks();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-6: console.warn called on failure
+// ---------------------------------------------------------------------------
+
+describe("AC-6: console.warn called on failure", () => {
+  it("should log warning for failed system during restore", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sys = new TestSnapshotSystem("failing", { v: 1 });
+    ss.register(sys);
+
+    vi.spyOn(sys, "deserialize").mockImplementation(() => {
+      throw new Error("Corruption detected");
+    });
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        failing: { state: { v: 99 }, hash: "h1" },
+      },
+      snapshotHash: "",
+    };
+
+    ss.restoreSnapshot(snapshot);
+
+    expect(warnSpy).toHaveBeenCalled();
+    expect(
+      warnSpy.mock.calls.some(
+        (call) =>
+          typeof call[0] === "string" &&
+          call[0].includes("failing") &&
+          call[0].includes("Corruption detected")
+      )
+    ).toBe(true);
+
+    warnSpy.mockRestore();
+  });
+
+  it("should log multiple warnings for multiple failures", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sysA = new TestSnapshotSystem("a", { v: 1 });
+    const sysB = new TestSnapshotSystem("b", { v: 2 });
+    ss.register(sysA);
+    ss.register(sysB);
+
+    vi.spyOn(sysA, "deserialize").mockImplementation(() => {
+      throw new Error("err1");
+    });
+    vi.spyOn(sysB, "deserialize").mockImplementation(() => {
+      throw new Error("err2");
+    });
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        a: { state: { v: 99 }, hash: "h1" },
+        b: { state: { v: 88 }, hash: "h2" },
+      },
+      snapshotHash: "",
+    };
+
+    ss.restoreSnapshot(snapshot);
+
+    expect(warnSpy).toHaveBeenCalledTimes(2);
+
+    warnSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-7: restoreSnapshot returns SnapshotRestoreResult
+// ---------------------------------------------------------------------------
+
+describe("AC-7: SnapshotRestoreResult returned by restoreSnapshot", () => {
+  it("should return object with succeeded and failed arrays", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sysA = new TestSnapshotSystem("a", { v: 1 });
+    ss.register(sysA);
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        a: { state: { v: 99 }, hash: "h1" },
+      },
+      snapshotHash: "",
+    };
+
+    const result = ss.restoreSnapshot(snapshot);
+    expect(result).toHaveProperty("succeeded");
+    expect(result).toHaveProperty("failed");
+    expect(Array.isArray(result.succeeded)).toBe(true);
+    expect(Array.isArray(result.failed)).toBe(true);
+  });
+
+  it("should report succeeded and failed systems correctly", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sysA = new TestSnapshotSystem("a", { v: 1 });
+    const sysB = new TestSnapshotSystem("b", { v: 2 });
+    ss.register(sysA);
+    ss.register(sysB);
+
+    vi.spyOn(sysB, "deserialize").mockImplementation(() => {
+      throw new Error("fail");
+    });
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        a: { state: { v: 99 }, hash: "h1" },
+        b: { state: { v: 88 }, hash: "h2" },
+      },
+      snapshotHash: "",
+    };
+
+    const result = ss.restoreSnapshot(snapshot);
+    expect(result.succeeded).toEqual(["a"]);
+    expect(result.failed).toHaveLength(1);
+    expect(result.failed[0].systemId).toBe("b");
+    expect(result.failed[0].error).toBeInstanceOf(Error);
+    expect(result.failed[0].error.message).toBe("fail");
+
+    vi.restoreAllMocks();
+  });
+
+  it("should return empty arrays for empty snapshot", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("a", { v: 1 }));
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {},
+      snapshotHash: "",
+    };
+
+    const result = ss.restoreSnapshot(snapshot);
+    expect(result.succeeded).toEqual([]);
+    expect(result.failed).toEqual([]);
+  });
+
+  it("should return all succeeded when no failures", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("a", { v: 1 }));
+    ss.register(new TestSnapshotSystem("b", { v: 2 }));
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        a: { state: { v: 99 }, hash: "h1" },
+        b: { state: { v: 88 }, hash: "h2" },
+      },
+      snapshotHash: "",
+    };
+
+    const result = ss.restoreSnapshot(snapshot);
+    expect(result.succeeded).toEqual(expect.arrayContaining(["a", "b"]));
+    expect(result.failed).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-8: Missing system in registry skipped gracefully
+// ---------------------------------------------------------------------------
+
+describe("AC-8: Missing system in registry skipped gracefully", () => {
+  it("should skip systems in snapshot but not in registry with warning", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const sysX = new TestSnapshotSystem("X", { v: 1 });
+    ss.register(sysX);
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        X: { state: { v: 99 }, hash: "h1" },
+        Y: { state: { v: 42 }, hash: "h2" },
+      },
+      snapshotHash: "",
+    };
+
+    const result = ss.restoreSnapshot(snapshot);
+
+    // System X restored normally
+    expect(sysX.serialize()).toEqual({ v: 99 });
+    // Warning logged for missing system Y
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Y"));
+    // System Y is not in succeeded nor failed — it was skipped
+    expect(result.succeeded).toEqual(["X"]);
+    expect(result.failed).toEqual([]);
+
+    warnSpy.mockRestore();
+  });
+
+  it("should handle snapshot-only system that never existed in registry", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("existing", { v: 1 }));
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        neverRegistered: { state: { v: 999 }, hash: "h1" },
+      },
+      snapshotHash: "",
+    };
+
+    // Should not throw
+    expect(() => ss.restoreSnapshot(snapshot)).not.toThrow();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("neverRegistered")
+    );
+
+    warnSpy.mockRestore();
   });
 });
