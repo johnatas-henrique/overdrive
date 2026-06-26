@@ -14,7 +14,7 @@ goal: "Implement the complete Foundation layer (6 epics, 29 stories)"
 start: "2026-06-24"
 end: "2026-07-29"
 generated: "2026-06-24"
-updated: "2026-06-24"
+updated: "2026-06-25"
 
 # In progress: (none — 5 done, 24 ready)
 
@@ -213,98 +213,98 @@ stories:
     name: "Story 006: Determinism Enforcement (Dev Assertions)"
     file: "production/epics/determinism-contract/story-006-determinism-enforcement.md"
     priority: must-have
-    status: in_progress
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-21"
     name: "Story 001: Persistence State Machine + Init"
     file: "production/epics/persistence/story-001-persistence-state-machine-init.md"
     priority: must-have
-    status: in_progress
+    status: done
     owner: "solo-dev"
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-22"
     name: "Story 002: save/load Round-trip + Key Prefix"
     file: "production/epics/persistence/story-002-save-load-key-prefix.md"
     priority: must-have
-    status: in_progress
+    status: done
     owner: "solo-dev"
     estimate_days: 0.625
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-23"
     name: "Story 003: Error Isolation"
     file: "production/epics/persistence/story-003-error-isolation.md"
     priority: must-have
-    status: in_progress
+    status: done
     owner: "solo-dev"
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-24"
     name: "Story 004: Degraded Mode + retry()"
     file: "production/epics/persistence/story-004-degraded-mode-retry.md"
     priority: must-have
-    status: in_progress
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-25"
     name: "Story 005: Migration Chain"
     file: "production/epics/persistence/story-005-migration-chain.md"
     priority: must-have
-    status: in_progress
+    status: done
     owner: "solo-dev"
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-26"
     name: "Story 001: ISnapshotable Interface + FNV-1a Hashing"
     file: "production/epics/simulation-snapshot/story-001-isnapshotable-fnv1a.md"
     priority: must-have
-    status: in_progress
+    status: done
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-27"
     name: "Story 002: Orchestrator Core Lifecycle"
     file: "production/epics/simulation-snapshot/story-002-orchestrator-lifecycle.md"
     priority: must-have
-    status: in_progress
+    status: done
     owner: "solo-dev"
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-28"
     name: "Story 003: SHA-256 Sync Hash + Snapshot Determinism"
     file: "production/epics/simulation-snapshot/story-003-sha256-determinism.md"
     priority: must-have
-    status: in_progress
+    status: done
     owner: "solo-dev"
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
 
   - id: "1-29"
     name: "Story 004: Error Isolation + Registration Edge Cases"
     file: "production/epics/simulation-snapshot/story-004-error-isolation.md"
     priority: must-have
-    status: in_progress
+    status: done
     owner: "solo-dev"
     estimate_days: 0.625
     blocker: ""
-    completed: ""
+    completed: "2026-06-25"
