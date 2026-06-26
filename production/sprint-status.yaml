@@ -283,7 +283,7 @@ stories:
     name: "Story 002: Orchestrator Core Lifecycle"
     file: "production/epics/simulation-snapshot/story-002-orchestrator-lifecycle.md"
     priority: must-have
-    status: ready-for-dev
+    status: in_progress
     owner: "solo-dev"
     estimate_days: 1
     blocker: ""

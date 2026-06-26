@@ -1,7 +1,8 @@
 # Story 002: SimulationSnapshot Orchestrator — Core Lifecycle
 
 > **Epic**: Simulation Snapshot
-> **Status**: Ready
+> **Status**: In Progress
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
