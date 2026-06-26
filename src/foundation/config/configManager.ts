@@ -83,7 +83,13 @@ export class ConfigManager {
       throw new ConfigError(`Namespace already registered: ${namespace}`);
     }
     this._store.set(namespace, config);
-    this._buildResolved(namespace);
+    try {
+      this._buildResolved(namespace);
+    } catch (error) {
+      // Clean up: remove the namespace if build failed (e.g., non-serializable)
+      this._store.delete(namespace);
+      throw error;
+    }
   }
 
   get<T>(key: string): T {
@@ -197,9 +203,16 @@ export class ConfigManager {
       return;
     }
 
-    // Deep clone: config objects are always JSON-serializable
+    // Deep clone: config objects must be JSON-serializable
     // (no functions, Dates, Maps, Sets — per ADR-0023 constraint)
-    const resolved = JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
+    let resolved: Record<string, unknown>;
+    try {
+      resolved = JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
+    } catch {
+      throw new ConfigError(
+        `ConfigManager: namespace '${namespace}' contains non-serializable values (functions, circular references, etc.). All config values must be JSON-serializable per ADR-0023.`
+      );
+    }
 
     // Apply env overrides to the clone
     this._applyEnvOverridesToClone(namespace, resolved);
@@ -263,10 +276,12 @@ export class ConfigManager {
 
     for (const [ns, raw] of this._store) {
       const resolved = this._resolved.get(ns);
-      if (resolved !== undefined) {
-        namespaces[ns] = JSON.parse(JSON.stringify(resolved));
-      } else {
-        namespaces[ns] = JSON.parse(JSON.stringify(raw));
+      const source = resolved ?? raw;
+      try {
+        namespaces[ns] = JSON.parse(JSON.stringify(source));
+      } catch {
+        // Non-serializable config — return a safe placeholder instead of crashing
+        namespaces[ns] = { error: "non-serializable config" };
       }
     }
 

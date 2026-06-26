@@ -25,6 +25,8 @@
  * @see ADR-0002 — Fixed Timestep & Determinism Pipeline
  * @see F16 — SeededRandom LCG with constants 1664525, 1013904223
  */
+import { DeterminismError } from "./errors";
+
 export class SeededRandom {
   /** Internal LCG state — unsigned 32-bit integer. */
   private _state: number;
@@ -48,9 +50,19 @@ export class SeededRandom {
    * ```
    */
   constructor(seed: number) {
+    // Reject non-finite seeds (NaN, Infinity) — would produce degenerate LCG state
+    if (!Number.isFinite(seed)) {
+      throw new DeterminismError(
+        `SeededRandom: seed must be a finite number, got ${seed}`
+      );
+    }
     // Negative → absolute value; zero → 1 (LCG degeneracy avoidance)
     const sanitized = seed <= 0 ? (seed === 0 ? 1 : Math.abs(seed)) : seed;
     this._state = sanitized >>> 0;
+    // Fractional seeds (e.g. 0.5) coerce to 0 via >>> 0 — avoid degeneracy
+    if (this._state === 0) {
+      this._state = 1;
+    }
   }
 
   /**
@@ -59,7 +71,7 @@ export class SeededRandom {
    * Advances the LCG state using the Numerical Recipes formula:
    * `state = (state * 1664525 + 1013904223) >>> 0`
    *
-   * The result is the current state divided by `0xffffffff`, producing
+   * The result is the current state divided by `0x100000000` (2³²), producing
    * a float in the range [0, 1) with uniform distribution.
    *
    * @returns A float in [0, 1)
