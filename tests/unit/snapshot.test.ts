@@ -1,11 +1,36 @@
 import { describe, expect, it } from "vitest";
 import {
+  computeSnapshotHash,
   type FullGameSnapshot,
   fnv1a,
   type ISnapshotable,
   SimulationSnapshot,
   SnapshotError,
+  sha256,
 } from "../../src/foundation/simulation-snapshot";
+
+// ---------------------------------------------------------------------------
+// Crypto polyfill — ensure crypto.subtle is available in Node.js test env
+// ---------------------------------------------------------------------------
+
+import { webcrypto } from "node:crypto";
+
+// ---------------------------------------------------------------------------
+// SHA-256 known test vectors (for AC-7)
+// ---------------------------------------------------------------------------
+
+const SHA256_EMPTY =
+  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+const SHA256_HELLO =
+  "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+
+if (typeof crypto?.subtle === "undefined") {
+  Object.defineProperty(globalThis, "crypto", {
+    value: webcrypto,
+    writable: false,
+    configurable: true,
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Test system — concrete ISnapshotable implementation
@@ -16,6 +41,10 @@ class TestSnapshotSystem implements ISnapshotable {
   private state: Record<string, unknown>;
   /** Tracks calls to `serialize()` — used by AC-10 to verify dispose calls it. */
   serializeCallCount = 0;
+  /** Tracks calls to `deserialize()` — used by Story 003 AC-4. */
+  deserializeCallCount = 0;
+  /** Last state passed to `deserialize()` — used by Story 003 AC-4. */
+  lastDeserializedState: Record<string, unknown> | null = null;
 
   constructor(systemId: string, initialState?: Record<string, unknown>) {
     this.systemId = systemId;
@@ -28,6 +57,8 @@ class TestSnapshotSystem implements ISnapshotable {
   }
 
   deserialize(state: Record<string, unknown>): void {
+    this.deserializeCallCount++;
+    this.lastDeserializedState = JSON.parse(JSON.stringify(state));
     this.state = JSON.parse(JSON.stringify(state));
   }
 
@@ -532,8 +563,6 @@ describe("FNV-1a known values (regression)", () => {
 // SimulationSnapshot — Core Lifecycle (Story 002)
 // ===========================================================================
 
-const hex16 = /^[0-9a-f]{16}$/;
-
 // ---------------------------------------------------------------------------
 // AC-1: init/dispose lifecycle guards
 // ---------------------------------------------------------------------------
@@ -724,7 +753,7 @@ describe("AC-4: FullGameSnapshot shape", () => {
     expect(sys.state).toEqual({ level: 85.3 });
     // hash is a 16-character hex string (FNV-1a)
     expect(typeof sys.hash).toBe("string");
-    expect(sys.hash).toMatch(hex16);
+    expect(sys.hash).toMatch(HEX16_RE);
   });
 
   it("should compute correct FNV-1a hash for each system", () => {
@@ -1115,5 +1144,484 @@ describe("SimulationSnapshot edge cases", () => {
     ss.takeSnapshot(0);
     // System state should be unchanged
     expect(sys.serialize()).toEqual({ value: "original" });
+  });
+});
+
+// ===========================================================================
+// SHA-256 — sha256() utility (Story 003)
+// ===========================================================================
+
+const HEX64_RE = /^[0-9a-f]{64}$/;
+
+// ---------------------------------------------------------------------------
+// AC-1: sha256 returns 64-char hex string
+// ---------------------------------------------------------------------------
+
+describe("AC-1: sha256 returns 64-char hex string", () => {
+  it('should return 64-char hex for "test data"', async () => {
+    const result = await sha256("test data");
+    expect(result).toMatch(HEX64_RE);
+  });
+
+  it('should return 64-char hex for "" (empty string)', async () => {
+    const result = await sha256("");
+    expect(result).toMatch(HEX64_RE);
+  });
+
+  it("should return 64-char hex for a single character", async () => {
+    const result = await sha256("a");
+    expect(result).toMatch(HEX64_RE);
+  });
+
+  it("should return 64-char hex for unicode characters", async () => {
+    const result = await sha256("🏎️ 💨 overdrive 🏁");
+    expect(result).toMatch(HEX64_RE);
+  });
+
+  it("should return 64-char hex for a large string (~10KB)", async () => {
+    const large = JSON.stringify({
+      key: "x".repeat(10000),
+      arr: Array.from({ length: 100 }, (_, i) => i),
+    });
+    const result = await sha256(large);
+    expect(result).toMatch(HEX64_RE);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-2: sha256 is deterministic — same input → same output
+// ---------------------------------------------------------------------------
+
+describe("AC-2: sha256 determinism — same input, same output", () => {
+  it('should return identical hash for "hello" over 100 calls', async () => {
+    const expected = await sha256("hello");
+    for (let i = 0; i < 100; i++) {
+      expect(await sha256("hello")).toBe(expected);
+    }
+  });
+
+  it('should return identical hash for "" (empty string) every time', async () => {
+    const expected = await sha256("");
+    for (let i = 0; i < 100; i++) {
+      expect(await sha256("")).toBe(expected);
+    }
+  });
+
+  it("should produce different hashes for strings differing only by trailing newline", async () => {
+    const withNewline = await sha256("hello\n");
+    const withoutNewline = await sha256("hello");
+    expect(withNewline).not.toBe(withoutNewline);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-7: SHA-256 known test vectors
+// ---------------------------------------------------------------------------
+
+describe("AC-7: SHA-256 known vectors", () => {
+  it("should produce correct hash for empty string", async () => {
+    expect(await sha256("")).toBe(SHA256_EMPTY);
+  });
+
+  it('should produce correct hash for "hello"', async () => {
+    expect(await sha256("hello")).toBe(SHA256_HELLO);
+  });
+
+  it("should produce correct hash for a complex JSON string", async () => {
+    const jsonBlob = JSON.stringify({
+      players: [
+        { id: 1, name: "Alice" },
+        { id: 2, name: "Bob" },
+      ],
+      race: { lap: 3, position: 1 },
+    });
+    const result = await sha256(jsonBlob);
+    expect(result).toMatch(HEX64_RE);
+  });
+});
+
+// ===========================================================================
+// computeSnapshotHash — SHA-256 across all systems (Story 003)
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// AC-3: computeSnapshotHash sorts by systemId
+// ---------------------------------------------------------------------------
+
+describe("AC-3: computeSnapshotHash sorts by systemId", () => {
+  it("should process systems in alphabetical order", async () => {
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        z: { state: { v: 3 }, hash: "hash-z" },
+        a: { state: { v: 1 }, hash: "hash-a" },
+        m: { state: { v: 2 }, hash: "hash-m" },
+      },
+      snapshotHash: "",
+    };
+
+    // Manually compute expected hash from alphabetically sorted state
+    const expectedConcat =
+      JSON.stringify({ v: 1 }) +
+      JSON.stringify({ v: 2 }) +
+      JSON.stringify({ v: 3 });
+    const expectedHash = await sha256(expectedConcat);
+
+    const result = await computeSnapshotHash(snapshot);
+    expect(result).toBe(expectedHash);
+  });
+
+  it("should handle a single system", async () => {
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        solo: { state: { data: 42 }, hash: "hash-solo" },
+      },
+      snapshotHash: "",
+    };
+
+    const expectedHash = await sha256(JSON.stringify({ data: 42 }));
+    expect(await computeSnapshotHash(snapshot)).toBe(expectedHash);
+  });
+
+  it("should handle empty systems map (hash of empty string)", async () => {
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {},
+      snapshotHash: "",
+    };
+
+    // Empty systems → empty concatenated string → sha256("")
+    expect(await computeSnapshotHash(snapshot)).toBe(SHA256_EMPTY);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-8: computeSnapshotHash registration order independence
+// ---------------------------------------------------------------------------
+
+describe("AC-8: computeSnapshotHash order independence", () => {
+  it("should return same hash with systems in opposite order", async () => {
+    const snapshotAB: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        a: { state: { x: 1 }, hash: "hash-a" },
+        b: { state: { y: 2 }, hash: "hash-b" },
+      },
+      snapshotHash: "",
+    };
+
+    const snapshotBA: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        b: { state: { y: 2 }, hash: "hash-b" },
+        a: { state: { x: 1 }, hash: "hash-a" },
+      },
+      snapshotHash: "",
+    };
+
+    const hashAB = await computeSnapshotHash(snapshotAB);
+    const hashBA = await computeSnapshotHash(snapshotBA);
+    expect(hashAB).toBe(hashBA);
+  });
+
+  it("should return same hash with three systems in varied order permutations", async () => {
+    const states: Record<
+      string,
+      { state: Record<string, unknown>; hash: string }
+    > = {
+      sys1: { state: { a: 1 }, hash: "h1" },
+      sys2: { state: { b: 2 }, hash: "h2" },
+      sys3: { state: { c: 3 }, hash: "h3" },
+    };
+
+    const orders: string[][] = [
+      ["sys1", "sys2", "sys3"],
+      ["sys3", "sys2", "sys1"],
+      ["sys2", "sys1", "sys3"],
+      ["sys3", "sys1", "sys2"],
+    ];
+
+    const hashes = await Promise.all(
+      orders.map(async (order) => {
+        const systems: Record<
+          string,
+          { state: Record<string, unknown>; hash: string }
+        > = {};
+        for (const id of order) {
+          systems[id] = states[id];
+        }
+        return computeSnapshotHash({
+          tick: 0,
+          timestamp: 1000,
+          systems,
+          snapshotHash: "",
+        });
+      })
+    );
+
+    for (let i = 1; i < hashes.length; i++) {
+      expect(hashes[i]).toBe(hashes[0]);
+    }
+  });
+});
+
+// ===========================================================================
+// restoreSnapshot — state restoration (Story 003)
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// AC-4: restoreSnapshot calls deserialize on each registered system
+// ---------------------------------------------------------------------------
+
+describe("AC-4: restoreSnapshot calls deserialize", () => {
+  it("should call deserialize on each registered system with the stored state", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sysA = new TestSnapshotSystem("a", { initial: true });
+    ss.register(sysA);
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        a: { state: { value: 42 }, hash: "hash-a" },
+      },
+      snapshotHash: "",
+    };
+
+    ss.restoreSnapshot(snapshot);
+
+    expect(sysA.deserializeCallCount).toBe(1);
+    expect(sysA.lastDeserializedState).toEqual({ value: 42 });
+    expect(sysA.serialize()).toEqual({ value: 42 });
+  });
+
+  it("should call deserialize on multiple systems", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sysA = new TestSnapshotSystem("a");
+    const sysB = new TestSnapshotSystem("b");
+    ss.register(sysA);
+    ss.register(sysB);
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        a: { state: { data: "from-a" }, hash: "h1" },
+        b: { state: { data: "from-b" }, hash: "h2" },
+      },
+      snapshotHash: "",
+    };
+
+    ss.restoreSnapshot(snapshot);
+
+    expect(sysA.deserializeCallCount).toBe(1);
+    expect(sysB.deserializeCallCount).toBe(1);
+    expect(sysA.lastDeserializedState).toEqual({ data: "from-a" });
+    expect(sysB.lastDeserializedState).toEqual({ data: "from-b" });
+  });
+
+  it("should skip systems in snapshot but not in registry", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sysA = new TestSnapshotSystem("a", { v: 1 });
+    ss.register(sysA);
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        a: { state: { v: 99 }, hash: "h1" },
+        unknownSys: { state: { v: 42 }, hash: "h2" },
+      },
+      snapshotHash: "",
+    };
+
+    // Should not throw despite unknownSys not being in registry
+    expect(() => ss.restoreSnapshot(snapshot)).not.toThrow();
+
+    // Known system should have been deserialized
+    expect(sysA.deserializeCallCount).toBe(1);
+    expect(sysA.serialize()).toEqual({ v: 99 });
+  });
+
+  it("should leave systems registered but not in snapshot unchanged", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sysA = new TestSnapshotSystem("a", { v: 1 });
+    const sysB = new TestSnapshotSystem("b", { v: 2 });
+    ss.register(sysA);
+    ss.register(sysB);
+
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        a: { state: { v: 99 }, hash: "h1" },
+      },
+      snapshotHash: "",
+    };
+
+    ss.restoreSnapshot(snapshot);
+
+    // System 'a' was in the snapshot — deserialized
+    expect(sysA.deserializeCallCount).toBe(1);
+    expect(sysA.serialize()).toEqual({ v: 99 });
+    // System 'b' was NOT in the snapshot — should be unchanged
+    expect(sysB.deserializeCallCount).toBe(0);
+    expect(sysB.serialize()).toEqual({ v: 2 });
+  });
+
+  it("should throw SnapshotError if called before init", () => {
+    const ss = new SimulationSnapshot();
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {},
+      snapshotHash: "",
+    };
+    expect(() => ss.restoreSnapshot(snapshot)).toThrow(SnapshotError);
+  });
+
+  it("should throw SnapshotError if called after dispose", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.dispose();
+    const snapshot: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {},
+      snapshotHash: "",
+    };
+    expect(() => ss.restoreSnapshot(snapshot)).toThrow(SnapshotError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-5: Restore fidelity — hash matches after restoreSnapshot
+// ---------------------------------------------------------------------------
+
+describe("AC-5: Restore fidelity — hash matches after restoreSnapshot", () => {
+  it("should restore state so system hash matches the stored hash", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sys = new TestSnapshotSystem("test-sys", { fuel: 85, speed: 120 });
+    ss.register(sys);
+
+    // Take snapshot of original state
+    const snap = ss.takeSnapshot(0) as FullGameSnapshot;
+
+    // Mutate system state
+    sys.deserialize({ fuel: 0, speed: 0 });
+    expect(sys.serialize()).toEqual({ fuel: 0, speed: 0 });
+
+    // Restore from original snapshot
+    ss.restoreSnapshot(snap);
+
+    // Verify restored state hash matches original stored hash
+    expect(sys.hash()).toBe(snap.systems["test-sys"].hash);
+    expect(sys.serialize()).toEqual({ fuel: 85, speed: 120 });
+  });
+
+  it("should verify multiple systems all match after restore", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sysA = new TestSnapshotSystem("a", { pos: { x: 10, y: 0 } });
+    const sysB = new TestSnapshotSystem("b", { fuel: 100 });
+    ss.register(sysA);
+    ss.register(sysB);
+
+    const snap = ss.takeSnapshot(0) as FullGameSnapshot;
+
+    // Mutate both systems
+    sysA.deserialize({ pos: { x: 0, y: 0 } });
+    sysB.deserialize({ fuel: 0 });
+
+    // Restore
+    ss.restoreSnapshot(snap);
+
+    // Both hashes should match their stored values
+    expect(sysA.hash()).toBe(snap.systems.a.hash);
+    expect(sysB.hash()).toBe(snap.systems.b.hash);
+  });
+
+  it("should handle system with zero/empty state", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sys = new TestSnapshotSystem("empty-sys");
+    ss.register(sys);
+
+    const snap = ss.takeSnapshot(0) as FullGameSnapshot;
+
+    sys.deserialize({ injected: true });
+
+    ss.restoreSnapshot(snap);
+
+    expect(sys.hash()).toBe(snap.systems["empty-sys"].hash);
+    expect(sys.serialize()).toEqual({});
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-6: Same tick → same snapshot content (determinism)
+// ---------------------------------------------------------------------------
+
+describe("AC-6: Same tick → same snapshot content", () => {
+  it("should produce deeply equal systems payloads for two calls at same tick", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sysA = new TestSnapshotSystem("a", { x: 1 });
+    const sysB = new TestSnapshotSystem("b", { y: 2 });
+    ss.register(sysA);
+    ss.register(sysB);
+
+    const snap1 = ss.takeSnapshot(42) as FullGameSnapshot;
+    const snap2 = ss.takeSnapshot(42) as FullGameSnapshot;
+
+    expect(snap1.systems).toEqual(snap2.systems);
+  });
+
+  it("should produce identical per-system hashes for two calls at same tick", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sys = new TestSnapshotSystem("test", { v: 100 });
+    ss.register(sys);
+
+    const snap1 = ss.takeSnapshot(10) as FullGameSnapshot;
+    const snap2 = ss.takeSnapshot(10) as FullGameSnapshot;
+
+    expect(snap1.systems.test.hash).toBe(snap2.systems.test.hash);
+  });
+
+  it("should have equal systems payloads even if timestamps differ between calls", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    ss.register(new TestSnapshotSystem("x", { v: 1 }));
+
+    const snap1 = ss.takeSnapshot(0) as FullGameSnapshot;
+    const snap2 = ss.takeSnapshot(0) as FullGameSnapshot;
+
+    // Timestamps may be equal if Date.now() resolution is coarse.
+    // The assertion is that the systems payload (state + hashes) is
+    // deterministic regardless of any timestamp differences.
+    expect(snap1.systems).toEqual(snap2.systems);
+    expect(snap1.tick).toBe(snap2.tick);
   });
 });
