@@ -1343,7 +1343,7 @@ describe("Error transition: save failure → Degraded", () => {
     expect(result).toBeNull();
   });
 
-  it("should log warning when JSON.stringify fails (circular reference)", async () => {
+  it("should throw PersistenceError when JSON.stringify fails (circular reference)", async () => {
     vi.stubGlobal("localStorage", createWorkingStorage());
     const persistence = new Persistence();
     await persistence.init();
@@ -1351,16 +1351,11 @@ describe("Error transition: save failure → Degraded", () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;
 
-    // Should not throw
-    await expect(
-      persistence.save("circular", circular)
-    ).resolves.toBeUndefined();
-
-    // Should log the serialization error
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining(
-        '[Persistence] Failed to serialize key "circular"'
-      )
+    await expect(persistence.save("circular", circular)).rejects.toThrow(
+      PersistenceError
+    );
+    await expect(persistence.save("circular", circular)).rejects.toThrow(
+      'Failed to serialize key "circular"'
     );
   });
 
@@ -1372,14 +1367,16 @@ describe("Error transition: save failure → Degraded", () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;
 
-    await persistence.save("circular", circular);
+    await expect(persistence.save("circular", circular)).rejects.toThrow(
+      PersistenceError
+    );
 
     // State stays Ready — only setItem failures degrade
     expect(persistence.state).toBe(PersistenceState.Ready);
     expect(persistence.lastError).toBeUndefined();
   });
 
-  it("should handle non-Error throws during JSON.stringify gracefully", async () => {
+  it("should throw PersistenceError for non-Error throws during JSON.stringify", async () => {
     vi.stubGlobal("localStorage", createWorkingStorage());
     const persistence = new Persistence();
     await persistence.init();
@@ -1395,18 +1392,11 @@ describe("Error transition: save failure → Degraded", () => {
       })
     );
 
-    const warnBefore = warnSpy.mock.calls.length;
-
-    await persistence.save("key", { data: "value" });
-
-    // Should have logged one more warning
-    expect(warnSpy.mock.calls.length).toBe(warnBefore + 1);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to serialize key "key"')
+    await expect(persistence.save("key", { data: "value" })).rejects.toThrow(
+      PersistenceError
     );
-    // Should indicate unknown serialization error (not error.message)
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Unknown serialization error")
+    await expect(persistence.save("key", { data: "value" })).rejects.toThrow(
+      "Unknown serialization error"
     );
 
     // State should remain Ready — only setItem failures degrade

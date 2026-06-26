@@ -768,7 +768,6 @@ describe("ConfigManager", () => {
     });
 
     it("should throw ConfigError when raw config becomes invalid after manual store manipulation", () => {
-      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       const cm = new ConfigManager();
       cm.init();
       cm.register("teams", { macklen: { motor: 250 } });
@@ -778,16 +777,8 @@ describe("ConfigManager", () => {
       (cm as any)._resolved.delete("teams");
       (cm as any)._store.set("teams", null);
 
-      // _buildResolved logs error, resolved stays empty → ConfigError thrown
+      // _buildResolved now throws ConfigError instead of logging to console.error
       expect(() => cm.get("teams.macklen.motor")).toThrow(ConfigError);
-
-      // Verify _buildResolved logged the error
-      expect(errorSpy).toHaveBeenCalled();
-      expect(errorSpy.mock.calls[0][0]).toContain(
-        "cannot build resolved config"
-      );
-
-      errorSpy.mockRestore();
     });
 
     it("should not break other namespaces when one is invalidated", () => {

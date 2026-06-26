@@ -1931,6 +1931,7 @@ describe("PipelineRuntime AC-7: placeholder slots registration", () => {
   it("executeTick does not crash with only placeholder NO-OP slots", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const runtime = new PipelineRuntime();
+    runtime.pipeline.start(); // pipeline starts in Uninitialized; start is called here for tests that use the pipeline directly
 
     expect(() => runtime.pipeline.executeTick(FIXED_DT)).not.toThrow();
     warnSpy.mockRestore();
@@ -1939,6 +1940,7 @@ describe("PipelineRuntime AC-7: placeholder slots registration", () => {
   it("tick counter increments after executing a tick with placeholders", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const runtime = new PipelineRuntime();
+    runtime.pipeline.start();
 
     expect(runtime.pipeline.getCurrentTick()).toBe(0);
     runtime.pipeline.executeTick(FIXED_DT);
@@ -1949,6 +1951,7 @@ describe("PipelineRuntime AC-7: placeholder slots registration", () => {
   it("slot 1 is empty (reserved for Input) — no function at slot 1", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const runtime = new PipelineRuntime();
+    runtime.pipeline.start();
 
     expect(() => runtime.pipeline.executeTick(FIXED_DT)).not.toThrow();
     warnSpy.mockRestore();
@@ -1965,6 +1968,7 @@ describe("PipelineRuntime AC-7: placeholder slots registration", () => {
   it("placeholder slots log a warning when ticked", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const runtime = new PipelineRuntime();
+    runtime.pipeline.start();
 
     // Execute a tick — all 7 placeholders should log warnings
     runtime.pipeline.executeTick(FIXED_DT);
