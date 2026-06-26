@@ -263,7 +263,7 @@ stories:
     name: "Story 005: Migration Chain"
     file: "production/epics/persistence/story-005-migration-chain.md"
     priority: must-have
-    status: ready-for-dev
+    status: in_progress
     owner: "solo-dev"
     estimate_days: 0.375
     blocker: ""
