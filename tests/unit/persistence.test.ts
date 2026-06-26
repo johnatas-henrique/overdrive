@@ -411,8 +411,9 @@ describe("registerMigration()", () => {
   it("should accept a migration function", () => {
     const persistence = new Persistence();
     const migration = vi.fn((data: unknown) => data);
-    persistence.registerMigration("0.1.0", "0.2.0", migration);
-    // No error — function stored for later execution (Story 003)
+    expect(() => {
+      persistence.registerMigration("0.1.0", "0.2.0", migration);
+    }).not.toThrow();
   });
 
   it("should warn when overwriting a duplicate from entry", () => {
