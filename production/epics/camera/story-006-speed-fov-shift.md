@@ -30,8 +30,10 @@
 
 _From GDD `design/gdd/camera.md`, revised per QL-STORY-READY:_
 
-- [ ] **AC-3a (Logic)**: FOV equals `clamp(baseFOV + speedFactor × speed_kmh, FOV_min, FOV_max)` applied in radians — verified by unit test across the full speed range (0, 100, 200, 500 km/h, negative speeds). The FOV update is applied every tick with **zero smoothing/lerp delay**: after 1 frame at speed=200 km/h, `camera.fov` equals the formula result.
-- [ ] **AC-3b (DEFERRED — Visual/Feel)**: "FOV change is perceptible within 2s of hard acceleration" — manual verification during polish pass. Not required for story completion.
+- [ ] **AC-3a (Logic)**: Base FOV at speed=0 equals `baseFOV` for the active mode (cockpit: 75°, chase: 60°) — verified by unit test.
+- [ ] **AC-3b (Logic)**: FOV at any speed equals `clamp(baseFOV + speedFactor × speed_kmh, FOV_min, FOV_max)` applied in radians — verified across full speed range (0, 100, 200, 500 km/h, negative speeds). Clamp bounds are per-mode: cockpit [65°, 85°], chase [52°, 68°].
+- [ ] **AC-3c (Logic)**: FOV update is applied every tick with **zero smoothing/lerp delay** — after 1 frame at speed=200 km/h, `camera.fov` equals the formula result. Cockpit and chase modes use independent FOV values.
+- [ ] **AC-3d (DEFERRED — Visual/Feel)**: "FOV change is perceptible within 2s of hard acceleration" — manual verification during polish pass. Not required for story completion.
 
 ---
 

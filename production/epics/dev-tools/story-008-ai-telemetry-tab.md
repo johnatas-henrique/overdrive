@@ -33,6 +33,7 @@ _From GDD `design/gdd/dev-tools.md`, scoped to this story:_
 
 - [ ] AC-8a: AI Telemetry tab shows per-car speed (`physics.getSpeed(carId)`), position (`raceManager.getPosition(carId)`: lap + track progress), and active behavior node (`aiDriver.getBehavior(carId)`: `'Normal' | 'Following' | 'Passing'`)
 - [ ] AC-8b: Table has one row per car with all three values; values update live each tick (sample rate: every 10 ticks)
+- [ ] AC-8c: When no AI cars are registered (single-player test without AI), the tab renders a placeholder row with text "No AI cars on track" — graceful empty state
 
 ---
 

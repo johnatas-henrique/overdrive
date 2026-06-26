@@ -39,7 +39,7 @@
 _Revised per QL-STORY-READY gate on 2026-06-22:_
 
 - [ ] **AC-1**: `setLocked(carId, true)` → Phase 3 sets velocity = 0 and angular velocity = 0 regardless of input; `setLocked(carId, false)` restores normal behavior
-- [ ] **AC-2**: `setPit(carId, true)` → targetSpeed clamped to pitSpeedLimit (80 km/h). Car speed decreases from current speed to pitSpeedLimit within `pit.speedTransitionTime` seconds following a **linear ramp** (not instant snap). Verified at multiple speed→limit transition points. `setPit(carId, false)` → normal speed restored
+- [ ] **AC-2**: `setPit(carId, true)` → targetSpeed clamped to pitSpeedLimit (80 km/h). Car speed decreases from current speed to pitSpeedLimit within `pit.speedTransitionTime` seconds (from `pit.*` config namespace via ConfigManager, default: 2.0s) following a **linear ramp** (not instant snap). Verified at multiple speed→limit transition points. `setPit(carId, false)` → normal speed restored
 - [ ] **AC-3**: `onFuelUpdate(carId, fuelMult)` — fuelMult = 0 → engine power output = 0 regardless of throttle; car coasts using remaining momentum (drag-only, no active braking)
 - [ ] **AC-4**: `onTireUpdate(carId, tireCondition)` — tireCondition = 0 → grip drops to minGripFactor (0.15). **Quantified**: max cornering speed at tireCondition=0 is <33% of max cornering speed at tireCondition=1.0 for the same steering input and speed. Engine power output is unchanged
 - [ ] **AC-5**: `car.tire_blown` emitted on Event Bus when tireCondition → 0 — one-shot guard prevents re-emission

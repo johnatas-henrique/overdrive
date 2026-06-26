@@ -32,7 +32,7 @@ _(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh 
 _From GDD `design/gdd/telemetry-recorder.md`, scoped to this story:_
 
 - [ ] **AC-1**: `tick()` called 9 times with 1 car appends exactly 3 samples (every 3rd call: tick 0, 3, 6)
-- [ ] **AC-2**: Each sample's fields match the CarEntity state at the moment of sampling — speed, rpm, throttle, brake, steer, gear, lateralG, fuelLevel, tireCondition, splinePos, aiState
+- [ ] **AC-2**: Each sample's fields match the CarEntity state at the moment of sampling — speed, rpm, throttle, brake, steer, gear, lateralG, fuel, tireCondition, splinePos, aiState
 - [ ] **AC-3**: `tick()` with empty `cars` array produces no error and no samples
 - [ ] **AC-4**: New car appearing mid-session (late joiner) starts receiving samples on the next sample tick — no gap or crash
 - [ ] **AC-5**: `tick()` does nothing when `__DEV__` is false (early return guard)

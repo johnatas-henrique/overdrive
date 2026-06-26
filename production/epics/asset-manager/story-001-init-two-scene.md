@@ -35,6 +35,7 @@ _From GDD `design/gdd/asset-manager.md`, scoped to this story:_
 - [ ] AC-1.3: `AssetManager.setActiveScene('menu')` sets active scene to `menuScene`; subsequent calls to `addAllToScene(container)` route to `menuScene`.
 - [ ] AC-1.4: `AssetManager.setActiveScene('race')` sets active scene to `raceScene`; subsequent calls to `addAllToScene(container)` route to `raceScene`.
 - [ ] AC-1.5: Calling `setActiveScene()` before `init()` throws `AssetError('Not initialized')`.
+- [ ] AC-1.6: Playground scaffolding removed — `src/playground/gui.ts` and `src/playground/main-scene.ts` deleted. `app.ts` updated to use `AssetManager.init(menuScene, raceScene)` instead of `CreateMainScene`. No imports from `src/playground/` remain in the codebase.
 
 ---
 

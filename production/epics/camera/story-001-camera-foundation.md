@@ -39,7 +39,7 @@ _From QL-STORY-READY gate, defined for infrastructure story:_
 - [ ] **F4**: 4 camera instances are created on init, each with the correct Babylon.js type: FreeCamera (grid), FreeCamera (cockpit), FollowCamera (chase), ArcRotateCamera (drone).
 - [ ] **F5**: Each camera instance has `camera.inputs.clear()` called and `camera.inertia === 0` post-init.
 - [ ] **F6**: `setActiveMode(CameraMode.X)` switches `scene.activeCamera` to the correct instance; switching to an invalid mode does not throw.
-- [ ] **F7**: `CameraConfig` type can be instantiated with default values for all 27 knobs (compile-time + runtime default check).
+- [ ] **F7**: `CameraConfig` type can be instantiated with default values for all 25 knobs (compile-time + runtime default check).
 
 ---
 
@@ -230,7 +230,7 @@ _Written by qa-lead at story creation:_
 - **F7** (CameraConfig defaults):
   - Given: `CameraConfig` type with default factory
   - When: `createDefaultCameraConfig()` is called
-  - Then: All 27 fields present with correct default values matching GDD tuning knob table
+  - Then: All 25 fields present with correct default values matching GDD tuning knob table
   - Edge: Verify no field is undefined or null
 
 ---

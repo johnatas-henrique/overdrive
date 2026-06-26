@@ -32,6 +32,7 @@ _From GDD `design/gdd/camera.md`, revised per QL-STORY-READY:_
 
 - [ ] **AC-2 (revised)**: `toggleCockpitChase()` switches `scene.activeCamera` between the cockpit and chase instances in **zero frames** — no intermediate position, FOV, or rotation blend state exists between the call and the next render.
 - [ ] **AC-15**: Camera toggle choice persists across GSM transitions (PreRace → Racing → PostRace → Race Again: last toggle wins). Default on first Race entry is cockpit (AC-1). Toggle choice persists through deactivate/reactivate cycles within a single session.
+- [ ] **AC-16**: Toggle is a no-op when called during Grid or Drone camera modes (PreRace/PostRace) — `scene.activeCamera` remains unchanged, no error thrown.
 
 ---
 
