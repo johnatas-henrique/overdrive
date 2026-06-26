@@ -273,7 +273,7 @@ stories:
     name: "Story 001: ISnapshotable Interface + FNV-1a Hashing"
     file: "production/epics/simulation-snapshot/story-001-isnapshotable-fnv1a.md"
     priority: must-have
-    status: ready-for-dev
+    status: in_progress
     owner: "solo-dev"
     estimate_days: 0.5
     blocker: ""

@@ -1,7 +1,8 @@
 # Story 001: ISnapshotable Interface + FNV-1a Hashing
 
 > **Epic**: Simulation Snapshot
-> **Status**: Ready
+> **Status**: In Progress
+> **Last Updated**: 2026-06-24
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
