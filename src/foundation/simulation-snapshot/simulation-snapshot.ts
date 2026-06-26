@@ -1,4 +1,5 @@
 import type { ISnapshotable } from "./isnapshotable";
+import type { SnapshotRestoreResult } from "./snapshot-error";
 import { SnapshotError } from "./snapshot-error";
 
 /**
@@ -148,14 +149,23 @@ export class SimulationSnapshot {
    *
    * The system's {@link ISnapshotable.systemId} becomes the key in the
    * snapshot's `systems` record. Duplicate registration (same `systemId`
-   * twice) overwrites — deduplication guard is added in Story 004.
+   * twice) throws {@link SnapshotError} — the check happens **before**
+   * modifying the registry, ensuring no partial state.
    *
    * @param system - The system to register.
    * @throws {SnapshotError} If called before `init()` or after `dispose()`.
+   * @throws {SnapshotError} If `system.systemId` is already registered.
    */
   register(system: ISnapshotable): void {
     if (this.state !== "Ready") {
       throw new SnapshotError("Not initialized");
+    }
+    if (this.registry.has(system.systemId)) {
+      throw new SnapshotError(
+        `System already registered: ${system.systemId}`,
+        system.systemId,
+        "SNAPSHOT_DUPLICATE_REGISTRATION"
+      );
     }
     this.registry.set(system.systemId, system);
   }
@@ -167,6 +177,10 @@ export class SimulationSnapshot {
    * returns `null` for ticks that don't satisfy `tick % takeEveryNthTick === 0`.
    *
    * **On-demand**: Pass `{ force: true }` to bypass the frequency check entirely.
+   *
+   * @remarks The caller guarantees this is called at fixed game loop points
+   * after all systems have completed their update for the tick. Calling during
+   * a system update may produce inconsistent state.
    *
    * @overload
    * Capture with a tick number (frequency check applies).
@@ -233,26 +247,45 @@ export class SimulationSnapshot {
    * on each matching registered system. Systems present in the snapshot
    * but not registered in this orchestrator are silently skipped (with a
    * warning logged). Systems registered but absent from the snapshot are
-   * left unchanged.
+   * left unchanged. If a system's `deserialize()` throws, the error is
+   * caught and logged — other systems continue to restore normally.
+   *
+   * @remarks The caller guarantees this is called at fixed game loop points
+   * after all systems have completed their update for the tick. Calling during
+   * a system update may produce inconsistent state.
    *
    * @param snapshot — The snapshot to restore from.
+   * @returns A {@link SnapshotRestoreResult} describing per-system outcomes.
    * @throws {SnapshotError} If called before `init()` or after `dispose()`.
    */
-  restoreSnapshot(snapshot: FullGameSnapshot): void {
+  restoreSnapshot(snapshot: FullGameSnapshot): SnapshotRestoreResult {
     if (this.state !== "Ready") {
       throw new SnapshotError("Not initialized");
     }
 
+    const result: SnapshotRestoreResult = { succeeded: [], failed: [] };
+
     for (const [systemId, systemData] of Object.entries(snapshot.systems)) {
       const system = this.registry.get(systemId);
-      if (system) {
-        system.deserialize(systemData.state);
-      } else {
+      if (!system) {
         console.warn(
           `[Snapshot] System "${systemId}" found in snapshot but not in registry — skipping`
         );
+        continue;
+      }
+      try {
+        system.deserialize(systemData.state);
+        result.succeeded.push(systemId);
+      } catch (e) {
+        const error = e instanceof Error ? e : new Error(String(e));
+        console.warn(
+          `[Snapshot] System "${systemId}" failed to deserialize: ${error.message}`
+        );
+        result.failed.push({ systemId, error });
       }
     }
+
+    return result;
   }
 
   /**

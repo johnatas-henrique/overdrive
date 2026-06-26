@@ -6,4 +6,5 @@ export type {
   TakeSnapshotOptions,
 } from "./simulation-snapshot";
 export { SimulationSnapshot } from "./simulation-snapshot";
+export type { SnapshotRestoreResult } from "./snapshot-error";
 export { SnapshotError } from "./snapshot-error";
