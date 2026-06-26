@@ -227,6 +227,35 @@ export class SimulationSnapshot {
   }
 
   /**
+   * Restore a full-game snapshot, deserializing all registered systems.
+   *
+   * Iterates over the snapshot's `systems` map and calls `deserialize()`
+   * on each matching registered system. Systems present in the snapshot
+   * but not registered in this orchestrator are silently skipped (with a
+   * warning logged). Systems registered but absent from the snapshot are
+   * left unchanged.
+   *
+   * @param snapshot — The snapshot to restore from.
+   * @throws {SnapshotError} If called before `init()` or after `dispose()`.
+   */
+  restoreSnapshot(snapshot: FullGameSnapshot): void {
+    if (this.state !== "Ready") {
+      throw new SnapshotError("Not initialized");
+    }
+
+    for (const [systemId, systemData] of Object.entries(snapshot.systems)) {
+      const system = this.registry.get(systemId);
+      if (system) {
+        system.deserialize(systemData.state);
+      } else {
+        console.warn(
+          `[Snapshot] System "${systemId}" found in snapshot but not in registry — skipping`
+        );
+      }
+    }
+  }
+
+  /**
    * Dispose the orchestrator, releasing all resources.
    *
    * Before clearing the registry, calls `serialize()` on every registered
