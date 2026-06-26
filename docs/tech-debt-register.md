@@ -21,3 +21,10 @@
 - **2026-06-25** (Scan): Unused export — `ZERO` in `src/foundation/determinism/types.ts` — exported but never imported — Effort: S
 - **2026-06-25** (Scan): Files over 500 lines — `persistence.ts` (738 lines), `GameStateMachine.ts` (553 lines) — consider extracting migration logic to separate module — Effort: M
 - **2026-06-25** (Scan): Biome warnings — 7 non-null assertions (`!`) in pipeline-runtime, event-bus, GSM, persistence — bypass type safety — Effort: S
+- **2026-06-25** (Test Evidence Review): Story 003b type field mismatch — `data-config-manager/story-003b-hmr-vite-wiring.md` says "Integration" but tests are pure unit tests (no engine dependency) — should be "Logic" — Effort: S
+- **2026-06-25** (Test Evidence Review): Story 003b stale QA path — `tests/integration/config-manager.test.ts` referenced in QA Test Cases section doesn't exist; actual file is `tests/unit/hmr.test.ts` — Effort: S
+- **2026-06-25** (Test Evidence Review): Story 004 FIFO content not verified — `config-manager.test.ts` checks queue length after eviction but not that the correct first entry was dropped — Effort: S
+- **2026-06-25** (Test Evidence Review): DET Story 004 fragile constant assertion — `determinism.test.ts` asserts `FIXED_DT ≈ 0.0166667` with 6 decimal places; breaks if precision changes — Effort: S
+- **2026-06-25** (Test Evidence Review): DET Story 005 stale QA path — `tests/integration/determinism.test.ts` referenced in QA Test Cases section doesn't exist; actual file is `tests/unit/determinism.test.ts` — Effort: S
+- **2026-06-25** (Test Evidence Review): DET Story 006 `vi.resetModules()` sensitivity — AC-6 prod mode test depends on module resolution caching; reorder or parallel test execution could cause false negatives — Effort: S
+- **2026-06-25** (Test Evidence Review): GSM Story 006 timing dependency — fire-and-forget onExit rejection test uses `setTimeout(r, 10)` workaround; minor timing sensitivity — Effort: S
