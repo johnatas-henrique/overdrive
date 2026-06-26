@@ -328,6 +328,34 @@ describe("edge cases", () => {
     expect(state).toBeGreaterThanOrEqual(0);
     expect(state).toBeLessThan(0x100000000);
   });
+
+  // ── CRITICAL-2 fix: NaN/Infinity/fractional seed guards ──
+
+  it("throws DeterminismError for NaN seed", () => {
+    expect(() => new SeededRandom(NaN)).toThrow(DeterminismError);
+    expect(() => new SeededRandom(NaN)).toThrow("must be a finite number");
+  });
+
+  it("throws DeterminismError for Infinity seed", () => {
+    expect(() => new SeededRandom(Infinity)).toThrow(DeterminismError);
+    expect(() => new SeededRandom(-Infinity)).toThrow(DeterminismError);
+  });
+
+  it("handles fractional seeds in (0,1) without degeneracy", () => {
+    // 0.5 >>> 0 = 0, which would be degenerate without the guard
+    const rng = new SeededRandom(0.5);
+    expect(rng.getState()).toBe(1); // guard maps 0 → 1
+
+    // Should produce valid non-zero sequence
+    const val = rng.random();
+    expect(val).toBeGreaterThanOrEqual(0);
+    expect(val).toBeLessThan(1);
+  });
+
+  it("handles negative fractional seeds without degeneracy", () => {
+    const rng = new SeededRandom(-0.5);
+    expect(rng.getState()).toBe(1); // Math.abs(0.5) = 0.5, 0.5 >>> 0 = 0, guard maps to 1
+  });
 });
 
 // ---------------------------------------------------------------------------

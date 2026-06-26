@@ -64,6 +64,17 @@ describe("ConfigManager", () => {
       cm.register("teams", {});
       expect(() => cm.register("Teams", {})).not.toThrow();
     });
+
+    it("should throw ConfigError for non-serializable config (CRITICAL-1 fix)", () => {
+      // Circular reference causes JSON.stringify to throw TypeError
+      const circular: Record<string, unknown> = { a: 1 };
+      circular.self = circular;
+
+      const cm = new ConfigManager();
+      cm.init();
+      expect(() => cm.register("broken", circular)).toThrow(ConfigError);
+      expect(() => cm.register("broken", circular)).toThrow("non-serializable");
+    });
   });
 
   describe("get()", () => {
@@ -541,6 +552,21 @@ describe("ConfigManager", () => {
       const state = cm.getDebugState();
       expect(state.accessLog.length).toBe(1);
       expect(state.accessLog[0].key).toBe("nonexistent.key");
+    });
+
+    it("should return placeholder for non-serializable namespace (WARNING-9 fix)", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      // Inject circular reference into internal store — causes JSON.stringify to throw
+      const circular: Record<string, unknown> = { a: 1 };
+      circular.self = circular;
+      (cm as any)._store.set("broken", circular);
+
+      const state = cm.getDebugState();
+      expect(state.namespaces.broken).toEqual({
+        error: "non-serializable config",
+      });
     });
   });
 
