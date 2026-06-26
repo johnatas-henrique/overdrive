@@ -302,9 +302,17 @@ export class SimulationSnapshot {
       return; // idempotent
     }
 
-    // Final serialization on all registered systems before clearing
+    // Final serialization on all registered systems before clearing.
+    // Each system is isolated — a failure in one does not prevent
+    // others from running, and registry.clear() always executes.
     for (const system of this.registry.values()) {
-      system.serialize();
+      try {
+        system.serialize();
+      } catch (error) {
+        console.warn(
+          `[Snapshot] System "${system.systemId}" failed to serialize during dispose: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
     }
 
     this.registry.clear();

@@ -213,7 +213,7 @@ export class FixedUpdatePipeline implements IFixedUpdatePipeline {
    */
   start(): void {
     if (this._state !== "uninitialized" && this._state !== "stopped") {
-      throw new PipelineError("Pipeline not started");
+      throw new PipelineError("Pipeline is already started or disposed");
     }
     this._state = "ready";
     this._currentTick = 0;
@@ -245,10 +245,10 @@ export class FixedUpdatePipeline implements IFixedUpdatePipeline {
       if (slot !== null) {
         try {
           slot.update(dt);
-        } catch {
-          // Slot threw — continue to subsequent slots per AC-6.
-          // Each slot is isolated; a failure in one does not
-          // prevent others from executing.
+        } catch (error) {
+          console.error(
+            `[Pipeline] Slot ${i} threw during executeTick: ${error instanceof Error ? error.message : String(error)}`
+          );
         }
       }
     }

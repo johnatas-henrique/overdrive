@@ -115,12 +115,8 @@ export class ConfigManager {
     }
 
     const root = this._resolved.get(namespace);
-    if (!root) {
-      // Resolved is empty — raw store contained invalid data
-      // _buildResolved already logged console.error
-      this._recordAccess(key, "production");
-      throw new ConfigError(`Key not found: ${key}`);
-    }
+    // _buildResolved() now throws on invalid/non-serializable config,
+    // so root is guaranteed to exist after the cache-building block above.
 
     // Traverse remaining path segments from the namespace root
     const value = rest.reduce<unknown>(
@@ -141,7 +137,13 @@ export class ConfigManager {
 
     // Log successful access (only when logAllAccess is true)
     if (this._logAllAccess) {
-      const caller = (new Error().stack as string).split("\n")[2].trim();
+      let caller = "";
+      try {
+        caller = (new Error().stack as string).split("\n")[2].trim();
+      } catch {
+        // Stack trace unavailable (non-V8 engine, minified code, or restricted
+        // environment) — leave caller as empty string.
+      }
       this._recordAccess(key, caller);
     }
 
@@ -197,10 +199,9 @@ export class ConfigManager {
     const raw = this._store.get(namespace);
 
     if (!this._isValidConfig(raw)) {
-      console.error(
+      throw new ConfigError(
         `ConfigManager: cannot build resolved config for namespace '${namespace}' — raw config is invalid`
       );
-      return;
     }
 
     // Deep clone: config objects must be JSON-serializable
@@ -286,9 +287,11 @@ export class ConfigManager {
     }
 
     const envOverrides: string[] = [];
-    for (const key of Object.keys(process.env)) {
-      if (key.startsWith("OVERDRIVE__")) {
-        envOverrides.push(key);
+    if (typeof process !== "undefined") {
+      for (const key of Object.keys(process.env)) {
+        if (key.startsWith("OVERDRIVE__")) {
+          envOverrides.push(key);
+        }
       }
     }
 
@@ -317,6 +320,8 @@ export class ConfigManager {
     resolved: Record<string, unknown>
   ): void {
     const namespaceUpper = namespace.toUpperCase();
+
+    if (typeof process === "undefined") return;
 
     for (const [envKey, envValue] of Object.entries(process.env)) {
       if (!envKey.startsWith("OVERDRIVE__")) continue;
