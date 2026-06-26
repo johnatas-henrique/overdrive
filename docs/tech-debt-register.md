@@ -17,7 +17,7 @@
 - **2026-06-25** (Scan): DRY violation — `transition()` and `_doTransition()` share ~98 lines of hook/emission/rollback logic in `src/foundation/gsm/GameStateMachine.ts:259-304, 441-486` — extract shared `_executeTransition()` — Effort: S
 - **2026-06-25** (Scan): Duplicate code — two 27-line blocks in `retry()` share similar probe+flush logic in `src/foundation/persistence/persistence.ts:691-697, 721-729` — extract shared helper — Effort: S
 - **2026-06-25** (Scan): Duplicate code — two 20-line blocks share queue filter pattern in `src/foundation/persistence/persistence.ts:361-364, 488-491` — extract shared helper — Effort: S
-- **2026-06-25** (Scan): Dead code — `CreateSceneGUI` and `CreateMainScene` in `src/playground/gui.ts`, `src/playground/main-scene.ts` — development scaffolding, not production code — Effort: S
+- **2026-06-25** (Scan): Dead code — `CreateSceneGUI` and `CreateMainScene` in `src/playground/gui.ts`, `src/playground/main-scene.ts` — development scaffolding, not production code — **RESOLVED by Asset Manager Story 001 (AC-1.6) in Sprint 2** — Effort: S
 - **2026-06-25** (Scan): Unused export — `ZERO` in `src/foundation/determinism/types.ts` — exported but never imported — Effort: S
 - **2026-06-25** (Scan): Files over 500 lines — `persistence.ts` (738 lines), `GameStateMachine.ts` (553 lines) — consider extracting migration logic to separate module — Effort: M
 - **2026-06-25** (Scan): Biome warnings — 7 non-null assertions (`!`) in pipeline-runtime, event-bus, GSM, persistence — bypass type safety — Effort: S
@@ -28,3 +28,14 @@
 - **2026-06-25** (Test Evidence Review): DET Story 005 stale QA path — `tests/integration/determinism.test.ts` referenced in QA Test Cases section doesn't exist; actual file is `tests/unit/determinism.test.ts` — Effort: S
 - **2026-06-25** (Test Evidence Review): DET Story 006 `vi.resetModules()` sensitivity — AC-6 prod mode test depends on module resolution caching; reorder or parallel test execution could cause false negatives — Effort: S
 - **2026-06-25** (Test Evidence Review): GSM Story 006 timing dependency — fire-and-forget onExit rejection test uses `setTimeout(r, 10)` workaround; minor timing sensitivity — Effort: S
+- **2026-06-26** (PR #12 Review — CRITICAL): `persistence.ts:349-357` — `save()` silent data loss on JSON.stringify failure — returns resolved Promise when serialization fails, caller has no mechanism to detect failure — Effort: M
+- **2026-06-26** (PR #12 Review — CRITICAL): `simulation-snapshot.ts:306-308` — `dispose()` can throw mid-cleanup — if any system's serialize() throws, registry.clear() never runs, orchestrator stuck in partially-disposed state — Effort: M
+- **2026-06-26** (PR #12 Review — CRITICAL): `persistence.ts:359-364` — localStorage write failure drops serialized data — when setItem() fails after successful serialization, data not queued for retry — Effort: S
+- **2026-06-26** (PR #12 Review — CRITICAL): `configManager.ts:199-203` — invalid config silently registered without resolved cache — _isValidConfig failure logs error but doesn't throw, namespace in _store but not _resolved, get() produces misleading error — Effort: S
+- **2026-06-26** (PR #12 Review — WARNING): `configManager.ts:144` — stack trace parsing fragile (non-V8 engines, minified stacks) — Effort: S
+- **2026-06-26** (PR #12 Review — WARNING): `configManager.ts:289,321` — runtime process.env iteration in browser builds — Effort: S
+- **2026-06-26** (PR #12 Review — WARNING): `fixed-update-pipeline.ts:248` — empty catch {} swallows all slot exceptions — Effort: S
+- **2026-06-26** (PR #12 Review — WARNING): `pipeline-runtime.ts:165` — constructor installs dev guard globally before attach() — Effort: S
+- **2026-06-26** (PR #12 Review — WARNING): `pipeline-runtime.ts:231` — JSDoc shows static call for instance method — Effort: S
+- **2026-06-26** (PR #12 Review — WARNING): `accumulator.ts:107` — non-finite accumulator propagates forever (NaN/Infinity stuck) — Effort: S
+- **2026-06-26** (PR #12 Review — WARNING): `event-bus.ts:149` — depth error detection uses fragile string comparison — Effort: S
