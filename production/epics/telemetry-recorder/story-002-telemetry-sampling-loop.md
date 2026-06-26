@@ -1,11 +1,12 @@
 # Story 002: 20Hz Sampling Loop
 
 > **Epic**: Telemetry Recorder
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 6h
+> **Last Updated**: 2026-06-26
 
 ## Context
 
@@ -35,7 +36,7 @@ _From GDD `design/gdd/telemetry-recorder.md`, scoped to this story:_
 - [ ] **AC-2**: Each sample's fields match the CarEntity state at the moment of sampling — speed, rpm, throttle, brake, steer, gear, lateralG, fuel, tireCondition, splinePos, aiState
 - [ ] **AC-3**: `tick()` with empty `cars` array produces no error and no samples
 - [ ] **AC-4**: New car appearing mid-session (late joiner) starts receiving samples on the next sample tick — no gap or crash
-- [ ] **AC-5**: `tick()` does nothing when `__DEV__` is false (early return guard)
+- [ ] **AC-5**: `tick()` does nothing when `import.meta.env.DEV` is false (early return guard)
 
 ---
 
@@ -126,7 +127,7 @@ _Handled by neighbouring stories — do not implement here:_
 **Story Type**: Logic
 **Required evidence**:
 
-- Logic: `tests/unit/dev-infra/telemetry-sampling_test.ts` — must exist and pass
+- Logic: `tests/unit/dev-infra/telemetry-sampling.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 
@@ -136,3 +137,11 @@ _Handled by neighbouring stories — do not implement here:_
 
 - Depends on: Story 001 (TelemetrySample type, Map storage)
 - Unlocks: Story 003 (needs samples to generate console output)
+
+## Completion Notes
+
+**Completed**: 2026-06-26
+**Criteria**: 5/5 passing
+**Deviations**: None
+**Test Evidence**: Logic: tests/unit/dev-infra/telemetry-sampling.test.ts (18 tests)
+**Code Review**: Complete — APPROVED (babylonjs-specialist CLEAN, qa-tester TESTABLE, lead-programmer APPROVED WITH SUGGESTIONS)

@@ -2173,12 +2173,12 @@ requirements:
   - id: TR-TELEMETRY-002
     system: telemetry-recorder
     gdd: design/gdd/telemetry-recorder.md
-    requirement: "Records samples every N ticks (configurable telemetry.sampleInterval, default 60 = 1s) — captures direct reads from systems, no Event Bus."
+    requirement: "Records samples every N ticks (configurable telemetry.sampleInterval, default 3 = 20Hz at 60Hz tick rate) — captures direct reads from systems, no Event Bus."
     domain: Dev
     coverage_adrs: [ADR-0022]
     engine_risk: LOW
     created: 2026-06-21
-    revised: ""
+    revised: "2026-06-26"
     status: active
   - id: TR-TELEMETRY-003
     system: telemetry-recorder
