@@ -7,7 +7,7 @@
  * @see ADR-0016 — Persistence Interface
  */
 
-export { PersistenceError } from "./errors";
+export { MigrationError, PersistenceError } from "./errors";
 export type {
   MigrationFn,
   PersistedEntry,

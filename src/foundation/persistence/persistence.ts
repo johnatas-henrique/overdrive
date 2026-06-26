@@ -28,7 +28,7 @@
  * @see F-F9 — Never crash on storage errors
  */
 
-import { PersistenceError } from "./errors";
+import { MigrationError, PersistenceError } from "./errors";
 
 /**
  * Storage availability state.
@@ -185,6 +185,17 @@ export class Persistence {
    * of the instance.
    */
   private readonly _currentVersion: string;
+
+  /**
+   * Registry of registered migration steps.
+   *
+   * Maps `from` version → `{ to, fn }` for the migration chain.
+   * Populated via `registerMigration()` before `load()` is called.
+   *
+   * @see ADR-0016 — Migration chain via registerMigration(from, to, fn)
+   */
+  private _migrationRegistry: Map<string, { to: string; fn: MigrationFn }> =
+    new Map();
 
   /**
    * Create a new Persistence instance.
@@ -360,6 +371,9 @@ export class Persistence {
    * deserializes it, unwraps the `PersistedEntry` container, and returns
    * the stored data cast to `T`.
    *
+   * If the stored version does not match the current version, migrations
+   * are run automatically via `_runMigrations()`.
+   *
    * **State-dependent behavior:**
    * - **Uninitialized**: throws `PersistenceError`.
    * - **Degraded**: returns `null` immediately.
@@ -370,6 +384,7 @@ export class Persistence {
    * @returns The stored data, or `null` if the key does not exist or
    *   storage is unavailable
    * @throws {PersistenceError} If state is Uninitialized
+   * @throws {MigrationError} If the migration chain has a missing step
    *
    * @example
    * ```typescript
@@ -393,18 +408,12 @@ export class Persistence {
       return null;
     }
 
+    // Separate JSON parse errors from migration errors — parse first, then
+    // migrate. This ensures MigrationError propagates rather than being
+    // swallowed by a catch-all.
+    let parsed: unknown;
     try {
-      const parsed: unknown = JSON.parse(raw);
-
-      if (parsed !== null && typeof parsed === "object" && "data" in parsed) {
-        return (parsed as PersistedEntry).data as T;
-      }
-
-      // Valid JSON but not a PersistedEntry shape — warn and treat as miss
-      console.warn(
-        `[Persistence] Corrupted entry for key "${key}" (${raw.length} bytes)`
-      );
-      return null;
+      parsed = JSON.parse(raw);
     } catch {
       // JSON parse failure — corrupted or non-JSON data
       console.warn(
@@ -412,6 +421,33 @@ export class Persistence {
       );
       return null;
     }
+
+    if (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      "data" in parsed &&
+      "version" in parsed
+    ) {
+      const entry = parsed as PersistedEntry;
+
+      // Run migrations if the stored version differs from current
+      if (entry.version !== this._currentVersion) {
+        const migratedData = this._runMigrations(
+          entry.version,
+          entry.data,
+          this._currentVersion
+        );
+        return migratedData as T;
+      }
+
+      return entry.data as T;
+    }
+
+    // Valid JSON but not a PersistedEntry shape — warn and treat as miss
+    console.warn(
+      `[Persistence] Corrupted entry for key "${key}" (${raw.length} bytes)`
+    );
+    return null;
   }
 
   /**
@@ -461,9 +497,13 @@ export class Persistence {
    * Called during system init (before any `load()`). Synchronous and
    * allowed in any state, including `Uninitialized`.
    *
-   * @param _from - Source semver version (e.g. "0.1.0")
-   * @param _to - Target semver version (e.g. "0.2.0")
-   * @param _fn - Pure migration function transforming `from` → `to`
+   * Stores the migration function keyed by the `from` version string.
+   * The walk algorithm in `_runMigrations()` discovers the chain by
+   * looking up each `from` as the cursor progresses.
+   *
+   * @param from - Source semver version (e.g. "0.1.0")
+   * @param to - Target semver version (e.g. "0.2.0")
+   * @param fn - Pure migration function transforming `from` → `to`
    *
    * @example
    * ```typescript
@@ -473,8 +513,146 @@ export class Persistence {
    * }));
    * ```
    */
-  registerMigration(_from: string, _to: string, _fn: MigrationFn): void {
-    // Stub: migration chain implemented in Story 003
+  registerMigration(from: string, to: string, fn: MigrationFn): void {
+    if (this._migrationRegistry.has(from)) {
+      const existing = this._migrationRegistry.get(from)!;
+      console.warn(
+        `[Persistence] Overwriting migration ${from} → ${existing.to} with ${from} → ${to}`
+      );
+    }
+    this._migrationRegistry.set(from, { to, fn });
+  }
+
+  /**
+   * Run the migration chain from `storedVersion` to `currentVersion`.
+   *
+   * Walks the chain one step at a time by looking up each `from` version
+   * in the migration registry. Each step applies the registered migration
+   * function and advances the cursor to the `to` version.
+   *
+   * - **Versions match**: returns data as-is (no-op).
+   * - **Downgrade** (stored > current): logs a warning, returns data as-is.
+   * - **Missing step**: throws `MigrationError` with a descriptive message
+   *   including the missing step and the implied next version.
+   *
+   * @param storedVersion - Version of the stored data
+   * @param data - The stored data to migrate
+   * @param currentVersion - Target version to migrate to
+   * @returns The migrated data at `currentVersion`
+   * @throws {MigrationError} If a required migration step is missing
+   *
+   * @internal
+   */
+  _runMigrations(
+    storedVersion: string,
+    data: unknown,
+    currentVersion: string
+  ): unknown {
+    // No migration needed — versions match
+    if (storedVersion === currentVersion) {
+      return data;
+    }
+
+    // Downgrade defense — stored version is ahead of current version
+    if (Persistence._compareVersions(storedVersion, currentVersion) > 0) {
+      console.warn(
+        `[Persistence] Stored version ${storedVersion} > current version ${currentVersion}. No migration applied.`
+      );
+      return data;
+    }
+
+    // Walk the chain from storedVersion to currentVersion
+    let cursor = storedVersion;
+    while (cursor !== currentVersion) {
+      const migration = this._migrationRegistry.get(cursor);
+
+      if (!migration) {
+        // Find the implied next version by scanning the registry for the
+        // smallest `from` greater than the current cursor.
+        const impliedNext = this._findImpliedNext(cursor, currentVersion);
+        throw new MigrationError(
+          `Missing migration: ${cursor} → ${impliedNext}`
+        );
+      }
+
+      data = migration.fn(data);
+      cursor = migration.to;
+    }
+
+    return data;
+  }
+
+  /**
+   * Parse a semver string into numeric parts for comparison.
+   *
+   * @param v - Semver string (e.g. "0.1.0")
+   * @returns Array of numeric components (e.g. [0, 1, 0])
+   *
+   * @example
+   * ```typescript
+   * Persistence._parseVersion("0.10.0"); // [0, 10, 0]
+   * ```
+   */
+  private static _parseVersion(v: string): number[] {
+    return v.split(".").map(Number);
+  }
+
+  /**
+   * Compare two semver strings numerically.
+   *
+   * Compares component-by-component (major, minor, patch). Unlike
+   * lexicographic comparison, this correctly handles e.g. "0.10.0" > "0.9.0".
+   *
+   * @param a - First semver string
+   * @param b - Second semver string
+   * @returns Negative if a < b, 0 if equal, positive if a > b
+   *
+   * @example
+   * ```typescript
+   * Persistence._compareVersions("0.10.0", "0.9.0");  // > 0
+   * Persistence._compareVersions("0.1.0", "0.1.0");    // 0
+   * Persistence._compareVersions("0.1.0", "0.2.0");    // < 0
+   * ```
+   */
+  private static _compareVersions(a: string, b: string): number {
+    const partsA = Persistence._parseVersion(a);
+    const partsB = Persistence._parseVersion(b);
+    const maxLen = Math.max(partsA.length, partsB.length);
+
+    for (let i = 0; i < maxLen; i++) {
+      const pa = partsA[i] ?? 0;
+      const pb = partsB[i] ?? 0;
+      if (pa < pb) return -1;
+      if (pa > pb) return 1;
+    }
+
+    return 0;
+  }
+
+  /**
+   * Find the implied next version when a migration is missing.
+   *
+   * Scans the registry for the registered migration with the smallest
+   * `from` version that is greater than `cursor`. If none found, falls
+   * back to `currentVersion`.
+   *
+   * @param cursor - The current version cursor where the chain is stuck
+   * @param currentVersion - The target version as a fallback
+   * @returns The implied next version string
+   */
+  private _findImpliedNext(cursor: string, currentVersion: string): string {
+    let impliedNext = currentVersion;
+
+    for (const [fromVersion] of this._migrationRegistry) {
+      if (
+        Persistence._compareVersions(fromVersion, cursor) > 0 &&
+        Persistence._compareVersions(fromVersion, impliedNext) < 0
+      ) {
+        impliedNext = fromVersion;
+      }
+    }
+
+    return impliedNext;
   }
 
   /**
