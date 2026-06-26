@@ -1599,7 +1599,7 @@ describe("PipelineRuntime AC-2: render loop calls pipeline and scene.render", ()
     const scene = { render: vi.fn() };
 
     runtime.attach(engine as any, () => scene as any);
-    capturedCallback!();
+    capturedCallback?.();
 
     expect(tickSpy).toHaveBeenCalledTimes(1);
     expect(tickSpy).toHaveBeenCalledWith(FIXED_DT);
@@ -1623,7 +1623,7 @@ describe("PipelineRuntime AC-2: render loop calls pipeline and scene.render", ()
     const scene = { render: vi.fn() };
 
     runtime.attach(engine as any, () => scene as any);
-    capturedCallback!();
+    capturedCallback?.();
 
     expect(tickSpy).toHaveBeenCalledTimes(0);
     expect(scene.render).toHaveBeenCalledTimes(1);
@@ -1652,7 +1652,7 @@ describe("PipelineRuntime AC-3: normal single tick execution", () => {
     const scene = { render: vi.fn() };
 
     runtime.attach(engine as any, () => scene as any);
-    capturedCallback!();
+    capturedCallback?.();
 
     expect(tickSpy).toHaveBeenCalledTimes(1);
     expect(tickSpy).toHaveBeenCalledWith(FIXED_DT);
@@ -1675,7 +1675,7 @@ describe("PipelineRuntime AC-3: normal single tick execution", () => {
     const scene = { render: vi.fn() };
 
     runtime.attach(engine as any, () => scene as any);
-    capturedCallback!();
+    capturedCallback?.();
 
     expect(tickSpy).toHaveBeenCalledTimes(1);
     warnSpy.mockRestore();
@@ -1697,7 +1697,7 @@ describe("PipelineRuntime AC-3: normal single tick execution", () => {
     const scene = { render: vi.fn() };
 
     runtime.attach(engine as any, () => scene as any);
-    capturedCallback!();
+    capturedCallback?.();
 
     expect(scene.render).toHaveBeenCalledTimes(1);
     warnSpy.mockRestore();
@@ -1725,7 +1725,7 @@ describe("PipelineRuntime AC-4: catch-up cap at 4 ticks with spiral-of-death", (
     const scene = { render: vi.fn() };
 
     runtime.attach(engine as any, () => scene as any);
-    capturedCallback!();
+    capturedCallback?.();
 
     expect(tickSpy).toHaveBeenCalledTimes(4);
     expect(scene.render).toHaveBeenCalledTimes(1);
@@ -1748,7 +1748,7 @@ describe("PipelineRuntime AC-4: catch-up cap at 4 ticks with spiral-of-death", (
     const scene = { render: vi.fn() };
 
     runtime.attach(engine as any, () => scene as any);
-    capturedCallback!();
+    capturedCallback?.();
 
     expect(tickSpy).toHaveBeenCalledTimes(4);
     warnSpy.mockRestore();
@@ -1770,7 +1770,7 @@ describe("PipelineRuntime AC-4: catch-up cap at 4 ticks with spiral-of-death", (
     const scene = { render: vi.fn() };
 
     runtime.attach(engine as any, () => scene as any);
-    capturedCallback!();
+    capturedCallback?.();
 
     expect(tickSpy).toHaveBeenCalledTimes(0);
     expect(scene.render).toHaveBeenCalledTimes(1);
@@ -1796,11 +1796,11 @@ describe("PipelineRuntime AC-4: catch-up cap at 4 ticks with spiral-of-death", (
     runtime.attach(engine as any, () => scene as any);
 
     getDeltaTime.mockReturnValue(83.35); // 5/60s
-    capturedCallback!();
+    capturedCallback?.();
     expect(tickSpy).toHaveBeenCalledTimes(4);
 
     getDeltaTime.mockReturnValue(0);
-    capturedCallback!();
+    capturedCallback?.();
     expect(tickSpy).toHaveBeenCalledTimes(4);
     expect(scene.render).toHaveBeenCalledTimes(2);
     warnSpy.mockRestore();
@@ -1984,7 +1984,7 @@ describe("PipelineRuntime AC-8: double attach is no-op", () => {
 
     runtime.attach(engine as any, () => scene as any);
     runtime.attach(engine as any, () => scene as any);
-    capturedCallback!();
+    capturedCallback?.();
 
     expect(tickSpy).toHaveBeenCalledTimes(1);
     expect(runtime.pipeline.getCurrentTick()).toBe(1);
@@ -2081,7 +2081,7 @@ describe("DeterminismGuard AC-1: Math.random guard throws", () => {
     pipeline.start();
     pipeline.executeTick(1 / 60);
     expect(caught).toBeInstanceOf(DeterminismError);
-    expect(caught!.message).toBe("Math.random forbidden during fixed update");
+    expect(caught?.message).toBe("Math.random forbidden during fixed update");
     pipeline.stop();
   });
 });
@@ -2127,7 +2127,7 @@ describe("DeterminismGuard AC-2: Date.now guard throws", () => {
     pipeline.start();
     pipeline.executeTick(1 / 60);
     expect(caught).toBeInstanceOf(DeterminismError);
-    expect(caught!.message).toBe("Date.now forbidden during fixed update");
+    expect(caught?.message).toBe("Date.now forbidden during fixed update");
     pipeline.stop();
   });
 });
@@ -2175,7 +2175,7 @@ describe("DeterminismGuard AC-3: performance.now guard throws", () => {
     pipeline.start();
     pipeline.executeTick(1 / 60);
     expect(caught).toBeInstanceOf(DeterminismError);
-    expect(caught!.message).toBe(
+    expect(caught?.message).toBe(
       "performance.now forbidden during fixed update"
     );
     pipeline.stop();
@@ -2293,7 +2293,7 @@ describe("DeterminismGuard AC-5: guard lifecycle tied to pipeline", () => {
     // During executeTick: slot that calls Math.random gets error
     pipeline.executeTick(1 / 60);
     expect(result.error).toBeInstanceOf(DeterminismError);
-    expect(result.error!.message).toBe(
+    expect(result.error?.message).toBe(
       "Math.random forbidden during fixed update"
     );
 

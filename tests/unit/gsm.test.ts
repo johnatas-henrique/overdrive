@@ -2860,7 +2860,7 @@ describe("Dispose Safety AC-2: mid-transition dispose", () => {
     gsm.dispose();
 
     // Reject onEnter — catch block fires, sees _disposed, returns at line 294
-    rejectOnEnter!(new Error("onEnter failed after dispose"));
+    rejectOnEnter?.(new Error("onEnter failed after dispose"));
     await transPromise;
 
     // State is undefined (disposed)
@@ -2964,7 +2964,7 @@ describe("Dispose Safety AC-2: mid-transition dispose", () => {
     gsm.init();
 
     // Start transition — onExit is pending (never resolves)
-    const transPromise = gsm.transition("Menu");
+    const _transPromise = gsm.transition("Menu");
 
     // Dispose mid-transition — dispose calls onExit (2nd call), gets rejecting promise
     // The .catch() in dispose() suppresses the floating rejection

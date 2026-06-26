@@ -516,8 +516,8 @@ describe("EventBus runtime", () => {
       bus.emit("race.completed", { results });
 
       expect(result).toBeDefined();
-      expect(result!.results.totalLaps).toBe(40);
-      expect(result!.results.fastestLap.carId).toBe("car_01");
+      expect(result?.results.totalLaps).toBe(40);
+      expect(result?.results.fastestLap.carId).toBe("car_01");
     });
 
     it("should handle empty payload", () => {
@@ -973,7 +973,7 @@ describe("EventBus edge cases", () => {
       const log: string[] = [];
 
       // A registered first, then B — A runs first in snapshot
-      const subA = bus.on("race.starting", () => {
+      const _subA = bus.on("race.starting", () => {
         log.push("A");
         bus.off(subB); // remove B during A's execution
       });
@@ -991,7 +991,7 @@ describe("EventBus edge cases", () => {
       bus.init();
       const log: string[] = [];
 
-      const subA = bus.on("race.starting", () => {
+      const _subA = bus.on("race.starting", () => {
         log.push("A");
         bus.off(subB);
       });

@@ -644,7 +644,7 @@ describe("AC-2: save/load round-trip", () => {
     const raw = storage.getItem("overdrive_ts");
     expect(raw).not.toBeNull();
 
-    const entry = JSON.parse(raw!) as {
+    const entry = JSON.parse(raw as string) as {
       version: string;
       data: unknown;
       timestamp: number;
@@ -664,7 +664,7 @@ describe("AC-2: save/load round-trip", () => {
     const raw = storage.getItem("overdrive_settings");
     expect(raw).not.toBeNull();
 
-    const entry = JSON.parse(raw!) as {
+    const entry = JSON.parse(raw as string) as {
       version: string;
       data: unknown;
       timestamp: number;
@@ -1692,8 +1692,8 @@ describe("AC-5c: retry() behavior", () => {
     const storage = createWorkingStorage();
     vi.stubGlobal("localStorage", storage);
 
-    const originalStringify = JSON.stringify;
-    vi.spyOn(JSON, "stringify").mockImplementation((...args) => {
+    const _originalStringify = JSON.stringify;
+    vi.spyOn(JSON, "stringify").mockImplementation((..._args) => {
       throw "primitive stringify error";
     });
 
@@ -1718,11 +1718,11 @@ describe("AC-5c: retry() behavior", () => {
     vi.stubGlobal("localStorage", storage);
 
     let callCount = 0;
-    vi.spyOn(storage, "setItem").mockImplementation((...args) => {
+    vi.spyOn(storage, "setItem").mockImplementation((..._args) => {
       callCount++;
       if (callCount === 1) {
         // Probe — succeed
-        return undefined as unknown as void;
+        return undefined as unknown as undefined;
       }
       // Queue entry — throw non-Error
       throw "primitive setItem error";
@@ -1825,11 +1825,11 @@ describe("AC-5c: retry() behavior", () => {
 
     // Make the first setItem throw (not the probe)
     let callCount = 0;
-    vi.spyOn(storage, "setItem").mockImplementation((...args) => {
+    vi.spyOn(storage, "setItem").mockImplementation((..._args) => {
       callCount++;
       if (callCount === 1) {
         // First call is the probe — let it succeed
-        return undefined as unknown as void;
+        return undefined as unknown as undefined;
       }
       // Second call is the first queue entry — throw
       throw new Error("setItem failed during flush");
@@ -1852,11 +1852,11 @@ describe("AC-5c: retry() behavior", () => {
     vi.stubGlobal("localStorage", storage);
 
     let callCount = 0;
-    vi.spyOn(storage, "setItem").mockImplementation((...args) => {
+    vi.spyOn(storage, "setItem").mockImplementation((..._args) => {
       callCount++;
       if (callCount === 1) {
         // Probe — succeed
-        return undefined as unknown as void;
+        return undefined as unknown as undefined;
       }
       // Queue entry — throw SecurityError
       throw new DOMException("quota exceeded", "SecurityError");

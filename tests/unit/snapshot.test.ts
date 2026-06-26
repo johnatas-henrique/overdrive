@@ -1746,8 +1746,8 @@ describe("AC-3: Registry unchanged on duplicate exception", () => {
 
     // Registry should still contain only the original system
     const snap = ss.takeSnapshot(0);
-    expect(Object.keys(snap!.systems).length).toBe(1);
-    expect(snap!.systems.physics.state).toEqual({ v: 1 });
+    expect(Object.keys(snap?.systems).length).toBe(1);
+    expect(snap?.systems.physics.state).toEqual({ v: 1 });
   });
 
   it("should not corrupt registry after multiple duplicate attempts", () => {
@@ -1766,9 +1766,9 @@ describe("AC-3: Registry unchanged on duplicate exception", () => {
     }
 
     const snap = ss.takeSnapshot(0);
-    expect(Object.keys(snap!.systems).length).toBe(2);
-    expect(snap!.systems.a.state).toEqual({ v: 1 });
-    expect(snap!.systems.b.state).toEqual({ v: 2 });
+    expect(Object.keys(snap?.systems).length).toBe(2);
+    expect(snap?.systems.a.state).toEqual({ v: 1 });
+    expect(snap?.systems.b.state).toEqual({ v: 2 });
   });
 });
 
