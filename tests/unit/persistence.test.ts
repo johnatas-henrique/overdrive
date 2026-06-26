@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  MigrationError,
   Persistence,
   PersistenceError,
   PersistenceState,
@@ -412,6 +413,21 @@ describe("registerMigration()", () => {
     const migration = vi.fn((data: unknown) => data);
     persistence.registerMigration("0.1.0", "0.2.0", migration);
     // No error — function stored for later execution (Story 003)
+  });
+
+  it("should warn when overwriting a duplicate from entry", () => {
+    const persistence = new Persistence();
+    const migration1 = vi.fn((data: unknown) => data);
+    const migration2 = vi.fn((data: unknown) => data);
+
+    persistence.registerMigration("0.1.0", "0.2.0", migration1);
+    persistence.registerMigration("0.1.0", "0.3.0", migration2);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Overwriting migration 0.1.0 → 0.2.0 with 0.1.0 → 0.3.0"
+      )
+    );
   });
 });
 
@@ -1897,5 +1913,480 @@ describe("delete() in Degraded mode", () => {
 
     // Delete non-existent key — should not throw
     await expect(persistence.delete("nonexistent")).resolves.toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MigrationError class
+// ---------------------------------------------------------------------------
+
+describe("MigrationError", () => {
+  it("should be an instance of Error", () => {
+    const err = new MigrationError("test");
+    expect(err).toBeInstanceOf(Error);
+  });
+
+  it("should be an instance of MigrationError", () => {
+    const err = new MigrationError("test");
+    expect(err).toBeInstanceOf(MigrationError);
+  });
+
+  it("should have name set to MigrationError", () => {
+    const err = new MigrationError("test");
+    expect(err.name).toBe("MigrationError");
+  });
+
+  it("should capture the message", () => {
+    const err = new MigrationError("Missing migration: 0.1.0 → 0.2.0");
+    expect(err.message).toBe("Missing migration: 0.1.0 → 0.2.0");
+  });
+
+  it("should capture stack trace", () => {
+    const err = new MigrationError("test");
+    expect(err.stack).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-6: Migration chain walks correctly
+// ---------------------------------------------------------------------------
+
+describe("AC-6: Migration chain", () => {
+  it("should return data as-is when stored version equals current version (no-op)", () => {
+    const persistence = new Persistence();
+    const data = { value: 42 };
+
+    const result = (
+      persistence as unknown as {
+        _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+      }
+    )._runMigrations("0.1.0", data, "0.1.0");
+
+    expect(result).toBe(data);
+  });
+
+  it("should warn and return data as-is on downgrade (stored > current)", () => {
+    const persistence = new Persistence();
+    const data = { value: 42 };
+
+    const result = (
+      persistence as unknown as {
+        _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+      }
+    )._runMigrations("0.2.0", data, "0.1.0");
+
+    expect(result).toBe(data);
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[Persistence] Stored version 0.2.0 > current version 0.1.0. No migration applied."
+    );
+  });
+
+  it("should run a single-step migration", () => {
+    const persistence = new Persistence();
+    persistence.registerMigration("0.1.0", "0.2.0", (data) => ({
+      ...(data as Record<string, unknown>),
+      migrated: true,
+    }));
+
+    const result = (
+      persistence as unknown as {
+        _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+      }
+    )._runMigrations("0.1.0", { value: 1 }, "0.2.0");
+
+    expect(result).toEqual({ value: 1, migrated: true });
+  });
+
+  it("should run a two-step chain in order", () => {
+    const persistence = new Persistence();
+    persistence.registerMigration("0.1.0", "0.2.0", (data) => ({
+      ...(data as Record<string, unknown>),
+      step1: true,
+    }));
+    persistence.registerMigration("0.2.0", "0.3.0", (data) => ({
+      ...(data as Record<string, unknown>),
+      step2: true,
+    }));
+
+    const result = (
+      persistence as unknown as {
+        _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+      }
+    )._runMigrations("0.1.0", { base: true }, "0.3.0");
+
+    expect(result).toEqual({ base: true, step1: true, step2: true });
+  });
+
+  it("should run a long chain of 5+ steps in order", () => {
+    const persistence = new Persistence();
+    const order: number[] = [];
+
+    for (let i = 1; i <= 5; i++) {
+      const from = `0.${i}.0`;
+      const to = `0.${i + 1}.0`;
+      persistence.registerMigration(from, to, (data) => {
+        order.push(i);
+        return data;
+      });
+    }
+
+    (
+      persistence as unknown as {
+        _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+      }
+    )._runMigrations("0.1.0", {}, "0.6.0");
+
+    expect(order).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("should handle a deeply transformed object", () => {
+    const persistence = new Persistence();
+    persistence.registerMigration("0.1.0", "0.2.0", (data) => {
+      const old = data as { nested: { value: number } };
+      return { nested: { value: old.nested.value * 2, extra: true } };
+    });
+
+    const result = (
+      persistence as unknown as {
+        _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+      }
+    )._runMigrations("0.1.0", { nested: { value: 21 } }, "0.2.0");
+
+    expect(result).toEqual({ nested: { value: 42, extra: true } });
+  });
+
+  it("should call each migration function exactly once", () => {
+    const persistence = new Persistence();
+    const fn1 = vi.fn((data: unknown) => data);
+    const fn2 = vi.fn((data: unknown) => data);
+
+    persistence.registerMigration("0.1.0", "0.2.0", fn1);
+    persistence.registerMigration("0.2.0", "0.3.0", fn2);
+
+    (
+      persistence as unknown as {
+        _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+      }
+    )._runMigrations("0.1.0", { x: 1 }, "0.3.0");
+
+    expect(fn1).toHaveBeenCalledTimes(1);
+    expect(fn2).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-7: Missing migration throws MigrationError
+// ---------------------------------------------------------------------------
+
+describe("AC-7: Missing migration throws", () => {
+  it("should throw when gap in the middle of a chain", () => {
+    const persistence = new Persistence();
+    persistence.registerMigration("0.1.0", "0.2.0", (data) => data);
+    // 0.2.0 → 0.3.0 is MISSING
+    persistence.registerMigration("0.3.0", "0.4.0", (data) => data);
+
+    expect(() => {
+      (
+        persistence as unknown as {
+          _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+        }
+      )._runMigrations("0.1.0", {}, "0.4.0");
+    }).toThrow(MigrationError);
+  });
+
+  it("should throw a MigrationError with a descriptive message", () => {
+    const persistence = new Persistence();
+    persistence.registerMigration("0.1.0", "0.2.0", (data) => data);
+
+    expect(() => {
+      (
+        persistence as unknown as {
+          _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+        }
+      )._runMigrations("0.1.0", {}, "0.3.0");
+    }).toThrow("Missing migration: 0.2.0 → 0.3.0");
+  });
+
+  it("should throw when no migrations are registered at all", () => {
+    const persistence = new Persistence();
+
+    expect(() => {
+      (
+        persistence as unknown as {
+          _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+        }
+      )._runMigrations("0.1.0", {}, "0.2.0");
+    }).toThrow(MigrationError);
+  });
+
+  it("should throw when stored version has no registered migration (gap at beginning)", () => {
+    const persistence = new Persistence();
+    // No migration from 0.1.0 → anything
+    persistence.registerMigration("0.2.0", "0.3.0", (data) => data);
+
+    expect(() => {
+      (
+        persistence as unknown as {
+          _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+        }
+      )._runMigrations("0.1.0", {}, "0.3.0");
+    }).toThrow(MigrationError);
+  });
+
+  it("should include both from and implied next version in the error message", () => {
+    const persistence = new Persistence();
+    // Only 0.2.0→0.3.0 registered, but nothing from 0.1.0
+    persistence.registerMigration("0.2.0", "0.3.0", (data) => data);
+
+    expect(() => {
+      (
+        persistence as unknown as {
+          _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+        }
+      )._runMigrations("0.1.0", {}, "0.3.0");
+    }).toThrow("Missing migration: 0.1.0 → 0.2.0");
+  });
+
+  it("should throw MigrationError (instanceof check)", () => {
+    const persistence = new Persistence();
+
+    try {
+      (
+        persistence as unknown as {
+          _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+        }
+      )._runMigrations("0.1.0", {}, "0.2.0");
+      expect.fail("Should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(MigrationError);
+      expect((e as Error).name).toBe("MigrationError");
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Semver comparison — numerical, not lexicographic
+// ---------------------------------------------------------------------------
+
+describe("Semver comparison (numerical)", () => {
+  it("should correctly chain through 0.10.0 (which lexicographic would break)", () => {
+    const persistence = new Persistence();
+    persistence.registerMigration("0.7.0", "0.10.0", (data) => ({
+      ...(data as Record<string, unknown>),
+      step1: true,
+    }));
+    persistence.registerMigration("0.10.0", "0.11.0", (data) => ({
+      ...(data as Record<string, unknown>),
+      step2: true,
+    }));
+
+    const result = (
+      persistence as unknown as {
+        _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+      }
+    )._runMigrations("0.7.0", { x: 1 }, "0.11.0");
+
+    expect(result).toEqual({ x: 1, step1: true, step2: true });
+  });
+
+  it("should not confuse 0.10.0 with 0.1.0 during migration", () => {
+    const persistence = new Persistence();
+
+    // Register two migrations: 0.1.0→0.2.0 and 0.10.0→0.11.0
+    persistence.registerMigration("0.1.0", "0.2.0", (data) => ({
+      ...(data as Record<string, unknown>),
+      smallStep: true,
+    }));
+    persistence.registerMigration("0.10.0", "0.11.0", (data) => ({
+      ...(data as Record<string, unknown>),
+      bigStep: true,
+    }));
+
+    // Chain from 0.1.0 to 0.2.0 should pick only the 0.1.0→0.2.0 migration
+    const result = (
+      persistence as unknown as {
+        _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+      }
+    )._runMigrations("0.1.0", { x: 1 }, "0.2.0");
+
+    expect(result).toEqual({ x: 1, smallStep: true });
+  });
+
+  it("should detect downgrade correctly with multi-digit versions", () => {
+    const persistence = new Persistence();
+    const data = { x: 1 };
+
+    // 0.10.0 > 0.9.0 should be detected as downgrade
+    const result = (
+      persistence as unknown as {
+        _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+      }
+    )._runMigrations("0.10.0", data, "0.9.0");
+
+    expect(result).toBe(data);
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[Persistence] Stored version 0.10.0 > current version 0.9.0. No migration applied."
+    );
+  });
+
+  it("should handle equal versions in numerical comparison (return 0)", () => {
+    // Directly exercise the return-0 path in _compareVersions (all
+    // components equal). This path is not reached via _runMigrations
+    // because the === guard short-circuits before _compareVersions
+    // is called with equal versions. Access the private static method
+    // directly to ensure full coverage.
+    const result = (
+      Persistence as unknown as {
+        _compareVersions: (a: string, b: string) => number;
+      }
+    )._compareVersions("0.1.0", "0.1.0");
+    expect(result).toBe(0);
+
+    // Also verify that comparing versions with different component
+    // lengths but same numeric values also returns 0 (edge case).
+    // Shorter version on the left exercises partsA[i] ?? 0.
+    const result2 = (
+      Persistence as unknown as {
+        _compareVersions: (a: string, b: string) => number;
+      }
+    )._compareVersions("0.1", "0.1.0");
+    expect(result2).toBe(0);
+
+    // Shorter version on the right exercises partsB[i] ?? 0.
+    const result3 = (
+      Persistence as unknown as {
+        _compareVersions: (a: string, b: string) => number;
+      }
+    )._compareVersions("0.1.0", "0.1");
+    expect(result3).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// load() integration with migration
+// ---------------------------------------------------------------------------
+
+describe("load() migration integration", () => {
+  it("should migrate data when stored version < current version", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence({ version: "0.2.0" });
+    await persistence.init();
+
+    // Inject data at version 0.1.0 directly into localStorage
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem(
+      "overdrive_test",
+      JSON.stringify({
+        version: "0.1.0",
+        data: { name: "old" },
+        timestamp: 100,
+      })
+    );
+
+    persistence.registerMigration("0.1.0", "0.2.0", (data) => ({
+      ...(data as Record<string, unknown>),
+      migrated: true,
+    }));
+
+    const result = await persistence.load<{
+      name: string;
+      migrated: boolean;
+    }>("test");
+
+    expect(result).toEqual({ name: "old", migrated: true });
+  });
+
+  it("should not migrate when stored version matches current version", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence({ version: "0.1.0" });
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem(
+      "overdrive_test",
+      JSON.stringify({
+        version: "0.1.0",
+        data: { name: "same" },
+        timestamp: 100,
+      })
+    );
+
+    // No migrations registered — should still work since versions match
+    const result = await persistence.load<{ name: string }>("test");
+    expect(result).toEqual({ name: "same" });
+  });
+
+  it("should throw MigrationError on load when migration step is missing", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence({ version: "0.3.0" });
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem(
+      "overdrive_test",
+      JSON.stringify({
+        version: "0.1.0",
+        data: { name: "old" },
+        timestamp: 100,
+      })
+    );
+
+    // Only register 0.1→0.2, missing 0.2→0.3
+    persistence.registerMigration("0.1.0", "0.2.0", (data) => data);
+
+    await expect(persistence.load("test")).rejects.toThrow(MigrationError);
+  });
+
+  it("should survive migration error in one key while another key loads normally", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence({ version: "0.2.0" });
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+
+    // Stale key at version 0.1.0 (will fail migration since no path)
+    storage.setItem(
+      "overdrive_stale",
+      JSON.stringify({
+        version: "0.1.0",
+        data: "stale",
+        timestamp: 100,
+      })
+    );
+
+    // Fresh key at version 0.2.0 (no migration needed)
+    storage.setItem(
+      "overdrive_fresh",
+      JSON.stringify({
+        version: "0.2.0",
+        data: "fresh",
+        timestamp: 200,
+      })
+    );
+
+    // No migrations — stale key should throw, fresh key should load
+    await expect(persistence.load("stale")).rejects.toThrow(MigrationError);
+    const freshResult = await persistence.load<string>("fresh");
+    expect(freshResult).toBe("fresh");
+  });
+
+  it("should not migrate or throw for keys at the same version as current", async () => {
+    vi.stubGlobal("localStorage", createWorkingStorage());
+    const persistence = new Persistence({ version: "0.5.0" });
+    await persistence.init();
+
+    const storage = globalThis.localStorage as Storage;
+    storage.setItem(
+      "overdrive_test",
+      JSON.stringify({
+        version: "0.5.0",
+        data: { config: "value" },
+        timestamp: 100,
+      })
+    );
+
+    // No migrations registered, but versions match so no error
+    const result = await persistence.load<{ config: string }>("test");
+    expect(result).toEqual({ config: "value" });
   });
 });
