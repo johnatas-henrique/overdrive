@@ -293,7 +293,7 @@ stories:
     name: "Story 003: SHA-256 Sync Hash + Snapshot Determinism"
     file: "production/epics/simulation-snapshot/story-003-sha256-determinism.md"
     priority: must-have
-    status: ready-for-dev
+    status: in_progress
     owner: "solo-dev"
     estimate_days: 0.75
     blocker: ""
