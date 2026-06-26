@@ -515,9 +515,9 @@ export class Persistence {
    */
   registerMigration(from: string, to: string, fn: MigrationFn): void {
     if (this._migrationRegistry.has(from)) {
-      const existing = this._migrationRegistry.get(from)!;
+      const existing = this._migrationRegistry.get(from);
       console.warn(
-        `[Persistence] Overwriting migration ${from} → ${existing.to} with ${from} → ${to}`
+        `[Persistence] Overwriting migration ${from} → ${existing?.to} with ${from} → ${to}`
       );
     }
     this._migrationRegistry.set(from, { to, fn });

@@ -139,9 +139,6 @@ export class PipelineRuntime implements IPipelineRuntime {
   /** The Babylon.js Engine we're attached to (null when detached). */
   private _engine: Engine | null = null;
 
-  /** Getter for the current active Scene to render (null when detached). */
-  private _activeScene: (() => Scene) | null = null;
-
   /**
    * The bound render-loop callback.
    * Stored so it can be passed to both ``runRenderLoop`` and ``stopRenderLoop``
@@ -193,15 +190,15 @@ export class PipelineRuntime implements IPipelineRuntime {
 
     this._attached = true;
     this._engine = engine;
-    this._activeScene = activeScene;
     this._accumulator = 0;
+
+    // Capture as locals — guaranteed non-null for the lifetime of this callback
+    const getDeltaTime = () => engine.getDeltaTime();
+    const render = () => activeScene().render();
 
     this._loopCallback = () => {
       // 1. Accumulate frame delta (getDeltaTime() returns ms, convert to seconds)
-      const result = accumulate(
-        this._accumulator,
-        this._engine!.getDeltaTime() / 1000
-      );
+      const result = accumulate(this._accumulator, getDeltaTime() / 1000);
       this._accumulator = result.newAccumulator;
 
       // 2. Execute the required number of fixed-time step ticks
@@ -210,7 +207,7 @@ export class PipelineRuntime implements IPipelineRuntime {
       }
 
       // 3. Render the active scene once per frame
-      this._activeScene!().render();
+      render();
     };
 
     engine.runRenderLoop(this._loopCallback);

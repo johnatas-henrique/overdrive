@@ -324,8 +324,9 @@ export class GameStateMachine {
    * ```
    */
   tick(): void {
-    if (this._disposed || this._busy || this._queue.length === 0) return;
-    const next = this._queue.shift()!;
+    if (this._disposed || this._busy) return;
+    const next = this._queue.shift();
+    if (next === undefined) return;
     // Fire and forget — errors are logged internally; caller does not await
     this._doTransition(next).catch((error) => {
       console.warn("[GSM] Queued transition failed:", error);
@@ -408,7 +409,7 @@ export class GameStateMachine {
    */
   private _enqueue(target: State): void {
     if (this._queue.length >= this._maxQueueSize) {
-      const dropped = this._queue.shift()!;
+      const dropped = this._queue.shift();
       console.warn("[GSM] Transition queue overflow — dropping:", dropped);
     }
     this._queue.push(target);

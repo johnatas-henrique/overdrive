@@ -19,6 +19,7 @@ import type {
   Subscription,
 } from "./types";
 
+// biome-ignore lint/suspicious/noExplicitAny: Generic handler — payload type is validated at on()/emit() level via EventMap
 type Handler = (payload: any) => void;
 type BusState = "uninitialized" | "ready" | "disposed";
 
@@ -97,7 +98,7 @@ export class EventBus implements IEventBus {
 
     return {
       unsubscribe: () => {
-        handlers!.delete(handler);
+        handlers.delete(handler);
       },
     };
   }
