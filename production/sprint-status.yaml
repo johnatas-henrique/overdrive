@@ -19,13 +19,13 @@ updated: "2026-06-26"
 stories:
   - id: "2-1"
     name: "Tech Debt Cleanup (4 CRITICALs + WARNings)"
-    file: ""
+    file: "production/epics/tech-debt/story-001-tech-debt-cleanup.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 3
     blocker: ""
-    completed: ""
+    completed: "2026-06-26"
 
   # Telemetry (must come before Dev Tools — DT-008 needs data model)
   - id: "2-2"
