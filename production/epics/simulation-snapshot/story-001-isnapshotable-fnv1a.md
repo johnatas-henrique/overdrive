@@ -1,8 +1,8 @@
 # Story 001: ISnapshotable Interface + FNV-1a Hashing
 
 > **Epic**: Simulation Snapshot
-> **Status**: In Progress
-> **Last Updated**: 2026-06-24
+> **Status**: Complete
+> **Last Updated**: 2026-06-25
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -158,3 +158,11 @@ Test evidence: `tests/unit/snapshot.test.ts` — verify all acceptance criteria 
 
 - Depends on: None (first Foundation-level dependency for this epic)
 - Unlocks: Story 002, 003, 004
+
+## Completion Notes
+
+**Completed**: 2026-06-25
+**Criteria**: 6/6 passing
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/snapshot.test.ts` — 143/143 tests
+**Code Review**: Complete (APPROVE — LP-CODE-REVIEW + QL-TEST-COVERAGE ADEQUATE)
