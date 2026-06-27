@@ -41,6 +41,18 @@ _From GDD `design/gdd/dev-tools.md`, scoped to this story:_
 
 _Derived from ADR-0009 Implementation Guidelines:_
 
+**Prerequisite — `ConfigManager.setRuntime()` (Foundation layer)**:
+
+This story requires a `setRuntime(key: string, value: unknown)` method on ConfigManager that does not yet exist. It must be added before the in-place editing feature can work. The method should:
+
+- Accept a dot-path key (e.g., `"teams.macklen.motor"`) and a value
+- Navigate to the correct location in the resolved config cache
+- Set the value and return the old value (for notification: `"3 → 4"`)
+- Be guarded by `import.meta.env.DEV` — this is a dev-only mutation API
+- NOT bypass Config Manager's internal state (write to `_resolved` directly, not to `_store`)
+
+Implementation of this method should be done as part of this story since it's tightly coupled to the in-place editing feature. Add tests for `setRuntime()` in `tests/unit/config-manager.test.ts`.
+
 1. **Data source registration**:
 
    ```typescript

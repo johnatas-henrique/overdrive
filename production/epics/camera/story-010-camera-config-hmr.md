@@ -28,7 +28,7 @@
 _From GDD `design/gdd/camera.md`, split per QL-STORY-READY:_
 
 - [ ] **AC-14a**: Camera registers a `camera.*` namespace with ConfigManager containing exactly 25 keys matching the GDD tuning knob table (key names and default values verified).
-- [ ] **AC-14b (sampled)**: For 5 representative knobs (`cockpit.fov`, `chase.distance`, `shake.kerbIntensity`, `headBob.intensity`, `drone.speed`), changing the value via `ConfigManager.setRuntime()` is reflected in camera behavior on the next `update()` tick.
+- [ ] **AC-14b (sampled)**: For 5 representative knobs (`cockpit.fov`, `chase.distance`, `shake.kerbIntensity`, `headBob.intensity`, `drone.speed`), changing the value via `ConfigManager.setRuntime()` (created by Dev Tools story 004) is reflected in camera behavior on the next `update()` tick.
 - [ ] **AC-14c**: `ConfigManager.get<CameraConfig>("camera")` is called at least once per `camera.update()` cycle (values read fresh each tick, not stale).
 
 ---
