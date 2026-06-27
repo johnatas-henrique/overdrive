@@ -72,11 +72,11 @@ stories:
     name: "Story 005: Telemetry Race Lifecycle"
     file: "production/epics/telemetry-recorder/story-005-telemetry-race-lifecycle.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-06-26"
 
   - id: "2-7"
     name: "Story 006: Telemetry Noop Behavior"
