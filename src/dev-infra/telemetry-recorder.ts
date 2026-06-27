@@ -50,6 +50,8 @@ declare global {
   }
 }
 
+import type { IEventBus } from "@/foundation/event-bus";
+
 // ---------------------------------------------------------------------------
 // TelemetrySample
 // ---------------------------------------------------------------------------
@@ -238,6 +240,44 @@ export class TelemetryRecorder {
    * Used by {@link export} to populate the `team` field in JSON output.
    */
   private _teamNames: Map<string, string> = new Map();
+
+  /**
+   * Connect the recorder to an Event Bus and subscribe to race lifecycle events.
+   *
+   * Subscribes to:
+   * - `race.started` — clears previous data, enables recording, captures start
+   *   time, track, and total laps from the payload.
+   * - `gsm.state.entered` — disables recording when the GSM enters `"PostRace"`.
+   *
+   * Uses the reentrant pattern (`off().on()`) for `race.started` to prevent
+   * duplicate subscriptions on race restart.
+   *
+   * @param eventBus - An initialised {@link IEventBus} instance.
+   *
+   * @example
+   * ```typescript
+   * const bus = new EventBus();
+   * bus.init();
+   * const recorder = new TelemetryRecorder();
+   * recorder.init(bus);
+   * ```
+   */
+  init(eventBus: IEventBus): void {
+    // Reentrant: off() before on() prevents duplicate subscriptions on re-init
+    eventBus.off("race.started").on("race.started", (payload) => {
+      this.clear();
+      this.setRecording(true);
+      this.setStartTime(Date.now());
+      this.setTrack(payload.track);
+      this.setTotalLaps(payload.totalLaps);
+    });
+
+    eventBus.off("gsm.state.entered").on("gsm.state.entered", (payload) => {
+      if (payload.to === "PostRace") {
+        this.setRecording(false);
+      }
+    });
+  }
 
   /**
    * Creates a new TelemetryRecorder with the given intervals.
