@@ -113,12 +113,11 @@ stories:
     name: "Story 002: Input Keybinds"
     file: "production/epics/dev-tools/story-002-input-keybinds.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
-    completed: ""
+    completed: "2026-06-27"
 
   - id: "2-11"
     name: "Story 004: Config Tree"

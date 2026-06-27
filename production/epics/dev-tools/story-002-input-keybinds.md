@@ -1,11 +1,12 @@
 # Story 002: Input Keybinds
 
 > **Epic**: Dev Tools
-> **Status**: Ready
+> **Status**: In Progress
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 4h
+> **Last Updated**: 2026-06-26
 
 ## Context
 
@@ -14,14 +15,14 @@
 _Dev-menu keybind — toggle key to show/hide overlay, reload key to trigger config reload, minimise key to toggle minimised overlay._
 
 **ADR Governing Implementation**: ADR-0009: Dev Tools Architecture (with ADR-0006: Input Abstraction)
-**ADR Decision Summary**: Toggle/reload keys polled via Input's `DeviceSourceManager` keyboard path — not named `InputState` fields (InputState has no toggle/reload key fields). `event.preventDefault()` prevents toggle/reload keys from reaching game input when overlay is active. Lazy init: overlay DOM not created until first toggle press. Keybind values read from `DEV_TOOLS_KEYS` config (see `src/config/dev-tools-config.ts`).
+**ADR Decision Summary**: Toggle/reload keys via DOM `keydown` listener — zero Babylon.js dependency, works independently of the game's input pipeline. `event.preventDefault()` prevents toggle/reload keys from reaching game input when overlay is active. Lazy init: overlay DOM not created until first toggle press. Keybind values read from `DEV_TOOLS_KEYS` config (see `src/config/dev-tools-config.ts`).
 
 **Engine**: Babylon.js 9.12.0 | **Risk**: LOW
-**Engine Notes**: Uses `DeviceSourceManager` from `@babylonjs/core` (`DeviceInput/deviceSourceManager`). This is a standard Babylon.js Core import — no post-cutoff APIs needed.
+**Engine Notes**: No Babylon.js APIs required for keybinds — uses DOM `keydown` events. Zero engine dependency for input handling.
 
 **Control Manifest Rules (this layer)**:
 
-- **Required** (D5): Toggle/reload keys polled via Input's DeviceSourceManager keyboard path — not named InputState fields
+- **Required** (D5): Dev Tools: toggle/reload keys via DOM `keydown` listener — zero Babylon.js dependency
 - **Required** (D2): Dev Tools: lazy init on first toggle press — zero cost if never opened
 - **Forbidden** (D-F1): Never intercept game input — overlay must have `pointer-events: none`
 - **Required** (F21): Behind `import.meta.env.DEV` guard
@@ -44,14 +45,15 @@ _From GDD `design/gdd/dev-tools.md`, scoped to this story:_
 
 _Derived from ADR-0009 and ADR-0006 Implementation Guidelines:_
 
-1. **Key detection via `DeviceSourceManager`**:
+1. **Key detection via DOM `keydown` listener**:
+
+   Dev Tools uses DOM events (not DeviceSourceManager) for keybind handling. This keeps Dev Tools independent of the game's input pipeline — zero Babylon.js dependency for input.
 
    ```typescript
-   import { DeviceSourceManager } from "@babylonjs/core/DeviceInput/deviceSourceManager";
-   import { DeviceType } from "@babylonjs/core/DeviceInput/deviceEnums";
+   document.addEventListener("keydown", handleKeyDown);
    ```
 
-   Poll keyboard state each tick via `dsm.getDeviceSource(DeviceType.Keyboard)`. Keybind values come from `DEV_TOOLS_KEYS` config (`src/config/dev-tools-config.ts`).
+   Keybind values come from `DEV_TOOLS_KEYS` config (`src/config/dev-tools-config.ts`).
 
 2. **Lazy init** (Control Manifest D2): Overlay DOM is not created until first toggle press. `DevTools` class has an `_initialized` flag checked in `toggle()`. On first toggle: create DOM, set up `SceneInstrumentation`, hook `onEndFrameObservable`. On subsequent toggles: toggle visibility only.
 
