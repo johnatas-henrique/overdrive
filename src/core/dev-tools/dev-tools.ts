@@ -2,6 +2,8 @@ import type { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
 import { SceneInstrumentation } from "@babylonjs/core/Instrumentation/sceneInstrumentation";
 import type { Observer } from "@babylonjs/core/Misc/observable";
 import type { Scene } from "@babylonjs/core/scene";
+import { getConfigManager } from "@/foundation/config/config-manager";
+import { ConfigTreePanel } from "./config-tree";
 import type { IDevTools } from "./types";
 
 /**
@@ -33,6 +35,8 @@ export class DevTools implements IDevTools {
   private _dataSources = new Map<string, () => Record<string, unknown>>();
   private _metricElements: Record<string, HTMLSpanElement> = {};
   private _frameEndObserver: Observer<AbstractEngine> | null = null;
+  private _sidebar: HTMLDivElement | null = null;
+  private _configTreePanel: ConfigTreePanel | null = null;
 
   constructor(engine: AbstractEngine, scene: Scene) {
     this._engine = engine;
@@ -47,7 +51,7 @@ export class DevTools implements IDevTools {
 
     // Register frame-end refresh — fires after each complete frame render
     this._frameEndObserver = engine.onEndFrameObservable.add(() => {
-      this._refreshDisplay();
+      this.update();
     });
   }
 
@@ -141,6 +145,8 @@ export class DevTools implements IDevTools {
     this._instrumentation?.dispose();
 
     this._overlay = null;
+    this._sidebar = null;
+    this._configTreePanel = null;
     this._initialized = false;
     this._visible = false;
     this._dataSources.clear();
@@ -169,7 +175,8 @@ export class DevTools implements IDevTools {
     const overlay = document.createElement("div");
     overlay.id = "dev-overlay";
     overlay.style.cssText =
-      "position:absolute;inset:0;pointer-events:none;z-index:10;display:none";
+      "position:absolute;inset:0;pointer-events:none;z-index:10;" +
+      "display:none;flex-direction:column";
 
     // ── Top bar: FPS, frame time, draw calls, mesh count ──────────────
     const topBar = document.createElement("div");
@@ -187,17 +194,26 @@ export class DevTools implements IDevTools {
 
     overlay.appendChild(topBar);
 
-    // ── Sidebar: config tree (hidden in Story 003, populated by Stories 004+) ──
+    // ── Middle row: sidebar + main panel (flex row, fills remaining space) ──
+    const middle = document.createElement("div");
+    middle.style.cssText =
+      "flex:1;display:flex;flex-direction:row;overflow:hidden";
+
+    // ── Sidebar: config tree ──────────────────────────────────────────
     const sidebar = document.createElement("div");
     sidebar.className = "sidebar";
-    sidebar.style.display = "none";
-    overlay.appendChild(sidebar);
+    sidebar.style.cssText =
+      "width:320px;display:flex;flex-direction:column;" +
+      "background:#0a0a0a;border-right:1px solid #333;overflow-y:auto";
+    middle.appendChild(sidebar);
 
-    // ── Main panel: tab container (hidden in Story 003) ──────────────
+    // ── Main panel: tab container (hidden in Story 003, populated by Stories 005+) ──
     const mainPanel = document.createElement("div");
     mainPanel.className = "main-panel";
-    mainPanel.style.display = "none";
-    overlay.appendChild(mainPanel);
+    mainPanel.style.cssText = "flex:1;display:none;overflow-y:auto";
+    middle.appendChild(mainPanel);
+
+    overlay.appendChild(middle);
 
     // ── Bottom bar: input/physics state (hidden in Story 003) ─────────
     const bottomBar = document.createElement("div");
@@ -208,7 +224,76 @@ export class DevTools implements IDevTools {
     container.appendChild(overlay);
 
     this._overlay = overlay;
+    this._sidebar = sidebar;
     this._initialized = true;
+
+    // ── Register "config" data source ─────────────────────────────────
+    if (import.meta.env.DEV) {
+      this._initConfigDataSource();
+    }
+  }
+
+  /**
+   * Register the "config" data source and lazily create the ConfigTreePanel.
+   *
+   * The data source reader is invoked each `_refreshDisplay()` tick.
+   * The panel is created on first `_refreshDisplay()` that finds
+   * ConfigManager initialized — avoids early access before init.
+   */
+  private _initConfigDataSource(): void {
+    if (!this._sidebar) return;
+
+    this.registerDataSource("config", () => {
+      try {
+        return getConfigManager().getDebugState() as unknown as Record<
+          string,
+          unknown
+        >;
+      } catch {
+        return { namespaces: {}, accessLog: [], envOverrides: [] } as Record<
+          string,
+          unknown
+        >;
+      }
+    });
+  }
+
+  /**
+   * Lazily create and/or refresh the config tree panel.
+   *
+   * The panel is created on first refresh tick where ConfigManager is
+   * fully initialized (has `getDebugState`). If the singleton is not yet
+   * initialized or the mock doesn't expose the full API, the panel is
+   * skipped — no crash, retried on next tick.
+   */
+  private _refreshConfigTree(): void {
+    if (!this._sidebar) return;
+
+    // Lazy create: if panel doesn't exist yet, try to create it
+    if (!this._configTreePanel) {
+      try {
+        const cm = getConfigManager();
+        // Guard: ConfigManager must expose getDebugState (the expected API)
+        if (typeof cm.getDebugState !== "function") {
+          return;
+        }
+        this._configTreePanel = new ConfigTreePanel(
+          this._sidebar,
+          () => getConfigManager(),
+          (msg: string) => this.showNotification(msg)
+        );
+      } catch {
+        // ConfigManager not yet initialized — try again next tick
+        return;
+      }
+    }
+
+    // Refresh the panel — catches errors internally
+    try {
+      this._configTreePanel.refresh();
+    } catch {
+      // Config tree refresh failed — panel stays, retries next tick
+    }
   }
 
   /**
@@ -256,5 +341,8 @@ export class DevTools implements IDevTools {
       inst.physicsTimeCounter.current > 0
         ? `${inst.physicsTimeCounter.current.toFixed(1)} ms`
         : "-- ms";
+
+    // Refresh data source panels (config tree, etc.)
+    this._refreshConfigTree();
   }
 }

@@ -17,7 +17,7 @@ interface AccessEntry {
 }
 
 /** Read-only debug snapshot returned by getDebugState(). */
-interface DebugState {
+export interface DebugState {
   namespaces: Record<string, object>;
   accessLog: AccessEntry[];
   envOverrides: string[];
@@ -321,11 +321,11 @@ export class ConfigManager {
       );
     }
 
-    // Deep clone: config objects must be JSON-serializable
-    // (no functions, Dates, Maps, Sets — per ADR-0023 constraint)
+    // Deep clone, preserving undefined values for debug tree rendering.
+    // Non-serializable values (circular refs) are still rejected.
     let resolved: Record<string, unknown>;
     try {
-      resolved = JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
+      resolved = this._deepClone(raw as Record<string, unknown>);
     } catch {
       throw new ConfigError(
         `ConfigManager: namespace '${namespace}' contains non-serializable values (functions, circular references, etc.). All config values must be JSON-serializable per ADR-0023.`
@@ -349,6 +349,46 @@ export class ConfigManager {
       typeof payload === "object" &&
       !Array.isArray(payload)
     );
+  }
+
+  /**
+   * Deep-clone a plain object, preserving `undefined` values.
+   *
+   * Unlike `JSON.parse(JSON.stringify(obj))`, this does NOT strip
+   * `undefined` — leaf values with `undefined` are preserved so that
+   * debug overlays can display them as "—" (em dash).
+   *
+   * Circular references are detected and replaced with a placeholder
+   * to prevent infinite recursion.
+   *
+   * @param obj - The object to clone
+   * @param visited - Set of already-visited objects (circular ref detection)
+   * @returns A deep clone of the input object
+   */
+  private _deepClone(
+    obj: Record<string, unknown>,
+    visited?: Set<object>
+  ): Record<string, unknown> {
+    visited = visited ?? new Set();
+
+    if (visited.has(obj)) {
+      throw new Error("Circular reference detected");
+    }
+    visited.add(obj);
+
+    const clone: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (
+        value !== null &&
+        typeof value === "object" &&
+        !Array.isArray(value)
+      ) {
+        clone[key] = this._deepClone(value as Record<string, unknown>, visited);
+      } else {
+        clone[key] = value;
+      }
+    }
+    return clone;
   }
 
   /**
@@ -378,6 +418,91 @@ export class ConfigManager {
   }
 
   /**
+   * Set a resolved config value at a dot-path key at runtime (dev-only).
+   *
+   * THIS IS A DEV-ONLY MUTATION API. It writes directly to the resolved cache
+   * (`_resolved`), bypassing the raw registered config (`_store`). Changes are
+   * ephemeral — they survive until the next `invalidateNamespace()` or `reload()`,
+   * which re-read from `_store` and re-apply env overrides.
+   *
+   * The old value is returned so callers can format a notification string
+   * (e.g. `"3 → 4"`).
+   *
+   * @param key - Dot-path key (e.g. `"teams.macklen.motor"`)
+   * @param value - The new value to assign
+   * @returns The previous value at that key (for diff messaging)
+   * @throws {ConfigError} If the key does not exist in the resolved cache
+   *
+   * @see TR-DVT-003 — Config namespace inspector with in-place editing
+   * @see ADR-0009 — Dev Tools Architecture (sole write exception)
+   */
+  setRuntime(key: string, value: unknown): unknown {
+    if (!import.meta.env.DEV) {
+      return undefined;
+    }
+
+    const parts = key.split(".");
+    const namespace = parts[0];
+    const rest = parts.slice(1);
+
+    if (namespace === "") {
+      throw new ConfigError(`Key not found: ${key}`);
+    }
+
+    // Ensure resolved cache is built for this namespace
+    if (!this._resolved.has(namespace)) {
+      const rawExists = this._store.has(namespace);
+      if (!rawExists) {
+        this._recordAccess(key, "production");
+        throw new ConfigError(`Key not found: ${key}`);
+      }
+      this._buildResolved(namespace);
+    }
+
+    const root = this._resolved.get(namespace) as
+      | Record<string, unknown>
+      | undefined;
+    if (!root) {
+      this._recordAccess(key, "production");
+      throw new ConfigError(`Key not found: ${key}`);
+    }
+
+    // Navigate to the parent of the leaf value
+    let current: unknown = root;
+
+    for (let i = 0; i < rest.length - 1; i++) {
+      const segment = rest[i];
+      if (
+        current === null ||
+        current === undefined ||
+        typeof current !== "object" ||
+        Array.isArray(current) ||
+        !(segment in current)
+      ) {
+        this._recordAccess(key, "production");
+        throw new ConfigError(`Key not found: ${key}`);
+      }
+      current = (current as Record<string, unknown>)[segment];
+    }
+
+    const lastSegment = rest[rest.length - 1];
+    if (
+      current === null ||
+      current === undefined ||
+      typeof current !== "object" ||
+      Array.isArray(current) ||
+      !(lastSegment in current)
+    ) {
+      this._recordAccess(key, "production");
+      throw new ConfigError(`Key not found: ${key}`);
+    }
+
+    const oldValue = (current as Record<string, unknown>)[lastSegment];
+    (current as Record<string, unknown>)[lastSegment] = value;
+    return oldValue;
+  }
+
+  /**
    * Return a read-only snapshot of the current config state for debug/dev
    * tool overlays.
    *
@@ -396,7 +521,7 @@ export class ConfigManager {
       const resolved = this._resolved.get(ns);
       const source = resolved ?? raw;
       try {
-        namespaces[ns] = JSON.parse(JSON.stringify(source));
+        namespaces[ns] = this._deepClone(source as Record<string, unknown>);
       } catch {
         // Non-serializable config — return a safe placeholder instead of crashing
         namespaces[ns] = { error: "non-serializable config" };
