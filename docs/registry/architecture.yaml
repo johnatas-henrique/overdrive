@@ -199,15 +199,15 @@ interfaces:
     status: active
     pattern: input_pulse
     description: >
-      F1 toggles Dev Tools overlay (visible/hidden). F2 triggers manual config
+      Toggle key (default: backtick) toggles Dev Tools overlay (visible/hidden). Reload key (default: 1) triggers manual config
       reload. Input system (ADR-0006) must consume these keys with
       event.preventDefault() when Dev Tools is active — they must not reach
       gameplay.
     producer: input-system
     consumers:
-      - dev-tools # receives F1 for toggle, F2 for config reload
+      - dev-tools # receives toggle/reload keys (configurable via devTools.keys.*)
     adr: docs/architecture/adr-0009-dev-tools.md
-    signal_signature: "InputState (F1, F2 as digital pulses, consumed with preventDefault)"
+    signal_signature: "InputState (toggle/reload keys as digital pulses, consumed with preventDefault)"
     referenced_by:
       - docs/architecture/adr-0009-dev-tools.md
     added: 2026-06-21
@@ -389,7 +389,7 @@ api_decisions:
       HTML overlay (<div> sibling of canvas, pointer-events: none).
       SceneInstrumentation for FPS/draw-calls/physics-time.
       engine.onEndFrameObservable for frame-synced refresh.
-      Lazy init on first F1 press. All code behind if (import.meta.env.DEV).
+      Lazy init on first toggle key press. All code behind if (import.meta.env.DEV).
     not: |
       Do NOT use Babylon Inspector (30MB+ React deps, interactive, write-capable).
       Do NOT use AdvancedDynamicTexture (intercepts canvas input, no pointer-events:none).

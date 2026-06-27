@@ -549,7 +549,7 @@ requirements:
   - id: TR-DVT-007
     system: dev-tools
     gdd: design/gdd/dev-tools.md
-    requirement: "dev-menu keybind — F1 to toggle overlay, F2 to toggle full event display, F3 to toggle minimised overlay."
+    requirement: "dev-menu keybind — toggle key (default: backtick) to toggle overlay, reload key (default: 1) to toggle full event display, minimise key (default: 2) to toggle minimised overlay. Keys configurable via devTools.keys.* in Data & Config Manager."
     domain: Dev
     coverage_adrs: [ADR-0009]
     engine_risk: LOW
