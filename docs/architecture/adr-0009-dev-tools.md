@@ -23,7 +23,7 @@ Accepted
 
 | Field             | Value                                                                                                            |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Depends On**    | ADR-0006 (InputState — toggle/reload key pulses from Input)                                                                  |
+| **Depends On**    | None (DOM-based keybinds, no Input system dependency)                                                                       |
 | **Enables**       | Debugging all simulation systems during implementation                                                           |
 | **Blocks**        | None                                                                                                             |
 | **Ordering Note** | Init slot #0 (after Foundation init, no dependencies on other Core systems). Can be created early for debugging. |
@@ -210,7 +210,7 @@ Dev Tools listens to Event Bus events (read-only subscription, never emits).
 ### Risks
 
 - **Risk**: Toggle/reload keys consumed by Dev Tools but also passed to game input
-  **Mitigation**: `event.preventDefault()` on toggle/reload keys when overlay is active. Input system (ADR-0006) must check if Dev Tools is consuming these keys.
+  **Mitigation**: `event.preventDefault()` on toggle/reload keys via DOM `keydown` listener. Dev Tools uses DOM events (not DeviceSourceManager) — zero Babylon.js dependency, works independently of the game's input pipeline. Toggle/reload keys MUST never map to gameplay actions.
 - **Risk**: Event Bus subscription for GSM history leaks in production
   **Mitigation**: `gsm.state.entered` subscription wrapped in `if (import.meta.env.DEV)` block. Production bundle never registers the handler.
 - **Risk**: 100+ config keys cause scroll jank
@@ -220,7 +220,7 @@ Dev Tools listens to Event Bus events (read-only subscription, never emits).
 
 | GDD System   | Requirement                            | How This ADR Addresses It                  |
 | ------------ | -------------------------------------- | ------------------------------------------ |
-| dev-tools.md | Toggle key (default: backtick) to show/hide overlay, reload key (default: 1) to trigger config reload    | InputState pulses consumed by IDevTools    |
+| dev-tools.md | Toggle key (default: backtick) to show/hide overlay, reload key (default: 1) to trigger config reload    | DOM keydown listener, preventDefault when visible |
 | dev-tools.md | `import.meta.env.DEV` guard              | Vite compile-time evaluation + dead-code elimination |
 | dev-tools.md | Read-only on all systems               | registerDataSource pattern, no write APIs  |
 | dev-tools.md | pointer-events: none                   | CSS on overlay div                         |
@@ -245,10 +245,10 @@ Dev Tools listens to Event Bus events (read-only subscription, never emits).
 - [ ] `engine.onEndFrameObservable` drives overlay refresh — fires after each complete frame
 - [ ] `SceneInstrumentation` captures frameTime, physicsTime, drawCalls — visible in top bar
 - [ ] Overlay `<div>` is sibling of canvas inside `engine.getRenderingCanvas().parentElement`
-- [ ] `event.preventDefault()` on toggle/reload keys prevents game from receiving them when overlay is active
+- [ ] `event.preventDefault()` on toggle/reload keys via DOM keydown listener prevents game from receiving them when overlay is active
 
 ## Related Decisions
 
 - ADR-0004 (Module Boundaries — Dev Tools is Core, statically imported only via `import.meta.env.DEV`)
-- ADR-0006 (Input Abstraction — toggle/reload keys consumed from InputState)
+- ADR-0006 (Input Abstraction — Dev Tools operates independently via DOM events, no Input system dependency)
 - ADR-0018 (Simulation Snapshot — Dev Tools reads per-system hashes for state inspector)

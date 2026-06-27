@@ -13,6 +13,7 @@
 - Async-first persistence with state machine and degraded mode
 - Simulation snapshot system for deterministic state capture and restore
 - Engine abstraction supports WebGPU-first with WebGL2 fallback
+- Dev Tools overlay and Telemetry Recorder are tree-shaken in production via `import.meta.env.DEV`
 
 ## Layers
 
@@ -44,6 +45,20 @@
 - Depends on: Babylon.js, Configuration layer, Playground layer
 - Used by: Browser runtime
 
+**Dev Tools Layer:**
+- Purpose: Debug overlay, keybinds, and data panel registration for development
+- Location: `src/core/dev-tools/`
+- Contains: DevTools overlay class, IDevTools interface, keyboard keybinds, singleton proxy
+- Depends on: Babylon.js (SceneInstrumentation), Foundation layer (ConfigManager)
+- Used by: Development workflow only (tree-shaken in production via `import.meta.env.DEV`)
+
+**Dev Infra Layer:**
+- Purpose: Dev-only telemetry recording and data export for simulation analysis
+- Location: `src/dev-infra/`
+- Contains: TelemetryRecorder — data model, sampling loop, console summary, JSON export
+- Depends on: Foundation layer (EventBus), Babylon.js types
+- Used by: Development workflow only (tree-shaken in production via `import.meta.env.DEV`)
+
 ## Data Flow
 
 **Configuration Resolution:**
@@ -57,6 +72,8 @@
 2. Circular emit depth check — `src/foundation/event-bus/event-bus.ts`
 3. Snapshot iteration over registered handlers — `src/foundation/event-bus/event-bus.ts`
 4. Handler error isolation (catch and log) — `src/foundation/event-bus/event-bus.ts`
+5. `EventBus.off(event)` removes all handlers for a given event, returns bus for chaining — `src/foundation/event-bus/event-bus.ts`
+6. `EventBus.off(subscription)` unsubscribes a specific handler (idempotent) — `src/foundation/event-bus/event-bus.ts`
 
 **Game State Transition:**
 1. System calls `GameStateMachine.transition(targetState)` — `src/foundation/gsm/GameStateMachine.ts`
@@ -142,6 +159,26 @@
 - Location: `src/foundation/event-bus/types.ts`
 - Pattern: TypeScript mapped types for event payload validation
 
+**DevTools:**
+- Purpose: HTML overlay positioned over the canvas showing FPS, frame time, draw calls, mesh count, physics time, and custom data panels
+- Location: `src/core/dev-tools/dev-tools.ts`, `src/core/dev-tools/index.ts`
+- Pattern: Singleton proxy with lazy DOM creation, `engine.onEndFrameObservable` metric refresh, `registerDataSource()` for extensible panels, tree-shaken in production via `import.meta.env.DEV`
+
+**IDevTools:**
+- Purpose: Public interface for the Dev Tools singleton — consumed by keybinds and data panels
+- Location: `src/core/dev-tools/types.ts`
+- Pattern: Type-only interface (zero runtime cost), methods: `toggle()`, `isVisible()`, `setMinimised()`, `registerDataSource()`, `showNotification()`, `dispose()`
+
+**DevToolsConfig:**
+- Purpose: Centralised keybind definitions for Dev Tools overlay controls
+- Location: `src/config/dev-tools-config.ts`
+- Pattern: Static config object (`DEV_TOOLS_KEYS`), default keys: toggle=`1`, reload=`2`, minimise=`3`
+
+**TelemetryRecorder:**
+- Purpose: Dev-only telemetry data model, sampling loop, console summary, and JSON export for simulation analysis
+- Location: `src/dev-infra/telemetry-recorder.ts`
+- Pattern: Per-car `TelemetrySample` accumulation, `window.__telemetry.export()` surface, event bus lifecycle subscriptions (race.started → sampling → race.completed), console summary gated by `isRecording`, tree-shaken in production via `import.meta.env.DEV`
+
 ## Entry Points
 
 **Browser Entry:**
@@ -170,6 +207,8 @@
 - `Persistence`: Throws `PersistenceError` for uninitialized state; `MigrationError` for missing migration steps
 - `SimulationSnapshot`: Throws `SnapshotError` for duplicate registration, deserialize failures
 - `DeterminismGuard`: Throws `DeterminismError` when non-deterministic APIs are called during pipeline ticks
+- `DevTools`: Throws no custom errors; overlay DOM creation is guarded by `import.meta.env.DEV`
+- `TelemetryRecorder`: Throws no custom errors; noop in production builds
 - Handler errors in EventBus are caught and logged individually (error isolation)
 - Physics initialization failures fall back to WebGL2 with console warning
 
@@ -181,5 +220,6 @@
 **HMR:** Vite hot module replacement via `wireConfigHmr()` for config files
 **Type Safety:** TypeScript strict mode with compile-time event payload validation
 **Determinism:** Dev-mode guard replaces non-deterministic APIs; pipeline runs at fixed 1/60s timestep
+**Dev Infra:** Dev Tools overlay and Telemetry Recorder are tree-shaken in production via `import.meta.env.DEV` — zero bytes in production builds
 **Linting:** Biome with `--error-on-warnings`, test override for `noExplicitAny`
 **CI:** GitHub Actions runs lint, typecheck, test with coverage, and build on push/PR to main

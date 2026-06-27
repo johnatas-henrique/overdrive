@@ -12,13 +12,19 @@ overdrive/
 │   │   ├── determinism/    # Deterministic RNG and pipeline
 │   │   ├── persistence/    # Async-first storage abstraction
 │   │   └── simulation-snapshot/ # Deterministic state capture/restore
+│   ├── core/               # Core game systems (dev tools)
+│   │   └── dev-tools/      # Debug overlay, keybinds, data panels
+│   ├── dev-infra/          # Dev-only infrastructure (telemetry)
 │   ├── playground/         # Prototyping and scene setup
 │   ├── config/             # Feature flags and template config
 │   ├── css/                # Stylesheets
 │   └── app.ts              # Main entry point
 ├── tests/                  # Automated test suites
 │   ├── unit/               # Unit tests for foundation systems
+│   │   ├── dev-infra/      # Telemetry recorder tests
+│   │   └── dev-tools/      # Dev tools overlay tests
 │   ├── integration/        # Integration tests
+│   │   └── dev-infra/      # Telemetry lifecycle tests
 │   ├── evidence/           # Test evidence artifacts
 │   └── smoke/              # Smoke tests
 ├── docs/                   # Project documentation
@@ -77,6 +83,18 @@ overdrive/
 - Contains: SimulationSnapshot orchestrator, ISnapshotable interface, fnv1a/sha256 hashing, error types
 - Key files: `simulation-snapshot.ts`, `isnapshotable.ts`, `fnv1a.ts`, `sha256.ts`, `snapshot-error.ts`, `index.ts`
 
+**`src/core/dev-tools/`:**
+- Purpose: Debug overlay, keybinds, and data panel registration for development
+- Contains: DevTools overlay class, IDevTools interface, keyboard keybinds, singleton proxy
+- Key files: `dev-tools.ts`, `index.ts`, `keybinds.ts`, `types.ts`
+- Note: Tree-shaken in production via `import.meta.env.DEV`
+
+**`src/dev-infra/`:**
+- Purpose: Dev-only telemetry recording and data export for simulation analysis
+- Contains: TelemetryRecorder — data model, sampling loop, console summary, JSON export
+- Key files: `telemetry-recorder.ts`
+- Note: Tree-shaken in production via `import.meta.env.DEV`
+
 **`src/playground/`:**
 - Purpose: Rapid prototyping and visual testing of foundation systems
 - Contains: Scene creation, GUI setup, test meshes
@@ -85,7 +103,7 @@ overdrive/
 **`src/config/`:**
 - Purpose: Feature flags and engine settings for the template
 - Contains: Configuration objects, feature toggles
-- Key files: `template-config.ts`
+- Key files: `template-config.ts`, `dev-tools-config.ts`
 
 **`src/css/`:**
 - Purpose: Stylesheet files for the application
@@ -96,6 +114,21 @@ overdrive/
 - Purpose: Unit tests for all foundation systems
 - Contains: Test files for ConfigManager, EventBus, GSM, HMR, Persistence, Determinism, Snapshot
 - Key files: `config-manager.test.ts`, `event-bus.test.ts`, `gsm.test.ts`, `hmr.test.ts`, `persistence.test.ts`, `determinism.test.ts`, `snapshot.test.ts`
+
+**`tests/unit/dev-infra/`:**
+- Purpose: Unit tests for TelemetryRecorder
+- Contains: Data model, sampling loop, console summary, JSON export, noop behavior tests
+- Key files: `telemetry-data-model.test.ts`, `telemetry-sampling.test.ts`, `telemetry-console-summary.test.ts`, `telemetry-json-export.test.ts`, `telemetry-noop.test.ts`
+
+**`tests/unit/dev-tools/`:**
+- Purpose: Unit tests for Dev Tools overlay, keybinds, and compile guard
+- Contains: Overlay toggle, singleton proxy, keybind handling, DEV guard verification tests
+- Key files: `dev-tools.test.ts`, `dev-tools-singleton.test.ts`, `dev-compile-guard.test.ts`, `input-keybinds.test.ts`
+
+**`tests/integration/dev-infra/`:**
+- Purpose: Integration tests for TelemetryRecorder lifecycle
+- Contains: End-to-end telemetry recording through event bus subscriptions
+- Key files: `telemetry-lifecycle.test.ts`
 
 **`docs/architecture/`:**
 - Purpose: Architecture Decision Records (ADRs) documenting design decisions
@@ -116,6 +149,7 @@ overdrive/
 
 **Entry Points:** `src/app.ts`: Main application entry, engine initialization, render loop
 **Configuration:** `src/config/template-config.ts`: Feature flags and engine settings
+**Configuration:** `src/config/dev-tools-config.ts`: Dev Tools keybind configuration
 **Core Logic:** `src/foundation/config/configManager.ts`: Central configuration registry
 **Core Logic:** `src/foundation/event-bus/event-bus.ts`: Typed pub-sub event system
 **Core Logic:** `src/foundation/gsm/GameStateMachine.ts`: Game state machine with lifecycle hooks
@@ -123,10 +157,17 @@ overdrive/
 **Core Logic:** `src/foundation/determinism/pipeline-runtime.ts`: Babylon.js integration layer
 **Core Logic:** `src/foundation/persistence/persistence.ts`: Async-first storage abstraction
 **Core Logic:** `src/foundation/simulation-snapshot/simulation-snapshot.ts`: State capture orchestrator
+**Dev Tools:** `src/core/dev-tools/dev-tools.ts`: HTML overlay with SceneInstrumentation metrics
+**Dev Tools:** `src/core/dev-tools/index.ts`: Singleton proxy and `initDevTools()` entry
+**Dev Tools:** `src/core/dev-tools/keybinds.ts`: Keyboard keybind registration and handling
+**Dev Infra:** `src/dev-infra/telemetry-recorder.ts`: Telemetry data model, sampling, and JSON export
 **Type Definitions:** `src/foundation/event-bus/types.ts`: EventMap and interface definitions
 **Type Definitions:** `src/foundation/determinism/types.ts`: InputState interface
 **Stylesheets:** `src/css/main.css`: Application styles
 **Tests:** `tests/unit/`: Unit tests for all foundation systems
+**Tests:** `tests/unit/dev-infra/`: Unit tests for TelemetryRecorder
+**Tests:** `tests/unit/dev-tools/`: Unit tests for Dev Tools overlay
+**Tests:** `tests/integration/dev-infra/`: Integration tests for TelemetryRecorder lifecycle
 **Documentation:** `docs/architecture/`: Architecture Decision Records
 
 ## Naming Conventions
@@ -140,11 +181,15 @@ overdrive/
 
 **New foundation system:** `src/foundation/[system-name]/` — follow existing pattern with index.ts barrel export
 **New config namespace:** `src/config/[namespace].ts` — use `wireConfigHmr()` for HMR support
+**New dev tools panel:** `src/core/dev-tools/` — implement `IDevTools.registerDataSource()` behind `import.meta.env.DEV`
+**New dev infra module:** `src/dev-infra/[module-name].ts` — tree-shaken in production, import dynamically behind `import.meta.env.DEV`
 **New event types:** Add to `EventMap` in `src/foundation/event-bus/types.ts`
 **New game state:** Add to `State` type in `src/foundation/gsm/State.ts` and update `TransitionTable.ts`
 **New pipeline slot:** Register via `FixedUpdatePipeline.register(systemId, update)` in `src/foundation/determinism/fixed-update-pipeline.ts`
 **New snapshot system:** Implement `ISnapshotable` interface and register with `SimulationSnapshot.register()`
 **New test suite:** `tests/unit/[system-name].test.ts` — co-located with source but separate directory
+**New dev-infra test:** `tests/unit/dev-infra/[module-name].test.ts` — for TelemetryRecorder and similar modules
+**New dev-tools test:** `tests/unit/dev-tools/[feature].test.ts` — for overlay, keybinds, compile guard
 **New ADR:** `docs/architecture/adr-[number]-[title].md` — follow existing ADR format
 **New epic:** `production/epics/[epic-name]/` — with sprint planning and status tracking
 **New design doc:** `design/[category]/[document-name].md` — follow existing design document format
