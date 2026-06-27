@@ -33,8 +33,8 @@ Deliver the complete Core A layer — dev infrastructure, telemetry, input, asse
 6.  Telemetry 005: Race Lifecycle
 7.  Telemetry 006: Noop Behavior
 8.  Dev Tools 001: Compile Guard
-9.  Dev Tools 002: Input Keybinds
-10. Dev Tools 003: HTML Overlay
+9.  Dev Tools 003: HTML Overlay ← provides IDevTools interface
+10. Dev Tools 002: Input Keybinds ← depends on IDevTools.toggle()
 11. Dev Tools 004: Config Tree
 12. Dev Tools 005: Event Bus Inspector
 13. Dev Tools 006: GSM Visualizer

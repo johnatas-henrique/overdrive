@@ -22,7 +22,7 @@ _(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh 
 
 **Control Manifest Rules (this layer)**:
 
-- Required: D9 (export via Dev Tools F3 + `window.__telemetry.export()`), D-F2 (read-only)
+- Required: D9 (export via Dev Tools minimise key + `window.__telemetry.export()`), D-F2 (read-only)
 - Forbidden: D-F3 (never emit Event Bus events)
 - Guardrail: D-G1 (zero bytes in production build)
 
@@ -79,7 +79,7 @@ _Derived from ADR-0022 Implementation Guidelines:_
 - No other system writes to `window.__telemetry`
 - Guarded by `if (import.meta.env.DEV)` — in production, `window.__telemetry` is never assigned
 
-**F3 keybind integration:** This story does NOT handle the F3 keypress. The Dev Tools system (separate epic) triggers `window.__telemetry.export()` on F3 press. This story only provides the function — the binding belongs to the Dev Tools epic.
+**Minimise keybind integration:** This story does NOT handle the minimise keypress. The Dev Tools system (separate epic) triggers `window.__telemetry.export()` on minimise key press (default: 2, configurable via `devTools.keys.minimise`). This story only provides the function — the binding belongs to the Dev Tools epic.
 
 **Performance:** JSON serialization of up to ~11 MB of data. This is a developer action (not per-frame) — no performance concern.
 
@@ -92,7 +92,7 @@ _Derived from ADR-0022 Implementation Guidelines:_
 _Handled by neighbouring stories — do not implement here:_
 
 - [Story 005]: Capturing `startTime` from `race.started` event
-- Dev Tools epic: F3 keybind to trigger export + download `.json` file
+- Dev Tools epic: minimise keybind (default: 2) to trigger export + download `.json` file
 - CSV or other export formats (MVP is JSON only)
 
 ---

@@ -8,7 +8,7 @@
 
 ## Overview
 
-HTML overlay for debug (positioned over canvas container, `pointer-events: none`). Lazy init on first F1 press. Metrics via `SceneInstrumentation` (FPS, frame time, draw calls, physics time). `engine.onEndFrameObservable` for overlay refresh. Event Bus inspector, Config namespace inspector with in-place edit, GSM state visualiser, Simulation Snapshot debug panel. All behind `import.meta.env.DEV` guard — zero bytes in production (dynamic import).
+HTML overlay for debug (positioned over canvas container, `pointer-events: none`). Lazy init on first toggle press (default: backtick). Metrics via `SceneInstrumentation` (FPS, frame time, draw calls, physics time). `engine.onEndFrameObservable` for overlay refresh. Event Bus inspector, Config namespace inspector with in-place edit, GSM state visualiser, Simulation Snapshot debug panel. All behind `import.meta.env.DEV` guard — zero bytes in production (dynamic import). Keybind values read from `DEV_TOOLS_KEYS` config (see `src/config/dev-tools-config.ts`).
 
 ## Governing ADRs
 
@@ -26,7 +26,7 @@ HTML overlay for debug (positioned over canvas container, `pointer-events: none`
 | TR-DVT-004 | Simulation Snapshot debug panel — per-system hash, diff, take/restore           | ADR-0009 ✅  |
 | TR-DVT-005 | GSM state visualiser — current state, history timeline, manual transitions      | ADR-0009 ✅  |
 | TR-DVT-006 | Tree-shaken in production via **DEV** guard                                     | ADR-0009 ✅  |
-| TR-DVT-007 | F1 toggle overlay, F2 toggle full event display, F3 toggle minimised            | ADR-0009 ✅  |
+| TR-DVT-007 | Toggle key (default: backtick) to show/hide overlay, reload key (default: 1) to trigger config reload, minimise key (default: 2) to toggle minimised | ADR-0009 ✅  |
 | TR-DVT-008 | AI Telemetry tab in Dev Tools overlay — per-car speed, position, behavior node  | ADR-0009 ✅  |
 
 ## Definition of Done

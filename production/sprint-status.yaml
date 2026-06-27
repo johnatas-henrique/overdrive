@@ -100,6 +100,16 @@ stories:
     completed: "2026-06-26"
 
   - id: "2-9"
+    name: "Story 003: HTML Overlay"
+    file: "production/epics/dev-tools/story-003-html-overlay.md"
+    priority: must-have
+    status: done
+    owner: ""
+    estimate_days: 1.5
+    blocker: ""
+    completed: "2026-06-26"
+
+  - id: "2-10"
     name: "Story 002: Input Keybinds"
     file: "production/epics/dev-tools/story-002-input-keybinds.md"
     priority: must-have
@@ -108,15 +118,6 @@ stories:
     estimate_days: 0.5
     blocker: ""
     completed: ""
-
-  - id: "2-10"
-    name: "Story 003: HTML Overlay"
-    file: "production/epics/dev-tools/story-003-html-overlay.md"
-    priority: must-have
-    status: ready-for-dev
-    owner: ""
-    estimate_days: 1.5
-    blocker: ""
     completed: ""
 
   - id: "2-11"

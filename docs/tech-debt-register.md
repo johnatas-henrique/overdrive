@@ -47,3 +47,5 @@
 | 🔴     | 2026-06-26 | SP2/tech-debt/ST1/LP        | persistence.ts load() 63 lines — exceeds 40-line guideline             | persistence.ts                 | S      |                          |
 | 🔴     | 2026-06-26 | SP2/tech-debt/ST1/LP        | configManager.ts get() 56 lines — exceeds 40-line guideline            | configManager.ts               | S      |                          |
 | 🔴     | 2026-06-26 | SP2/telemetry/ST1           | TR-TELEMETRY-001 fabricated field names — /architecture-review hallucinated speedKmh/fuelLevel/accelG/carId instead of reading GDD | tr-registry.yaml | S | |
+| 🔴     | 2026-06-26 | SP2/dev-tools/ST3           | Keybinds changed from F1/F2/F3 to backtick/1/2 (browser conflict) — config at dev-tools-config.ts | src/config/dev-tools-config.ts | S | |
+| 🔴     | 2026-06-26 | SP2/dev-tools/ST3           | captureRenderTime not enabled (no AC requires it, but ADR-0009 mentions it) | dev-tools.ts | S | |

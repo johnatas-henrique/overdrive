@@ -15,7 +15,7 @@
 _Tree-shaken in production via `import.meta.env.DEV` guard — entire class tree and its imports must not appear in production bundle._
 
 **ADR Governing Implementation**: ADR-0009: Dev Tools Architecture
-**ADR Decision Summary**: HTML overlay, `SceneInstrumentation`, `import.meta.env.DEV` guard (Vite built-in, testable via `vi.stubEnv`), read-only on all systems, lazy init on first F1 press.
+**ADR Decision Summary**: HTML overlay, `SceneInstrumentation`, `import.meta.env.DEV` guard (Vite built-in, testable via `vi.stubEnv`), read-only on all systems, lazy init on first toggle press.
 
 **Engine**: Babylon.js 9.12.0 | **Risk**: LOW
 **Engine Notes**: No post-cutoff APIs used. `SceneInstrumentation` is imported from `@babylonjs/core`. `import.meta.env.DEV` is Vite's built-in environment variable — no custom `define` needed.
@@ -63,7 +63,7 @@ _Derived from ADR-0009 Implementation Guidelines:_
 
 _Handled by neighbouring stories — do not implement here:_
 
-- [Story 002]: Input keybinds — F1/F2 handling and `event.preventDefault()`
+- [Story 002]: Input keybinds — toggle/reload handling and `event.preventDefault()`
 - [Story 003]: HTML overlay DOM creation, metrics display, `SceneInstrumentation` usage, `onEndFrameObservable` setup
 - [Stories 004-008]: Individual data source panels (Config tree, Event Bus, GSM, Snapshot, AI Telemetry)
 
