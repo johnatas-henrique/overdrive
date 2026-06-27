@@ -157,7 +157,7 @@ _Handled by neighbouring stories — do not implement here:_
 
 ### AC-2: byte-identical output
 - Run two `fixedUpdate()` sequences with same seed
-- Assert: `SimulationSnapshot.hash()` produces identical output for every system
+- Assert: each registered system's `ISnapshotable.hash()` produces identical output across runs
 
 ### AC-3: production mode
 - In production mode (`vi.stubEnv` or similar), call non-deterministic function
