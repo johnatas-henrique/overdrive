@@ -8,7 +8,7 @@
 
 ## Overview
 
-HTML overlay for debug (positioned over canvas container, `pointer-events: none`). Lazy init on first F1 press. Metrics via `SceneInstrumentation` (FPS, frame time, draw calls, physics time). `engine.onEndFrameObservable` for overlay refresh. Event Bus inspector, Config namespace inspector with in-place edit, GSM state visualiser, Simulation Snapshot debug panel. All behind `__DEV__` guard — zero bytes in production (`import.meta.env.DEV` dynamic import).
+HTML overlay for debug (positioned over canvas container, `pointer-events: none`). Lazy init on first F1 press. Metrics via `SceneInstrumentation` (FPS, frame time, draw calls, physics time). `engine.onEndFrameObservable` for overlay refresh. Event Bus inspector, Config namespace inspector with in-place edit, GSM state visualiser, Simulation Snapshot debug panel. All behind `import.meta.env.DEV` guard — zero bytes in production (dynamic import).
 
 ## Governing ADRs
 

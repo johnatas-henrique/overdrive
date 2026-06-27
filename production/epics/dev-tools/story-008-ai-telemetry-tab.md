@@ -44,7 +44,7 @@ _Derived from ADR-0009 Implementation Guidelines:_
 1. **Data source registration**:
 
    ```typescript
-   if (__DEV__) {
+   if (import.meta.env.DEV) {
      devTools.registerDataSource("ai-telemetry", () => {
        const cars = physics.getAllTelemetry();
        return cars.map((car) => ({

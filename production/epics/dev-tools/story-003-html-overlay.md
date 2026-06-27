@@ -65,7 +65,7 @@ _Derived from ADR-0009 Implementation Guidelines:_
 2. **Overlay DOM creation** (lazy, on first F1 press):
 
    ```typescript
-   if (__DEV__) {
+   if (import.meta.env.DEV) {
      const canvas = engine.getRenderingCanvas();
      const container = canvas?.parentElement;
      if (!container) return;
@@ -104,7 +104,7 @@ _Derived from ADR-0009 Implementation Guidelines:_
 5. **Frame-end refresh**:
 
    ```typescript
-   if (__DEV__) {
+   if (import.meta.env.DEV) {
      engine.onEndFrameObservable.add(() => {
        this._refreshDisplay();
      });
@@ -121,7 +121,7 @@ _Derived from ADR-0009 Implementation Guidelines:_
 
 _Handled by neighbouring stories — do not implement here:_
 
-- [Story 001]: `__DEV__` compile guard and module shell
+- [Story 001]: `import.meta.env.DEV` compile guard and module shell
 - [Story 002]: Keybind handling (F1/F2/F3) — this story provides `IDevTools` interface they consume
 - [Story 004]: Config tree content population and in-place editing
 - [Story 005]: Event Bus inspector panel
@@ -184,5 +184,5 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 ## Dependencies
 
-- Depends on: Story 001 (compile guard must exist for `__DEV__` gating)
+- Depends on: Story 001 (compile guard must exist for `import.meta.env.DEV` gating)
 - Unlocks: Story 002 (needs `IDevTools.toggle()`), Stories 004-008 (need `IDevTools.registerDataSource()`)

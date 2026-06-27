@@ -11,10 +11,10 @@
 
 **GDD**: `design/gdd/dev-tools.md`
 **Requirement**: `TR-DVT-005`
-_GSM state visualiser — current state, history timeline, manual transition buttons (guarded by `__DEV__`)._
+_GSM state visualiser — current state, history timeline, manual transition buttons (guarded by `import.meta.env.DEV`)._
 
 **ADR Governing Implementation**: ADR-0009: Dev Tools Architecture (with ADR-0024: Game State Machine)
-**ADR Decision Summary**: Dev Tools subscribes to `gsm.state.entered` on Event Bus to record transitions (read-only subscription, never emits). Reads last 20 transitions from GSM's ring buffer (TR-GSM-005). Manual transitions go through `gsm.transition()` — exception to read-only rule for `__DEV__`-guarded debug actions. Current state displayed from Event Bus events (never calls `gsm.getCurrent()`).
+**ADR Decision Summary**: Dev Tools subscribes to `gsm.state.entered` on Event Bus to record transitions (read-only subscription, never emits). Reads last 20 transitions from GSM's ring buffer (TR-GSM-005). Manual transitions go through `gsm.transition()` — exception to read-only rule for `import.meta.env.DEV`-guarded debug actions. Current state displayed from Event Bus events (never calls `gsm.getCurrent()`).
 
 **Engine**: Babylon.js 9.12.0 | **Risk**: LOW
 **Engine Notes**: No Babylon.js imports needed — pure DOM + Event Bus integration.
@@ -25,7 +25,7 @@ _GSM state visualiser — current state, history timeline, manual transition but
 - **Required** (F24): GSM emits 2 events per transition — `gsm.state.exited(old)` then `gsm.state.entered(new)`
 - **Required** (F27): 20-entry ring buffer of last transitions for debug
 - **Forbidden** (F-F5, F23): Never call `gsm.getCurrent()` from any system — react to Event Bus events instead
-- **Exception (D6)**: Manual transition buttons under `__DEV__` guard are permitted as deliberate debug actions. They call `gsm.transition()` through GSM's public API — Dev Tools never writes directly.
+- **Exception (D6)**: Manual transition buttons under `import.meta.env.DEV` guard are permitted as deliberate debug actions. They call `gsm.transition()` through GSM's public API — Dev Tools never writes directly.
 
 ---
 
@@ -35,7 +35,7 @@ _From GDD `design/gdd/dev-tools.md`, scoped to this story:_
 
 - [ ] AC-6a: GSM History tab shows the last 20 state transitions with timestamps and duration in previous state (newest first)
 - [ ] AC-6b: Current state indicator displayed and highlighted differently from history entries
-- [ ] AC-6c: Manual transition buttons (guarded by `__DEV__`) — each valid target state has a button; clicking calls `gsm.transition(targetState)`. Exception to read-only rule for deliberate debug actions.
+- [ ] AC-6c: Manual transition buttons (guarded by `import.meta.env.DEV`) — each valid target state has a button; clicking calls `gsm.transition(targetState)`. Exception to read-only rule for deliberate debug actions.
 
 ---
 
@@ -46,7 +46,7 @@ _Derived from ADR-0009 Implementation Guidelines:_
 1. **Transition capture** via Event Bus:
 
    ```typescript
-   if (__DEV__) {
+   if (import.meta.env.DEV) {
      eventBus.on("gsm.state.exited", (payload) => {
        this._pendingExit = { from: payload.from, timestamp: Date.now() };
      });
@@ -70,12 +70,12 @@ _Derived from ADR-0009 Implementation Guidelines:_
 4. **Manual transition buttons**: Query GSM's allowed transition table for the current state. Render a button for each valid target state. On click, call `gsm.transition(targetState)` with confirmation dialog:
 
    ```typescript
-   if (__DEV__ && confirm(`Transition to "${targetState}"?`)) {
+   if (import.meta.env.DEV && confirm(`Transition to "${targetState}"?`)) {
      gsm.transition(targetState);
    }
    ```
 
-5. **Write rule exception**: Manual transitions are deliberate developer actions that call GSM's public `transition()` API. This is explicitly permitted as a `__DEV__`-guarded debug action — Dev Tools never bypasses GSM's validation or writes to any system directly.
+5. **Write rule exception**: Manual transitions are deliberate developer actions that call GSM's public `transition()` API. This is explicitly permitted as a `import.meta.env.DEV`-guarded debug action — Dev Tools never bypasses GSM's validation or writes to any system directly.
 
 ---
 

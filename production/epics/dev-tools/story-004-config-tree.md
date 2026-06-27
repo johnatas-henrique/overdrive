@@ -14,7 +14,7 @@
 _Config namespace inspector — tree view of all namespaces with current merged values (base + overrides), ability to edit values in-place via DevTools.Config.set()._
 
 **ADR Governing Implementation**: ADR-0009: Dev Tools Architecture
-**ADR Decision Summary**: Data source registration pattern (`registerDataSource`). Config tree rendered as `<details>/<summary>` elements (collapsed = zero DOM nodes). Read-only on all systems by default, with explicit exception for in-place config editing under `__DEV__` guard via `ConfigManager.setRuntime()`.
+**ADR Decision Summary**: Data source registration pattern (`registerDataSource`). Config tree rendered as `<details>/<summary>` elements (collapsed = zero DOM nodes). Read-only on all systems by default, with explicit exception for in-place config editing under `import.meta.env.DEV` guard via `ConfigManager.setRuntime()`.
 
 **Engine**: Babylon.js 9.12.0 | **Risk**: LOW
 **Engine Notes**: No Babylon.js imports needed — pure DOM manipulation.
@@ -23,7 +23,7 @@ _Config namespace inspector — tree view of all namespaces with current merged 
 
 - **Required** (D6): Dev Tools: read-only on all systems — never writes state, never emits Event Bus events
 - **Required** (D1): HTML overlay — positioned absolutely over canvas container (`pointer-events: none`)
-- **Exception (D6/D-F2)**: Config in-place edits under `__DEV__` are permitted when they flow through `ConfigManager.setRuntime()` — Dev Tools never bypasses Config Manager's API or writes directly to any system. This is the sole write exception for Dev Tools.
+- **Exception (D6/D-F2)**: Config in-place edits under `import.meta.env.DEV` are permitted when they flow through `ConfigManager.setRuntime()` — Dev Tools never bypasses Config Manager's API or writes directly to any system. This is the sole write exception for Dev Tools.
 
 ---
 
@@ -32,7 +32,7 @@ _Config namespace inspector — tree view of all namespaces with current merged 
 _From GDD `design/gdd/dev-tools.md`, scoped to this story:_
 
 - [ ] AC-4a: Config tree shows all namespaces registered in Config Manager with current merged values (base + env overrides)
-- [ ] AC-4b: In-place edit via `DevTools.Config.set(key, value)` updates values by delegating to `ConfigManager.setRuntime()` under `__DEV__` guard. This is the sole write exception to Dev Tools read-only rule — documented and deliberate.
+- [ ] AC-4b: In-place edit via `DevTools.Config.set(key, value)` updates values by delegating to `ConfigManager.setRuntime()` under `import.meta.env.DEV` guard. This is the sole write exception to Dev Tools read-only rule — documented and deliberate.
 - [ ] AC-4c: `undefined` values render as `—` (em dash), not the literal word "undefined"
 
 ---
@@ -44,7 +44,7 @@ _Derived from ADR-0009 Implementation Guidelines:_
 1. **Data source registration**:
 
    ```typescript
-   if (__DEV__) {
+   if (import.meta.env.DEV) {
      devTools.registerDataSource("config", () => configManager.getDebugState());
    }
    ```
@@ -64,7 +64,7 @@ _Derived from ADR-0009 Implementation Guidelines:_
 
 3. **Collapsed = zero DOM**: `<details>` elements have no child nodes until expanded. This is the performance mechanism for AC-9 (100+ keys).
 
-4. **In-place editing**: Double-click a value → input field replaces text span → Enter confirms → calls `ConfigManager.setRuntime(key, value)` → overlay shows flash update. Escape cancels edit. All guarded by `__DEV__`.
+4. **In-place editing**: Double-click a value → input field replaces text span → Enter confirms → calls `ConfigManager.setRuntime(key, value)` → overlay shows flash update. Escape cancels edit. All guarded by `import.meta.env.DEV`.
 
 5. **`undefined` rendering** (GDD edge case #4):
 

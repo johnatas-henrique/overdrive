@@ -24,7 +24,7 @@ _Dev-menu keybind — F1 to toggle overlay, F2 to toggle full event display, F3 
 - **Required** (D5): F1/F2 polled via Input's DeviceSourceManager keyboard path — not named InputState fields
 - **Required** (D2): Dev Tools: lazy init on first F1 press — zero cost if never opened
 - **Forbidden** (D-F1): Never intercept game input — overlay must have `pointer-events: none`
-- **Required** (F21): Behind `__DEV__` guard
+- **Required** (F21): Behind `import.meta.env.DEV` guard
 
 ---
 
@@ -86,7 +86,7 @@ _Derived from ADR-0009 and ADR-0006 Implementation Guidelines:_
 
 _Handled by neighbouring stories — do not implement here:_
 
-- [Story 001]: `__DEV__` compile guard and module shell
+- [Story 001]: `import.meta.env.DEV` compile guard and module shell
 - [Story 003]: HTML overlay DOM, metrics display (`SceneInstrumentation`), `onEndFrameObservable` setup
 - [Stories 004-008]: Individual data source panels and their lifecycle
 
