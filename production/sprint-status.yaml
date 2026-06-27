@@ -62,11 +62,11 @@ stories:
     name: "Story 004: Telemetry JSON Export"
     file: "production/epics/telemetry-recorder/story-004-telemetry-json-export.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-26"
 
   - id: "2-6"
     name: "Story 005: Telemetry Race Lifecycle"
