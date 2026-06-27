@@ -1,6 +1,6 @@
-import type { ISnapshotable } from "./isnapshotable";
 import type { SnapshotRestoreResult } from "./snapshot-error";
 import { SnapshotError } from "./snapshot-error";
+import type { ISnapshotable } from "./types";
 
 /**
  * A complete snapshot of the entire game simulation at a single point in time.
