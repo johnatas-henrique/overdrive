@@ -24,3 +24,12 @@ jobs:
         run: npm run coverage
       - name: Build
         run: npm run build
+      - name: Verify Dev Tools tree-shaking
+        run: |
+          for pattern in DevTools dev-tools SceneInstrumentation; do
+            if grep -r "$pattern" dist/ > /dev/null 2>&1; then
+              echo "FAIL: Found '$pattern' in production bundle"
+              exit 1
+            fi
+          done
+          echo "PASS: Production bundle clean — no Dev Tools strings found"
