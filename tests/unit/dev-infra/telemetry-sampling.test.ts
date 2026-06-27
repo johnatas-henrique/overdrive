@@ -17,12 +17,14 @@ import { TelemetryRecorder } from "../../../src/dev-infra/telemetry-recorder";
  */
 function makeCar(overrides?: Partial<CarEntityRef>): CarEntityRef {
   return {
-    id: "test-car",
+    id: overrides?.id ?? "test-car",
+    teamName: overrides?.teamName ?? "Test Team",
     physics: {
       speedKmh: 0,
       rpm: 0,
       gear: 1,
       lateralG: 0,
+      ...overrides?.physics,
     },
     runtime: {
       elapsedTime: 0,
@@ -32,9 +34,14 @@ function makeCar(overrides?: Partial<CarEntityRef>): CarEntityRef {
       fuelLevel: 1,
       tireCondition: 1,
       splinePos: 0,
+      racePosition: 1,
+      currentLap: 1,
+      ...overrides?.runtime,
     },
-    aiDriver: undefined,
-    ...overrides,
+    aiDriver:
+      overrides?.aiDriver !== undefined
+        ? { state: 0, ...overrides.aiDriver }
+        : undefined,
   };
 }
 
