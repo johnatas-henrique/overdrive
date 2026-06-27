@@ -93,7 +93,7 @@ Single line, no flooding. Developer sees positions and speeds at a glance.
 
 Two methods:
 
-- **Dev Tools button**: "Export Telemetry" button in the overlay (F3). Downloads a `.json` file.
+- **Dev Tools button**: "Export Telemetry" button in the overlay (minimise key — default: 2). Downloads a `.json` file.
 - **Console command**: `window.__telemetry.export()` — developer can call from browser console.
 
 ### Interactions with Other Systems
