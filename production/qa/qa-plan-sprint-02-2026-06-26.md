@@ -173,13 +173,13 @@ Camera wraps Babylon.js Camera API. Tests mock camera/scene objects.
 
 Checklist:
 
-- [ ] Overlay renders on screen when dev key is pressed
-- [ ] Tab navigation works (Config, Events, GSM, Snapshot, AI)
-- [ ] Config tree displays namespace hierarchy
-- [ ] Event bus shows recent events with payloads
-- [ ] GSM visualizer shows current state
-- [ ] Snapshot panel shows hash comparison
-- [ ] Overlay can be toggled on/off without state loss
+- [x] Overlay renders on screen when dev key is pressed
+- [ ] Tab navigation works (Config, Events, GSM, Snapshot, AI) — N/A: stories 004-008
+- [ ] Config tree displays namespace hierarchy — N/A: story 004
+- [ ] Event bus shows recent events with payloads — N/A: story 005
+- [ ] GSM visualizer shows current state — N/A: story 006
+- [ ] Snapshot panel shows hash comparison — N/A: story 007
+- [x] Overlay can be toggled on/off without state loss
 
 ### CAM-009: Head Bob + Lateral Lean (Visual/Feel)
 

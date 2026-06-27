@@ -179,7 +179,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 **Story Type**: UI
 **Required evidence**: `production/qa/evidence/html-overlay-evidence.md` or interaction test with sign-off
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 2026-06-27, manual step-through by Johnatas (Brave/Windows/3440×1440), all items PASS
 
 ---
 
