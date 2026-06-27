@@ -1,11 +1,12 @@
 # Story 004: Config Tree Inspector
 
 > **Epic**: Dev Tools
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 6h
+> **Last Updated**: 2026-06-27
 
 ## Context
 
@@ -137,3 +138,15 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 - Depends on: Story 003 (needs overlay shell + `IDevTools.registerDataSource`)
 - Unlocks: None
+
+## Completion Notes
+
+**Completed**: 2026-06-27
+**Criteria**: 3/3 passing (AC-4a, AC-4b, AC-4c)
+**Deviations**:
+- ADVISORY: `captureRenderTime` not enabled (ADR shows it, implementation omits) — low priority
+- ADVISORY: `_initConfigDataSource` registers reader that's never consumed — placeholder for future stories
+- ADVISORY: All inline styles instead of CSS classes — refactor when Story 005+ adds more panels
+**Test Evidence**: Integration test at `tests/integration/dev-tools/config-tree.test.ts` (28 tests)
+**Code Review**: APPROVED WITH SUGGESTIONS (LP) — 5 findings, all low/informational
+**Coverage**: config-tree.ts 100%/100%/100%/100%, dev-tools.ts 97.93%/94.44%/94.44%/99.24%
