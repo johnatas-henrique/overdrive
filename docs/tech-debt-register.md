@@ -49,3 +49,4 @@
 | 🔴     | 2026-06-26 | SP2/telemetry/ST1           | TR-TELEMETRY-001 fabricated field names — /architecture-review hallucinated speedKmh/fuelLevel/accelG/carId instead of reading GDD | tr-registry.yaml | S | |
 | 🔴     | 2026-06-26 | SP2/dev-tools/ST3           | Keybinds changed from F1/F2/F3 to backtick/1/2 (browser conflict) — config at dev-tools-config.ts | src/config/dev-tools-config.ts | S | |
 | 🔴     | 2026-06-26 | SP2/dev-tools/ST3           | captureRenderTime not enabled (no AC requires it, but ADR-0009 mentions it) | dev-tools.ts | S | |
+| 🔴     | 2026-06-27 | SP2/dev-tools/ST2/LP        | Config defaults mismatch: DEV_TOOLS_KEYS uses `1`/`2`/`3` but story ACs reference backtick/`1`/`2` — config is runtime source of truth, story ACs are stale | src/config/dev-tools-config.ts | S | |

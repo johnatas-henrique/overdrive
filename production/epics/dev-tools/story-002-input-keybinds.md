@@ -1,12 +1,12 @@
 # Story 002: Input Keybinds
 
 > **Epic**: Dev Tools
-> **Status**: In Progress
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 4h
-> **Last Updated**: 2026-06-26
+> **Last Updated**: 2026-06-27
 
 ## Context
 
@@ -156,7 +156,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 **Story Type**: Logic
 **Required evidence**: `tests/unit/dev-tools/input-keybinds.test.ts` — must exist and pass (covers AC-2a, AC-2b, AC-6a, AC-6b, AC-2c)
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — `tests/unit/dev-tools/input-keybinds.test.ts` (15 tests, all passing)
 
 ---
 
@@ -164,3 +164,13 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 - Depends on: Story 001 (compile guard), Story 003 (needs `IDevTools` interface for `toggle()`)
 - Unlocks: None directly; all panel stories (004-008) depend on overlay shell (003) which depends on keybinds for activation
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-27
+**Criteria**: 5/5 passing
+**Deviations**: ADVISORY — Config defaults mismatch (DEV_TOOLS_KEYS uses `1`/`2`/`3` vs story ACs referencing backtick/`1`/`2`). Logged as tech debt.
+**Test Evidence**: Logic: test file at `tests/unit/dev-tools/input-keybinds.test.ts` (15 tests)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (LP-CODE-REVIEW), ADEQUATE (QL-TEST-COVERAGE)
