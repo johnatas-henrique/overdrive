@@ -57,7 +57,7 @@ TelemetryRecorder (dev-only, import.meta.env.DEV guard)
   │     Prints console.log with positions + speeds
   │
   └── Export:
-        Dev Tools F3 button → download .json
+        Dev Tools minimise key (default: 2) → download .json
         window.__telemetry.export() → returns JSON string
 ```
 
@@ -166,7 +166,7 @@ Sorted by position. Single line — no flooding.
 | Dev-only — zero production cost       | All code guarded by `import.meta.env.DEV`. Compiles to zero bytes. |
 | 20 Hz sampling                        | Every 3 ticks (60 Hz / 3). 13 fields per sample.                         |
 | Console log every 5 seconds           | `logInterval` default 300 ticks. Positions + speeds of all 8 cars.       |
-| JSON export via Dev Tools and console | F3 button + `window.__telemetry.export()`. Single JSON file.             |
+| JSON export via Dev Tools and console | minimise key (default: 2) + `window.__telemetry.export()`. Single JSON file.             |
 | Array accumulation per car            | Plain arrays, no ring buffer. Cleared on `race.started`.                 |
 | Reads from 5 systems                  | Direct CarEntity reads: Physics, Fuel, Tire, AI Driver, Race Management. |
 

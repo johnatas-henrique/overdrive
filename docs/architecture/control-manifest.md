@@ -217,14 +217,14 @@ import, never statically imported by production code._
 | #   | Rule                                                                                                                                 | Source             |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
 | D1  | **Dev Tools: HTML overlay** — positioned absolutely over canvas container (`pointer-events: none`).                                  | ADR-0009           |
-| D2  | **Dev Tools: lazy init on first F1 press** — zero cost if never opened.                                                              | ADR-0009           |
+| D2  | **Dev Tools: lazy init on first toggle key press** — zero cost if never opened. Key configurable via `devTools.keys.toggle` (default: backtick). | ADR-0009           |
 | D3  | **Dev Tools: `SceneInstrumentation`** for metrics (FPS, frame time, draw calls, physics time). Not custom counters.                  | ADR-0009           |
 | D4  | **Dev Tools: `engine.onEndFrameObservable`** for overlay refresh — fires after complete frame render.                                | ADR-0009           |
-| D5  | **Dev Tools: F1/F2 polled via Input's DeviceSourceManager keyboard path** — not named `InputState` fields (InputState has no F1/F2). | ADR-0009, ADR-0006 |
+| D5  | **Dev Tools: toggle/reload keys polled via Input's DeviceSourceManager keyboard path** — keys configurable via `devTools.keys.*` (default: backtick/1). Not named `InputState` fields. | ADR-0009, ADR-0006 |
 | D6  | **Dev Tools: read-only on all systems** — never writes state, never emits Event Bus events.                                          | ADR-0009           |
 | D7  | **Telemetry: 20Hz sampling** (every 3 ticks at 60Hz).                                                                                | ADR-0022           |
 | D8  | **Telemetry: console.log every 5s** (every 300 ticks) during Racing.                                                                 | ADR-0022           |
-| D9  | **Telemetry: export via Dev Tools F3 + `window.__telemetry.export()`** — returns JSON string.                                        | ADR-0022           |
+| D9  | **Telemetry: export via Dev Tools minimise key** (default: 2) + `window.__telemetry.export()` — returns JSON string. Key configurable via `devTools.keys.minimise`. | ADR-0022           |
 
 ### Forbidden Approaches
 

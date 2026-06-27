@@ -23,7 +23,7 @@ Accepted
 
 | Field             | Value                                                                                                            |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Depends On**    | ADR-0006 (InputState — F1/F2 pulses from Input)                                                                  |
+| **Depends On**    | ADR-0006 (InputState — toggle/reload key pulses from Input)                                                                  |
 | **Enables**       | Debugging all simulation systems during implementation                                                           |
 | **Blocks**        | None                                                                                                             |
 | **Ordering Note** | Init slot #0 (after Foundation init, no dependencies on other Core systems). Can be created early for debugging. |
@@ -41,11 +41,11 @@ During development, the team needs visibility into the running game — FPS, phy
 - Must tree-shake completely in production builds
 - Must not emit events on the Event Bus
 - Must not call `emit()` for dev-only events
-- Zero startup time — overlay components are created lazily on first F1 press
+- Zero startup time — overlay components are created lazily on first toggle press
 
 ### Requirements
 
-- F1 toggles overlay visibility; F2 triggers manual config reload
+- The toggle key (default: backtick) shows/hides overlay visibility; the reload key (default: 1) triggers manual config reload
 - Overlay shows: FPS, frame time, draw calls, mesh count
 - Config tree with all namespaces and values
 - AI Telemetry tab: per-car speed, position, behavior node
@@ -70,7 +70,7 @@ window
         └── Bottom bar: Input state, physics timestep
 ```
 
-The HTML overlay is positioned absolutely over the canvas container. `pointer-events: none` ensures clicks pass through to the game. The overlay is not created until first F1 press (lazy init) — zero cost if never opened.
+The HTML overlay is positioned absolutely over the canvas container. `pointer-events: none` ensures clicks pass through to the game. The overlay is not created until first toggle press (lazy init) — zero cost if never opened.
 
 Overlay rendering is synchronized to frame boundaries via `engine.onEndFrameObservable` — fires synchronously after each frame's complete render, before the browser's next `requestAnimationFrame`. This prevents display desync between the game canvas and the overlay.
 
@@ -112,14 +112,15 @@ interface IDevTools {
   /** Register system data sources for the overlay to display */
   registerDataSource(name: string, reader: () => Record<string, unknown>): void;
   /** Called each tick to refresh displayed data */
-  update(dt: number): void;
+  update(): void;
   /** Tear down overlay, remove DOM elements */
   dispose(): void;
 }
 
 // Input pulses consumed (from ADR-0006):
-// F1 → IDevTools.toggle()
-// F2 → manual config reload via ConfigManager.reload()
+// toggle key → IDevTools.toggle()
+// reload key → manual config reload via ConfigManager.reload()
+// Keycodes read from DEV_TOOLS_KEYS config (see src/config/dev-tools-config.ts)
 ```
 
 ### Compile Guard
@@ -128,7 +129,7 @@ interface IDevTools {
 // src/core/dev-tools/index.ts
 if (import.meta.env.DEV) {
   const devTools = new DevTools();
-  pipeline.register("dev-tools", (dt) => devTools.update(dt), 9);
+  pipeline.register("dev-tools", () => devTools.update(), 9);
 }
 ```
 
@@ -197,7 +198,7 @@ Dev Tools listens to Event Bus events (read-only subscription, never emits).
 
 - HTML overlay does not interfere with game input (`pointer-events: none`)
 - `import.meta.env.DEV` guard tree-shaking guarantees zero production footprint
-- Lazy init: zero cost until first F1 press
+- Lazy init: zero cost until first toggle press
 - CSS-styled with game palette — consistent visual identity
 - Read-only on all systems — cannot corrupt game state
 
@@ -208,8 +209,8 @@ Dev Tools listens to Event Bus events (read-only subscription, never emits).
 
 ### Risks
 
-- **Risk**: F1/F2 consumed by Dev Tools but also passed to game input
-  **Mitigation**: `event.preventDefault()` on F1/F2 keydown when overlay is active. Input system (ADR-0006) must check if Dev Tools is consuming these keys.
+- **Risk**: Toggle/reload keys consumed by Dev Tools but also passed to game input
+  **Mitigation**: `event.preventDefault()` on toggle/reload keys when overlay is active. Input system (ADR-0006) must check if Dev Tools is consuming these keys.
 - **Risk**: Event Bus subscription for GSM history leaks in production
   **Mitigation**: `gsm.state.entered` subscription wrapped in `if (import.meta.env.DEV)` block. Production bundle never registers the handler.
 - **Risk**: 100+ config keys cause scroll jank
@@ -219,7 +220,7 @@ Dev Tools listens to Event Bus events (read-only subscription, never emits).
 
 | GDD System   | Requirement                            | How This ADR Addresses It                  |
 | ------------ | -------------------------------------- | ------------------------------------------ |
-| dev-tools.md | F1 toggle overlay, F2 config reload    | InputState pulses consumed by IDevTools    |
+| dev-tools.md | Toggle key (default: backtick) to show/hide overlay, reload key (default: 1) to trigger config reload    | InputState pulses consumed by IDevTools    |
 | dev-tools.md | `import.meta.env.DEV` guard              | Vite compile-time evaluation + dead-code elimination |
 | dev-tools.md | Read-only on all systems               | registerDataSource pattern, no write APIs  |
 | dev-tools.md | pointer-events: none                   | CSS on overlay div                         |
@@ -233,8 +234,8 @@ Dev Tools listens to Event Bus events (read-only subscription, never emits).
 
 ## Validation Criteria
 
-- [ ] F1 shows overlay over gameplay; F1 hides it
-- [ ] F2 triggers ConfigManager.reload() and flashes "config reloaded"
+- [ ] The toggle key (default: backtick) shows overlay over gameplay; toggle key hides it
+- [ ] The reload key (default: 1) triggers ConfigManager.reload() and flashes "config reloaded"
 - [ ] Overlay `<div>` has `pointer-events: none` — clicks pass to canvas
 - [ ] Production bundle: grep for DevTools class returns zero matches
 - [ ] AI Telemetry tab shows per-car speed, position, behavior node
@@ -244,10 +245,10 @@ Dev Tools listens to Event Bus events (read-only subscription, never emits).
 - [ ] `engine.onEndFrameObservable` drives overlay refresh — fires after each complete frame
 - [ ] `SceneInstrumentation` captures frameTime, physicsTime, drawCalls — visible in top bar
 - [ ] Overlay `<div>` is sibling of canvas inside `engine.getRenderingCanvas().parentElement`
-- [ ] `event.preventDefault()` on F1/F2 prevents game from receiving them when overlay is active
+- [ ] `event.preventDefault()` on toggle/reload keys prevents game from receiving them when overlay is active
 
 ## Related Decisions
 
 - ADR-0004 (Module Boundaries — Dev Tools is Core, statically imported only via `import.meta.env.DEV`)
-- ADR-0006 (Input Abstraction — F1/F2 consumed from InputState)
+- ADR-0006 (Input Abstraction — toggle/reload keys consumed from InputState)
 - ADR-0018 (Simulation Snapshot — Dev Tools reads per-system hashes for state inspector)
