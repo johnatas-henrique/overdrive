@@ -163,9 +163,19 @@ export class EventBus implements IEventBus {
     }
   }
 
-  off(subscription: Subscription): void {
+  off(subscription: Subscription): void;
+  off<E extends keyof EventMap>(event: E): IEventBus;
+  off(
+    subscriptionOrEvent: Subscription | keyof EventMap
+  ): undefined | IEventBus {
     this._assertReady();
-    subscription.unsubscribe();
+
+    if (typeof subscriptionOrEvent === "string") {
+      this._handlers.delete(subscriptionOrEvent);
+      return this;
+    }
+
+    subscriptionOrEvent.unsubscribe();
   }
 
   /**

@@ -80,6 +80,8 @@ export type EventMap = {
   "race.checkered": { carId: string; lap: number; results: RaceResults };
   /** The race has been abandoned (e.g., critical error, all-car DNF). */
   "race.abandoned": Record<string, never>;
+  /** A new race has started with the given configuration. */
+  "race.started": { track: string; totalLaps: number; playerCarId: string };
   /** An asset failed to load. */
   "asset.error": { assetId: string; error: Error };
 };
@@ -177,6 +179,14 @@ export interface IEventBus {
    * still execute — the error is caught and logged individually.
    */
   emit<E extends keyof EventMap>(event: E, payload: EventMap[E]): void;
+
+  /**
+   * Remove all handlers for the given event and return the bus for chaining.
+   *
+   * Use the reentrant pattern `bus.off("race.started").on("race.started", ...)`
+   * to prevent duplicate subscriptions when re-initialising.
+   */
+  off<E extends keyof EventMap>(event: E): IEventBus;
 
   /**
    * Unsubscribe a previously returned Subscription.
