@@ -190,6 +190,17 @@ describe("EventMap type correctness", () => {
     expect(payload).toEqual({});
   });
 
+  it("should accept valid payload for race.started", () => {
+    const payload: EventMap["race.started"] = {
+      track: "interlagos",
+      totalLaps: 40,
+      playerCarId: "player_one",
+    };
+    expect(payload.track).toBe("interlagos");
+    expect(payload.totalLaps).toBe(40);
+    expect(payload.playerCarId).toBe("player_one");
+  });
+
   it("should accept valid payload for asset.error", () => {
     const payload: EventMap["asset.error"] = {
       assetId: "car_ferrari_01",
@@ -355,13 +366,17 @@ describe("EventBusError", () => {
 
 describe("IEventBus interface", () => {
   // Test double: no Event Bus runtime exists in Story 001 (types only)
-  const createMockBus = (): IEventBus => ({
-    on: () => ({ unsubscribe: () => {} }),
-    once: () => ({ unsubscribe: () => {} }),
-    emit: () => {},
-    off: () => {},
-    dispose: () => {},
-  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any — mock needs to satisfy both overloads
+  function createMockBus(): IEventBus {
+    const bus: IEventBus = {
+      on: () => ({ unsubscribe: () => {} }),
+      once: () => ({ unsubscribe: () => {} }),
+      emit: () => {},
+      off: () => bus,
+      dispose: () => {},
+    };
+    return bus;
+  }
 
   it("should define an on method returning Subscription", () => {
     const bus = createMockBus();
@@ -628,6 +643,39 @@ describe("EventBus runtime", () => {
 
       expect(raceStartCalled).toBe(false);
       expect(raceFinishCalled).toBe(true);
+    });
+
+    it("should remove ALL handlers for an event via off(event: E)", () => {
+      bus.init();
+      const log: string[] = [];
+
+      bus.on("race.starting", () => log.push("A"));
+      bus.on("race.starting", () => log.push("B"));
+
+      bus.off("race.starting");
+      bus.emit("race.starting", {});
+
+      expect(log).toEqual([]);
+    });
+
+    it("should return IEventBus from off(event: E) for chaining (reentrant pattern)", () => {
+      bus.init();
+      let called = false;
+
+      const result = bus.off("race.starting").on("race.starting", () => {
+        called = true;
+      });
+
+      expect(typeof result.unsubscribe).toBe("function");
+      bus.emit("race.starting", {});
+      expect(called).toBe(true);
+    });
+
+    it("should throw 'Not initialized' when off(event: E) called before init()", () => {
+      // Create a new uninitialized bus
+      const uninitBus = new EventBus();
+      expect(() => uninitBus.off("race.starting")).toThrow(EventBusError);
+      expect(() => uninitBus.off("race.starting")).toThrow("Not initialized");
     });
   });
 
