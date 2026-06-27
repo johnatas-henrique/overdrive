@@ -152,11 +152,25 @@ export interface IEventBus {
    * Subscribe to an event. The handler receives the typed payload
    * matching the event name in {@link EventMap}.
    *
+   * Use `"*"` to subscribe to all events — the handler receives a
+   * `{ event: string; payload: unknown }` object.
+   *
    * Returns a {@link Subscription} that can be used to unsubscribe.
    */
   on<E extends keyof EventMap>(
     event: E,
     handler: (payload: EventMap[E]) => void
+  ): Subscription;
+
+  /**
+   * Subscribe to all events (wildcard).
+   * The handler receives `{ event: string; payload: unknown }`.
+   *
+   * Returns a {@link Subscription} that can be used to unsubscribe.
+   */
+  on(
+    event: "*",
+    handler: (detail: { event: string; payload: unknown }) => void
   ): Subscription;
 
   /**
@@ -193,6 +207,16 @@ export interface IEventBus {
    * Idempotent — calling twice on the same Subscription is safe.
    */
   off(handler: Subscription): void;
+
+  /**
+   * Get a snapshot of all active subscriptions.
+   *
+   * Returns a Map of event names to their handler counts.
+   * Useful for debugging and dev tools inspection.
+   *
+   * @returns Map<string, number> — event name → handler count
+   */
+  getSubscriptions(): Map<string, number>;
 
   /**
    * Dispose the Event Bus, removing all subscriptions.

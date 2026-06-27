@@ -1506,3 +1506,157 @@ function hasForbiddenImport(content: string): boolean {
   }
   return false;
 }
+
+// ---------------------------------------------------------------------------
+// getSubscriptions()
+// ---------------------------------------------------------------------------
+
+describe("getSubscriptions", () => {
+  let bus: IEventBus;
+
+  beforeEach(() => {
+    bus = new EventBus();
+    bus.init();
+  });
+
+  it("should return empty map when no subscriptions exist", () => {
+    const subs = bus.getSubscriptions();
+    expect(subs.size).toBe(0);
+  });
+
+  it("should return event name and handler count", () => {
+    bus.on("gsm.state.entered", () => {});
+    bus.on("gsm.state.entered", () => {});
+    bus.on("fuel.low", () => {});
+
+    const subs = bus.getSubscriptions();
+    expect(subs.get("gsm.state.entered")).toBe(2);
+    expect(subs.get("fuel.low")).toBe(1);
+    expect(subs.size).toBe(2);
+  });
+
+  it("should not include events with zero handlers", () => {
+    const sub = bus.on("fuel.low", () => {});
+    sub.unsubscribe();
+
+    const subs = bus.getSubscriptions();
+    expect(subs.has("fuel.low")).toBe(false);
+  });
+
+  it("should reflect real-time changes", () => {
+    bus.on("fuel.low", () => {});
+    expect(bus.getSubscriptions().get("fuel.low")).toBe(1);
+
+    const sub2 = bus.on("fuel.low", () => {});
+    expect(bus.getSubscriptions().get("fuel.low")).toBe(2);
+
+    sub2.unsubscribe();
+    expect(bus.getSubscriptions().get("fuel.low")).toBe(1);
+  });
+
+  it("should not include wildcard subscriptions", () => {
+    bus.on("*", () => {});
+    bus.on("fuel.low", () => {});
+
+    const subs = bus.getSubscriptions();
+    expect(subs.has("*")).toBe(false);
+    expect(subs.size).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Wildcard subscription
+// ---------------------------------------------------------------------------
+
+describe("wildcard subscription", () => {
+  let bus: IEventBus;
+
+  beforeEach(() => {
+    bus = new EventBus();
+    bus.init();
+  });
+
+  it("should receive all events via wildcard", () => {
+    const calls: Array<{ event: string; payload: unknown }> = [];
+    bus.on("*", (detail) => calls.push(detail));
+
+    bus.emit("gsm.state.entered", { state: "Racing", previous: "Grid" });
+    bus.emit("fuel.low", { remaining: 5 });
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0].event).toBe("gsm.state.entered");
+    expect(calls[1].event).toBe("fuel.low");
+  });
+
+  it("should receive typed payload in wildcard detail", () => {
+    let received: unknown = null;
+    bus.on("*", (detail) => {
+      received = detail.payload;
+    });
+
+    bus.emit("fuel.low", { remaining: 5 });
+    expect(received).toEqual({ remaining: 5 });
+  });
+
+  it("should unsubscribe wildcard correctly", () => {
+    const calls: Array<{ event: string; payload: unknown }> = [];
+    const sub = bus.on("*", (detail) => calls.push(detail));
+
+    bus.emit("fuel.low", { remaining: 5 });
+    expect(calls).toHaveLength(1);
+
+    sub.unsubscribe();
+    bus.emit("fuel.low", { remaining: 3 });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("should not block typed handlers if wildcard throws", () => {
+    const typedCalls: unknown[] = [];
+    bus.on("fuel.low", (p) => typedCalls.push(p));
+    bus.on("*", () => {
+      throw new Error("wildcard error");
+    });
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    bus.emit("fuel.low", { remaining: 5 });
+
+    expect(typedCalls).toHaveLength(1);
+    expect(consoleSpy).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  it("should support multiple wildcard handlers", () => {
+    const calls1: string[] = [];
+    const calls2: string[] = [];
+    bus.on("*", (d) => calls1.push(d.event));
+    bus.on("*", (d) => calls2.push(d.event));
+
+    bus.emit("fuel.low", { remaining: 5 });
+
+    expect(calls1).toHaveLength(1);
+    expect(calls2).toHaveLength(1);
+  });
+
+  it("should emit wildcard after typed handlers", () => {
+    const order: string[] = [];
+    bus.on("fuel.low", () => order.push("typed"));
+    bus.on("*", () => order.push("wildcard"));
+
+    bus.emit("fuel.low", { remaining: 5 });
+
+    expect(order).toEqual(["typed", "wildcard"]);
+  });
+
+  it("should clean up wildcard handlers on dispose", () => {
+    bus.on("*", () => {});
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    bus.dispose();
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("wildcard"));
+    warnSpy.mockRestore();
+  });
+});
