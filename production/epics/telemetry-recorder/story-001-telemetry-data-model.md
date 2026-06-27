@@ -15,7 +15,7 @@
 _(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh at review time)_
 
 **ADR Governing Implementation**: ADR-0022: Telemetry Recorder
-**ADR Decision Summary**: Dev-only telemetry capture at 20Hz. Direct reads from CarEntity. Plain arrays per car. JSON export. Zero production cost via `__DEV__` guard.
+**ADR Decision Summary**: Dev-only telemetry capture at 20Hz. Direct reads from CarEntity. Plain arrays per car. JSON export. Zero production cost via `import.meta.env.DEV` guard.
 
 **Engine**: Babylon.js 9.12.0 | **Risk**: LOW
 **Engine Notes**: None — pure TypeScript, zero Babylon.js imports.
@@ -68,7 +68,7 @@ interface TelemetrySample {
 
 **Counters:** `private tickCounter = 0; private logCounter = 0;`
 
-**`__DEV__` guard:** Class is instantiated only behind `if (__DEV__)`. The entire file compiles away in production builds. Use `import.meta.env.DEV` as the guard expression.
+**`import.meta.env.DEV` guard:** Class is instantiated only behind `if (import.meta.env.DEV)`. The entire file compiles away in production builds.
 
 **Team name storage:** Team name is read from CarEntity or config at export time — this story defines the `getTeamName(carId): string` helper or documents where team name lives (e.g., `car.teamId` → resolve from config/teams).
 

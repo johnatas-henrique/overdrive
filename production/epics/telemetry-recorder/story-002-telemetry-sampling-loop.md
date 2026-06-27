@@ -24,7 +24,7 @@ _(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh 
 
 - Required: D7 (20Hz sampling every 3 ticks), D-F2 (read-only — never writes state)
 - Forbidden: D-F3 (never emit Event Bus events)
-- Guardrail: D-G1 (zero bytes in production build) — applies globally via `__DEV__`
+- Guardrail: D-G1 (zero bytes in production build) — applies globally via `import.meta.env.DEV`
 
 ---
 
@@ -48,7 +48,7 @@ _Derived from ADR-0022 Implementation Guidelines:_
 
 ```typescript
 tick(dt: number, cars: CarEntity[], tickCount: number): void {
-  if (!__DEV__) return;
+  if (!import.meta.env.DEV) return;
   // ...
 }
 ```
@@ -116,7 +116,7 @@ _Handled by neighbouring stories — do not implement here:_
   - And: All 3 cars have correct sample counts
 
 - **AC-5**: No-op when **DEV** is false
-  - Given: A mock with `__DEV__ = false`
+  - Given: A mock with `import.meta.env.DEV = false`
   - When: `tick()` is called
   - Then: Returns immediately without allocating or appending
 

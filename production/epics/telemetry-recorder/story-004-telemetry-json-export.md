@@ -37,7 +37,7 @@ _From GDD `design/gdd/telemetry-recorder.md`, scoped to this story:_
 - [ ] **AC-3**: Empty export (no samples recorded) returns valid JSON with empty `cars: {}` and race metadata with sensible defaults (duration=0)
 - [ ] **AC-4**: `export()` returns a point-in-time snapshot — subsequent sample recording does not mutate the already-returned JSON
 - [ ] **AC-5**: Team names appear correctly in JSON — `cars["macklen"].team === "Macklen"`
-- [ ] **AC-6**: When `__DEV__` is false, `export()` returns `null` (guard behavior)
+- [ ] **AC-6**: When `import.meta.env.DEV` is false, `export()` returns `null` (guard behavior)
 
 ---
 
@@ -77,7 +77,7 @@ _Derived from ADR-0022 Implementation Guidelines:_
 
 - Initialized by this story with `window.__telemetry = { export: () => string }`
 - No other system writes to `window.__telemetry`
-- Guarded by `if (__DEV__)` — in production, `window.__telemetry` is never assigned
+- Guarded by `if (import.meta.env.DEV)` — in production, `window.__telemetry` is never assigned
 
 **F3 keybind integration:** This story does NOT handle the F3 keypress. The Dev Tools system (separate epic) triggers `window.__telemetry.export()` on F3 press. This story only provides the function — the binding belongs to the Dev Tools epic.
 
@@ -139,7 +139,7 @@ _Handled by neighbouring stories — do not implement here:_
   - And: `cars["willard"].team === "Willard"`
 
 - **AC-6**: No-op when **DEV** is false
-  - Given: `__DEV__ = false`
+  - Given: `import.meta.env.DEV = false`
   - When: `export()` is called
   - Then: Returns `null`
 
