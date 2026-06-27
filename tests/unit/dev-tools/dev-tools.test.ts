@@ -501,6 +501,7 @@ describe("Edge cases", () => {
 
   it("should handle null canvas container gracefully", () => {
     cleanDOM();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const engine = {
       getRenderingCanvas: () => null,
       onEndFrameObservable: new Observable<unknown>(),
@@ -514,6 +515,7 @@ describe("Edge cases", () => {
     expect(document.getElementById("dev-overlay")).toBeNull();
 
     devTools.dispose();
+    warnSpy.mockRestore();
     cleanDOM();
   });
 
