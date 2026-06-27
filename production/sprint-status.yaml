@@ -52,11 +52,11 @@ stories:
     name: "Story 003: Telemetry Console Summary"
     file: "production/epics/telemetry-recorder/story-003-telemetry-console-summary.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-26"
 
   - id: "2-5"
     name: "Story 004: Telemetry JSON Export"
