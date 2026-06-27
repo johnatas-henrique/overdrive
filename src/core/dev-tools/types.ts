@@ -6,11 +6,30 @@
  * the interface itself is type-only (zero runtime cost).
  *
  * @see TR-DVT-001 — HTML overlay rendering above 3D viewport
+ * @see TR-DVT-002 — Event Bus inspector
  * @see TR-DVT-007 — Dev-tools keybinds (configurable via devTools.keys.*)
  * @see ADR-0009 — Dev Tools Architecture
  */
 
+import type { IEventBus } from "../../foundation/event-bus";
+
 export interface IDevTools {
+  /**
+   * Inject the Event Bus for the Event Log tab panel.
+   *
+   * Must be called after `initDevTools()`. If the overlay is already
+   * initialized, the Event Log tab is created immediately; otherwise
+   * creation is deferred until the first `toggle()`.
+   *
+   * Internally wraps the bus in a read-only proxy that only exposes
+   * `on()`, `off()`, and `getSubscriptions()` — never `emit()`.
+   *
+   * @param eventBus — The game's Event Bus instance
+   * @see TR-DVT-002 — Event Bus inspector
+   * @see Control Manifest D-F3 — Never emit events on the Event Bus
+   */
+  setEventBus(eventBus: IEventBus): void;
+
   /**
    * Register a data source that provides renderable key/value pairs.
    * Called by game systems (physics, config, AI, etc.) to expose debug state.

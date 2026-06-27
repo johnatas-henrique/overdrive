@@ -15,7 +15,7 @@
  * import { initDevTools, devTools } from "@/core/dev-tools";
  *
  * if (import.meta.env.DEV) {
- *   await initDevTools(engine, scene);
+ *   await initDevTools(engine, scene, eventBus);
  *
  *   // Later, from keybind handler (Story 002):
  *   devTools.toggle();
@@ -47,23 +47,31 @@ if (import.meta.env.DEV) {
 let _instance: IDevTools | null = null;
 
 /**
- * Initialize the Dev Tools singleton with the game's engine and scene.
+ * Initialize the Dev Tools singleton with the game's engine, scene,
+ * and optional Event Bus for the Event Log tab panel.
  *
  * Must be called once during startup (behind `import.meta.env.DEV`).
  * Safe to call multiple times — subsequent calls are no-ops.
  *
- * @param engine — The Babylon.js Engine instance (Engine or WebGPUEngine)
- * @param scene  — The active Babylon.js Scene instance
+ * @param engine  — The Babylon.js Engine instance (Engine or WebGPUEngine)
+ * @param scene   — The active Babylon.js Scene instance
+ * @param eventBus — Optional Event Bus instance for the Event Log tab (Story 005)
  */
 export async function initDevTools(
   engine: import("@babylonjs/core/Engines/abstractEngine").AbstractEngine,
-  scene: import("@babylonjs/core/scene").Scene
+  scene: import("@babylonjs/core/scene").Scene,
+  eventBus?: import("../../foundation/event-bus").IEventBus
 ): Promise<void> {
   if (!import.meta.env.DEV) return;
   if (_instance) return;
 
   const { DevTools } = await import("./dev-tools");
   _instance = new DevTools(engine, scene);
+
+  // Inject the Event Bus for the Event Log tab (Story 005)
+  if (eventBus) {
+    _instance.setEventBus(eventBus);
+  }
 
   // Set up keyboard keybinds for the dev tools overlay (Story 002)
   const { initKeybinds } = await import("./keybinds");

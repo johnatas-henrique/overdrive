@@ -3,18 +3,36 @@ import { SceneInstrumentation } from "@babylonjs/core/Instrumentation/sceneInstr
 import type { Observer } from "@babylonjs/core/Misc/observable";
 import type { Scene } from "@babylonjs/core/scene";
 import { getConfigManager } from "@/foundation/config/config-manager";
+import type { IEventBus } from "../../foundation/event-bus";
 import { ConfigTreePanel } from "./config-tree";
+import {
+  EventBusInspector,
+  type IReadOnlyEventBus,
+} from "./event-bus-inspector";
 import type { IDevTools } from "./types";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/** Internal tab definition for the main panel tab system. */
+interface TabDefinition {
+  id: string;
+  label: string;
+  refresh?: () => void;
+}
 
 /**
  * Dev Tools overlay — HTML overlay positioned absolutely over the canvas,
- * showing FPS, frame time, draw calls, mesh count, and physics time via SceneInstrumentation.
+ * showing FPS, frame time, draw calls, mesh count, physics time via
+ * SceneInstrumentation, and tabbed data panels (Event Log, etc.).
  *
  * ## Lifecycle
  * 1. Instantiated via `new DevTools(engine, scene)` (only when `import.meta.env.DEV`)
  * 2. Overlay DOM created lazily on first `toggle()` call
- * 3. Metrics refreshed by `engine.onEndFrameObservable` after each complete frame
- * 4. `dispose()` tears down all DOM and observable subscriptions
+ * 3. Event Bus injected via `setEventBus()` (triggers Event Log tab creation)
+ * 4. Metrics refreshed by `engine.onEndFrameObservable` after each complete frame
+ * 5. `dispose()` tears down all DOM and observable subscriptions
  *
  * ## Tree-shaking
  * Vite evaluates `import.meta.env.DEV` at compile time. Since this class
@@ -22,6 +40,7 @@ import type { IDevTools } from "./types";
  * eliminates the entire module in production bundles.
  *
  * @see TR-DVT-001 — HTML overlay rendering above 3D viewport
+ * @see TR-DVT-002 — Event Bus inspector
  * @see ADR-0009 — Dev Tools Architecture
  * @see Control Manifest D1-D4, D-F1, D-F2
  */
@@ -37,6 +56,14 @@ export class DevTools implements IDevTools {
   private _frameEndObserver: Observer<AbstractEngine> | null = null;
   private _sidebar: HTMLDivElement | null = null;
   private _configTreePanel: ConfigTreePanel | null = null;
+
+  // Event Bus + tab system
+  private _eventBus: IEventBus | null = null;
+  private _eventBusInspector: EventBusInspector | null = null;
+  private _tabBar: HTMLDivElement | null = null;
+  private _tabContent: HTMLDivElement | null = null;
+  private _activeTabId: string | null = null;
+  private _tabs: TabDefinition[] = [];
 
   constructor(engine: AbstractEngine, scene: Scene) {
     this._engine = engine;
@@ -58,6 +85,18 @@ export class DevTools implements IDevTools {
   // ---------------------------------------------------------------------------
   // IDevTools implementation
   // ---------------------------------------------------------------------------
+
+  /** @inheritdoc */
+  setEventBus(eventBus: IEventBus): void {
+    if (!import.meta.env.DEV) return;
+    if (this._eventBus) return;
+    this._eventBus = eventBus;
+
+    // If overlay is already initialized, create the Event Log tab now
+    if (this._initialized && this._tabBar && this._tabContent) {
+      this._createEventLogTab();
+    }
+  }
 
   /** @inheritdoc */
   registerDataSource(
@@ -130,6 +169,11 @@ export class DevTools implements IDevTools {
   dispose(): void {
     if (!import.meta.env.DEV) return;
 
+    // Dispose Event Bus inspector
+    this._eventBusInspector?.dispose();
+    this._eventBusInspector = null;
+    this._eventBus = null;
+
     // Unsubscribe from frame-end observable (before DOM removal)
     if (this._frameEndObserver) {
       this._engine.onEndFrameObservable.remove(this._frameEndObserver);
@@ -146,16 +190,20 @@ export class DevTools implements IDevTools {
 
     this._overlay = null;
     this._sidebar = null;
+    this._tabBar = null;
+    this._tabContent = null;
     this._configTreePanel = null;
     this._initialized = false;
     this._visible = false;
     this._dataSources.clear();
     this._metricElements = {};
     this._instrumentation = null;
+    this._tabs = [];
+    this._activeTabId = null;
   }
 
   // ---------------------------------------------------------------------------
-  // Private helpers
+  // Private: overlay DOM creation
   // ---------------------------------------------------------------------------
 
   /**
@@ -207,10 +255,27 @@ export class DevTools implements IDevTools {
       "background:#0a0a0a;border-right:1px solid #333;overflow-y:auto";
     middle.appendChild(sidebar);
 
-    // ── Main panel: tab container (hidden in Story 003, populated by Stories 005+) ──
+    // ── Main panel: tab container ─────────────────────────────────────
     const mainPanel = document.createElement("div");
     mainPanel.className = "main-panel";
-    mainPanel.style.cssText = "flex:1;display:none;overflow-y:auto";
+    mainPanel.style.cssText =
+      "flex:1;display:flex;flex-direction:column;overflow:hidden";
+
+    // Tab bar
+    this._tabBar = document.createElement("div");
+    this._tabBar.className = "tab-bar";
+    this._tabBar.style.cssText =
+      "display:flex;gap:0;background:#1a1a1a;border-bottom:1px solid #333;" +
+      "min-height:28px;pointer-events:auto";
+    mainPanel.appendChild(this._tabBar);
+
+    // Tab content area
+    this._tabContent = document.createElement("div");
+    this._tabContent.className = "tab-content";
+    this._tabContent.style.cssText =
+      "flex:1;overflow:hidden;display:flex;flex-direction:column;pointer-events:auto";
+    mainPanel.appendChild(this._tabContent);
+
     middle.appendChild(mainPanel);
 
     overlay.appendChild(middle);
@@ -231,7 +296,102 @@ export class DevTools implements IDevTools {
     if (import.meta.env.DEV) {
       this._initConfigDataSource();
     }
+
+    // If event bus was set before overlay init, create the tab now
+    if (this._eventBus) {
+      this._createEventLogTab();
+    }
   }
+
+  // ---------------------------------------------------------------------------
+  // Private: Event Log tab creation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Create the Event Log tab panel and its tab button.
+   *
+   * Called by `setEventBus()` when the overlay is already initialized,
+   * or by `_initOverlay()` when the bus was set before the first toggle.
+   */
+  private _createEventLogTab(): void {
+    if (!this._tabContent || !this._tabBar || !this._eventBus) return;
+
+    // Create tab panel container
+    const panel = document.createElement("div");
+    panel.className = "tab-panel";
+    panel.dataset.tabId = "event-log";
+    panel.style.cssText = "display:none;height:100%;flex-direction:column";
+
+    // Create read-only wrapper via type narrowing (IEventBus → IReadOnlyEventBus)
+    // TypeScript allows this because IEventBus structurally satisfies the pick.
+    const readOnlyBus: IReadOnlyEventBus = this._eventBus;
+
+    this._eventBusInspector = new EventBusInspector(panel, readOnlyBus);
+    this._tabContent.appendChild(panel);
+
+    // Create tab button
+    const btn = document.createElement("button");
+    btn.className = "tab";
+    btn.dataset.tabId = "event-log";
+    btn.textContent = "Event Log";
+    btn.style.cssText =
+      "padding:4px 16px;background:transparent;color:#888;border:none;" +
+      "cursor:pointer;font-family:'Courier New',monospace;font-size:11px;" +
+      "border-bottom:2px solid transparent";
+    btn.addEventListener("click", () => this._switchTab("event-log"));
+    this._tabBar.appendChild(btn);
+
+    // Register tab definition
+    this._tabs.push({
+      id: "event-log",
+      label: "Event Log",
+      refresh: () => this._eventBusInspector?.refresh(),
+    });
+
+    // Switch to this tab (activates it)
+    this._switchTab("event-log");
+  }
+
+  /**
+   * Switch the active tab — updates tab button styles, shows/hides
+   * panel divs, and calls the tab's refresh callback.
+   *
+   * @param tabId — The `id` field of the TabDefinition to activate
+   */
+  private _switchTab(tabId: string): void {
+    this._activeTabId = tabId;
+
+    // Update tab button styles
+    const tabBtns = this._tabBar?.querySelectorAll(".tab");
+    tabBtns?.forEach((btn) => {
+      const el = btn as HTMLButtonElement;
+      const isActive = el.dataset.tabId === tabId;
+      el.style.color = isActive ? "#ffd700" : "#888";
+      el.style.borderBottom = isActive
+        ? "2px solid #ffd700"
+        : "2px solid transparent";
+      el.classList.toggle("active", isActive);
+    });
+
+    // Show/hide tab panels
+    const panels = this._tabContent?.querySelectorAll(".tab-panel");
+    panels?.forEach((panel) => {
+      const el = panel as HTMLDivElement;
+      const isActive = el.dataset.tabId === tabId;
+      el.style.display = isActive ? "flex" : "none";
+      el.classList.toggle("active", isActive);
+    });
+
+    // Refresh the active tab
+    const tab = this._tabs.find((t) => t.id === tabId);
+    if (tab?.refresh) {
+      tab.refresh();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private: Config data source (Story 004)
+  // ---------------------------------------------------------------------------
 
   /**
    * Register the "config" data source and lazily create the ConfigTreePanel.
@@ -283,18 +443,20 @@ export class DevTools implements IDevTools {
           (msg: string) => this.showNotification(msg)
         );
       } catch {
-        // ConfigManager not yet initialized — try again next tick
+        console.warn(
+          "[DevTools] ConfigManager not available — retry next tick"
+        );
         return;
       }
     }
 
-    // Refresh the panel — catches errors internally
-    try {
-      this._configTreePanel.refresh();
-    } catch {
-      // Config tree refresh failed — panel stays, retries next tick
-    }
+    // Refresh the panel
+    this._configTreePanel.refresh();
   }
+
+  // ---------------------------------------------------------------------------
+  // Private: metrics rendering
+  // ---------------------------------------------------------------------------
 
   /**
    * Create a single metric label+value pair inside a top-bar item.
@@ -341,6 +503,12 @@ export class DevTools implements IDevTools {
       inst.physicsTimeCounter.current > 0
         ? `${inst.physicsTimeCounter.current.toFixed(1)} ms`
         : "-- ms";
+
+    // Refresh the active tab panel
+    const activeTab = this._tabs.find((t) => t.id === this._activeTabId);
+    if (activeTab?.refresh) {
+      activeTab.refresh();
+    }
 
     // Refresh data source panels (config tree, etc.)
     this._refreshConfigTree();

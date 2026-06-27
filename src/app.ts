@@ -27,10 +27,15 @@ class App {
     await this._setPhysics();
     await CreateMainScene(this.scene);
 
+    // ── Event Bus (shared across all systems) ─────────────────────
+    const { EventBus } = await import("./foundation/event-bus");
+    const eventBus = new EventBus();
+    eventBus.init();
+
     // ── Dev Tools (tree-shaken in production) ─────────────────────
     if (import.meta.env.DEV) {
       const { initDevTools } = await import("./core/dev-tools");
-      initDevTools(this.engine, this.scene);
+      initDevTools(this.engine, this.scene, eventBus);
     }
 
     this._render();
