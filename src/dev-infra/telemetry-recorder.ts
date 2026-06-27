@@ -2,7 +2,8 @@
  * @fileoverview Dev-only telemetry data model and storage for Overdrive.
  *
  * Defines the {@link TelemetrySample} interface and {@link TelemetryRecorder}
- * class that accumulates per-car simulation data during a race.
+ * class that accumulates per-car simulation data during a race, with JSON
+ * export via `window.__telemetry.export()`.
  *
  * ## Dev Guard
  *
@@ -21,7 +22,33 @@
  *   recorder = new TelemetryRecorder();
  * }
  * ```
+ *
+ * ```typescript
+ * // Export usage (dev-only, via Dev Tools F3 keybind):
+ * const json = window.__telemetry?.export();
+ * if (json) {
+ *   console.log(json);
+ * }
+ * ```
  */
+
+// ---------------------------------------------------------------------------
+// Global type augmentation for window.__telemetry
+// ---------------------------------------------------------------------------
+
+/**
+ * Telemetry export surface exposed on `window.__telemetry` in dev builds.
+ */
+export interface TelemetryExport {
+  /** Returns a JSON string of all recorded telemetry data, or `null` in production. */
+  export: () => string | null;
+}
+
+declare global {
+  interface Window {
+    __telemetry?: TelemetryExport;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // TelemetrySample
@@ -199,6 +226,19 @@ export class TelemetryRecorder {
   /** Total race laps for the summary display (set by Story 005). */
   private _totalLaps = 0;
 
+  /** Track name for export metadata (set by Story 005 from race config). Defaults to "unknown". */
+  private _track = "unknown";
+
+  /** Race start timestamp in ms for export metadata (set by Story 005). Defaults to 0. */
+  private _startTime = 0;
+
+  /**
+   * Per-car team names keyed by car ID.
+   * Updated on every {@link tick} call from {@link CarEntityRef.teamName}.
+   * Used by {@link export} to populate the `team` field in JSON output.
+   */
+  private _teamNames: Map<string, string> = new Map();
+
   /**
    * Creates a new TelemetryRecorder with the given intervals.
    *
@@ -210,6 +250,14 @@ export class TelemetryRecorder {
   constructor(sampleInterval: number = 3, logInterval: number = 300) {
     this._sampleInterval = sampleInterval;
     this._logInterval = logInterval;
+
+    // Expose the export function on window.__telemetry in dev builds only.
+    // The Dev Tools epic binds the F3 keypress to this surface.
+    if (import.meta.env.DEV && typeof window !== "undefined") {
+      window.__telemetry = {
+        export: () => this.export(),
+      };
+    }
   }
 
   /**
@@ -248,6 +296,9 @@ export class TelemetryRecorder {
     if (tickCount % this._sampleInterval !== 0) return;
 
     for (const car of cars) {
+      // Keep team names up-to-date for JSON export
+      this._teamNames.set(car.id, car.teamName);
+
       this.addSample(car.id, {
         tick: tickCount,
         t: car.runtime.elapsedTime,
@@ -270,6 +321,9 @@ export class TelemetryRecorder {
    * Appends a telemetry sample for the given car.
    *
    * Creates a new array for the car if none exists yet (lazy key creation).
+   * The caller retains ownership — mutations to the sample object after
+   * addSample() will be reflected in future exports. The export() method
+   * deep-copies at call-time, not at add-time.
    *
    * @param carId - Stable car identifier (matches CarEntity `id`).
    * @param sample - The sample to record.
@@ -291,10 +345,13 @@ export class TelemetryRecorder {
    */
   clear(): void {
     this._samples.clear();
+    this._teamNames.clear();
     this._tickCounter = 0;
     this._logCounter = 0;
     this._isRecording = false;
     this._totalLaps = 0;
+    this._track = "unknown";
+    this._startTime = 0;
   }
 
   /**
@@ -357,10 +414,100 @@ export class TelemetryRecorder {
    * the value is set, though in practice `setRecording(true)` won't happen
    * before this is configured).
    *
-   * @param laps - Total race lap count (must be > 0).
+   * @param laps - Total race lap count. Values ≤ 0 are clamped to 1.
    */
   setTotalLaps(laps: number): void {
-    this._totalLaps = laps;
+    this._totalLaps = Math.max(1, laps);
+  }
+
+  /**
+   * Sets the track name for export metadata.
+   *
+   * Set by Story 005 from the race configuration.
+   * Default is `"unknown"` after construction or {@link clear}.
+   *
+   * @param track - Track name (e.g. `"interlagos"`).
+   */
+  setTrack(track: string): void {
+    this._track = track;
+  }
+
+  /**
+   * Sets the race start timestamp for export metadata.
+   *
+   * Captured by Story 005 when `race.started` fires.
+   * Default is `0` after construction or {@link clear}.
+   *
+   * @param ms - Epoch timestamp in milliseconds.
+   */
+  setStartTime(ms: number): void {
+    this._startTime = ms;
+  }
+
+  /**
+   * Exports all recorded telemetry data as a JSON string.
+   *
+   * Returns `null` when `import.meta.env.DEV` is `false` (production guard).
+   * The returned JSON has `race` metadata and `cars` entries with per-car
+   * sample arrays. Samples are deep-copied to provide a point-in-time
+   * snapshot that subsequent recording does not mutate.
+   *
+   * Race metadata:
+   * - `track` — set by {@link setTrack} (default `"unknown"`)
+   * - `laps` — set by {@link setTotalLaps} (default `0`)
+   * - `startTime` — set by {@link setStartTime} (default `0`)
+   * - `duration` — computed as the maximum `t` (elapsedTime) across all samples
+   *
+   * Car entries are keyed by car ID, each containing:
+   * - `team` — team name string from {@link CarEntityRef.teamName}
+   * - `samples` — array of deep-copied {@link TelemetrySample} objects
+   *
+   * @returns A JSON string, or `null` in production builds.
+   *
+   * @example
+   * ```typescript
+   * const json = recorder.export();
+   * if (json) {
+   *   const data = JSON.parse(json);
+   *   console.log(data.race.track); // "interlagos"
+   *   console.log(Object.keys(data.cars).length); // number of cars
+   * }
+   * ```
+   */
+  export(): string | null {
+    if (!import.meta.env.DEV) return null;
+
+    // Compute duration as the maximum elapsedTime across all samples
+    let duration = 0;
+    for (const samples of this._samples.values()) {
+      const last = samples.at(-1);
+      if (last && last.t > duration) {
+        duration = last.t;
+      }
+    }
+
+    const cars: Record<string, { team: string; samples: TelemetrySample[] }> =
+      {};
+    for (const [carId, samples] of this._samples) {
+      // Deep copy: spread each sample into a new object (all fields are
+      // primitives, so a shallow spread is equivalent to a deep copy).
+      cars[carId] = {
+        team: this._teamNames.get(carId) ?? carId,
+        samples: samples.map((s) => ({ ...s })),
+      };
+    }
+
+    const data = {
+      race: {
+        track: this._track,
+        laps: this._totalLaps,
+        startTime: this._startTime,
+        duration,
+      },
+      cars,
+    };
+
+    return JSON.stringify(data);
   }
 
   /**
