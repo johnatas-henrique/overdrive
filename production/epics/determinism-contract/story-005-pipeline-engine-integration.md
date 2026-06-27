@@ -153,8 +153,8 @@ _Handled by neighbouring stories — do not implement here:_
 - Assert: `executeTick()` called from `engine.runRenderLoop()`
 - Assert: tick executed at 60 FPS target
 
-### AC-2: dev assertions in __DEV__
-- In `__DEV__` mode, use `Date.now()` inside pipeline tick
+### AC-2: dev assertions in import.meta.env.DEV
+- In `import.meta.env.DEV` mode, use `Date.now()` inside pipeline tick
 - Assert: dev assertion fires
 - In production mode, same operation does not fire assertion
 
