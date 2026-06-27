@@ -10,7 +10,7 @@
 
 Telemetry Recorder captures per-car simulation data during a race and exports it as JSON for post-race analysis. It also logs a summary to the console every 5 seconds for quick overview during testing. The primary use case is validating AI driver behavior — answering "are the AI cars doing what we expect?"
 
-The recorder is a development-only system (`__DEV__`). Zero cost in production builds.
+The recorder is a development-only system (`import.meta.env.DEV`). Zero cost in production builds.
 
 ---
 
@@ -24,7 +24,7 @@ The developer finishes a test race. They open the browser console and see a JSON
 
 ### Core Rules
 
-**1. Compile-time only.** All code guarded by `if (__DEV__)`. Zero bytes in production.
+**1. Compile-time only.** All code guarded by `if (import.meta.env.DEV)`. Zero bytes in production.
 
 **2. 20 Hz sampling.** Records one snapshot per car every 3 physics ticks (60 Hz / 3 = 20 Hz). Sufficient for AI behavior analysis.
 
@@ -130,7 +130,7 @@ Two methods:
 | 3   | `window.__telemetry.export()` returns valid JSON       | Unit        |
 | 4   | JSON contains all 8 cars with correct team names       | Unit        |
 | 5   | Arrays cleared on race restart                         | Integration |
-| 6   | Recording has zero cost when `__DEV__` is false        | Unit        |
+| 6   | Recording has zero cost when `import.meta.env.DEV` is false | Unit        |
 | 7   | Player car data is recorded alongside AI cars          | Integration |
 
 ---

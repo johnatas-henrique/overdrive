@@ -8,7 +8,7 @@
 
 ## Overview
 
-Dev Tools is a set of developer-only utilities active only in development builds (`__DEV__` compile flag). It contains four features: a Debug Overlay (HTML — F1 toggle) showing FPS, physics step time, draw calls, and system registry; an AI Telemetry Visualizer showing real-time traces of every AI car; a Parameter Hot-Reload indicator showing config changes as they happen via Vite HMR; and a State Inspector showing the Config Manager value tree and SimulationSnapshot per-system hashes. All code inside `if (__DEV__)` blocks is tree-shaken from production builds — zero bytes shipped to players.
+Dev Tools is a set of developer-only utilities active only in development builds (`import.meta.env.DEV` guard). It contains four features: a Debug Overlay (HTML — F1 toggle) showing FPS, physics step time, draw calls, and system registry; an AI Telemetry Visualizer showing real-time traces of every AI car; a Parameter Hot-Reload indicator showing config changes as they happen via Vite HMR; and a State Inspector showing the Config Manager value tree and SimulationSnapshot per-system hashes. All code inside `if (import.meta.env.DEV)` blocks is tree-shaken from production builds — zero bytes shipped to players.
 
 ## Player Fantasy
 
@@ -20,7 +20,7 @@ The developer presses F1. An overlay appears on top of the game — FPS counter 
 
 ### Core Rules
 
-**1. Compile-time only.** All Dev Tools code is guarded by `if (__DEV__)`. Vite's `define` replaces `__DEV__` with `false` in production builds, and the minifier eliminates dead code. No runtime toggle, no leak to release builds.
+**1. Compile-time only.** All Dev Tools code is guarded by `if (import.meta.env.DEV)`. Vite evaluates this at compile time: `true` in dev, `false` in production. The minifier eliminates dead code. No runtime toggle, no leak to release builds.
 
 **2. F1 to toggle overlay, F2 to force-reload config.** The overlay is off by default on game start. F1 shows/hides it. F2 triggers a manual config re-scan for when HMR doesn't fire (e.g. config edited outside the editor).
 
@@ -65,7 +65,7 @@ None. Dev Tools reads and displays — it does not compute.
 2. **F1 during race.** The overlay appears on top of the game. The race continues in the background. No input is lost because `pointer-events: none` means clicks pass through to the canvas.
 3. **Game window resized.** The overlay is `width: 100%; height: 100%` with CSS `resize` handling — it fills the canvas container automatically.
 4. **Config value is undefined.** The overlay renders `undefined` as `—` (em dash) instead of showing the literal word undefined.
-5. **Dev Tools accidentally left on in a production build.** Not possible — `__DEV__` is false, all code tree-shaken. The F1 listener never exists in the bundle.
+5. **Dev Tools accidentally left on in a production build.** Not possible — `import.meta.env.DEV` is false, all code tree-shaken. The F1 listener never exists in the bundle.
 
 ## Dependencies
 
@@ -97,7 +97,7 @@ Styled with CSS variables matching the game palette (Track Black background, Sig
 
 ## Acceptance Criteria
 
-1. `__DEV__` is `true` in `vite dev` and `false` in `vite build` — verified by build output.
+1. `import.meta.env.DEV` is `true` in `vite dev` and `false` in `vite build` — verified by build output.
 2. F1 toggles overlay visibility — visible when pressed, hidden when pressed again.
 3. Config tree shows all namespaces registered in Config Manager with current values.
 4. AI Telemetry tab shows per-car speed, position, and active behavior node.
