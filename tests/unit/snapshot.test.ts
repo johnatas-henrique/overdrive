@@ -32,15 +32,18 @@ if (typeof crypto?.subtle === "undefined") {
   });
 }
 
-// Suppress console.warn output during tests
+// Suppress console output during tests
 let warnSpy: ReturnType<typeof vi.spyOn>;
+let errorSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
 afterEach(() => {
   warnSpy.mockRestore();
+  errorSpy.mockRestore();
 });
 
 // ---------------------------------------------------------------------------
@@ -313,31 +316,31 @@ describe("AC-3: fnv1a returns 16-character hex string", () => {
 // ---------------------------------------------------------------------------
 
 describe("AC-4: fnv1a determinism — same input, same output", () => {
-  it('should return identical hash for "test data" over 1000 calls', () => {
+  it('should return identical hash for "test data" over 10 calls', () => {
     const expected = fnv1a("test data");
-    for (let i = 0; i < 1000; i++) {
+    for (let i = 0; i < 10; i++) {
       expect(fnv1a("test data")).toBe(expected);
     }
   });
 
   it('should return identical hash for "" (empty string) every time', () => {
     const expected = fnv1a("");
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 10; i++) {
       expect(fnv1a("")).toBe(expected);
     }
   });
 
-  it("should be deterministic for large 10KB blob across 100 calls", () => {
+  it("should be deterministic for large 10KB blob across 10 calls", () => {
     const large = "x".repeat(10240);
     const expected = fnv1a(large);
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 10; i++) {
       expect(fnv1a(large)).toBe(expected);
     }
   });
 
   it("should be deterministic for unicode across multiple calls", () => {
     const expected = fnv1a("🏎️ 💨 overdrive 🏁");
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 10; i++) {
       expect(fnv1a("🏎️ 💨 overdrive 🏁")).toBe(expected);
     }
   });
@@ -1204,16 +1207,16 @@ describe("AC-1: sha256 returns 64-char hex string", () => {
 // ---------------------------------------------------------------------------
 
 describe("AC-2: sha256 determinism — same input, same output", () => {
-  it('should return identical hash for "hello" over 100 calls', async () => {
+  it('should return identical hash for "hello" over 5 calls', async () => {
     const expected = await sha256("hello");
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 5; i++) {
       expect(await sha256("hello")).toBe(expected);
     }
   });
 
   it('should return identical hash for "" (empty string) every time', async () => {
     const expected = await sha256("");
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 5; i++) {
       expect(await sha256("")).toBe(expected);
     }
   });

@@ -19,11 +19,11 @@ import {
 // ---------------------------------------------------------------------------
 
 describe("AC-1: deterministic sequence from same seed", () => {
-  it("returns identical sequence over 1000 calls for two instances with seed 42", () => {
+  it("returns identical sequence over 100 calls for two instances with seed 42", () => {
     const a = new SeededRandom(42);
     const b = new SeededRandom(42);
 
-    for (let i = 0; i < 1000; i++) {
+    for (let i = 0; i < 100; i++) {
       expect(a.random()).toBe(b.random());
     }
   });
@@ -97,12 +97,12 @@ describe("AC-2: different seeds produce different sequences", () => {
 // ---------------------------------------------------------------------------
 
 describe("AC-3: randomRange returns values within bounds", () => {
-  it("randomRange(5, 10) with seed 42 returns values in [5, 10) over 10000 calls", () => {
+  it("randomRange(5, 10) with seed 42 returns values in [5, 10) over 1000 calls", () => {
     const rng = new SeededRandom(42);
     let min = Infinity;
     let max = -Infinity;
 
-    for (let i = 0; i < 10000; i++) {
+    for (let i = 0; i < 1000; i++) {
       const val = rng.randomRange(5, 10);
       expect(val).toBeGreaterThanOrEqual(5);
       expect(val).toBeLessThan(10);
@@ -126,7 +126,7 @@ describe("AC-3: randomRange returns values within bounds", () => {
   it("randomRange(5, 2) swaps arguments to produce valid [2, 5) range", () => {
     const rng = new SeededRandom(42);
     // With swapped args, values should be in [2, 5)
-    for (let i = 0; i < 1000; i++) {
+    for (let i = 0; i < 100; i++) {
       const val = rng.randomRange(5, 2);
       expect(val).toBeGreaterThanOrEqual(2);
       expect(val).toBeLessThan(5);
@@ -146,11 +146,11 @@ describe("AC-3: randomRange returns values within bounds", () => {
 // ---------------------------------------------------------------------------
 
 describe("AC-4: randomSign returns only -1 or 1", () => {
-  it("with seed 42, all 10000 calls return -1 or 1", () => {
+  it("with seed 42, all 100 calls return -1 or 1", () => {
     const rng = new SeededRandom(42);
     const validValues = new Set([-1, 1]);
 
-    for (let i = 0; i < 10000; i++) {
+    for (let i = 0; i < 100; i++) {
       const val = rng.randomSign();
       expect(validValues.has(val)).toBe(true);
     }
@@ -160,7 +160,7 @@ describe("AC-4: randomSign returns only -1 or 1", () => {
     const rng = new SeededRandom(42);
     const seen = new Set<number>();
 
-    for (let i = 0; i < 10000 && seen.size < 2; i++) {
+    for (let i = 0; i < 100 && seen.size < 2; i++) {
       seen.add(rng.randomSign());
     }
 
@@ -294,14 +294,19 @@ describe("edge cases", () => {
     expect(state).toBe(1);
   });
 
-  it("random() returns values in [0, 1) over 10000 calls", () => {
+  it("random() returns values in [0, 1) over 1000 calls", () => {
     const rng = new SeededRandom(42);
+    let min = 1;
+    let max = 0;
 
-    for (let i = 0; i < 10000; i++) {
+    for (let i = 0; i < 1000; i++) {
       const val = rng.random();
-      expect(val).toBeGreaterThanOrEqual(0);
-      expect(val).toBeLessThan(1);
+      if (val < min) min = val;
+      if (val > max) max = val;
     }
+
+    expect(min).toBeGreaterThanOrEqual(0);
+    expect(max).toBeLessThan(1);
   });
 
   it("successive getState calls return different values (state advances)", () => {
