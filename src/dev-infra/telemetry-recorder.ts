@@ -24,7 +24,7 @@
  * ```
  *
  * ```typescript
- * // Export usage (dev-only, via Dev Tools F3 keybind):
+ * // Export usage (dev-only, via Dev Tools minimise keybind — default: 2):
  * const json = window.__telemetry?.export();
  * if (json) {
  *   console.log(json);
@@ -292,7 +292,7 @@ export class TelemetryRecorder {
     this._logInterval = logInterval;
 
     // Expose the export function on window.__telemetry in dev builds only.
-    // The Dev Tools epic binds the F3 keypress to this surface.
+    // The Dev Tools epic binds the minimise keypress to this surface.
     if (import.meta.env.DEV && typeof window !== "undefined") {
       window.__telemetry = {
         export: () => this.export(),

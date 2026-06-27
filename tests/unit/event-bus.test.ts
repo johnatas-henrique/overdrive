@@ -366,7 +366,6 @@ describe("EventBusError", () => {
 
 describe("IEventBus interface", () => {
   // Test double: no Event Bus runtime exists in Story 001 (types only)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any — mock needs to satisfy both overloads
   function createMockBus(): IEventBus {
     const bus: IEventBus = {
       on: () => ({ unsubscribe: () => {} }),
