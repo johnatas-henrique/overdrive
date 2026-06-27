@@ -871,6 +871,161 @@ describe("ConfigManager", () => {
     });
   });
 
+  describe("setRuntime", () => {
+    // ── AC-1: set leaf value and return old value ──
+
+    it("AC-1: should set a leaf value and return the old value", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Warm up the resolved cache
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+
+      const old = cm.setRuntime("teams.macklen.motor", 300);
+      expect(old).toBe(250);
+      expect(cm.get<number>("teams.macklen.motor")).toBe(300);
+    });
+
+    it("AC-1: should return the correct old value when setting a string", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { name: "Macklen" });
+
+      const old = cm.setRuntime("teams.name", "Vasari");
+      expect(old).toBe("Macklen");
+      expect(cm.get<string>("teams.name")).toBe("Vasari");
+    });
+
+    it("AC-1: should set a deeply nested value (4+ levels)", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("physics", {
+        car: { suspension: { stiffness: 12000, damping: 4000 } },
+      });
+
+      const old = cm.setRuntime("physics.car.suspension.stiffness", 15000);
+      expect(old).toBe(12000);
+      expect(cm.get<number>("physics.car.suspension.stiffness")).toBe(15000);
+    });
+
+    // ── AC-2: throw ConfigError for non-existent key ──
+
+    it("AC-2: should throw ConfigError for a non-existent key", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      expect(() => cm.setRuntime("teams.macklen.motor.invalid", 99)).toThrow(
+        ConfigError
+      );
+      expect(() => cm.setRuntime("teams.macklen.motor.invalid", 99)).toThrow(
+        "Key not found: teams.macklen.motor.invalid"
+      );
+    });
+
+    it("AC-2: should throw ConfigError for a non-existent namespace", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", {});
+
+      expect(() => cm.setRuntime("nonexistent.key", 99)).toThrow(ConfigError);
+      expect(() => cm.setRuntime("nonexistent.key", 99)).toThrow(
+        "Key not found: nonexistent.key"
+      );
+    });
+
+    it("AC-2: should throw ConfigError for an empty string key", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", {});
+
+      expect(() => cm.setRuntime("", 99)).toThrow(ConfigError);
+      expect(() => cm.setRuntime("", 99)).toThrow("Key not found:");
+    });
+
+    // ── AC-3: write to _resolved, not _store ──
+
+    it("AC-3: should write to _resolved, not to _store", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Warm up resolved cache
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+
+      cm.setRuntime("teams.macklen.motor", 999);
+
+      // _resolved has the new value
+      expect(cm.get<number>("teams.macklen.motor")).toBe(999);
+
+      // Invalidate and re-read — _store value is restored
+      cm.invalidateNamespace("teams");
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+    });
+
+    it("AC-3: _store values unchanged after setRuntime", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Access the private _store via cast to verify raw config is untouched
+      cm.setRuntime("teams.macklen.motor", 999);
+
+      const rawStore = (cm as any)._store.get("teams");
+      expect(rawStore.macklen.motor).toBe(250);
+    });
+
+    // ── AC-4: guarded by import.meta.env.DEV ──
+
+    it("AC-4: should be a no-op when DEV is false", () => {
+      vi.stubEnv("DEV", false);
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.get("teams.macklen.motor"); // warm up resolved
+
+      const result = cm.setRuntime("teams.macklen.motor", 999);
+      expect(result).toBeUndefined();
+
+      // Value should remain unchanged
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+      vi.unstubAllEnvs();
+    });
+
+    // ── AC-5: rebuild resolved cache if it was invalidated ──
+
+    it("AC-5: should rebuild resolved cache when namespace was invalidated", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Populate resolved, then invalidate
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+      cm.invalidateNamespace("teams");
+
+      // setRuntime should rebuild and then set
+      const old = cm.setRuntime("teams.macklen.motor", 400);
+      expect(old).toBe(250);
+      expect(cm.get<number>("teams.macklen.motor")).toBe(400);
+    });
+
+    // ── Edge: set to undefined ──
+
+    it("should allow setting a value to undefined", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.get("teams.macklen.motor"); // warm up
+
+      const old = cm.setRuntime("teams.macklen.motor", undefined);
+      expect(old).toBe(250);
+
+      // After setRuntime to undefined, get() should throw (undefined check)
+      expect(() => cm.get("teams.macklen.motor")).toThrow(ConfigError);
+    });
+  });
+
   describe("_flattenObject (private)", () => {
     it("should recursively flatten nested objects into dot-path entries", () => {
       const cm = new ConfigManager();

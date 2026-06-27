@@ -436,7 +436,7 @@ describe("Story 002 — Input Keybinds", () => {
     });
 
     it("should silently skip reload when ConfigManager is not initialized", async () => {
-      mockGetConfigManager.mockImplementationOnce(() => {
+      mockGetConfigManager.mockImplementation(() => {
         throw new Error("ConfigManager not initialized");
       });
 

@@ -35,11 +35,34 @@ vi.mock("@babylonjs/core/Instrumentation/sceneInstrumentation", () => ({
 }));
 
 // ---------------------------------------------------------------------------
+// Mock ConfigManager for config data source tests
+// ---------------------------------------------------------------------------
+
+const mockConfigManager = vi.hoisted(() => ({
+  getDebugState: vi.fn(() => ({
+    namespaces: { physics: { gravity: 9.81 } },
+    accessLog: [],
+  })),
+  get: vi.fn(),
+  init: vi.fn(),
+  register: vi.fn(),
+  setRuntime: vi.fn((_key: string, value: unknown) => value),
+}));
+
+vi.mock("@/foundation/config/config-manager", () => ({
+  getConfigManager: vi.fn(() => mockConfigManager),
+  ConfigManager: vi.fn(function mockConfigManager() {
+    return mockConfigManager;
+  }),
+}));
+
+// ---------------------------------------------------------------------------
 // Import the class under test AFTER mocks are established
 // ---------------------------------------------------------------------------
 
 import { DevTools } from "@/core/dev-tools/dev-tools";
 import type { IDevTools } from "@/core/dev-tools/types";
+import { getConfigManager } from "@/foundation/config/config-manager";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -513,6 +536,7 @@ describe("Edge cases", () => {
     // toggle() when canvas is null → _initOverlay returns early → no DOM
     expect(() => devTools.toggle()).not.toThrow();
     expect(document.getElementById("dev-overlay")).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("[DevTools]"));
 
     devTools.dispose();
     warnSpy.mockRestore();
@@ -728,5 +752,100 @@ describe("showNotification", () => {
     const notifications = document.querySelectorAll(".dev-notification");
     expect(notifications).toHaveLength(1); // old one was removed by existing.remove()
     expect(notifications[0]?.textContent).toBe("second");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Config data source wiring (Story 004)
+// ---------------------------------------------------------------------------
+
+describe("config data source", () => {
+  let devTools: IDevTools;
+  let mocks: ReturnType<typeof createMocks>;
+
+  beforeEach(() => {
+    cleanDOM();
+    vi.clearAllMocks();
+    mockConfigManager.getDebugState.mockReturnValue({
+      namespaces: { physics: { gravity: 9.81 } },
+      accessLog: [],
+    });
+    mocks = createMocks();
+    devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    // Toggle overlay on to initialize DOM (lazy init on first toggle)
+    devTools.toggle();
+  });
+
+  afterEach(() => {
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should register config data source from ConfigManager on first update", () => {
+    devTools.update();
+    expect(mockConfigManager.getDebugState).toHaveBeenCalled();
+  });
+
+  it("should refresh config tree on subsequent updates", () => {
+    devTools.update();
+    mockConfigManager.getDebugState.mockClear();
+
+    devTools.update();
+    expect(mockConfigManager.getDebugState).toHaveBeenCalled();
+  });
+
+  it("should handle ConfigManager not initialized gracefully", () => {
+    (getConfigManager as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      throw new Error("Not initialized");
+    });
+
+    expect(() => devTools.update()).not.toThrow();
+  });
+
+  it("should handle getDebugState missing gracefully", () => {
+    (getConfigManager as ReturnType<typeof vi.fn>).mockReturnValue({});
+
+    expect(() => devTools.update()).not.toThrow();
+  });
+
+  it("should return correct fallback shape when ConfigManager not initialized", () => {
+    (getConfigManager as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      throw new Error("Not initialized");
+    });
+
+    devTools.update();
+
+    // Invoke the data source reader — should return fallback shape
+    const dataSources = (
+      devTools as unknown as {
+        _dataSources: Map<string, () => Record<string, unknown>>;
+      }
+    )._dataSources;
+    const reader = dataSources.get("config");
+    expect(reader).toBeDefined();
+
+    const state = reader?.();
+    expect(state).toEqual({
+      namespaces: {},
+      accessLog: [],
+      envOverrides: [],
+    });
+  });
+
+  it("should handle ConfigTreePanel.refresh() throwing gracefully", () => {
+    mockConfigManager.getDebugState.mockReturnValue({
+      namespaces: { physics: { gravity: 9.81 } },
+      accessLog: [],
+    });
+
+    // First update: creates ConfigTreePanel successfully
+    devTools.update();
+
+    // Now make getDebugState throw — panel exists, refresh() should fail gracefully
+    mockConfigManager.getDebugState.mockImplementation(() => {
+      throw new Error("getDebugState failed");
+    });
+
+    expect(() => devTools.update()).not.toThrow();
   });
 });
