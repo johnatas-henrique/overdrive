@@ -86,7 +86,7 @@ All telemetry stories are pure TypeScript (no Babylon.js dependency). Unit tests
 
 Dev Tools overlay is DOM-based (HTML overlay). Tests verify state management and data flow, not visual output.
 
-- **DT-001 Compile Guard**: Test `__DEV__` flag detection, guard behavior
+- **DT-001 Compile Guard**: Test `import.meta.env.DEV` flag detection, guard behavior
 - **DT-002 Input Keybinds**: Test keybind registration, mapping, override
 - **DT-003 HTML Overlay** (UI): Manual verification — overlay renders, tabs switch, data updates
 - **DT-004 Config Tree**: Test tree traversal, namespace display, value formatting
