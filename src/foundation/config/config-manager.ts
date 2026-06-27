@@ -459,13 +459,7 @@ export class ConfigManager {
       this._buildResolved(namespace);
     }
 
-    const root = this._resolved.get(namespace) as
-      | Record<string, unknown>
-      | undefined;
-    if (!root) {
-      this._recordAccess(key, "production");
-      throw new ConfigError(`Key not found: ${key}`);
-    }
+    const root = this._resolved.get(namespace) as Record<string, unknown>;
 
     // Navigate to the parent of the leaf value
     let current: unknown = root;

@@ -189,7 +189,7 @@ export class ConfigTreePanel {
     const expanded = new Set<string>();
     for (const child of this._container.children) {
       if (child instanceof HTMLDetailsElement && child.open) {
-        expanded.add(child.dataset.ns ?? "");
+        expanded.add(child.dataset.ns as string);
       }
     }
     return expanded;
