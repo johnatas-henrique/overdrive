@@ -1,11 +1,12 @@
 # Story 006: Production No-op Behavior
 
 > **Epic**: Telemetry Recorder
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 4h
+> **Last Updated**: 2026-06-26
 
 ## Context
 
@@ -126,3 +127,11 @@ _Handled by separate tasks:_
 
 - Depends on: Story 001 (guards in data model), Story 002 (guards in sampling), Story 003 (guards in console), Story 004 (guards in export), Story 005 (guards in lifecycle)
 - Unlocks: Bundle verification CI task (Epic DoD line item)
+
+## Completion Notes
+
+**Completed**: 2026-06-26
+**Criteria**: 3/3 passing (AC-4 deferred to build verification)
+**Deviations**: None
+**Test Evidence**: Logic: tests/unit/dev-infra/telemetry-noop.test.ts (10 tests)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS fixed (babylonjs-specialist, qa-tester ADEQUATE)

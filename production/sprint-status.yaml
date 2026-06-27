@@ -82,11 +82,11 @@ stories:
     name: "Story 006: Telemetry Noop Behavior"
     file: "production/epics/telemetry-recorder/story-006-telemetry-noop-behavior.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-26"
 
   # Dev Tools (after Telemetry — DT-008 uses data model)
   - id: "2-8"
