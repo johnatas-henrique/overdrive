@@ -1,6 +1,13 @@
-import { ConfigError } from "./configError";
+import { ConfigError } from "./config-error";
 
 type ConfigStore = Map<string, object>;
+
+/** A single config value change detected by reload(). */
+export interface ConfigChange {
+  key: string;
+  old: unknown;
+  new: unknown;
+}
 
 /** Entry in the access log ring buffer. */
 interface AccessEntry {
@@ -26,6 +33,34 @@ interface DebugState {
  * - `"Macklen"`  → `"Macklen"` (string)
  * - `"Infinity"` → `"Infinity"` (string — not finite)
  */
+// ---------------------------------------------------------------------------
+// ConfigManager singleton
+// ---------------------------------------------------------------------------
+
+let _configManagerInstance: ConfigManager | null = null;
+
+/**
+ * Register the ConfigManager singleton instance.
+ * Must be called once during init phase 0.
+ */
+export function setConfigManager(instance: ConfigManager): void {
+  _configManagerInstance = instance;
+}
+
+/**
+ * Return the registered ConfigManager singleton instance.
+ *
+ * @throws {Error} If setConfigManager() has not been called
+ */
+export function getConfigManager(): ConfigManager {
+  if (!_configManagerInstance) {
+    throw new Error(
+      "ConfigManager not initialized. Call setConfigManager(cm) first."
+    );
+  }
+  return _configManagerInstance;
+}
+
 function _coerceEnvValue(value: string): string | number {
   const num = Number(value);
   if (Number.isFinite(num)) {
@@ -179,6 +214,88 @@ export class ConfigManager {
     }
 
     this._resolved.delete(namespace);
+  }
+
+  /**
+   * Reload all config namespaces: invalidate cached resolved configs,
+   * re-apply environment overrides, and return any value changes.
+   *
+   * Called by Dev Tools (reload key) to force a configuration refresh.
+   * Config values are registered programmatically at init time, so this
+   * primarily re-evaluates env overrides.
+   *
+   * @returns Array of changed key paths with old and new values.
+   *          Empty array when no values changed.
+   */
+  reload(): ConfigChange[] {
+    if (!this._initialized) return [];
+
+    // Snapshot current resolved values before invalidation
+    const snapshot = this._flattenResolved();
+
+    // Invalidate all namespaces and rebuild from raw configs
+    for (const [namespace] of this._store) {
+      this.invalidateNamespace(namespace);
+      try {
+        this._buildResolved(namespace);
+      } catch {
+        // Namespace stays without resolved cache;
+        // next get() will attempt rebuild on demand
+      }
+    }
+
+    // Snapshot new resolved values and diff
+    const newValues = this._flattenResolved();
+    const changes: ConfigChange[] = [];
+
+    for (const [key, oldVal] of snapshot) {
+      const newVal = newValues.get(key);
+      if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+        changes.push({ key, old: oldVal, new: newVal });
+      }
+    }
+
+    return changes;
+  }
+
+  /**
+   * Flatten all resolved config namespaces into dot-path key to value map.
+   */
+  private _flattenResolved(): Map<string, unknown> {
+    const flat = new Map<string, unknown>();
+    for (const [namespace] of this._store) {
+      const resolved = this._resolved.get(namespace);
+      if (resolved) {
+        this._flattenObject(
+          namespace,
+          resolved as Record<string, unknown>,
+          flat
+        );
+      }
+    }
+    return flat;
+  }
+
+  /**
+   * Recursively flatten an object into dot-path entries.
+   */
+  private _flattenObject(
+    prefix: string,
+    obj: Record<string, unknown>,
+    result: Map<string, unknown>
+  ): void {
+    for (const [key, value] of Object.entries(obj)) {
+      const fullKey = `${prefix}.${key}`;
+      if (
+        value !== null &&
+        typeof value === "object" &&
+        !Array.isArray(value)
+      ) {
+        this._flattenObject(fullKey, value as Record<string, unknown>, result);
+      } else {
+        result.set(fullKey, value);
+      }
+    }
   }
 
   /**
