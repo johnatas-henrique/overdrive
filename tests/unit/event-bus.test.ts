@@ -1659,4 +1659,24 @@ describe("wildcard subscription", () => {
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("wildcard"));
     warnSpy.mockRestore();
   });
+
+  it("should use plural 'handlers' in warning when multiple wildcard handlers leaked", () => {
+    bus.on("*", () => {});
+    bus.on("*", () => {});
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    bus.dispose();
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("2 handlers"));
+    warnSpy.mockRestore();
+  });
+
+  it("should propagate EventBusError from wildcard handler recursive emit", () => {
+    bus.on("*", () => bus.emit("fuel.low", { remaining: 5 }));
+    expect(() => bus.emit("fuel.low", { remaining: 5 })).toThrow(EventBusError);
+    expect(() => bus.emit("fuel.low", { remaining: 5 })).toThrow(
+      "Max emit depth exceeded"
+    );
+  });
 });

@@ -391,6 +391,34 @@ describe("Config Tree Panel — AC-4", () => {
       expect(notifications[0]).toContain("300");
     });
 
+    it("should include the config key path in the notification message", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+
+      const notifications: string[] = [];
+      const container = createContainer();
+      const panel = new ConfigTreePanel(
+        container,
+        () => cm,
+        (msg) => notifications.push(msg)
+      );
+      panel.refresh();
+      expandFirstDetails(container);
+
+      const valueSpan = container.querySelector(".config-value") as HTMLElement;
+      valueSpan.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+
+      const input = container.querySelector("input") as HTMLInputElement;
+      input.value = "300";
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+      );
+
+      expect(notifications[0]).toContain("teams.macklen.motor");
+    });
+
     it("should revert display when setRuntime throws", () => {
       const cm = new ConfigManager();
       cm.init();

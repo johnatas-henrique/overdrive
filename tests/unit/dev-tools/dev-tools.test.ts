@@ -765,6 +765,7 @@ describe("config data source", () => {
 
   beforeEach(() => {
     cleanDOM();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.clearAllMocks();
     mockConfigManager.getDebugState.mockReturnValue({
       namespaces: { physics: { gravity: 9.81 } },
@@ -803,12 +804,14 @@ describe("config data source", () => {
   });
 
   it("should handle getDebugState missing gracefully", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     (getConfigManager as ReturnType<typeof vi.fn>).mockReturnValue({});
 
     expect(() => devTools.update()).not.toThrow();
   });
 
   it("should return correct fallback shape when ConfigManager not initialized", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     (getConfigManager as ReturnType<typeof vi.fn>).mockImplementation(() => {
       throw new Error("Not initialized");
     });
@@ -832,7 +835,13 @@ describe("config data source", () => {
     });
   });
 
-  it("should handle ConfigTreePanel.refresh() throwing gracefully", () => {
+  it("should throw when ConfigTreePanel.refresh() fails", () => {
+    // Ensure getConfigManager returns the mock (previous tests may have
+    // changed its implementation without restoring it)
+    (getConfigManager as ReturnType<typeof vi.fn>).mockReturnValue(
+      mockConfigManager
+    );
+
     mockConfigManager.getDebugState.mockReturnValue({
       namespaces: { physics: { gravity: 9.81 } },
       accessLog: [],
@@ -841,11 +850,74 @@ describe("config data source", () => {
     // First update: creates ConfigTreePanel successfully
     devTools.update();
 
-    // Now make getDebugState throw — panel exists, refresh() should fail gracefully
+    // Now make getDebugState throw — error propagates through refresh()
+    // (no longer caught silently — see TR-DVT-004 ADR decision)
     mockConfigManager.getDebugState.mockImplementation(() => {
       throw new Error("getDebugState failed");
     });
 
-    expect(() => devTools.update()).not.toThrow();
+    expect(() => devTools.update()).toThrow("getDebugState failed");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Config tree panel value edit: triggers notification via callback (line 443)
+// ---------------------------------------------------------------------------
+
+describe("config tree panel value edit", () => {
+  let devTools: IDevTools;
+  let mocks: ReturnType<typeof createMocks>;
+
+  beforeEach(() => {
+    cleanDOM();
+    vi.clearAllMocks();
+    mockConfigManager.getDebugState.mockReturnValue({
+      namespaces: { physics: { gravity: 9.81 } },
+      accessLog: [],
+    });
+    mocks = createMocks();
+    devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    devTools.toggle(); // Creates overlay + ConfigTreePanel via _refreshConfigTree
+  });
+
+  afterEach(() => {
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should show notification when a config value is edited in the tree panel", () => {
+    // Full render pass to ensure ConfigTreePanel DOM is built
+    devTools.update();
+
+    // Find the config value element rendered by ConfigTreePanel
+    const valueSpan = document.querySelector(
+      '[data-config-key="physics.gravity"]'
+    ) as HTMLSpanElement | null;
+    expect(valueSpan).not.toBeNull();
+    expect(valueSpan?.textContent).toBe("9.81");
+
+    // Make setRuntime return the old value (realistic mock: real impl returns old value)
+    mockConfigManager.setRuntime.mockReturnValueOnce(9.81);
+
+    // Double-click the value to enter edit mode (span → input)
+    valueSpan?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+
+    // Verify the value span was replaced by an input element
+    const input = document.querySelector("input");
+    expect(input).not.toBeNull();
+    expect(input?.value).toBe("9.81");
+
+    // Set a new value and press Enter to confirm the edit
+    (input as HTMLInputElement).value = "42";
+    input?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+    );
+
+    // Verify the notification was created by showNotification (line 443 coverage)
+    const notification = document.querySelector(".dev-notification");
+    expect(notification).not.toBeNull();
+    expect(notification?.textContent).toBe(
+      "config updated — physics.gravity: 9.81 → 42"
+    );
   });
 });

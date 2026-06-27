@@ -944,6 +944,18 @@ describe("ConfigManager", () => {
       expect(() => cm.setRuntime("", 99)).toThrow("Key not found:");
     });
 
+    it("should throw ConfigError for intermediate segment not found in dot-path", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 3 } });
+      expect(() => cm.setRuntime("teams.nonexistent.motor", 99)).toThrow(
+        ConfigError
+      );
+      expect(() => cm.setRuntime("teams.nonexistent.motor", 99)).toThrow(
+        "Key not found: teams.nonexistent.motor"
+      );
+    });
+
     // ── AC-3: write to _resolved, not _store ──
 
     it("AC-3: should write to _resolved, not to _store", () => {

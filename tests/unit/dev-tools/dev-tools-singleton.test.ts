@@ -149,6 +149,10 @@ describe("Dev Tools singleton (index.ts)", () => {
   // -----------------------------------------------------------------------
 
   describe("devTools proxy", () => {
+    beforeEach(() => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+    });
+
     it("should throw when accessing properties before init", async () => {
       vi.resetModules();
       const { devTools } = await import("@/core/dev-tools");
