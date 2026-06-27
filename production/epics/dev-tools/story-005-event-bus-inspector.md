@@ -1,11 +1,13 @@
 # Story 005: Event Bus Inspector
 
 > **Epic**: Dev Tools
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 6h
+> **Last Updated**: 2026-06-27
+> **Completed**: 2026-06-27
 
 ## Context
 
