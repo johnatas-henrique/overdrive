@@ -14,7 +14,7 @@ Accepted
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | **Engine**                | Babylon.js 9.12.0                                                                                                          |
 | **Domain**                | Developer Infrastructure — Telemetry                                                                                       |
-| **Knowledge Risk**        | LOW — pure TypeScript. Zero Babylon.js imports. Compile-time guard (`__DEV__`) eliminates all code from production builds. |
+| **Knowledge Risk**        | LOW — pure TypeScript. Zero Babylon.js imports. `import.meta.env.DEV` guard eliminates all code from production builds. |
 | **References Consulted**  | telemetry-recorder.md GDD                                                                                                  |
 | **Post-Cutoff APIs Used** | None                                                                                                                       |
 
@@ -34,7 +34,7 @@ Developers need insight into AI driver behavior during testing. The Telemetry Re
 
 ### Constraints
 
-- Dev-only — zero cost in production (`__DEV__` guard)
+- Dev-only — zero cost in production (`import.meta.env.DEV` guard)
 - Read-only — never writes to gameplay state
 - Accumulate in memory — array grows for race duration (~1.4 MB/hour/car)
 - 20 Hz sampling — sufficient for AI behavior analysis
@@ -45,7 +45,7 @@ Developers need insight into AI driver behavior during testing. The Telemetry Re
 ### Architecture
 
 ```
-TelemetryRecorder (dev-only, __DEV__ guard)
+TelemetryRecorder (dev-only, import.meta.env.DEV guard)
   ├── Subscribes to race.started (clear arrays)
   ├── Subscribes to gsm.state.entered(PostRace) (auto-export ready)
   │
@@ -91,7 +91,7 @@ class TelemetryRecorder {
 
   // Called from pipeline slot (reads only — no writes to game state)
   tick(dt: number, cars: CarEntity[], tickCount: number): void {
-    if (!__DEV__) return;
+    if (!import.meta.env.DEV) return;
 
     this.tickCounter++;
 
@@ -163,7 +163,7 @@ Sorted by position. Single line — no flooding.
 
 | GDD Requirement                       | How This ADR Addresses It                                                |
 | ------------------------------------- | ------------------------------------------------------------------------ |
-| Dev-only — zero production cost       | All code guarded by `__DEV__`. Compiles to zero bytes.                   |
+| Dev-only — zero production cost       | All code guarded by `import.meta.env.DEV`. Compiles to zero bytes. |
 | 20 Hz sampling                        | Every 3 ticks (60 Hz / 3). 13 fields per sample.                         |
 | Console log every 5 seconds           | `logInterval` default 300 ticks. Positions + speeds of all 8 cars.       |
 | JSON export via Dev Tools and console | F3 button + `window.__telemetry.export()`. Single JSON file.             |
@@ -174,7 +174,7 @@ Sorted by position. Single line — no flooding.
 
 ### Positive
 
-- Zero production cost — entire file compiles away under `__DEV__`
+- Zero production cost — entire file compiles away under `import.meta.env.DEV`
 - Direct reads are simple and fast (20hz, not 60hz)
 - JSON export is standard tooling — parsable by any script
 - Console log gives instant feedback during testing without breaking flow
@@ -195,7 +195,7 @@ Sorted by position. Single line — no flooding.
 
 ## Validation Criteria
 
-- [ ] `__DEV__` guard eliminates all code from production build (check dist bundle)
+- [ ] `import.meta.env.DEV` guard eliminates all code from production build (check dist bundle)
 - [ ] Recording captures 20 samples/second per car (every 3 ticks)
 - [ ] Console log appears every 5 seconds with correct positions + speeds
 - [ ] `window.__telemetry.export()` returns valid JSON

@@ -389,7 +389,7 @@ api_decisions:
       HTML overlay (<div> sibling of canvas, pointer-events: none).
       SceneInstrumentation for FPS/draw-calls/physics-time.
       engine.onEndFrameObservable for frame-synced refresh.
-      Lazy init on first F1 press. All code behind if (__DEV__).
+      Lazy init on first F1 press. All code behind if (import.meta.env.DEV).
     not: |
       Do NOT use Babylon Inspector (30MB+ React deps, interactive, write-capable).
       Do NOT use AdvancedDynamicTexture (intercepts canvas input, no pointer-events:none).
@@ -554,7 +554,7 @@ api_decisions:
     api: |
       20hz sample rate, reads from CarEntity directly. Console log every 5s.
       JSON export via Dev Tools F3 or window.__telemetry.export(). Zero bytes
-      in production via __DEV__ guard.
+      in production via import.meta.env.DEV guard.
     not: |
       Do NOT use in production builds. Do NOT write to Event Bus or game state.
     adr: docs/architecture/adr-0022-telemetry-recorder.md

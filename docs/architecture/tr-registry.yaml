@@ -529,7 +529,7 @@ requirements:
   - id: TR-DVT-005
     system: dev-tools
     gdd: design/gdd/dev-tools.md
-    requirement: "GSM state visualiser — current state, history timeline, manual transition buttons (guarded by __DEV__)."
+    requirement: "GSM state visualiser — current state, history timeline, manual transition buttons (guarded by import.meta.env.DEV)."
     domain: Dev
     coverage_adrs: [ADR-0009]
     engine_risk: LOW
@@ -539,7 +539,7 @@ requirements:
   - id: TR-DVT-006
     system: dev-tools
     gdd: design/gdd/dev-tools.md
-    requirement: "Tree-shaken in production via __DEV__ guard — entire class tree and its imports must not appear in production bundle."
+    requirement: "Tree-shaken in production via import.meta.env.DEV guard — entire class tree and its imports must not appear in production bundle."
     domain: Dev
     coverage_adrs: [ADR-0009]
     engine_risk: LOW
@@ -2213,7 +2213,7 @@ requirements:
   - id: TR-TELEMETRY-006
     system: telemetry-recorder
     gdd: design/gdd/telemetry-recorder.md
-    requirement: "Guarded by __DEV__ compile flag — entire class tree and its system imports produce zero bytes in production build."
+    requirement: "Guarded by import.meta.env.DEV compile flag — entire class tree and its system imports produce zero bytes in production build."
     domain: Dev
     coverage_adrs: [ADR-0022]
     engine_risk: LOW

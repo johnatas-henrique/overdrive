@@ -42,7 +42,7 @@ imports (verified via `tsc --noEmit`)._
 | F18 | **Layer directionality**: Foundation → Core → Feature → Presentation. No circular imports.                                                                                                                                                        | ADR-0004 |
 | F19 | **Import rule**: system in layer N may import from N-1 or N-2, never from N+1. Within Core, slot N reads from slot N-1.                                                                                                                           | ADR-0004 |
 | F20 | **Event Bus is the ONLY cross-system pattern for state-change signals.** Per-frame heavy data via direct getter interface, not Event Bus.                                                                                                         | ADR-0004 |
-| F21 | **Dev Infra behind `__DEV__` guard** — `import.meta.env.DEV` dynamic import, zero bytes in production.                                                                                                                                            | ADR-0004 |
+| F21 | **Dev Infra behind `import.meta.env.DEV` guard** — dynamic import, zero bytes in production.                                                                                                                         | ADR-0004 |
 | F22 | **GSM: flat FSM** with `Record<State, State[]>` transition table. Invalid transition throws `GameStateError`.                                                                                                                                     | ADR-0024 |
 | F23 | **No system calls `gsm.getCurrent()`** — all systems react to `gsm.state.entered`/`gsm.state.exited` via Event Bus.                                                                                                                               | ADR-0024 |
 | F24 | **GSM emits 2 events per transition**: `gsm.state.exited(old)` then `gsm.state.entered(new)`.                                                                                                                                                     | ADR-0024 |
@@ -207,8 +207,8 @@ Pit Stop, Race Management._
 
 ## Dev Infra Layer Rules
 
-_Applies to: Dev Tools, Telemetry Recorder. All code behind `__DEV__` guard
-(`import.meta.env.DEV` dynamic import). Zero bytes in production builds.
+_Applies to: Dev Tools, Telemetry Recorder. All code behind `import.meta.env.DEV`
+guard (dynamic import). Zero bytes in production builds.
 Dev Infra is NOT in the Core dependency DAG — it loads itself via dynamic
 import, never statically imported by production code._
 
@@ -239,7 +239,7 @@ import, never statically imported by production code._
 
 | #    | Rule                                                                        | Source   |
 | ---- | --------------------------------------------------------------------------- | -------- |
-| D-G1 | Dev Tools: zero bytes in production build (tree-shaken by `__DEV__` guard). | ADR-0009 |
+| D-G1 | Dev Tools: zero bytes in production build (tree-shaken by `import.meta.env.DEV` guard). | ADR-0009 |
 | D-G2 | Telemetry: ~1.4 MB/hour/car in dev memory (capped to race duration).        | ADR-0022 |
 
 ---
@@ -390,7 +390,7 @@ These APIs are deprecated, removed, or incompatible with the pinned engine versi
 | G2  | All cross-system state-change signals must go through Event Bus — never direct method calls across system boundaries. | ADR-0001, ADR-0004 |
 | G3  | Colour values must be imported from `design/art/palette.json` — no hardcoded hex in game code.                        | art-bible.md       |
 | G3  | Foundation layer must have zero `@babylonjs/core` imports — verified by `tsc --noEmit`.                               | ADR-0004           |
-| G4  | Dev Infra code must compile to zero bytes in production (`__DEV__` guard).                                            | ADR-0004           |
+| G4  | Dev Infra code must compile to zero bytes in production (`import.meta.env.DEV` guard). | ADR-0004           |
 | G5  | `Entity/Car Lifecycle` is in Core, not Foundation (uses `PhysicsAggregate`, `AbstractMesh`).                          | ADR-0004, ADR-0005 |
 | G6  | Player and AI share identical physics model — no cheating, no special treatment for AI.                               | ADR-0008, ADR-0013 |
 | G7  | All simulation code must use `SeededRandom.random()` — never `Math.random()` inside pipeline `update()`.              | ADR-0002           |

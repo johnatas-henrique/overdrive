@@ -17,7 +17,7 @@ Accepted
 | **Knowledge Risk**        | LOW — HTML overlay, no Babylon rendering APIs used                               |
 | **References Consulted**  | dev-tools.md GDD, architecture.md Module Ownership, ADR-0004 (Module Boundaries) |
 | **Post-Cutoff APIs Used** | None                                                                             |
-| **Verification Required** | `__DEV__` compile guard tree-shakes correctly in production build                |
+| **Verification Required** | `import.meta.env.DEV` guard tree-shakes correctly in production build       |
 
 ## ADR Dependencies
 
@@ -79,7 +79,7 @@ FPS, draw calls, and physics time are captured via `SceneInstrumentation` (not c
 ```typescript
 import { SceneInstrumentation } from "@babylonjs/core/Instrumentation/sceneInstrumentation";
 
-if (__DEV__) {
+if (import.meta.env.DEV) {
   const inst = new SceneInstrumentation(scene);
   inst.captureFrameTime = true;
   inst.captureRenderTime = true;
@@ -91,7 +91,7 @@ if (__DEV__) {
 ### Overlay Sibling Position
 
 ```typescript
-if (__DEV__) {
+if (import.meta.env.DEV) {
   const canvas = engine.getRenderingCanvas();
   const container = canvas?.parentElement;
   if (!container) return; // no parent — no overlay
@@ -126,13 +126,13 @@ interface IDevTools {
 
 ```typescript
 // src/core/dev-tools/index.ts
-if (__DEV__) {
+if (import.meta.env.DEV) {
   const devTools = new DevTools();
   pipeline.register("dev-tools", (dt) => devTools.update(dt), 9);
 }
 ```
 
-Vite `define` replaces `__DEV__` with `false` in production. The entire block becomes dead code and is eliminated by the minifier.
+Vite evaluates `import.meta.env.DEV` at compile time: `true` in dev, `false` in production. The entire block becomes dead code and is eliminated by the minifier.
 
 ### Data Sources
 
@@ -140,7 +140,7 @@ Dev Tools subscribes to system state via a registration pattern, driven by the e
 
 ```typescript
 // Physics registers its telemetry:
-if (__DEV__) {
+if (import.meta.env.DEV) {
   devTools.registerDataSource("physics", () => ({
     fps: inst.frameTimeCounter.current,
     physicsTime: inst.physicsTimeCounter.current,
@@ -150,12 +150,12 @@ if (__DEV__) {
 }
 
 // Config Manager registers its tree:
-if (__DEV__) {
+if (import.meta.env.DEV) {
   devTools.registerDataSource("config", () => configManager.getAllValues());
 }
 
 // Frame-end observable drives overlay refresh:
-if (__DEV__) {
+if (import.meta.env.DEV) {
   engine.onEndFrameObservable.add(() => {
     devTools.update(); // Reads data sources, writes to DOM
   });
@@ -167,7 +167,7 @@ Each data source is a zero-arg function called each tick. The overlay re-renders
 ### GSM History Capture
 
 ```typescript
-if (__DEV__) {
+if (import.meta.env.DEV) {
   eventBus.on("gsm.state.entered", (state) => {
     devTools.recordTransition(state, Date.now());
   });
@@ -196,7 +196,7 @@ Dev Tools listens to Event Bus events (read-only subscription, never emits).
 ### Positive
 
 - HTML overlay does not interfere with game input (`pointer-events: none`)
-- `__DEV__` tree-shaking guarantees zero production footprint
+- `import.meta.env.DEV` guard tree-shaking guarantees zero production footprint
 - Lazy init: zero cost until first F1 press
 - CSS-styled with game palette — consistent visual identity
 - Read-only on all systems — cannot corrupt game state
@@ -211,7 +211,7 @@ Dev Tools listens to Event Bus events (read-only subscription, never emits).
 - **Risk**: F1/F2 consumed by Dev Tools but also passed to game input
   **Mitigation**: `event.preventDefault()` on F1/F2 keydown when overlay is active. Input system (ADR-0006) must check if Dev Tools is consuming these keys.
 - **Risk**: Event Bus subscription for GSM history leaks in production
-  **Mitigation**: `gsm.state.entered` subscription wrapped in `if (__DEV__)` block. Production bundle never registers the handler.
+  **Mitigation**: `gsm.state.entered` subscription wrapped in `if (import.meta.env.DEV)` block. Production bundle never registers the handler.
 - **Risk**: 100+ config keys cause scroll jank
   **Mitigation**: Config tree uses `<details>` elements — only open sections render children. Collapsed sections render zero DOM nodes.
 
@@ -220,7 +220,7 @@ Dev Tools listens to Event Bus events (read-only subscription, never emits).
 | GDD System   | Requirement                            | How This ADR Addresses It                  |
 | ------------ | -------------------------------------- | ------------------------------------------ |
 | dev-tools.md | F1 toggle overlay, F2 config reload    | InputState pulses consumed by IDevTools    |
-| dev-tools.md | `__DEV__` compile guard                | Vite `define` + dead-code elimination      |
+| dev-tools.md | `import.meta.env.DEV` guard              | Vite compile-time evaluation + dead-code elimination |
 | dev-tools.md | Read-only on all systems               | registerDataSource pattern, no write APIs  |
 | dev-tools.md | pointer-events: none                   | CSS on overlay div                         |
 | dev-tools.md | Config tree, AI Telemetry, GSM History | Tabbed panel with data source registration |
@@ -229,7 +229,7 @@ Dev Tools listens to Event Bus events (read-only subscription, never emits).
 
 - **CPU**: Overlay update per tick (~0.001ms) when visible. Zero when hidden (lazy polling).
 - **Memory**: DOM nodes for visible overlay (~50-200 nodes depending on config tree expansion).
-- **Production**: Zero bytes — entire file tree-shaken by `__DEV__` guard.
+- **Production**: Zero bytes — entire file tree-shaken by `import.meta.env.DEV` guard.
 
 ## Validation Criteria
 
@@ -248,6 +248,6 @@ Dev Tools listens to Event Bus events (read-only subscription, never emits).
 
 ## Related Decisions
 
-- ADR-0004 (Module Boundaries — Dev Tools is Core, statically imported only via `__DEV__`)
+- ADR-0004 (Module Boundaries — Dev Tools is Core, statically imported only via `import.meta.env.DEV`)
 - ADR-0006 (Input Abstraction — F1/F2 consumed from InputState)
 - ADR-0018 (Simulation Snapshot — Dev Tools reads per-system hashes for state inspector)

@@ -85,7 +85,7 @@
 
 | Req ID     | GDD          | System    | Requirement                                                                                                                                                                                 | Domain  |
 | ---------- | ------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| TR-DVT-001 | dev-tools.md | Dev Tools | All Dev Tools code guarded by `if (__DEV__)` compile flag; `__DEV__` replaced with `false` in production builds — code tree-shaken, zero bytes shipped.                                     | Tooling |
+| TR-DVT-001 | dev-tools.md | Dev Tools | All Dev Tools code guarded by `if (import.meta.env.DEV)` — evaluated at compile time, code tree-shaken in production builds, zero bytes shipped.                                              | Tooling |
 | TR-DVT-002 | dev-tools.md | Dev Tools | F1 toggles HTML overlay with `position: absolute; pointer-events: none;` over the canvas — never intercepts game input.                                                                     | Tooling |
 | TR-DVT-003 | dev-tools.md | Dev Tools | Dev Tools is read-only on all systems — reads via public APIs, never writes game state, never calls `emit()` on Event Bus.                                                                  | Tooling |
 | TR-DVT-004 | dev-tools.md | Dev Tools | F2 triggers manual config re-scan; overlay responds with changed value indication.                                                                                                          | Tooling |
@@ -321,7 +321,7 @@
 
 | Req ID           | GDD                   | System             | Requirement                                                                                                                                                   | Domain              |
 | ---------------- | --------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| TR-TELEMETRY-001 | telemetry-recorder.md | Telemetry Recorder | All code guarded by `if (__DEV__)` — zero bytes in production builds.                                                                                         | Build / Performance |
+| TR-TELEMETRY-001 | telemetry-recorder.md | Telemetry Recorder | All code guarded by `if (import.meta.env.DEV)` — zero bytes in production builds.                                                                            | Build / Performance |
 | TR-TELEMETRY-002 | telemetry-recorder.md | Telemetry Recorder | Samples at 20 Hz (every 3 ticks). 13 fields per sample: tick, t, speed, rpm, throttle, brake, steer, gear, lateralG, fuel, tireCondition, splinePos, aiState. | Performance / Data  |
 | TR-TELEMETRY-003 | telemetry-recorder.md | Telemetry Recorder | Console log every 5 seconds (configurable `logInterval`, default 300 ticks) during Racing: positions and speeds for all 8 cars.                               | Performance         |
 | TR-TELEMETRY-004 | telemetry-recorder.md | Telemetry Recorder | JSON export via Dev Tools (F3) and `window.__telemetry.export()`. Output: race metadata + per-car sample arrays.                                              | Data / Cross-system |

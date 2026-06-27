@@ -144,8 +144,8 @@ Approved 2026-06-21.
 
 | Module             | Owns                                                             | Exposes                                              | Consumes                                                                                                                                                                                                        | Engine APIs                                         |
 | ------------------ | ---------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| Dev Tools          | HTML overlay DOM, FPS/draw call sampling, section collapse state | None (side-effect only — guarded by `__DEV__`)       | Event Bus (all events for inspector), Config Manager (namespaces), GSM (state history), Simulation Snapshot (system hashes), Engine (stats)                                                                     | `engine.getFps()`, `scene.getActiveMeshes().length` |
-| Telemetry Recorder | `TelemetrySample[]` per car, console log timer                   | `window.__telemetry.export()` (guarded by `__DEV__`) | Physics (speed, rpm, throttle, brake, steer, gear, lateralG), Fuel (fuelLevel), Tire (tireCondition), AI Driver (aiState — Normal/Following/Passing), Race Management (splinePosition, elapsedTime, currentLap) | None                                                |
+| Dev Tools          | HTML overlay DOM, FPS/draw call sampling, section collapse state | None (side-effect only — guarded by `import.meta.env.DEV`) | Event Bus (all events for inspector), Config Manager (namespaces), GSM (state history), Simulation Snapshot (system hashes), Engine (stats)                                                                     | `engine.getFps()`, `scene.getActiveMeshes().length` |
+| Telemetry Recorder | `TelemetrySample[]` per car, console log timer                   | `window.__telemetry.export()` (guarded by `import.meta.env.DEV`) | Physics (speed, rpm, throttle, brake, steer, gear, lateralG), Fuel (fuelLevel), Tire (tireCondition), AI Driver (aiState — Normal/Following/Passing), Race Management (splinePosition, elapsedTime, currentLap) | None                                                |
 
 ### Dependency Diagram
 
@@ -334,8 +334,8 @@ PRESENTATION:
  21. Menu LITE                  — creates ADT, shows Title Screen
 
 DEV INFRA:
- 22. Dev Tools                  — registers hotkeys, __DEV__ only
- 23. Telemetry Recorder         — waits for race.started, __DEV__ only
+ 22. Dev Tools                  — registers hotkeys, import.meta.env.DEV only
+ 23. Telemetry Recorder         — waits for race.started, import.meta.env.DEV only
 ```
 
 **Race start sequence (gameplay, not init):**
