@@ -7,7 +7,7 @@
  * - AC-3: Empty export returns valid JSON with defaults
  * - AC-4: `export()` returns a point-in-time snapshot
  * - AC-5: Team names appear correctly in JSON
- * - AC-6: When `__DEV__` is false, `export()` returns `null`
+ * - AC-6: When `import.meta.env.DEV` is false, `export()` returns `null`
  */
 
 import { describe, expect, it, vi } from "vitest";

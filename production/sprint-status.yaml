@@ -93,11 +93,11 @@ stories:
     name: "Story 001: Dev Compile Guard"
     file: "production/epics/dev-tools/story-001-dev-compile-guard.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-26"
 
   - id: "2-9"
     name: "Story 002: Input Keybinds"
