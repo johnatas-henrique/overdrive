@@ -10,6 +10,5 @@
 export { GameStateError } from "./GameStateError";
 export type { TransitionRecord } from "./GameStateMachine";
 export { GameStateMachine } from "./GameStateMachine";
-export type { State } from "./State";
-export type { StateDefinition } from "./StateDefinition";
 export { TRANSITIONS } from "./TransitionTable";
+export type { State, StateDefinition } from "./types";

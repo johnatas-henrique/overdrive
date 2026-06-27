@@ -18,7 +18,7 @@
  * @see ADR-0024 — Game State Machine, Decision 1
  */
 
-import type { State } from "./State";
+import type { State } from "./types";
 
 export class GameStateError extends Error {
   /** The state the machine was in when the invalid transition was attempted. */

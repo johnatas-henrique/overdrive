@@ -32,9 +32,8 @@
 
 import type { IEventBus } from "../event-bus/types";
 import { GameStateError } from "./GameStateError";
-import type { State } from "./State";
-import type { StateDefinition } from "./StateDefinition";
 import { TRANSITIONS } from "./TransitionTable";
+import type { State, StateDefinition } from "./types";
 
 /**
  * A single recorded state transition for debug history.
