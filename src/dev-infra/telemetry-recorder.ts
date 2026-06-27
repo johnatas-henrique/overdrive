@@ -115,6 +115,9 @@ export interface CarEntityRef {
   /** Stable car identifier. */
   readonly id: string;
 
+  /** Display name for console log output (e.g. "Macklen", "Willard"). */
+  readonly teamName: string;
+
   /** Physics subsystem state (speed, rpm, gear, lateral G). */
   readonly physics: {
     readonly speedKmh: number;
@@ -132,6 +135,12 @@ export interface CarEntityRef {
     readonly fuelLevel: number;
     readonly tireCondition: number;
     readonly splinePos: number;
+
+    /** Race position (1-based, 1 = first place). */
+    readonly racePosition: number;
+
+    /** Current lap number (1-based, 1 = lap 1). */
+    readonly currentLap: number;
   };
 
   /** Optional AI driver subsystem. `undefined` for player cars. */
@@ -181,14 +190,26 @@ export class TelemetryRecorder {
   /** Sampling interval in ticks. Every Nth tick produces a sample. */
   private _sampleInterval: number;
 
+  /** Log interval in ticks. Every Nth tick prints a console summary (default 300 = 5s at 60Hz). */
+  private _logInterval: number;
+
+  /** Whether recording is active — gates console log output (set by Story 005). */
+  private _isRecording = false;
+
+  /** Total race laps for the summary display (set by Story 005). */
+  private _totalLaps = 0;
+
   /**
-   * Creates a new TelemetryRecorder with the given sampling interval.
+   * Creates a new TelemetryRecorder with the given intervals.
    *
    * @param sampleInterval - Ticks between samples (default 3 = 20Hz at 60Hz).
    *                         Range 1–10 per GDD tuning knobs specification.
+   * @param logInterval - Ticks between console summary logs (default 300 = 5s at 60Hz).
+   *                      Range 60–600 per GDD tuning knobs specification.
    */
-  constructor(sampleInterval: number = 3) {
+  constructor(sampleInterval: number = 3, logInterval: number = 300) {
     this._sampleInterval = sampleInterval;
+    this._logInterval = logInterval;
   }
 
   /**
@@ -215,6 +236,12 @@ export class TelemetryRecorder {
     if (!import.meta.env.DEV) return;
 
     this._tickCounter++;
+
+    // Console summary at configured log interval — print every Nth tick.
+    // Default 300 → logs on calls 300, 600, 900, ... at 60Hz (every 5s).
+    if (this._tickCounter % this._logInterval === 0) {
+      this.printConsoleSummary(cars);
+    }
 
     // Sample at configured interval — only capture on ticks divisible by the
     // interval. Default 3 → samples on ticks 0, 3, 6, 9, ... at 60Hz.
@@ -266,6 +293,8 @@ export class TelemetryRecorder {
     this._samples.clear();
     this._tickCounter = 0;
     this._logCounter = 0;
+    this._isRecording = false;
+    this._totalLaps = 0;
   }
 
   /**
@@ -304,5 +333,77 @@ export class TelemetryRecorder {
    */
   getLogCount(): number {
     return this._logCounter;
+  }
+
+  /**
+   * Enables or disables recording for the current race.
+   *
+   * Gates console summary output. Set by Story 005 via race lifecycle events.
+   * When `false`, {@link printConsoleSummary} is a no-op regardless of tick
+   * interval. Default is `false` after construction or {@link clear}.
+   *
+   * @param enabled - `true` to allow console summary output during a race.
+   */
+  setRecording(enabled: boolean): void {
+    this._isRecording = enabled;
+  }
+
+  /**
+   * Sets the total number of race laps for the summary display.
+   *
+   * Used by {@link printConsoleSummary} to format the `Lap X/Y` portion.
+   * Set by Story 005 from the race configuration. Default is `0` after
+   * construction or {@link clear} (produces `Lap X/0` if log fires before
+   * the value is set, though in practice `setRecording(true)` won't happen
+   * before this is configured).
+   *
+   * @param laps - Total race lap count (must be > 0).
+   */
+  setTotalLaps(laps: number): void {
+    this._totalLaps = laps;
+  }
+
+  /**
+   * Prints a one-line console summary of current race positions and speeds.
+   *
+   * Gated by {@link _isRecording} — no output when recording is inactive.
+   * Silently skips when the cars array is empty (no crash, no output).
+   *
+   * Format:
+   * ```
+   * [TELE] Lap 3/5 | P1 Macklen 245 km/h | P2 Willard 241 km/h | ...
+   * ```
+   *
+   * Cars are sorted by `racePosition` ascending (P1 = first place).
+   * Speed values are rounded to the nearest integer km/h.
+   *
+   * Dev Infra compliance:
+   * - D-F2 (read-only): never writes to game state.
+   * - D-F3 (no Event Bus): pure console output, no events emitted.
+   *
+   * @param cars - Current set of cars to summarize. Sorted in-place copy;
+   *               original array is not mutated.
+   */
+  private printConsoleSummary(cars: CarEntityRef[]): void {
+    if (!this._isRecording) return;
+    if (cars.length === 0) return;
+
+    // Sort a shallow copy by race position (ascending — P1 first).
+    const sorted = [...cars].sort(
+      (a, b) => a.runtime.racePosition - b.runtime.racePosition
+    );
+
+    const currentLap = sorted[0].runtime.currentLap;
+
+    const parts = sorted.map(
+      (car, i) =>
+        `P${i + 1} ${car.teamName} ${Math.round(car.physics.speedKmh)} km/h`
+    );
+
+    console.log(
+      `[TELE] Lap ${currentLap}/${this._totalLaps} | ${parts.join(" | ")}`
+    );
+
+    this._logCounter++;
   }
 }
