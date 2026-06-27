@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConfigError, ConfigManager } from "../../src/foundation/config";
+import {
+  getConfigManager,
+  setConfigManager,
+} from "../../src/foundation/config/config-manager";
 
 describe("ConfigManager", () => {
   // Shared env var tracking — used by env override and invalidateNamespace suites
@@ -799,6 +803,95 @@ describe("ConfigManager", () => {
 
       // Teams gets rebuilt
       expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+    });
+  });
+
+  describe("setConfigManager / getConfigManager", () => {
+    afterEach(() => {
+      // Reset the singleton to null so tests don't leak state
+      setConfigManager(null as unknown as ConfigManager);
+    });
+
+    it("should set and get the singleton instance", () => {
+      const cm = new ConfigManager();
+      setConfigManager(cm);
+      expect(getConfigManager()).toBe(cm);
+    });
+
+    it("should throw when getConfigManager is called before setConfigManager", () => {
+      expect(() => getConfigManager()).toThrow("ConfigManager not initialized");
+    });
+  });
+
+  describe("reload()", () => {
+    it("should return empty array when no changes detected", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.get("teams.macklen.motor"); // populate resolved cache
+
+      const changes = cm.reload();
+      expect(changes).toEqual([]);
+    });
+
+    it("should detect changed env-var values and return ConfigChange array", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.get("teams.macklen.motor"); // populate resolved cache
+
+      // Set env override AFTER populating resolved — forces a diff on reload
+      _setEnv("OVERDRIVE__TEAMS__MACKLEN__MOTOR", "300");
+
+      const changes = cm.reload();
+      expect(changes).toEqual([
+        { key: "teams.macklen.motor", old: 250, new: 300 },
+      ]);
+    });
+
+    it("should return empty array when not initialized", () => {
+      const cm = new ConfigManager();
+      const changes = cm.reload();
+      expect(changes).toEqual([]);
+    });
+
+    it("should handle reload when resolved cache was not pre-populated", () => {
+      // First call to _flattenResolved encounters namespaces with no
+      // resolved cache entry — exercises the `if (resolved)` falsy branch
+      const cm = new ConfigManager();
+      cm.init();
+      // Use register to add namespace (which also populates resolved),
+      // then invalidate to clear the resolved cache
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.invalidateNamespace("teams");
+      // Now _store has "teams" but _resolved does not
+
+      const changes = cm.reload();
+      expect(changes).toEqual([]);
+    });
+  });
+
+  describe("_flattenObject (private)", () => {
+    it("should recursively flatten nested objects into dot-path entries", () => {
+      const cm = new ConfigManager();
+      const result = new Map<string, unknown>();
+      (cm as any)._flattenObject("test", { a: { b: { c: 1, d: 2 } } }, result);
+      expect(result.get("test.a.b.c")).toBe(1);
+      expect(result.get("test.a.b.d")).toBe(2);
+      expect(result.size).toBe(2);
+    });
+
+    it("should not recursively flatten arrays", () => {
+      const cm = new ConfigManager();
+      const result = new Map<string, unknown>();
+      (cm as any)._flattenObject(
+        "test",
+        { items: [1, 2, 3], nested: { arr: [4, 5] } },
+        result
+      );
+      expect(result.get("test.items")).toEqual([1, 2, 3]);
+      expect(result.get("test.nested.arr")).toEqual([4, 5]);
+      expect(result.size).toBe(2);
     });
   });
 });

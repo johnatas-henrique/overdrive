@@ -342,7 +342,7 @@ describe("B-1: dispose removes onEndFrameObservable observer", () => {
     devTools.dispose();
     // Babylon.js Observable.remove() defers unregister via setTimeout(0)
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(mocks.engine.onEndFrameObservable._observers.length).toBe(0);
+    expect(mocks.engine.onEndFrameObservable.observers.length).toBe(0);
   });
 });
 
@@ -473,13 +473,9 @@ describe("registerDataSource", () => {
     expect(() => devTools.registerDataSource("test", reader2)).not.toThrow();
   });
 
-  it("should warn when setMinimised is called (not yet implemented)", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    devTools.setMinimised(true);
-    expect(warnSpy).toHaveBeenCalledWith(
-      "[DevTools] setMinimised() not yet implemented — see Story 003"
-    );
-    warnSpy.mockRestore();
+  it("should silently accept minimised state (Story 003 adds visual)", () => {
+    expect(() => devTools.setMinimised(true)).not.toThrow();
+    expect(() => devTools.setMinimised(false)).not.toThrow();
   });
 
   it("should clear data sources on dispose", () => {
@@ -643,5 +639,92 @@ describe("Edge cases", () => {
 
     devTools.dispose();
     cleanDOM();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Notification auto-dismiss
+// ---------------------------------------------------------------------------
+
+describe("showNotification", () => {
+  let devTools: IDevTools;
+  let mocks: ReturnType<typeof createMocks>;
+
+  beforeEach(() => {
+    cleanDOM();
+    vi.useFakeTimers();
+    vi.stubEnv("DEV", "true");
+    mocks = createMocks();
+    devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    devTools.toggle(); // creates overlay
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should create a notification element visible in the overlay", () => {
+    devTools.showNotification("test message");
+    const notification = document.querySelector(".dev-notification");
+    expect(notification).not.toBeNull();
+    expect(notification?.textContent).toBe("test message");
+  });
+
+  it("should remove the notification after 2000ms timeout", () => {
+    devTools.showNotification("test message");
+    expect(document.querySelector(".dev-notification")).not.toBeNull();
+
+    vi.advanceTimersByTime(2000);
+
+    expect(document.querySelector(".dev-notification")).toBeNull();
+  });
+
+  it("should not create notification when DEV is false", () => {
+    vi.stubEnv("DEV", false);
+
+    devTools.showNotification("test");
+    expect(document.querySelector(".dev-notification")).toBeNull();
+
+    vi.stubEnv("DEV", true);
+  });
+
+  it("should not throw when notification element is detached before timeout", () => {
+    devTools.showNotification("test");
+    const el = document.querySelector(".dev-notification");
+    el?.remove(); // detach from DOM before timeout fires
+
+    // Callback fires with el.parentElement === null — should not throw
+    expect(() => vi.advanceTimersByTime(2000)).not.toThrow();
+    expect(document.querySelector(".dev-notification")).toBeNull();
+  });
+
+  it("should not show notification when overlay is not initialized", () => {
+    const uninitMocks = createMocks();
+    const uninitDevTools = new DevTools(
+      uninitMocks.engine as never,
+      uninitMocks.scene as never
+    );
+    // No toggle() — _initialized is false, _overlay is null
+
+    uninitDevTools.showNotification("test");
+    expect(document.querySelector(".dev-notification")).toBeNull();
+
+    uninitDevTools.dispose();
+  });
+
+  it("should replace existing notification when showNotification is called again", () => {
+    devTools.showNotification("first");
+    expect(document.querySelectorAll(".dev-notification")).toHaveLength(1);
+    expect(document.querySelector(".dev-notification")?.textContent).toBe(
+      "first"
+    );
+
+    devTools.showNotification("second");
+    const notifications = document.querySelectorAll(".dev-notification");
+    expect(notifications).toHaveLength(1); // old one was removed by existing.remove()
+    expect(notifications[0]?.textContent).toBe("second");
   });
 });
