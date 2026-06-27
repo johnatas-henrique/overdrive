@@ -52,11 +52,11 @@ let _instance: IDevTools | null = null;
  * Must be called once during startup (behind `import.meta.env.DEV`).
  * Safe to call multiple times — subsequent calls are no-ops.
  *
- * @param engine — The Babylon.js Engine instance
+ * @param engine — The Babylon.js Engine instance (Engine or WebGPUEngine)
  * @param scene  — The active Babylon.js Scene instance
  */
 export async function initDevTools(
-  engine: import("@babylonjs/core/Engines/engine").Engine,
+  engine: import("@babylonjs/core/Engines/abstractEngine").AbstractEngine,
   scene: import("@babylonjs/core/scene").Scene
 ): Promise<void> {
   if (!import.meta.env.DEV) return;
@@ -64,6 +64,10 @@ export async function initDevTools(
 
   const { DevTools } = await import("./dev-tools");
   _instance = new DevTools(engine, scene);
+
+  // Set up keyboard keybinds for the dev tools overlay (Story 002)
+  const { initKeybinds } = await import("./keybinds");
+  initKeybinds();
 }
 
 /**

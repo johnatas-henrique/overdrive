@@ -1,5 +1,4 @@
 import type { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
-import type { Engine } from "@babylonjs/core/Engines/engine";
 import { SceneInstrumentation } from "@babylonjs/core/Instrumentation/sceneInstrumentation";
 import type { Observer } from "@babylonjs/core/Misc/observable";
 import type { Scene } from "@babylonjs/core/scene";
@@ -25,7 +24,7 @@ import type { IDevTools } from "./types";
  * @see Control Manifest D1-D4, D-F1, D-F2
  */
 export class DevTools implements IDevTools {
-  private _engine: Engine;
+  private _engine: AbstractEngine;
   private _scene: Scene;
   private _initialized = false;
   private _visible = false;
@@ -35,7 +34,7 @@ export class DevTools implements IDevTools {
   private _metricElements: Record<string, HTMLSpanElement> = {};
   private _frameEndObserver: Observer<AbstractEngine> | null = null;
 
-  constructor(engine: Engine, scene: Scene) {
+  constructor(engine: AbstractEngine, scene: Scene) {
     this._engine = engine;
     this._scene = scene;
 
@@ -89,16 +88,38 @@ export class DevTools implements IDevTools {
 
   /** @inheritdoc */
   setMinimised(_val: boolean): void {
-    // No-op for Story 003; minimised layout implemented in later stories.
-    console.warn(
-      "[DevTools] setMinimised() not yet implemented — see Story 003"
-    );
+    // Story 003 will implement the visual collapse/expand of the overlay.
   }
 
   /** @inheritdoc */
   update(): void {
     if (!import.meta.env.DEV) return;
     this._refreshDisplay();
+  }
+
+  /** @inheritdoc */
+  showNotification(message: string): void {
+    if (!import.meta.env.DEV) return;
+    if (!this._initialized || !this._overlay) return;
+
+    // Remove existing notification if still showing
+    const existing = this._overlay.querySelector(".dev-notification");
+    if (existing) existing.remove();
+
+    const el = document.createElement("div");
+    el.className = "dev-notification";
+    el.textContent = message;
+    el.style.cssText =
+      "position:absolute;bottom:4px;left:50%;transform:translateX(-50%);" +
+      "background:#333;color:#ffd700;padding:4px 12px;border-radius:4px;" +
+      "font-family:'Courier New',monospace;font-size:12px;white-space:nowrap;" +
+      "z-index:1001;pointer-events:none";
+
+    this._overlay.appendChild(el);
+
+    setTimeout(() => {
+      if (el.parentElement) el.remove();
+    }, 2000);
   }
 
   /** @inheritdoc */

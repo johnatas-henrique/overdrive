@@ -44,6 +44,14 @@ export interface IDevTools {
   update(): void;
 
   /**
+   * Show a temporary notification message in the overlay.
+   * Auto-dismisses after 2 seconds.
+   *
+   * @param message - The message text to display
+   */
+  showNotification(message: string): void;
+
+  /**
    * Tear down the overlay, remove DOM elements, release references.
    */
   dispose(): void;

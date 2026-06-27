@@ -27,7 +27,7 @@ export interface DevToolsKeys {
  * - Backtick/1/2 are standard debug console keys (Source engine pattern)
  */
 export const DEV_TOOLS_KEYS: DevToolsKeys = {
-  toggle: "`",
-  reload: "1",
-  minimise: "2",
+  toggle: "1",
+  reload: "2",
+  minimise: "3",
 };

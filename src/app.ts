@@ -26,6 +26,13 @@ class App {
     this.scene = new Scene(this.engine);
     await this._setPhysics();
     await CreateMainScene(this.scene);
+
+    // ── Dev Tools (tree-shaken in production) ─────────────────────
+    if (import.meta.env.DEV) {
+      const { initDevTools } = await import("./core/dev-tools");
+      initDevTools(this.engine, this.scene);
+    }
+
     this._render();
   }
 
