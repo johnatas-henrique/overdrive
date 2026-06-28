@@ -29,9 +29,9 @@
  */
 
 // Type-only import+export — zero runtime cost, consumed by Stories 002-008
-import type { IDevTools } from "./types";
+import type { AiTelemetryCarData, IDevTools } from "./types";
 
-export type { IDevTools };
+export type { AiTelemetryCarData, IDevTools };
 
 // Side-effect marker for compile guard verification (Story 001).
 // Tests assert this was called to prove the DEV guard block executes.
@@ -60,13 +60,15 @@ let _instance: IDevTools | null = null;
  * @param eventBus — Optional Event Bus instance for the Event Log tab (Story 005)
  * @param gsm     — Optional GameStateMachine instance for the GSM History tab (Story 006)
  * @param simulationSnapshot — Optional SimulationSnapshot instance for the Sim Snapshot tab (Story 007)
+ * @param aiTelemetry — Optional AI telemetry reader for the AI Telemetry tab (Story 008)
  */
 export async function initDevTools(
   engine: import("@babylonjs/core/Engines/abstractEngine").AbstractEngine,
   scene: import("@babylonjs/core/scene").Scene,
   eventBus?: import("../../foundation/event-bus").IEventBus,
   gsm?: import("../../foundation/gsm/GameStateMachine").GameStateMachine,
-  simulationSnapshot?: import("../../foundation/simulation-snapshot").SimulationSnapshot
+  simulationSnapshot?: import("../../foundation/simulation-snapshot").SimulationSnapshot,
+  aiTelemetry?: () => AiTelemetryCarData[]
 ): Promise<void> {
   if (!import.meta.env.DEV) return;
   if (_instance) return;
@@ -87,6 +89,11 @@ export async function initDevTools(
   // Inject SimulationSnapshot for the Sim Snapshot tab (Story 007)
   if (simulationSnapshot) {
     _instance.setSimulationSnapshot(simulationSnapshot);
+  }
+
+  // Inject AI Telemetry reader for the AI Telemetry tab (Story 008)
+  if (aiTelemetry) {
+    _instance.setAiTelemetry(aiTelemetry);
   }
 
   // Set up keyboard keybinds for the dev tools overlay (Story 002)

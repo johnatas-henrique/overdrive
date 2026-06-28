@@ -112,7 +112,59 @@ export interface IDevTools {
   refreshConfigTree(): void;
 
   /**
+   * Inject the AI telemetry reader for the AI Telemetry tab panel.
+   *
+   * Must be called after `initDevTools()`. If the overlay is already
+   * initialized, the AI Telemetry tab is created immediately; otherwise
+   * creation is deferred until the first `toggle()`.
+   *
+   * The reader function is called on each sample tick (every 10 refresh
+   * calls by default) to fetch current telemetry data from the physics
+   * and AI driver systems.
+   *
+   * @param getTelemetry — Zero-arg function returning current telemetry data
+   * @see TR-DVT-008 — AI Telemetry Tab
+   * @see Control Manifest D6 — Read-only on all systems
+   */
+  setAiTelemetry(getTelemetry: () => AiTelemetryCarData[]): void;
+
+  /**
    * Tear down the overlay, remove DOM elements, release references.
    */
   dispose(): void;
+}
+
+// ---------------------------------------------------------------------------
+// AI Telemetry data types
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-car telemetry data for the AI Telemetry debug panel.
+ *
+ * This type describes the structured data consumed by the AiTelemetryPanel
+ * for rendering the AI Telemetry tab in Dev Tools.
+ *
+ * @see TR-DVT-008 — AI Telemetry Tab
+ */
+export interface AiTelemetryCarData {
+  /** Unique car identifier (e.g. "player-1", "ai-1") */
+  carId: string;
+  /** Current speed in km/h */
+  speed: number;
+  /** Race position details */
+  position: {
+    /** Current lap number (1-based) */
+    lap: number;
+    /** Progress within the current lap as a 0–1 fraction */
+    trackProgress: number;
+    /** Overall race position (1-based, 1 = leader) */
+    overall: number;
+  };
+  /**
+   * Active AI behavior state.
+   * The AI Driver module will define the canonical union type.
+   * Using `string` here avoids coupling to mock-only types that
+   * will need expansion in production.
+   */
+  behavior: string;
 }

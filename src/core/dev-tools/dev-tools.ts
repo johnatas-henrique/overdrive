@@ -9,6 +9,7 @@ import type { IEventBus } from "../../foundation/event-bus";
 import type { GameStateMachine } from "../../foundation/gsm/GameStateMachine";
 import type { SimulationSnapshot } from "../../foundation/simulation-snapshot";
 import { defined } from "../../shared/assert-defined";
+import { AiTelemetryPanel } from "./ai-telemetry-panel";
 import { ConfigTreePanel } from "./config-tree";
 import {
   EventBusInspector,
@@ -17,7 +18,7 @@ import {
 import { GsmVisualizer } from "./gsm-visualizer";
 import { disposeKeybinds } from "./keybinds";
 import { SimSnapshotPanel } from "./sim-snapshot-panel";
-import type { IDevTools } from "./types";
+import type { AiTelemetryCarData, IDevTools } from "./types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -84,6 +85,10 @@ export class DevTools implements IDevTools {
   private _simulationSnapshot: SimulationSnapshot | null = null;
   private _simSnapshotPanel: SimSnapshotPanel | null = null;
 
+  // AI Telemetry tab
+  private _aiTelemetryReader: (() => AiTelemetryCarData[]) | null = null;
+  private _aiTelemetryPanel: AiTelemetryPanel | null = null;
+
   constructor(engine: AbstractEngine, scene: Scene) {
     this._engine = engine;
     this._scene = scene;
@@ -133,6 +138,17 @@ export class DevTools implements IDevTools {
       this._eventBus
     ) {
       this._createGsmHistoryTab();
+    }
+  }
+
+  /** @inheritdoc */
+  setAiTelemetry(getTelemetry: () => AiTelemetryCarData[]): void {
+    if (this._aiTelemetryReader) return;
+    this._aiTelemetryReader = getTelemetry;
+
+    // If overlay is already initialized, create the tab now
+    if (this._initialized && this._tabBar && this._tabContent) {
+      this._createAiTelemetryTab();
     }
   }
 
@@ -241,6 +257,11 @@ export class DevTools implements IDevTools {
     this._simSnapshotPanel?.dispose();
     this._simSnapshotPanel = null;
     this._simulationSnapshot = null;
+
+    // Dispose AI Telemetry panel
+    this._aiTelemetryPanel?.dispose();
+    this._aiTelemetryPanel = null;
+    this._aiTelemetryReader = null;
 
     // Dispose Event Bus inspector
     this._eventBusInspector?.dispose();
@@ -364,6 +385,11 @@ export class DevTools implements IDevTools {
     // If SimulationSnapshot was set before overlay init, create the tab now
     if (this._simulationSnapshot) {
       this._createSimSnapshotTab();
+    }
+
+    // If AI Telemetry reader was set before overlay init, create the tab now
+    if (this._aiTelemetryReader) {
+      this._createAiTelemetryTab();
     }
   }
 
@@ -490,6 +516,44 @@ export class DevTools implements IDevTools {
       id: "sim-snapshot",
       label: "Sim Snapshot",
       refresh: () => this._simSnapshotPanel?.refresh(),
+    });
+  }
+
+  /**
+   * Create the AI Telemetry tab panel and its tab button.
+   *
+   * Called by `setAiTelemetry()` when the overlay is already initialized,
+   * or by `_initOverlay()` when the reader was set before the first toggle.
+   */
+  private _createAiTelemetryTab(): void {
+    defined(this._tabContent);
+    defined(this._tabBar);
+    defined(this._aiTelemetryReader);
+
+    // Create tab panel container
+    const panel = document.createElement("div");
+    panel.className = "tab-panel";
+    panel.dataset.tabId = "ai-telemetry";
+
+    this._aiTelemetryPanel = new AiTelemetryPanel(
+      panel,
+      this._aiTelemetryReader
+    );
+    this._tabContent.appendChild(panel);
+
+    // Create tab button
+    const btn = document.createElement("button");
+    btn.className = "tab";
+    btn.dataset.tabId = "ai-telemetry";
+    btn.textContent = "AI Telemetry";
+    btn.addEventListener("click", () => this._switchTab("ai-telemetry"));
+    this._tabBar.appendChild(btn);
+
+    // Register tab definition
+    this._tabs.push({
+      id: "ai-telemetry",
+      label: "AI Telemetry",
+      refresh: () => this._aiTelemetryPanel?.refresh(),
     });
   }
 
