@@ -47,8 +47,10 @@
 | 🔴     | 2026-06-26 | SP2/tech-debt/ST1/LP        | persistence.ts load() 63 lines — exceeds 40-line guideline             | persistence.ts                 | S      |                          |
 | 🔴     | 2026-06-26 | SP2/tech-debt/ST1/LP        | configManager.ts get() 56 lines — exceeds 40-line guideline            | configManager.ts               | S      |                          |
 | 🔴     | 2026-06-26 | SP2/telemetry/ST1           | TR-TELEMETRY-001 fabricated field names — /architecture-review hallucinated speedKmh/fuelLevel/accelG/carId instead of reading GDD | tr-registry.yaml | S | |
-| 🔴     | 2026-06-26 | SP2/dev-tools/ST3           | Keybinds changed from F1/F2/F3 to backtick/1/2 (browser conflict) — config at dev-tools-config.ts | src/config/dev-tools-config.ts | S | |
+| ✅     | 2026-06-26 | SP2/dev-tools/ST3           | Keybinds changed from F1/F2/F3 to backtick/1/2 (browser conflict) — config at dev-tools-config.ts | src/config/dev-tools-config.ts | S | SP2/dev-tools/ST6 |
 | 🔴     | 2026-06-26 | SP2/dev-tools/ST3           | captureRenderTime not enabled (no AC requires it, but ADR-0009 mentions it) | dev-tools.ts | S | |
-| 🔴     | 2026-06-27 | SP2/dev-tools/ST2/LP        | Config defaults mismatch: DEV_TOOLS_KEYS uses `1`/`2`/`3` but story ACs reference backtick/`1`/`2` — config is runtime source of truth, story ACs are stale | src/config/dev-tools-config.ts | S | |
+| ✅     | 2026-06-27 | SP2/dev-tools/ST2/LP        | Config defaults mismatch: DEV_TOOLS_KEYS uses `1`/`2`/`3` but story ACs reference backtick/`1`/`2` — config is runtime source of truth, story ACs are stale | src/config/dev-tools-config.ts | S | SP2/dev-tools/ST6 |
 | 🔴     | 2026-06-27 | SP2/dev-tools/ST4           | `_initConfigDataSource` registers reader that's never consumed — placeholder for future stories (Event Bus Inspector, GSM History) | dev-tools.ts | S | |
 | 🔴     | 2026-06-27 | SP2/dev-tools/ST4           | All inline styles instead of CSS classes — refactor when Story 005+ adds more panels | config-tree.ts, dev-tools.ts | M | SP2/dev-tools/ST9 |
+| 🔴     | 2026-06-27 | SP2/dev-tools/ST6/LP        | IReadOnlyEventBus duplicated in gsm-visualizer.ts and event-bus-inspector.ts — extract to shared types.ts | gsm-visualizer.ts, event-bus-inspector.ts | S | |
+| 🔴     | 2026-06-27 | SP2/dev-tools/ST6/LP        | CSS gsm-history-row uses rgba(255,255,255,0.02) instead of CSS variable — inconsistent with rest of stylesheet | dev-tools.css | S | |

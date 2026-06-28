@@ -1,11 +1,12 @@
 # Story 006: GSM State Visualizer
 
 > **Epic**: Dev Tools
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 5h
+> **Last Updated**: 2026-06-27
 
 ## Context
 
@@ -122,9 +123,9 @@ _Written by qa-lead at story creation. The developer implements against these â€
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/dev-tools/gsm-visualizer_test.ts` or documented playtest
+**Required evidence**: `tests/integration/dev-tools/gsm-visualizer.test.ts` or documented playtest
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created â€” 32 tests passing
 
 ---
 
@@ -132,3 +133,13 @@ _Written by qa-lead at story creation. The developer implements against these â€
 
 - Depends on: Story 003 (needs overlay shell + `IDevTools.registerDataSource`)
 - Unlocks: None
+
+## Completion Notes
+
+**Completed**: 2026-06-27
+**Criteria**: 3/3 passing (AC-6a, AC-6b, AC-6c)
+**Deviations**: Advisory â€” IReadOnlyEventBus duplication (LP S-1), CSS rgba instead of variable (LP S-4)
+**Test Evidence**: Integration test at `tests/integration/dev-tools/gsm-visualizer.test.ts` (32 tests)
+**Code Review**: Complete â€” Engine Specialist PASS, QA Tester PASS, Lead Programmer APPROVED WITH SUGGESTIONS
+**Tech Debt Resolved**: 2 items (keybinds header doc, config defaults mismatch)
+**Tech Debt Logged**: 2 items (IReadOnlyEventBus duplication, CSS rgba inconsistency)

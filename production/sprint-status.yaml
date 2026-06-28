@@ -144,11 +144,11 @@ stories:
     name: "Story 006: GSM Visualizer"
     file: "production/epics/dev-tools/story-006-gsm-visualizer.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-27"
 
   - id: "2-14"
     name: "Story 007: Sim Snapshot Panel"
