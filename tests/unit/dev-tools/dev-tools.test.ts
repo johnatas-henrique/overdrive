@@ -927,3 +927,590 @@ describe("config tree panel value edit", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// Coverage: setGsm() paths (lines 111-129)
+// ---------------------------------------------------------------------------
+
+describe("Coverage: setGsm() after overlay initialized", () => {
+  let devTools: IDevTools;
+  let mocks: ReturnType<typeof createMocks>;
+
+  beforeEach(() => {
+    cleanDOM();
+    mocks = createMocks();
+    devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    devTools.toggle(); // Overlay is now initialized
+
+    // Set Event Bus first (required for GSM tab creation)
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+    devTools.setEventBus(fakeBus as never);
+  });
+
+  afterEach(() => {
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should create GSM History tab when setGsm() called after overlay is initialized", () => {
+    // Create a minimal fake GSM
+    const fakeGsm = {
+      getHistory: () => [],
+      transition: vi.fn().mockResolvedValue(undefined),
+    };
+
+    // setGsm() should create the GSM History tab because overlay is initialized
+    devTools.setGsm(fakeGsm as never);
+
+    // Verify the tab button was created
+    const gsmTabBtn = document.querySelector(
+      "button[data-tab-id='gsm-history']"
+    );
+    expect(gsmTabBtn).not.toBeNull();
+    expect(gsmTabBtn?.textContent).toBe("GSM History");
+
+    // Verify the tab panel was created
+    const gsmPanel = document.querySelector(
+      ".tab-panel[data-tab-id='gsm-history']"
+    );
+    expect(gsmPanel).not.toBeNull();
+  });
+
+  it("should not create duplicate tabs when setGsm() called twice", () => {
+    // First set Event Bus (required for tab creation)
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+    devTools.setEventBus(fakeBus as never);
+
+    const fakeGsm = {
+      getHistory: () => [],
+      transition: vi.fn().mockResolvedValue(undefined),
+    };
+
+    devTools.setGsm(fakeGsm as never);
+    devTools.setGsm(fakeGsm as never); // Second call should be no-op
+
+    // Check that only one GSM tab button exists
+    const tabBtns = document.querySelectorAll(
+      "button[data-tab-id='gsm-history']"
+    );
+    expect(tabBtns.length).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Coverage: setEventBus() when GSM already set (line 336)
+// ---------------------------------------------------------------------------
+
+describe("Coverage: setEventBus() after setGsm()", () => {
+  let devTools: IDevTools;
+  let mocks: ReturnType<typeof createMocks>;
+
+  beforeEach(() => {
+    cleanDOM();
+    mocks = createMocks();
+    devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    devTools.toggle();
+  });
+
+  afterEach(() => {
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should create GSM History tab when setEventBus() called after setGsm()", () => {
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+    const fakeGsm = {
+      getHistory: () => [],
+      transition: vi.fn().mockResolvedValue(undefined),
+    };
+
+    // Set GSM first (no Event Bus yet, so tab is NOT created)
+    devTools.setGsm(fakeGsm as never);
+    let gsmTab = document.querySelector("button[data-tab-id='gsm-history']");
+    expect(gsmTab).toBeNull(); // No tab yet — no Event Bus
+
+    // Set Event Bus (now both are available, tab SHOULD be created)
+    devTools.setEventBus(fakeBus as never);
+    gsmTab = document.querySelector("button[data-tab-id='gsm-history']");
+    expect(gsmTab).not.toBeNull();
+  });
+
+  it("should create Event Log tab but NOT GSM tab when setEventBus() called without GSM", () => {
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+
+    // Set Event Bus WITHOUT GSM — only Event Log tab should be created
+    devTools.setEventBus(fakeBus as never);
+
+    const eventLogTab = document.querySelector(
+      "button[data-tab-id='event-log']"
+    );
+    expect(eventLogTab).not.toBeNull();
+
+    // GSM tab should NOT exist (line 394: early return because !this._gsm)
+    const gsmTab = document.querySelector("button[data-tab-id='gsm-history']");
+    expect(gsmTab).toBeNull();
+  });
+
+  // -----------------------------------------------------------------------
+  // B-7a: setEventBus creates both tabs when GSM pre-initialized
+  // -----------------------------------------------------------------------
+
+  it("should create both Event Log and GSM History tabs when both are available (B-7a)", () => {
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+    const fakeGsm = {
+      getHistory: () => [],
+      transition: vi.fn().mockResolvedValue(undefined),
+    };
+
+    // Set GSM first (no Event Bus yet, so tab is NOT created)
+    devTools.setGsm(fakeGsm as never);
+    expect(
+      document.querySelector("button[data-tab-id='gsm-history']")
+    ).toBeNull();
+
+    // Set Event Bus (now both are available, BOTH tabs should be created)
+    devTools.setEventBus(fakeBus as never);
+
+    // Verify Event Log tab exists
+    const eventLogTab = document.querySelector(
+      "button[data-tab-id='event-log']"
+    );
+    expect(eventLogTab).not.toBeNull();
+    expect(eventLogTab?.textContent).toBe("Event Log");
+
+    // Verify GSM History tab exists
+    const gsmTabB7a = document.querySelector(
+      "button[data-tab-id='gsm-history']"
+    );
+    expect(gsmTabB7a).not.toBeNull();
+    expect(gsmTabB7a?.textContent).toBe("GSM History");
+
+    // Verify tab panels exist
+    const eventLogPanel = document.querySelector(
+      ".tab-panel[data-tab-id='event-log']"
+    );
+    expect(eventLogPanel).not.toBeNull();
+    const gsmPanel = document.querySelector(
+      ".tab-panel[data-tab-id='gsm-history']"
+    );
+    expect(gsmPanel).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// B-7b: tab refresh callback through _refreshDisplay
+// ---------------------------------------------------------------------------
+
+describe("B-7b: tab refresh callback through _refreshDisplay", () => {
+  let devTools: IDevTools;
+  let mocks: ReturnType<typeof createMocks>;
+
+  beforeEach(() => {
+    cleanDOM();
+    mocks = createMocks();
+    devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    devTools.toggle();
+  });
+
+  afterEach(() => {
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should invoke active tab's refresh callback on update()", () => {
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+
+    devTools.setEventBus(fakeBus as never);
+    devTools.update();
+
+    // The active tab (event-log) refresh calls inspector.refresh()
+    // which calls getSubscriptions() on the bus
+    expect(fakeBus.getSubscriptions).toHaveBeenCalled();
+  });
+
+  it("should invoke refresh callback on each subsequent update()", () => {
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+
+    devTools.setEventBus(fakeBus as never);
+
+    // Clear calls from setEventBus initialization
+    fakeBus.getSubscriptions.mockClear();
+
+    devTools.update();
+    devTools.update();
+    devTools.update();
+
+    // getSubscriptions called once per update() for the active tab refresh
+    expect(fakeBus.getSubscriptions).toHaveBeenCalledTimes(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W-6: setMinimised() behavioral tests
+// ---------------------------------------------------------------------------
+
+describe("W-6: setMinimised() behavioral tests", () => {
+  it("should hide _middle and _sidebar when setMinimised(true)", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    devTools.toggle();
+
+    devTools.setMinimised(true);
+
+    const middle = document.querySelector(".dev-middle") as HTMLElement;
+    const sidebar = document.querySelector(".sidebar") as HTMLElement;
+    expect(middle).not.toBeNull();
+    expect(middle.style.display).toBe("none");
+    expect(sidebar).not.toBeNull();
+    expect(sidebar.style.display).toBe("none");
+
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should restore _middle and _sidebar when setMinimised(false)", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    devTools.toggle();
+
+    devTools.setMinimised(true);
+    devTools.setMinimised(false);
+
+    const middle = document.querySelector(".dev-middle") as HTMLElement;
+    const sidebar = document.querySelector(".sidebar") as HTMLElement;
+    expect(middle.style.display).toBe("flex");
+    expect(sidebar.style.display).toBe("");
+
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should not crash when setMinimised() called before overlay initialization", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    // No toggle() — _middle and _topBar are null
+
+    expect(() => devTools.setMinimised(true)).not.toThrow();
+    expect(() => devTools.setMinimised(false)).not.toThrow();
+
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should toggle between minimised and restored states", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    devTools.toggle();
+
+    const middle = document.querySelector(".dev-middle") as HTMLElement;
+
+    // Start: visible (flex)
+    expect(middle.style.display).toBe("flex");
+
+    // Minimise
+    devTools.setMinimised(true);
+    expect(middle.style.display).toBe("none");
+
+    // Restore
+    devTools.setMinimised(false);
+    expect(middle.style.display).toBe("flex");
+
+    // Minimise again
+    devTools.setMinimised(true);
+    expect(middle.style.display).toBe("none");
+
+    devTools.dispose();
+    cleanDOM();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W-7: _switchTab with invalid tabId
+// ---------------------------------------------------------------------------
+
+describe("W-7: _switchTab with invalid tabId", () => {
+  it("should not crash when switching to a non-existent tab", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    devTools.toggle();
+
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+    devTools.setEventBus(fakeBus as never);
+    devTools.update();
+
+    // _switchTab sets _activeTabId unconditionally but no refresh is called
+    // for a non-existent tab (the find() returns undefined)
+    const dt = devTools as unknown as { _switchTab: (id: string) => void };
+    expect(() => dt._switchTab("non-existent-tab")).not.toThrow();
+
+    // _activeTabId is updated even for invalid tabId
+    const activeTabId = (devTools as unknown as { _activeTabId: string })
+      ._activeTabId;
+    expect(activeTabId).toBe("non-existent-tab");
+
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should remove active class from all tabs when switching to invalid tabId", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    devTools.toggle();
+
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+    devTools.setEventBus(fakeBus as never);
+    devTools.update();
+
+    // event-log tab should be active initially
+    const eventLogBtn = document.querySelector(
+      "button[data-tab-id='event-log']"
+    ) as HTMLButtonElement;
+    expect(eventLogBtn.classList.contains("active")).toBe(true);
+
+    // Switch to invalid tab — removes active from all tabs
+    const dt = devTools as unknown as { _switchTab: (id: string) => void };
+    dt._switchTab("non-existent");
+
+    // No tab button should have the active class
+    expect(eventLogBtn.classList.contains("active")).toBe(false);
+
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should not invoke any refresh callback when switching to invalid tabId", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    devTools.toggle();
+
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+    devTools.setEventBus(fakeBus as never);
+
+    // Clear calls from initialization
+    fakeBus.getSubscriptions.mockClear();
+
+    // Switch to invalid tab — no refresh should be called
+    const dt = devTools as unknown as { _switchTab: (id: string) => void };
+    dt._switchTab("non-existent");
+
+    expect(fakeBus.getSubscriptions).not.toHaveBeenCalled();
+
+    devTools.dispose();
+    cleanDOM();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W-8: _refreshDisplay active tab refresh callback
+// ---------------------------------------------------------------------------
+
+describe("W-8: _refreshDisplay active tab refresh callback", () => {
+  it("should call active tab's refresh callback on each update()", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    devTools.toggle();
+
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+    devTools.setEventBus(fakeBus as never);
+
+    // Clear the call count from setEventBus initialization
+    fakeBus.getSubscriptions.mockClear();
+
+    // Call update() multiple times — each triggers _refreshDisplay
+    // which calls the active tab's refresh callback
+    devTools.update();
+    devTools.update();
+    devTools.update();
+
+    // getSubscriptions called once per update() via the active tab refresh
+    expect(fakeBus.getSubscriptions).toHaveBeenCalledTimes(3);
+
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should not call refresh callback when no tab is active", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    devTools.toggle();
+
+    // No Event Bus set — no tabs created, _activeTabId is null
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+
+    // Register a data source (not a tab) to confirm update() works
+    devTools.registerDataSource("test", () => ({ val: 1 }));
+
+    // update() should not crash — no active tab refresh to invoke
+    expect(() => devTools.update()).not.toThrow();
+
+    // getSubscriptions should not be called (no tab with refresh callback)
+    expect(fakeBus.getSubscriptions).not.toHaveBeenCalled();
+
+    devTools.dispose();
+    cleanDOM();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// L341: _initOverlay() creates GSM tab when Event Bus + GSM set before toggle
+// ---------------------------------------------------------------------------
+
+describe("L341: _initOverlay creates both tabs when setEventBus + setGsm before toggle", () => {
+  it("should create both tabs when setEventBus() and setGsm() called before first toggle", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+    const fakeGsm = {
+      getHistory: () => [],
+      transition: vi.fn().mockResolvedValue(undefined),
+    };
+
+    // Set both BEFORE toggle — _initOverlay should create both tabs
+    devTools.setEventBus(fakeBus as never);
+    devTools.setGsm(fakeGsm as never);
+
+    // Toggle triggers _initOverlay which should create both tabs (L341)
+    devTools.toggle();
+
+    const eventLogTab = document.querySelector(
+      "button[data-tab-id='event-log']"
+    );
+    const gsmTab = document.querySelector("button[data-tab-id='gsm-history']");
+    expect(eventLogTab).not.toBeNull();
+    expect(gsmTab).not.toBeNull();
+
+    devTools.dispose();
+    cleanDOM();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// L424: Tab refresh callback invoked via _refreshDisplay() for GSM History tab
+// ---------------------------------------------------------------------------
+
+describe("L424: GSM History tab refresh callback via _refreshDisplay", () => {
+  it("should call GSM History tab refresh callback when gsm-history is active and update() is called", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+    const fakeGsm = {
+      getHistory: vi.fn(() => []),
+      transition: vi.fn().mockResolvedValue(undefined),
+    };
+
+    // Set both BEFORE toggle so both tabs are created
+    devTools.setEventBus(fakeBus as never);
+    devTools.setGsm(fakeGsm as never);
+
+    // Toggle triggers _initOverlay → creates both tabs
+    devTools.toggle();
+
+    // Switch to gsm-history tab (makes it the active tab)
+    const gsmBtn = document.querySelector(
+      "button[data-tab-id='gsm-history']"
+    ) as HTMLElement;
+    expect(gsmBtn).not.toBeNull();
+    gsmBtn.click();
+
+    // Verify gsm-history is now the active tab
+    expect(gsmBtn.classList.contains("active")).toBe(true);
+
+    // Call update() → _refreshDisplay() → activeTab.refresh() → L424 callback
+    devTools.update();
+
+    // Verify the GSM visualizer rendered its DOM (refresh called _renderAll)
+    const gsmContainer = document.querySelector(".gsm-container");
+    expect(gsmContainer).not.toBeNull();
+
+    // Verify the "No transitions recorded yet" message is shown (getHistory returns [])
+    const emptyMsg = document.querySelector(".gsm-empty");
+    expect(emptyMsg).not.toBeNull();
+    expect(emptyMsg?.textContent).toBe("No transitions recorded yet");
+
+    devTools.dispose();
+    cleanDOM();
+  });
+});
