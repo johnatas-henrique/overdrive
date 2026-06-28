@@ -996,6 +996,68 @@ describe("GSM Visualizer — AC-6", () => {
       visualizer.dispose();
     });
 
+    // =======================================================================
+    // Coverage: DEV=false constructor paths — _initDOM skips transition
+    // buttons, _startCapture returns early (lines 248-280)
+    // =======================================================================
+
+    it("should skip _initDOM transition buttons section when DEV=false (line 248)", async () => {
+      vi.stubEnv("DEV", false);
+      vi.resetModules();
+
+      const mod = await import("../../../src/core/dev-tools/gsm-visualizer");
+      const Visualizer = mod.GsmVisualizer;
+
+      const bus = new EventBus();
+      bus.init();
+      const gsm = new FakeGsm();
+      gsm.addEntry("Loading", "Menu", 1000, 500);
+
+      const container = createContainer();
+      const visualizer = new Visualizer(container, bus, gsm as never);
+      visualizer.refresh();
+
+      // Constructor returns early when DEV=false — no DOM created at all
+      expect(container.textContent).toBe("");
+      // "Manual Transitions (DEV)" label and "Transition History" both absent
+      expect(container.textContent).not.toContain("Manual Transitions");
+      expect(container.textContent).not.toContain("Transition History");
+      // History buffer not seeded because _seedFromGsmHistory is never called
+      expect(visualizer.getHistory().length).toBe(0);
+
+      visualizer.dispose();
+      vi.unstubAllEnvs();
+    });
+
+    it("should skip _startCapture subscriptions when DEV=false (line 280)", async () => {
+      vi.stubEnv("DEV", false);
+      vi.resetModules();
+
+      const mod = await import("../../../src/core/dev-tools/gsm-visualizer");
+      const Visualizer = mod.GsmVisualizer;
+
+      const bus = new EventBus();
+      bus.init();
+      const gsm = new FakeGsm();
+
+      const container = createContainer();
+      const visualizer = new Visualizer(container, bus, gsm as never);
+
+      // Emit events after construction with DEV=false
+      bus.emit("gsm.state.exited" as never, { from: "Menu" } as never);
+      bus.emit(
+        "gsm.state.entered" as never,
+        { from: "Menu", to: "Racing" } as never
+      );
+
+      // No history captured — _startCapture was skipped
+      expect(visualizer.getHistory().length).toBe(0);
+      expect(visualizer.getCurrentState()).toBeNull();
+
+      visualizer.dispose();
+      vi.unstubAllEnvs();
+    });
+
     it("should not warn when confirm() is cancelled", async () => {
       const bus = new EventBus();
       bus.init();

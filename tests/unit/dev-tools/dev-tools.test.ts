@@ -1235,6 +1235,31 @@ describe("W-6: setMinimised() behavioral tests", () => {
     cleanDOM();
   });
 
+  it("should not crash when _sidebar is null but _middle/_topBar exist (defensive guard L189/L192)", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    // Artificially set _middle and _topBar without _sidebar to exercise the
+    // defensive `if (this._sidebar)` guards at lines 189/192. This simulates
+    // a partial-init scenario that the guards protect against.
+    const dt = devTools as unknown as {
+      _middle: HTMLDivElement;
+      _topBar: HTMLDivElement;
+      _sidebar: null;
+    };
+    dt._middle = document.createElement("div");
+    dt._topBar = document.createElement("div");
+    dt._sidebar = null;
+
+    // Both branches: the _sidebar guard prevents null access on each path
+    expect(() => devTools.setMinimised(true)).not.toThrow();
+    expect(() => devTools.setMinimised(false)).not.toThrow();
+
+    devTools.dispose();
+    cleanDOM();
+  });
+
   it("should toggle between minimised and restored states", () => {
     cleanDOM();
     const mocks = createMocks();
@@ -1514,3 +1539,288 @@ describe("L424: GSM History tab refresh callback via _refreshDisplay", () => {
     cleanDOM();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Coverage: setSimulationSnapshot() (lines 142-150)
+// ---------------------------------------------------------------------------
+
+describe("Coverage: setSimulationSnapshot()", () => {
+  const fakeSnapshot = {
+    getRegisteredSystems: () => [],
+    getHashes: () => new Map(),
+    takeSnapshot: () => null,
+    restoreSnapshot: () => ({ succeeded: [], failed: [] }),
+    register: () => {},
+    init: () => {},
+  };
+
+  it("should be no-op when DEV is false", () => {
+    cleanDOM();
+    vi.stubEnv("DEV", false);
+
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    // DEV=false → setSimulationSnapshot returns early
+    devTools.setSimulationSnapshot(fakeSnapshot as never);
+
+    // Tab should not exist
+    const simTab = document.querySelector("button[data-tab-id='sim-snapshot']");
+    expect(simTab).toBeNull();
+
+    vi.stubEnv("DEV", true);
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should be idempotent — second call should be noop", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    // Toggle overlay first so snapshot tab would be created
+    devTools.toggle();
+
+    // Set Event Bus so the overlay is fully initialized with tab system
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+    devTools.setEventBus(fakeBus as never);
+
+    // First call — creates tab
+    devTools.setSimulationSnapshot(fakeSnapshot as never);
+
+    // Second call — should be noop (idempotency guard)
+    devTools.setSimulationSnapshot(fakeSnapshot as never);
+
+    // Verify only one Sim Snapshot tab button exists
+    const simTabs = document.querySelectorAll(
+      "button[data-tab-id='sim-snapshot']"
+    );
+    expect(simTabs.length).toBe(1);
+
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should create Sim Snapshot tab when overlay is already initialized", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    // Spy on showNotification to verify the callback at line 474 is invoked
+    vi.spyOn(devTools, "showNotification" as never);
+
+    // Toggle overlay first
+    devTools.toggle();
+
+    // Then call setSimulationSnapshot — should create tab immediately
+    devTools.setSimulationSnapshot(fakeSnapshot as never);
+
+    const simTab = document.querySelector("button[data-tab-id='sim-snapshot']");
+    expect(simTab).not.toBeNull();
+    expect(simTab?.textContent).toBe("Sim Snapshot");
+
+    // Tab panel should also exist
+    const simPanel = document.querySelector(
+      ".tab-panel[data-tab-id='sim-snapshot']"
+    );
+    expect(simPanel).not.toBeNull();
+
+    // Trigger takeSnapshot to exercise the notification callback (line 474)
+    const simSnapshotPanel = (
+      devTools as unknown as {
+        _simSnapshotPanel: { debugTakeSnapshot: () => void };
+      }
+    )._simSnapshotPanel;
+    if (simSnapshotPanel) {
+      simSnapshotPanel.debugTakeSnapshot();
+      // The fake snapshot returns null, so notification won't fire.
+      // For full line 474 coverage, we'll test with a non-null result below.
+    }
+
+    devTools.dispose();
+    cleanDOM();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Coverage: _initOverlay creates Sim Snapshot tab when setSimulationSnapshot
+// called before toggle (line 370)
+// ---------------------------------------------------------------------------
+
+describe("Coverage: setSimulationSnapshot before toggle", () => {
+  const fakeSnapshot = {
+    getRegisteredSystems: () => [],
+    getHashes: () => new Map(),
+    takeSnapshot: () => null,
+    restoreSnapshot: () => ({ succeeded: [], failed: [] }),
+    register: () => {},
+    init: () => {},
+  };
+
+  it("should create Sim Snapshot tab when toggle() is called after setSimulationSnapshot", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    // Call setSimulationSnapshot BEFORE toggle (overlay not initialized)
+    devTools.setSimulationSnapshot(fakeSnapshot as never);
+
+    // Tab should NOT exist yet (overlay not initialized)
+    let simTab = document.querySelector("button[data-tab-id='sim-snapshot']");
+    expect(simTab).toBeNull();
+
+    // Toggle triggers _initOverlay which checks _simulationSnapshot and creates tab
+    devTools.toggle();
+
+    // Tab should now exist
+    simTab = document.querySelector("button[data-tab-id='sim-snapshot']");
+    expect(simTab).not.toBeNull();
+    expect(simTab?.textContent).toBe("Sim Snapshot");
+
+    // Tab panel should also exist
+    const simPanel = document.querySelector(
+      ".tab-panel[data-tab-id='sim-snapshot']"
+    );
+    expect(simPanel).not.toBeNull();
+
+    devTools.dispose();
+    cleanDOM();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Coverage: _createSimSnapshotTab() full method (lines 464-490)
+// ---------------------------------------------------------------------------
+
+describe("Coverage: _createSimSnapshotTab creates tab elements and registers refresh", () => {
+  const fakeSnapshot = {
+    getRegisteredSystems: () => [],
+    getHashes: () => new Map(),
+    takeSnapshot: () => null,
+    restoreSnapshot: () => ({ succeeded: [], failed: [] }),
+    register: () => {},
+    init: () => {},
+  };
+
+  it("should create tab panel, tab button, and register tab definition", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    // Toggle overlay to initialize
+    devTools.toggle();
+
+    // Call setSimulationSnapshot — creates tab
+    devTools.setSimulationSnapshot(fakeSnapshot as never);
+
+    // Verify tab button exists with correct attributes
+    const btn = document.querySelector(
+      "button[data-tab-id='sim-snapshot']"
+    ) as HTMLButtonElement;
+    expect(btn).not.toBeNull();
+    expect(btn.textContent).toBe("Sim Snapshot");
+    expect(btn.classList.contains("tab")).toBe(true);
+
+    // Verify tab panel exists with correct attributes
+    const panel = document.querySelector(
+      ".tab-panel[data-tab-id='sim-snapshot']"
+    ) as HTMLElement;
+    expect(panel).not.toBeNull();
+    expect(panel.classList.contains("tab-panel")).toBe(true);
+
+    // Verify tab was registered in _tabs
+    const tabs = (
+      devTools as unknown as {
+        _tabs: Array<{ id: string; label: string; refresh?: () => void }>;
+      }
+    )._tabs;
+    const simTabDef = tabs.find((t) => t.id === "sim-snapshot");
+    expect(simTabDef).toBeDefined();
+    expect(simTabDef?.label).toBe("Sim Snapshot");
+    expect(typeof simTabDef?.refresh).toBe("function");
+
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should invoke notification callback when snapshot is taken (line 474)", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    // Spy on showNotification
+    vi.spyOn(devTools, "showNotification" as never);
+
+    // Snapshot that returns a non-null result
+    const returningSnapshot = {
+      getRegisteredSystems: () => [],
+      getHashes: () => new Map(),
+      takeSnapshot: () => ({ tick: 42 }),
+      restoreSnapshot: () => ({ succeeded: [], failed: [] }),
+      register: () => {},
+      init: () => {},
+    };
+
+    devTools.toggle();
+    devTools.setSimulationSnapshot(returningSnapshot as never);
+
+    // Access the internal SimSnapshotPanel and call debugTakeSnapshot
+    const simSnapshotPanel = (
+      devTools as unknown as {
+        _simSnapshotPanel: { debugTakeSnapshot: () => void };
+      }
+    )._simSnapshotPanel;
+    simSnapshotPanel.debugTakeSnapshot();
+
+    // Notification should have been shown
+    expect(devTools.showNotification).toHaveBeenCalledWith(
+      expect.stringContaining("Snapshot taken at tick 42")
+    );
+
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should call refresh callback when sim-snapshot tab is active (line 490)", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    devTools.toggle();
+    devTools.setSimulationSnapshot(fakeSnapshot as never);
+
+    // Switch to sim-snapshot tab to make it the active tab
+    const simBtn = document.querySelector(
+      "button[data-tab-id='sim-snapshot']"
+    ) as HTMLElement;
+    expect(simBtn).not.toBeNull();
+    simBtn.click();
+    expect(simBtn.classList.contains("active")).toBe(true);
+
+    // Call update() → _refreshDisplay() → activeTab.refresh() → line 490
+    devTools.update();
+
+    // No crash — refresh completed successfully
+    devTools.dispose();
+    cleanDOM();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Coverage note: Line 427 (_createGsmHistoryTab early return guard)
+//
+// This guard is dead code — the method is only called from two places:
+// 1. setGsm() — which checks _initialized && _tabBar && _tabContent && _eventBus
+//    before calling _createGsmHistoryTab()
+// 2. _initOverlay() — which also only calls it when _eventBus && _gsm are set
+//    after overlay is initialized
+//
+// In both call sites, all dependencies are guaranteed to exist before the
+// call. The guard on line 426-427 is a defensive belt-and-suspenders check
+// that can never be triggered. It's unreachable.
+// ---------------------------------------------------------------------------
