@@ -138,6 +138,7 @@ export class EventBusInspector {
 
   /** Create the filter input, subscription list, and event log DOM. */
   private _initDOM(): void {
+    if (!import.meta.env.DEV) return;
     this._container.innerHTML = "";
 
     // Container fills available space

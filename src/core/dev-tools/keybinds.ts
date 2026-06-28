@@ -2,9 +2,9 @@
  * @fileoverview Keyboard keybinds for Dev Tools overlay.
  *
  * Registers a `keydown` listener on `document` that handles:
- * - **Toggle key** (default: backtick `` ` ``) — shows/hides overlay
- * - **Reload key** (default: `1`) — triggers `ConfigManager.reload()`
- * - **Minimise key** (default: `2`) — collapses overlay to compact mode
+ * - **Toggle key** — shows/hides overlay
+ * - **Reload key** — triggers `ConfigManager.reload()`
+ * - **Minimise key** — collapses overlay to compact mode
  *
  * Keybind values are read from `DEV_TOOLS_KEYS` config (see
  * `src/config/dev-tools-config.ts`).
@@ -45,6 +45,12 @@ let _minimised = false;
  */
 let _disposeKeybindListener: (() => void) | null = null;
 
+/**
+ * Direct reference to the bound keydown handler.
+ * Used by `disposeKeybinds()` for safe listener removal.
+ */
+let _boundHandler: ((e: KeyboardEvent) => void) | null = null;
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -72,10 +78,12 @@ export function initKeybinds(): () => void {
     return _disposeKeybindListener;
   }
 
-  document.addEventListener("keydown", handleKeyDown);
+  _boundHandler = handleKeyDown;
+  document.addEventListener("keydown", _boundHandler);
 
   _disposeKeybindListener = () => {
     document.removeEventListener("keydown", handleKeyDown);
+    _boundHandler = null;
     _disposeKeybindListener = null;
     (globalThis as Record<string, unknown>).__DEV_TOOLS_KEYBINDS_CLEANUP =
       undefined;
@@ -87,6 +95,24 @@ export function initKeybinds(): () => void {
     _disposeKeybindListener;
 
   return _disposeKeybindListener;
+}
+
+/**
+ * Remove the keydown listener registered by `initKeybinds()` and reset
+ * module-level listener state.
+ *
+ * Safe to call when keybinds are not initialized — no-op.
+ * Also resets `_disposeKeybindListener` and the `globalThis` cleanup handle
+ * so a subsequent `initKeybinds()` call re-registers cleanly from scratch.
+ */
+export function disposeKeybinds(): void {
+  if (_boundHandler) {
+    document.removeEventListener("keydown", _boundHandler);
+    _boundHandler = null;
+  }
+  _disposeKeybindListener = null;
+  (globalThis as Record<string, unknown>).__DEV_TOOLS_KEYBINDS_CLEANUP =
+    undefined;
 }
 
 /**
