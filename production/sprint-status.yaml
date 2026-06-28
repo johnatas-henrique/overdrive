@@ -165,11 +165,11 @@ stories:
     name: "Story 008: AI Telemetry Tab"
     file: "production/epics/dev-tools/story-008-ai-telemetry-tab.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-28"
 
   - id: "2-15b"
     name: "Story 009: CSS Refactor"

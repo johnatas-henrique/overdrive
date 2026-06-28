@@ -72,6 +72,27 @@ window
 
 The HTML overlay is positioned absolutely over the canvas container. `pointer-events: none` ensures clicks pass through to the game. The overlay is not created until first toggle press (lazy init) — zero cost if never opened.
 
+### Pointer-Events Cascade
+
+The overlay uses a cascading `pointer-events` strategy:
+
+```
+div#dev-overlay          pointer-events: none    (clicks pass to canvas)
+├── .sidebar             pointer-events: auto    (config tree interactive)
+├── .tab-bar             pointer-events: auto    (tab buttons clickable)
+└── .tab-content         pointer-events: none    (clicks pass to canvas)
+      ├── .tab-panel     pointer-events: none    (inherited)
+      │     ├── Event Log    → .inspector-log-list  pointer-events: auto (scrollable)
+      │     ├── GSM History  → .gsm-history-list    pointer-events: auto (scrollable)
+      │     ├── Sim Snapshot → .ssn-systems-list    pointer-events: auto (scrollable, background)
+      │     └── AI Telemetry → .ait-table-wrap      pointer-events: auto (scrollable, background)
+      └── (empty space)   pointer-events: none    (clicks pass to canvas)
+```
+
+**Intentional inconsistency**: Tabs with large scrollable content (Event Log, GSM History) capture clicks for scrolling, preventing canvas interaction. Tabs with small content (Sim Snapshot, AI Telemetry) have empty space below the content where clicks pass through to the canvas. This is by design — scrollable content needs `pointer-events: auto` to function, and empty space should not block game interaction.
+
+**Visual readability**: Scrollable content containers (`.ssn-systems-list`, `.ait-table-wrap`) have `background: var(--od-ui-bg)` for legibility against the game scene. Non-scrollable container elements (`.ssn-container`, `.ait-container`) remain transparent.
+
 Overlay rendering is synchronized to frame boundaries via `engine.onEndFrameObservable` — fires synchronously after each frame's complete render, before the browser's next `requestAnimationFrame`. This prevents display desync between the game canvas and the overlay.
 
 FPS, draw calls, and physics time are captured via `SceneInstrumentation` (not custom counters):

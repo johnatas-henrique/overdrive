@@ -1,7 +1,8 @@
 # Story 008: AI Telemetry Tab
 
 > **Epic**: Dev Tools
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-27
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
@@ -111,7 +112,10 @@ _Written by qa-lead at story creation. The developer implements against these â€
 
 ---
 
-## Dependencies
+## Completion Notes
 
-- Depends on: Story 003 (needs overlay shell + `IDevTools.registerDataSource`)
-- Unlocks: None
+**Completed**: 2026-06-28
+**Criteria**: 3/3 passing
+**Deviations**: ADVISORY â€” pointer-events cascade documented in ADR-0009 (intentional inconsistency between tabs with scrollable content vs small content)
+**Test Evidence**: Integration test at tests/integration/dev-tools/ai-telemetry-panel.test.ts (32 tests)
+**Code Review**: APPROVED WITH SUGGESTIONS (3 suggestions: configurable player ID, innerHTML clearing, integration test for DevTools.setAiTelemetry)
