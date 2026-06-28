@@ -30,6 +30,14 @@ export const getPlaygroundGsm = (): GameStateMachine | null => _gsm;
 export const getPlaygroundSnapshot = (): SimulationSnapshot | null => _snapshot;
 
 /**
+ * Get the playground AI telemetry reader function.
+ *
+ * Returns the mock telemetry function. Replace with a real aggregated reader
+ * when Physics, RaceManager, and AI Driver systems are implemented.
+ */
+export { getMockAiTelemetry as getPlaygroundAiTelemetry } from "./ai-telemetry-mock";
+
+/**
  * Minimal ISnapshotable implementation for playground testing.
  *
  * Stores a flat record of state and provides deterministic FNV-1a hashing.
