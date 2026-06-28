@@ -250,6 +250,12 @@ export class EventBus implements IEventBus {
         result.set(event as string, handlers.size);
       }
     }
+    // Include wildcard handler count (F-001 — wildcard subscriptions
+    // were omitted from the snapshot, making the subscription count
+    // appear incomplete in dev tools inspection).
+    if (this._wildcardHandlers.size > 0) {
+      result.set("*", this._wildcardHandlers.size);
+    }
     return result;
   }
 

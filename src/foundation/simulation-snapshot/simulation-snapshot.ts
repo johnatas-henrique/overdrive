@@ -427,7 +427,17 @@ export class SimulationSnapshot {
     }
     const hashes = new Map<string, string>();
     for (const [id, system] of this.registry) {
-      hashes.set(id, system.hash());
+      // Per-system try/catch so a single failing system does not
+      // prevent the rest from reporting their hashes (F-007).
+      try {
+        hashes.set(id, system.hash());
+      } catch (error) {
+        console.error(
+          `[SimulationSnapshot] Failed to compute hash for system "${id}":`,
+          error
+        );
+        hashes.set(id, "error");
+      }
     }
     return hashes;
   }

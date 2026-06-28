@@ -358,36 +358,37 @@ export class ConfigManager {
    * `undefined` — leaf values with `undefined` are preserved so that
    * debug overlays can display them as "—" (em dash).
    *
-   * Circular references are detected and replaced with a placeholder
-   * to prevent infinite recursion.
+   * Circular references are detected and throw an error to prevent
+   * infinite recursion.
+   *
+   * Uses the native `structuredClone()` under the hood (F-003), which
+   * correctly handles arrays, Date, Map, Set, and other built-in types
+   * that the previous hand-rolled clone skipped. Because `structuredClone`
+   * throws on `undefined` values, we post-process the result to restore
+   * `undefined` leaf values from the original object.
    *
    * @param obj - The object to clone
-   * @param visited - Set of already-visited objects (circular ref detection)
    * @returns A deep clone of the input object
    */
-  private _deepClone(
-    obj: Record<string, unknown>,
-    visited?: Set<object>
-  ): Record<string, unknown> {
-    visited = visited ?? new Set();
+  private _deepClone(obj: Record<string, unknown>): Record<string, unknown> {
+    // structuredClone handles the deep traversal including arrays,
+    // nested objects, Date, Map, Set, etc. (F-003 — deep clone arrays).
+    const clone = structuredClone(obj);
 
-    if (visited.has(obj)) {
-      throw new Error("Circular reference detected");
-    }
-    visited.add(obj);
-
-    const clone: Record<string, unknown> = {};
+    // Restore undefined leaf values that structuredClone strips.
     for (const [key, value] of Object.entries(obj)) {
-      if (
+      if (value === undefined) {
+        clone[key] = undefined;
+      } else if (
         value !== null &&
         typeof value === "object" &&
         !Array.isArray(value)
       ) {
-        clone[key] = this._deepClone(value as Record<string, unknown>, visited);
-      } else {
-        clone[key] = value;
+        // Recursively restore undefined leaves in nested objects
+        clone[key] = this._deepClone(value as Record<string, unknown>);
       }
     }
+
     return clone;
   }
 

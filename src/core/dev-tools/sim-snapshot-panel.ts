@@ -33,7 +33,6 @@ import type {
   ISnapshotable,
   SimulationSnapshot,
 } from "../../foundation/simulation-snapshot";
-import { defined } from "../../shared/assert-defined";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -355,9 +354,8 @@ export class SimSnapshotPanel {
       const hashEl = document.createElement("span");
       hashEl.className = `${CSS_PREFIX}-system-hash`;
       const currentHash = currentHashes.get(system.systemId);
-      defined(currentHash, `No hash for system ${system.systemId}`);
-      hashEl.textContent = currentHash;
-      hashEl.title = `FNV-1a: ${currentHash}`;
+      hashEl.textContent = currentHash ?? "error";
+      hashEl.title = `FNV-1a: ${currentHash ?? "error"}`;
       row.appendChild(hashEl);
 
       // Diff indicator
