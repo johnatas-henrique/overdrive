@@ -16,7 +16,7 @@ end: "2026-07-29"
 generated: "2026-06-24"
 updated: "2026-06-25"
 
-# In progress: (none — 5 done, 24 ready)
+# In progress: (none — 29 done, 0 ready)
 
 stories:
   - id: "1-1"
@@ -57,7 +57,7 @@ stories:
     owner: "solo-dev"
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-06-24"
 
   - id: "1-5"
     name: "Story 004: Access Logging + Debug State"

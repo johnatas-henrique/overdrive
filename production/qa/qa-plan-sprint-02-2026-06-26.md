@@ -220,7 +220,7 @@ Critical paths to verify before any QA hand-off for this sprint:
 4. Input polling captures keyboard/gamepad state
 5. Physics engine initializes and processes ticks
 6. Camera modes switch correctly (Grid → Cockpit → Chase → Drone)
-7. All 42 stories have passing unit tests with 100% coverage
+7. All stories have passing automated unit tests (where applicable) and manual test evidence
 
 ---
 

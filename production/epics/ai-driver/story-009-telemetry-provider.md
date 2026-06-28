@@ -23,7 +23,7 @@
 **Control Manifest Rules (this layer)**:
 
 - Required: C46 (AIDriverParams open set — telemetry exposes params for debug)
-- Dev Infra: D4 (Dev Tools overlay refresh on `engine.onEndFrameObservable`), D5 (toggle/reload keys polled via DSM — keys configurable via `devTools.keys.*`)
+- Dev Infra: D4 (Dev Tools overlay refresh on `engine.onEndFrameObservable`), D5 (toggle/reload keys via DOM keydown listener — keys configurable via `devTools.keys.*`)
 - Dev Infra: D-F3 (never emit events on Event Bus for telemetry — it's read-only)
 
 ---

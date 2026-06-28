@@ -56,3 +56,4 @@
 | 🔴     | 2026-06-27 | SP2/dev-tools/ST6/LP        | CSS gsm-history-row uses rgba(255,255,255,0.02) instead of CSS variable — inconsistent with rest of stylesheet | dev-tools.css | S | |
 | 🔴     | 2026-06-28 | SP2/dev-tools/ST8/LP        | Hardcoded player ID "player-1" in ai-telemetry-panel.ts — should be configurable for future multiplayer | ai-telemetry-panel.ts | S | |
 | 🔴     | 2026-06-28 | SP2/dev-tools/ST8/LP        | No integration test for DevTools.setAiTelemetry() tab creation flow | dev-tools.ts | S | |
+| 🔴     | 2026-06-28 | PR#15/X-012                 | Barrel files (index.ts) excluded from coverage — consider removing barrel files and using @/ imports directly | src/foundation/*/index.ts | M | |

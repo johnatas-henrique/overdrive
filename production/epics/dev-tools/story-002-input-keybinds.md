@@ -33,10 +33,10 @@ _Dev-menu keybind — toggle key to show/hide overlay, reload key to trigger con
 
 _From GDD `design/gdd/dev-tools.md`, scoped to this story:_
 
-- [ ] AC-2a: The toggle key (default: backtick) toggles overlay — `devTools.isVisible()` reflects current state (true after first toggle press, false after toggle press again); DOM is created only on first press (lazy init), not on subsequent toggles
+- [ ] AC-2a: The toggle key (default: 1) toggles overlay — `devTools.isVisible()` reflects current state (true after first toggle press, false after toggle press again); DOM is created only on first press (lazy init), not on subsequent toggles
 - [ ] AC-2b: The toggle and reload keys call `event.preventDefault()` when overlay is active — keys do not reach game input when consumed by Dev Tools; when overlay is hidden, toggle and reload keys pass through to game input
-- [ ] AC-6a: The reload key (default: 1) calls `ConfigManager.reload()` (only when overlay is visible); overlay displays `"config reloaded — <key>: <old> → <new>"` with the changed value
-- [ ] AC-6b: The minimise key (default: 2) toggles minimised overlay state (compact mode)
+- [ ] AC-6a: The reload key (default: 2) calls `ConfigManager.reload()` (only when overlay is visible); overlay displays `"config reloaded — <key>: <old> → <new>"` with the changed value
+- [ ] AC-6b: The minimise key (default: 3) toggles minimised overlay state (compact mode)
 - [ ] AC-2c: `initDevTools(engine, scene)` is called in `app.ts` behind `if (import.meta.env.DEV)` guard — singleton is initialised at engine startup so keybinds can function
 
 ---

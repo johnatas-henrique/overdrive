@@ -128,7 +128,6 @@ stories:
     owner: ""
     estimate_days: 1
     blocker: ""
-    completed: ""
 
   - id: "2-12"
     name: "Story 005: Event Bus Inspector"
