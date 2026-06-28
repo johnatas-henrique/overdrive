@@ -6,11 +6,14 @@ import type { Observer } from "@babylonjs/core/Misc/observable";
 import type { Scene } from "@babylonjs/core/scene";
 import { getConfigManager } from "@/foundation/config/config-manager";
 import type { IEventBus } from "../../foundation/event-bus";
+import type { GameStateMachine } from "../../foundation/gsm/GameStateMachine";
 import { ConfigTreePanel } from "./config-tree";
 import {
   EventBusInspector,
   type IReadOnlyEventBus,
 } from "./event-bus-inspector";
+import { GsmVisualizer } from "./gsm-visualizer";
+import { disposeKeybinds } from "./keybinds";
 import type { IDevTools } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -70,6 +73,10 @@ export class DevTools implements IDevTools {
   private _activeTabId: string | null = null;
   private _tabs: TabDefinition[] = [];
 
+  // GSM History tab
+  private _gsm: GameStateMachine | null = null;
+  private _gsmVisualizer: GsmVisualizer | null = null;
+
   constructor(engine: AbstractEngine, scene: Scene) {
     this._engine = engine;
     this._scene = scene;
@@ -100,6 +107,27 @@ export class DevTools implements IDevTools {
     // If overlay is already initialized, create the Event Log tab now
     if (this._initialized && this._tabBar && this._tabContent) {
       this._createEventLogTab();
+      // Also create GSM History tab if GSM is already available
+      if (this._gsm) {
+        this._createGsmHistoryTab();
+      }
+    }
+  }
+
+  /** @inheritdoc */
+  setGsm(gsm: GameStateMachine): void {
+    if (!import.meta.env.DEV) return;
+    if (this._gsm) return;
+    this._gsm = gsm;
+
+    // Create GSM History tab if overlay is initialized and Event Bus is available
+    if (
+      this._initialized &&
+      this._tabBar &&
+      this._tabContent &&
+      this._eventBus
+    ) {
+      this._createGsmHistoryTab();
     }
   }
 
@@ -185,6 +213,14 @@ export class DevTools implements IDevTools {
   dispose(): void {
     if (!import.meta.env.DEV) return;
 
+    // Remove the keyboard listener to prevent stale singleton reference
+    disposeKeybinds();
+
+    // Dispose GSM visualizer
+    this._gsmVisualizer?.dispose();
+    this._gsmVisualizer = null;
+    this._gsm = null;
+
     // Dispose Event Bus inspector
     this._eventBusInspector?.dispose();
     this._eventBusInspector = null;
@@ -211,6 +247,7 @@ export class DevTools implements IDevTools {
     this._configTreePanel = null;
     this._initialized = false;
     this._visible = false;
+    this._minimised = false;
     this._dataSources.clear();
     this._metricElements = {};
     this._instrumentation = null;
@@ -299,6 +336,10 @@ export class DevTools implements IDevTools {
     // If event bus was set before overlay init, create the tab now
     if (this._eventBus) {
       this._createEventLogTab();
+      // Also create GSM History tab if GSM is already available
+      if (this._gsm) {
+        this._createGsmHistoryTab();
+      }
     }
   }
 
@@ -344,6 +385,44 @@ export class DevTools implements IDevTools {
 
     // Switch to this tab (activates it)
     this._switchTab("event-log");
+  }
+
+  /**
+   * Create the GSM History tab panel and its tab button.
+   *
+   * Called by `setGsm()` when the overlay is already initialized,
+   * or by `_initOverlay()` when both Event Bus and GSM were set
+   * before the first toggle.
+   */
+  private _createGsmHistoryTab(): void {
+    if (!this._tabContent || !this._tabBar || !this._eventBus || !this._gsm)
+      return;
+
+    // Create tab panel container
+    const panel = document.createElement("div");
+    panel.className = "tab-panel";
+    panel.dataset.tabId = "gsm-history";
+
+    // Create read-only Event Bus wrapper
+    const readOnlyBus: IReadOnlyEventBus = this._eventBus;
+
+    this._gsmVisualizer = new GsmVisualizer(panel, readOnlyBus, this._gsm);
+    this._tabContent.appendChild(panel);
+
+    // Create tab button
+    const btn = document.createElement("button");
+    btn.className = "tab";
+    btn.dataset.tabId = "gsm-history";
+    btn.textContent = "GSM History";
+    btn.addEventListener("click", () => this._switchTab("gsm-history"));
+    this._tabBar.appendChild(btn);
+
+    // Register tab definition
+    this._tabs.push({
+      id: "gsm-history",
+      label: "GSM History",
+      refresh: () => this._gsmVisualizer?.refresh(),
+    });
   }
 
   /**

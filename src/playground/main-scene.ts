@@ -12,7 +12,14 @@ import {
   ConfigManager,
   setConfigManager,
 } from "../foundation/config/config-manager";
+import { GameStateMachine } from "../foundation/gsm/GameStateMachine";
 import { CreateSceneGUI } from "./gui";
+
+/** Singleton GSM instance for Dev Tools testing (Story 006) */
+let _gsm: GameStateMachine | null = null;
+
+/** Get the playground GSM instance (or null if not initialized) */
+export const getPlaygroundGsm = (): GameStateMachine | null => _gsm;
 
 export const CreateMainScene = async (scene: Scene): Promise<void> => {
   scene.clearColor = new Color4(0.05, 0.05, 0.08, 1);
@@ -78,6 +85,14 @@ export const CreateMainScene = async (scene: Scene): Promise<void> => {
       cm.register(testNamespace, testConfig);
     } catch {
       // ConfigManager may already be initialized
+    }
+
+    // Initialize GameStateMachine for Dev Tools GSM History tab (Story 006)
+    try {
+      _gsm = new GameStateMachine();
+      _gsm.init();
+    } catch {
+      // GameStateMachine may already be initialized
     }
   }
 };
