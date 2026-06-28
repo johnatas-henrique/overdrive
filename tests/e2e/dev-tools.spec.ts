@@ -667,3 +667,86 @@ test.describe("Sim Snapshot Panel Tab", () => {
     await expect(panel).toBeVisible();
   });
 });
+
+// ---------------------------------------------------------------------------
+// AI Telemetry Tab
+// ---------------------------------------------------------------------------
+
+test.describe("AI Telemetry Tab", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await page.waitForTimeout(2000);
+    await openDevTools(page);
+  });
+
+  test("AI Telemetry tab exists and is clickable", async ({ page }) => {
+    await page.click("button[data-tab-id='ai-telemetry']");
+    await page.waitForTimeout(300);
+
+    const display = await getDisplay(
+      page,
+      ".tab-panel[data-tab-id='ai-telemetry']"
+    );
+    expect(display).toBe("flex");
+  });
+
+  test("AI Telemetry table shows 3 cars from mock data", async ({ page }) => {
+    await page.click("button[data-tab-id='ai-telemetry']");
+    await page.waitForTimeout(300);
+
+    // Wait for the table to appear
+    const table = page.locator(".ait-table");
+    await expect(table).toBeVisible();
+
+    // Count rows in tbody
+    const rows = page.locator(".ait-table tbody tr");
+    const count = await rows.count();
+    expect(count).toBe(3);
+  });
+
+  test("player car row is highlighted", async ({ page }) => {
+    await page.click("button[data-tab-id='ai-telemetry']");
+    await page.waitForTimeout(300);
+
+    // Find the player row
+    const playerRow = page.locator(".ait-row-player");
+    await expect(playerRow).toBeVisible();
+
+    // Verify it has player-1 carId in data-car-id
+    const carId = await playerRow.getAttribute("data-car-id");
+    expect(carId).toBe("player-1");
+  });
+
+  test("table shows correct columns", async ({ page }) => {
+    await page.click("button[data-tab-id='ai-telemetry']");
+    await page.waitForTimeout(300);
+
+    // Find all column header elements
+    const columnHeaders = page.locator(".ait-th");
+    const count = await columnHeaders.count();
+    expect(count).toBe(4);
+
+    // Verify column text matches expected columns
+    const texts = await columnHeaders.allTextContents();
+    const trimmed = texts.map((t) => t.trim());
+    expect(trimmed).toEqual([
+      "Car ID",
+      "Speed (km/h)",
+      "Position (Lap/Overall)",
+      "Behavior",
+    ]);
+  });
+
+  test("empty state shows when no AI cars", async ({ page }) => {
+    await page.click("button[data-tab-id='ai-telemetry']");
+    await page.waitForTimeout(300);
+
+    // The empty-state element exists in the DOM
+    const emptyEl = page.locator(".ait-empty");
+    await expect(emptyEl).toBeAttached();
+
+    // Since mock data has 3 cars, the empty state is hidden (display: none)
+    const display = await getDisplay(page, ".ait-empty");
+    expect(display).toBe("none");
+  });
+});

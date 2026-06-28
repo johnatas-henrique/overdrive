@@ -1812,6 +1812,197 @@ describe("Coverage: _createSimSnapshotTab creates tab elements and registers ref
 });
 
 // ---------------------------------------------------------------------------
+// Coverage: AI Telemetry tab creation paths (lines 145-153, 391-393, 528-558)
+// ---------------------------------------------------------------------------
+
+describe("Coverage: AI Telemetry tab creation paths", () => {
+  const mockTelemetryReader = () => [
+    {
+      carId: "player-1",
+      speed: 120,
+      position: { lap: 3, trackProgress: 0.45, overall: 1 },
+      behavior: "Normal",
+    },
+  ];
+
+  it("should create AI Telemetry tab when reader set before overlay init", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    // Set reader BEFORE toggle — tab creation deferred to _initOverlay
+    devTools.setAiTelemetry(mockTelemetryReader);
+
+    // Tab should NOT exist yet (overlay not initialized)
+    let aiTab = document.querySelector("button[data-tab-id='ai-telemetry']");
+    expect(aiTab).toBeNull();
+
+    // Toggle triggers _initOverlay which checks _aiTelemetryReader and creates tab
+    devTools.toggle();
+
+    // Tab should now exist
+    aiTab = document.querySelector("button[data-tab-id='ai-telemetry']");
+    expect(aiTab).not.toBeNull();
+    expect(aiTab?.textContent).toBe("AI Telemetry");
+
+    // Tab panel should also exist
+    const aiPanel = document.querySelector(
+      ".tab-panel[data-tab-id='ai-telemetry']"
+    );
+    expect(aiPanel).not.toBeNull();
+
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should create AI Telemetry tab when reader set after overlay init", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    // Toggle overlay first (creates DOM)
+    devTools.toggle();
+
+    // Tab should NOT exist yet
+    let aiTab = document.querySelector("button[data-tab-id='ai-telemetry']");
+    expect(aiTab).toBeNull();
+
+    // Set reader AFTER toggle — tab created immediately via setAiTelemetry
+    devTools.setAiTelemetry(mockTelemetryReader);
+
+    // Tab should now exist
+    aiTab = document.querySelector("button[data-tab-id='ai-telemetry']");
+    expect(aiTab).not.toBeNull();
+    expect(aiTab?.textContent).toBe("AI Telemetry");
+
+    // Tab panel should also exist
+    const aiPanel = document.querySelector(
+      ".tab-panel[data-tab-id='ai-telemetry']"
+    );
+    expect(aiPanel).not.toBeNull();
+
+    // Click the AI Telemetry tab to activate it, then update() triggers its
+    // refresh callback (line 556) via _refreshDisplay
+    const aiTabBtn = document.querySelector(
+      "button[data-tab-id='ai-telemetry']"
+    ) as HTMLElement;
+    expect(aiTabBtn).not.toBeNull();
+    aiTabBtn.click();
+    expect(aiTabBtn.classList.contains("active")).toBe(true);
+    expect(() => devTools.update()).not.toThrow();
+
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should be idempotent — second call to setAiTelemetry() is no-op (line 146)", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    // First call sets the reader
+    devTools.setAiTelemetry(mockTelemetryReader);
+    // Second call hits the idempotency guard and returns early
+    devTools.setAiTelemetry(mockTelemetryReader);
+
+    // Toggle creates overlay — only one tab should exist
+    devTools.toggle();
+    const aiTabs = document.querySelectorAll(
+      "button[data-tab-id='ai-telemetry']"
+    );
+    expect(aiTabs.length).toBe(1);
+
+    devTools.dispose();
+    cleanDOM();
+  });
+
+  it("should not throw when disposing with AI Telemetry reader set", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    // Set reader and toggle to create tab
+    devTools.setAiTelemetry(mockTelemetryReader);
+    devTools.toggle();
+
+    // Dispose should not throw — cleans up panel and reader references
+    expect(() => devTools.dispose()).not.toThrow();
+
+    cleanDOM();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Coverage: setEventBus() before toggle without setGsm() (line 380 falsy branch)
+// ---------------------------------------------------------------------------
+
+describe("Coverage: setEventBus before toggle without setGsm", () => {
+  it("should create Event Log tab but not GSM History tab when setEventBus called before toggle without setGsm", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+
+    // Set Event Bus BEFORE toggle but NOT GSM
+    devTools.setEventBus(fakeBus as never);
+
+    // Toggle triggers _initOverlay — creates Event Log, skips GSM (line 380: !this._gsm)
+    devTools.toggle();
+
+    // Event Log tab should exist
+    const eventLogTab = document.querySelector(
+      "button[data-tab-id='event-log']"
+    );
+    expect(eventLogTab).not.toBeNull();
+
+    // GSM History tab should NOT exist (no GSM set)
+    const gsmTab = document.querySelector("button[data-tab-id='gsm-history']");
+    expect(gsmTab).toBeNull();
+
+    devTools.dispose();
+    cleanDOM();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Coverage: Event Log tab button click handler (line 428 anonymous_17)
+// ---------------------------------------------------------------------------
+
+describe("Coverage: Event Log tab button click", () => {
+  it("should handle Event Log tab button click without error", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+    devTools.toggle();
+
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+    devTools.setEventBus(fakeBus as never);
+
+    // Click the Event Log tab button exercises the click handler (line 428)
+    const eventLogBtn = document.querySelector(
+      "button[data-tab-id='event-log']"
+    ) as HTMLElement;
+    expect(eventLogBtn).not.toBeNull();
+    expect(() => eventLogBtn.click()).not.toThrow();
+    expect(eventLogBtn.classList.contains("active")).toBe(true);
+
+    devTools.dispose();
+    cleanDOM();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Coverage note: Line 427 (_createGsmHistoryTab early return guard)
 //
 // This guard is dead code — the method is only called from two places:
