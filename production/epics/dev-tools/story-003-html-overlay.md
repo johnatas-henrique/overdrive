@@ -6,7 +6,7 @@
 > **Type**: UI
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 10h
-> **Last Updated**: 2026-06-26
+> **Last Updated**: 2026-06-27
 
 ## Context
 
@@ -192,14 +192,21 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 ## Completion Notes
 
-**Completed**: 2026-06-26
-**Criteria**: 5/6 passing (AC-9 deferred — requires visual evidence with 100+ config keys)
+**Completed**: 2026-06-27
+**Criteria**: 6/6 passing (AC-9 verified — 1667 FPS with 120 config keys)
 **Deviations**: 
 - ADVISORY (logged as tech debt): Keybinds changed from F1/F2/F3 to backtick/1/2 (browser conflict)
 - ADVISORY (logged as tech debt): captureRenderTime not enabled (no AC requires it)
+- ADVISORY (logged as tech debt): Config tree uses inline CSS — refactor to stylesheet (Story 009)
 - FIXED: `update(dt)` → `update()` (ADR-0009 updated)
 - FIXED: B-1 — dispose() now removes onEndFrameObservable observer
 - FIXED: B-2 — SceneInstrumentation.dispose() now called before nulling
 - FIXED: AC-3c — physicsTime added as 5th metric in top bar
-**Test Evidence**: 41/41 tests pass. Manual evidence template at `production/qa/evidence/html-overlay-evidence.md` (not yet filled — UI story).
-**Code Review**: APPROVED (babylonjs-specialist APPROVED WITH SUGGESTIONS, qa-tester ADEQUATE, lead-programmer APPROVED WITH SUGGESTIONS — all suggestions addressed)
+- FIXED: pointer-events cascade (tabContent → none, interactive elements → auto)
+- FIXED: setMinimised() implementation (collapse to top bar only)
+- FIXED: Config tree refresh removed from _refreshDisplay() (was re-rendering 60x/sec)
+- FIXED: Config value color bug (_finishEdit created spans without style.cssText)
+- FIXED: Notification font size 12px → 14px
+- FIXED: Playground ConfigManager injection (120 test keys for AC-9)
+**Test Evidence**: 1160/1160 tests pass. Manual evidence at `production/qa/evidence/html-overlay-evidence.md`.
+**Code Review**: APPROVED WITH SUGGESTIONS (babylonjs-specialist APPROVED, qa-tester ADEQUATE, lead-programmer APPROVED WITH SUGGESTIONS — all suggestions addressed)

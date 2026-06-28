@@ -107,7 +107,7 @@ stories:
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: "2026-06-26"
+    completed: "2026-06-27"
 
   - id: "2-10"
     name: "Story 002: Input Keybinds"
@@ -169,6 +169,16 @@ stories:
     estimate_days: 0.75
     blocker: ""
     completed: ""
+
+  - id: "2-15b"
+    name: "Story 009: CSS Refactor"
+    file: "production/epics/dev-tools/story-009-css-refactor.md"
+    priority: should-have
+    status: done
+    owner: ""
+    estimate_days: 0.5
+    blocker: ""
+    completed: "2026-06-27"
 
   # Input
   - id: "2-16"

@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/dev-tools.md
 > **Architecture Module**: Dev Infra — Tooling
 > **Status**: Ready
-> **Stories**: 8 stories (Ready)
+> **Stories**: 9 stories (Ready)
 
 ## Overview
 
@@ -50,6 +50,7 @@ This epic is complete when:
 | 006 | gsm-visualizer      | Integration | Ready  | ADR-0009 |
 | 007 | sim-snapshot-panel  | Integration | Ready  | ADR-0009 |
 | 008 | ai-telemetry-tab    | Integration | Ready  | ADR-0009 |
+| 009 | css-refactor        | Logic       | Ready  | ADR-0009 |
 
 ## Next Step
 
