@@ -3,12 +3,20 @@
  * @fileoverview Tests for Dev Tools singleton pattern (index.ts).
  *
  * Covers initDevTools(), getDevTools(), and devTools proxy.
- * Uses vi.resetModules() to get fresh module state per test.
+ * Uses _resetDevToolsForTesting() to avoid vi.resetModules() per test.
  *
  * @see ADR-0009 — Dev Tools Architecture
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 // ---------------------------------------------------------------------------
 // Mock Babylon.js dependencies
@@ -29,6 +37,24 @@ vi.mock("@babylonjs/core/Instrumentation/sceneInstrumentation", () => ({
     return mockInstrumentation;
   }),
 }));
+
+// ---------------------------------------------------------------------------
+// Module-level imports (established once via beforeAll)
+// ---------------------------------------------------------------------------
+
+let initDevTools: typeof import("@/core/dev-tools").initDevTools;
+let getDevTools: typeof import("@/core/dev-tools").getDevTools;
+let devTools: typeof import("@/core/dev-tools").devTools;
+let _resetDevToolsForTesting: typeof import("@/core/dev-tools")._resetDevToolsForTesting;
+
+beforeAll(async () => {
+  vi.stubEnv("DEV", true);
+  const mod = await import("@/core/dev-tools");
+  initDevTools = mod.initDevTools;
+  getDevTools = mod.getDevTools;
+  devTools = mod.devTools;
+  _resetDevToolsForTesting = mod._resetDevToolsForTesting;
+});
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -72,13 +98,12 @@ function cleanDOM(): void {
 // ---------------------------------------------------------------------------
 
 describe("Dev Tools singleton (index.ts)", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     cleanDOM();
-    vi.stubEnv("DEV", true);
+    _resetDevToolsForTesting();
   });
 
   afterEach(() => {
-    vi.unstubAllEnvs();
     vi.restoreAllMocks();
     cleanDOM();
   });
@@ -89,10 +114,7 @@ describe("Dev Tools singleton (index.ts)", () => {
 
   describe("initDevTools", () => {
     it("should initialize the singleton with engine and scene", async () => {
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
       const mocks = createMocks();
-
       await initDevTools(mocks.engine as never, mocks.scene as never);
       const instance = getDevTools();
 
@@ -104,10 +126,7 @@ describe("Dev Tools singleton (index.ts)", () => {
     });
 
     it("should be a no-op on subsequent calls (idempotent)", async () => {
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
       const mocks = createMocks();
-
       await initDevTools(mocks.engine as never, mocks.scene as never);
       const first = getDevTools();
 
@@ -115,19 +134,21 @@ describe("Dev Tools singleton (index.ts)", () => {
       const second = getDevTools();
 
       expect(first).toBe(second);
-
       first.dispose();
     });
 
     it("should be a no-op when DEV is false", async () => {
       vi.stubEnv("DEV", false);
       vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
+      const { initDevTools: initProd, getDevTools: getProd } = await import(
+        "@/core/dev-tools"
+      );
       const mocks = createMocks();
 
-      await initDevTools(mocks.engine as never, mocks.scene as never);
+      await initProd(mocks.engine as never, mocks.scene as never);
+      expect(() => getProd()).toThrow("DevTools not initialized");
 
-      expect(() => getDevTools()).toThrow("DevTools not initialized");
+      vi.unstubAllEnvs();
     });
   });
 
@@ -138,9 +159,8 @@ describe("Dev Tools singleton (index.ts)", () => {
   describe("getDevTools", () => {
     it("should throw if initDevTools was not called", async () => {
       vi.resetModules();
-      const { getDevTools } = await import("@/core/dev-tools");
-
-      expect(() => getDevTools()).toThrow("DevTools not initialized");
+      const { getDevTools: getFresh } = await import("@/core/dev-tools");
+      expect(() => getFresh()).toThrow("DevTools not initialized");
     });
   });
 
@@ -155,16 +175,12 @@ describe("Dev Tools singleton (index.ts)", () => {
 
     it("should throw when accessing properties before init", async () => {
       vi.resetModules();
-      const { devTools } = await import("@/core/dev-tools");
-
-      expect(() => devTools.toggle).toThrow("DevTools not initialized");
+      const { devTools: freshProxy } = await import("@/core/dev-tools");
+      expect(() => freshProxy.toggle).toThrow("DevTools not initialized");
     });
 
     it("should delegate to the singleton after init", async () => {
-      vi.resetModules();
-      const { initDevTools, devTools } = await import("@/core/dev-tools");
       const mocks = createMocks();
-
       await initDevTools(mocks.engine as never, mocks.scene as never);
 
       expect(devTools.isVisible()).toBe(false);
@@ -175,13 +191,9 @@ describe("Dev Tools singleton (index.ts)", () => {
     });
 
     it("should bind methods correctly (this context)", async () => {
-      vi.resetModules();
-      const { initDevTools, devTools } = await import("@/core/dev-tools");
       const mocks = createMocks();
-
       await initDevTools(mocks.engine as never, mocks.scene as never);
 
-      // Extract method via proxy — should still work
       const toggle = devTools.toggle;
       expect(() => toggle()).not.toThrow();
 
@@ -189,14 +201,9 @@ describe("Dev Tools singleton (index.ts)", () => {
     });
 
     it("should return non-function properties directly", async () => {
-      vi.resetModules();
-      const { initDevTools, devTools } = await import("@/core/dev-tools");
       const mocks = createMocks();
-
       await initDevTools(mocks.engine as never, mocks.scene as never);
 
-      // isVisible is a method, but when accessed as a property it returns the bound function
-      // Access a non-existent property to hit the undefined path
       expect((devTools as Record<string, unknown>).nonExistent).toBeUndefined();
 
       devTools.dispose();

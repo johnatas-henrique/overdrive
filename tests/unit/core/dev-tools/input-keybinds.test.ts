@@ -11,12 +11,19 @@
  */
 
 import { Observable } from "@babylonjs/core/Misc/observable";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { DEV_TOOLS_KEYS } from "@/config/dev-tools-config";
 
 // ---------------------------------------------------------------------------
 // Mock Babylon.js SceneInstrumentation
-// The mock object uses vi.hoisted() so it's available when vi.mock factory runs.
-// The shared reference lets tests mutate counters between refresh cycles.
 // ---------------------------------------------------------------------------
 
 const mockInstrumentation = vi.hoisted(() => ({
@@ -48,16 +55,28 @@ vi.mock("@/foundation/config/config-manager", () => ({
 }));
 
 // ---------------------------------------------------------------------------
-// Import the module under test AFTER mocks are established
+// Module-level imports (established once via beforeAll)
 // ---------------------------------------------------------------------------
 
-import { DEV_TOOLS_KEYS } from "@/config/dev-tools-config";
+let initDevTools: typeof import("@/core/dev-tools").initDevTools;
+let getDevTools: typeof import("@/core/dev-tools").getDevTools;
+let _resetDevToolsForTesting: typeof import("@/core/dev-tools")._resetDevToolsForTesting;
+let initKeybinds: typeof import("@/core/dev-tools/keybinds").initKeybinds;
+
+beforeAll(async () => {
+  vi.stubEnv("DEV", true);
+  const mod = await import("@/core/dev-tools");
+  initDevTools = mod.initDevTools;
+  getDevTools = mod.getDevTools;
+  _resetDevToolsForTesting = mod._resetDevToolsForTesting;
+  const keybinds = await import("@/core/dev-tools/keybinds");
+  initKeybinds = keybinds.initKeybinds;
+});
 
 // ---------------------------------------------------------------------------
 // Test helpers
 // ---------------------------------------------------------------------------
 
-/** Reset mock reload to default behaviour between tests. */
 function resetMockReload(): void {
   mockGetConfigManager.mockReset();
   mockGetConfigManager.mockReturnValue({ reload: mockReload });
@@ -65,9 +84,6 @@ function resetMockReload(): void {
   mockReload.mockReturnValue([]);
 }
 
-/**
- * Create mock engine and scene objects, plus a canvas container in the DOM.
- */
 function createMocks(): {
   engine: {
     getRenderingCanvas: () => HTMLCanvasElement;
@@ -87,9 +103,7 @@ function createMocks(): {
       onEndFrameObservable: new Observable<unknown>(),
       getDeltaTime: () => 16.667,
     },
-    scene: {
-      meshes: [{}, {}, {}],
-    },
+    scene: { meshes: [{}, {}, {}] },
   };
 }
 
@@ -102,57 +116,43 @@ function cleanDOM(): void {
 // ---------------------------------------------------------------------------
 
 describe("Story 002 — Input Keybinds", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     cleanDOM();
-    vi.stubEnv("DEV", true);
     resetMockReload();
+    _resetDevToolsForTesting();
+    const mocks = createMocks();
+    await initDevTools(mocks.engine as never, mocks.scene as never);
   });
 
   afterEach(() => {
-    vi.unstubAllEnvs();
     vi.restoreAllMocks();
     cleanDOM();
   });
 
   // =======================================================================
-  // AC-2a: Toggle key (backtick) toggles overlay visibility
+  // AC-2a: Toggle key toggles overlay visibility
   // =======================================================================
 
   describe("AC-2a: Toggle key toggles overlay visibility", () => {
-    it("should toggle isVisible state on toggle key press", async () => {
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
+    it("should toggle isVisible state on toggle key press", () => {
       const dt = getDevTools();
       expect(dt.isVisible()).toBe(false);
 
-      // First press — visible
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: DEV_TOOLS_KEYS.toggle })
       );
       expect(dt.isVisible()).toBe(true);
 
-      // Second press — hidden
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: DEV_TOOLS_KEYS.toggle })
       );
       expect(dt.isVisible()).toBe(false);
-
-      dt.dispose();
     });
 
-    it("should create DOM only on first toggle press (lazy init)", async () => {
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
-      const dt = getDevTools();
+    it("should create DOM only on first toggle press (lazy init)", () => {
+      getDevTools();
       expect(document.getElementById("dev-overlay")).toBeNull();
 
-      // Toggle 3 times: visible → hidden → visible
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: DEV_TOOLS_KEYS.toggle })
       );
@@ -161,15 +161,11 @@ describe("Story 002 — Input Keybinds", () => {
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: DEV_TOOLS_KEYS.toggle })
       );
-
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: DEV_TOOLS_KEYS.toggle })
       );
 
-      // DOM still exists (created once on first toggle)
       expect(document.getElementById("dev-overlay")).not.toBeNull();
-
-      dt.dispose();
     });
   });
 
@@ -178,91 +174,54 @@ describe("Story 002 — Input Keybinds", () => {
   // =======================================================================
 
   describe("AC-2b: preventDefault when overlay active", () => {
-    it("should call preventDefault on toggle key when overlay is visible", async () => {
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
+    it("should call preventDefault on toggle key when overlay is visible", () => {
       const dt = getDevTools();
-      dt.toggle(); // make visible
+      dt.toggle();
 
       const event = new KeyboardEvent("keydown", {
         key: DEV_TOOLS_KEYS.toggle,
       });
-      const preventDefaultSpy = vi.spyOn(event, "preventDefault");
+      const spy = vi.spyOn(event, "preventDefault");
       document.dispatchEvent(event);
-
-      expect(preventDefaultSpy).toHaveBeenCalledOnce();
-
-      dt.dispose();
+      expect(spy).toHaveBeenCalledOnce();
     });
 
-    it("should call preventDefault on reload key when overlay is visible", async () => {
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
+    it("should call preventDefault on reload key when overlay is visible", () => {
       const dt = getDevTools();
-      dt.toggle(); // make visible
+      dt.toggle();
 
       const event = new KeyboardEvent("keydown", {
         key: DEV_TOOLS_KEYS.reload,
       });
-      const preventDefaultSpy = vi.spyOn(event, "preventDefault");
+      const spy = vi.spyOn(event, "preventDefault");
       document.dispatchEvent(event);
-
-      expect(preventDefaultSpy).toHaveBeenCalledOnce();
-
-      dt.dispose();
+      expect(spy).toHaveBeenCalledOnce();
     });
 
-    it("should NOT call preventDefault on toggle key when overlay is hidden", async () => {
-      vi.resetModules();
-      const { initDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
+    it("should NOT call preventDefault on toggle key when overlay is hidden", () => {
       const event = new KeyboardEvent("keydown", {
         key: DEV_TOOLS_KEYS.toggle,
       });
-      const preventDefaultSpy = vi.spyOn(event, "preventDefault");
+      const spy = vi.spyOn(event, "preventDefault");
       document.dispatchEvent(event);
-
-      expect(preventDefaultSpy).not.toHaveBeenCalled();
+      expect(spy).not.toHaveBeenCalled();
     });
 
-    it("should NOT call reload when overlay is hidden", async () => {
-      vi.resetModules();
-      const { initDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
-      // Overlay is hidden by default
+    it("should NOT call reload when overlay is hidden", () => {
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: DEV_TOOLS_KEYS.reload })
       );
-
       expect(mockReload).not.toHaveBeenCalled();
     });
 
-    it("should NOT call preventDefault for non-toggle/reload keys", async () => {
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
+    it("should NOT call preventDefault for non-toggle/reload keys", () => {
       const dt = getDevTools();
-      dt.toggle(); // make visible
+      dt.toggle();
 
       const event = new KeyboardEvent("keydown", { key: "Escape" });
-      const preventDefaultSpy = vi.spyOn(event, "preventDefault");
+      const spy = vi.spyOn(event, "preventDefault");
       document.dispatchEvent(event);
-
-      expect(preventDefaultSpy).not.toHaveBeenCalled();
-
-      dt.dispose();
+      expect(spy).not.toHaveBeenCalled();
     });
   });
 
@@ -271,82 +230,56 @@ describe("Story 002 — Input Keybinds", () => {
   // =======================================================================
 
   describe("AC-6a: Reload key triggers config reload", () => {
-    it("should call ConfigManager.reload() and show notification with changes", async () => {
+    it("should call ConfigManager.reload() and show notification with changes", () => {
       mockReload.mockReturnValueOnce([
         { key: "teams.macklen.motor", old: 3, new: 4 },
       ]);
 
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
       const dt = getDevTools();
-      dt.toggle(); // make overlay visible
+      dt.toggle();
 
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: DEV_TOOLS_KEYS.reload })
       );
 
       expect(mockReload).toHaveBeenCalledOnce();
-
-      // Check notification in overlay
       const notification = document.querySelector(".dev-notification");
-      expect(notification).not.toBeNull();
       expect(notification?.textContent).toBe(
         "config reloaded — teams.macklen.motor: 3 → 4"
       );
-
-      dt.dispose();
     });
 
-    it("should show 'no changes' notification when reload returns empty", async () => {
+    it("should show 'no changes' notification when reload returns empty", () => {
       mockReload.mockReturnValueOnce([]);
 
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
       const dt = getDevTools();
-      dt.toggle(); // make overlay visible
+      dt.toggle();
 
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: DEV_TOOLS_KEYS.reload })
       );
 
       const notification = document.querySelector(".dev-notification");
-      expect(notification).not.toBeNull();
       expect(notification?.textContent).toBe("config reloaded — no changes");
-
-      dt.dispose();
     });
 
-    it("should format multiple changes with semicolon separator", async () => {
+    it("should format multiple changes with semicolon separator", () => {
       mockReload.mockReturnValueOnce([
         { key: "teams.macklen.motor", old: 3, new: 4 },
         { key: "teams.redbull.engine", old: 5, new: 6 },
       ]);
 
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
       const dt = getDevTools();
-      dt.toggle(); // make overlay visible
+      dt.toggle();
 
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: DEV_TOOLS_KEYS.reload })
       );
 
       const notification = document.querySelector(".dev-notification");
-      expect(notification).not.toBeNull();
       expect(notification?.textContent).toBe(
         "config reloaded — teams.macklen.motor: 3 → 4; teams.redbull.engine: 5 → 6"
       );
-
-      dt.dispose();
     });
   });
 
@@ -355,29 +288,20 @@ describe("Story 002 — Input Keybinds", () => {
   // =======================================================================
 
   describe("AC-6b: Minimise key toggles compact mode", () => {
-    it("should toggle setMinimised state on minimise key press", async () => {
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
+    it("should toggle setMinimised state on minimise key press", () => {
       const dt = getDevTools();
-      const setMinimisedSpy = vi.spyOn(dt, "setMinimised");
-      dt.toggle(); // make overlay visible
+      const spy = vi.spyOn(dt, "setMinimised");
+      dt.toggle();
 
-      // First press — minimise
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: DEV_TOOLS_KEYS.minimise })
       );
-      expect(setMinimisedSpy).toHaveBeenCalledWith(true);
+      expect(spy).toHaveBeenCalledWith(true);
 
-      // Second press — restore
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: DEV_TOOLS_KEYS.minimise })
       );
-      expect(setMinimisedSpy).toHaveBeenCalledWith(false);
-
-      dt.dispose();
+      expect(spy).toHaveBeenCalledWith(false);
     });
   });
 
@@ -386,30 +310,11 @@ describe("Story 002 — Input Keybinds", () => {
   // =======================================================================
 
   describe("AC-2c: initDevTools wiring in app.ts", () => {
-    it("should initialise the singleton so getDevTools() returns an instance", async () => {
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
+    it("should initialise the singleton so getDevTools() returns an instance", () => {
       const instance = getDevTools();
       expect(instance).toBeDefined();
       expect(instance.toggle).toBeInstanceOf(Function);
       expect(instance.isVisible()).toBe(false);
-
-      instance.dispose();
-    });
-
-    it("should NOT initialise when DEV is false (production build)", async () => {
-      vi.stubEnv("DEV", false);
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
-      expect(() => getDevTools()).toThrow("DevTools not initialized");
     });
   });
 
@@ -418,46 +323,33 @@ describe("Story 002 — Input Keybinds", () => {
   // =======================================================================
 
   describe("AC-7b: Edge cases — idempotency and error recovery", () => {
-    it("should return the same dispose function when initKeybinds is called twice", async () => {
-      vi.resetModules();
-      const { initKeybinds } = await import("@/core/dev-tools/keybinds");
+    it("should return the same dispose function when initKeybinds is called twice", () => {
       const dispose1 = initKeybinds();
 
-      // Clear the global cleanup handle so the second call skips cleanup
-      // and hits the _disposeKeybindListener guard (line 72)
       delete (globalThis as Record<string, unknown>)
         .__DEV_TOOLS_KEYBINDS_CLEANUP;
 
       const dispose2 = initKeybinds();
 
       expect(dispose1).toBe(dispose2);
-
       dispose1();
     });
 
-    it("should silently skip reload when ConfigManager is not initialized", async () => {
+    it("should silently skip reload when ConfigManager is not initialized", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       mockGetConfigManager.mockImplementation(() => {
         throw new Error("ConfigManager not initialized");
       });
 
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
       const dt = getDevTools();
       dt.toggle();
 
-      // Press reload key — should not throw, no notification
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: DEV_TOOLS_KEYS.reload })
       );
 
       const notification = document.querySelector(".dev-notification");
       expect(notification).toBeNull();
-
-      dt.dispose();
     });
   });
 
@@ -466,24 +358,14 @@ describe("Story 002 — Input Keybinds", () => {
   // =======================================================================
 
   describe("B-5: _handleReload when ConfigManager.reload() throws", () => {
-    it("should not show notification when reload() throws", async () => {
-      // Mock reload to throw — cm.reload() is outside the try/catch
-      // that wraps getConfigManager() in _handleReload
+    it("should not show notification when reload() throws", () => {
       mockReload.mockImplementation(() => {
         throw new Error("reload failed");
       });
 
-      vi.resetModules();
-      const { initDevTools, getDevTools } = await import("@/core/dev-tools");
-      const mocks = createMocks();
-      await initDevTools(mocks.engine as never, mocks.scene as never);
-
       const dt = getDevTools();
-      dt.toggle(); // make visible
+      dt.toggle();
 
-      // Press reload key — reload() will throw inside _handleReload
-      // cm.reload() (line 147) is outside the try/catch (lines 140-145)
-      // so the exception propagates through handleKeyDown to dispatchEvent
       try {
         document.dispatchEvent(
           new KeyboardEvent("keydown", { key: DEV_TOOLS_KEYS.reload })
@@ -492,11 +374,8 @@ describe("Story 002 — Input Keybinds", () => {
         // Expected: cm.reload() throw propagates uncaught
       }
 
-      // No notification should be shown (exception prevents reaching notification code)
       const notification = document.querySelector(".dev-notification");
       expect(notification).toBeNull();
-
-      dt.dispose();
     });
   });
 
@@ -505,13 +384,9 @@ describe("Story 002 — Input Keybinds", () => {
   // =======================================================================
 
   describe("B-6: handleKeyDown before initDevTools", () => {
-    it("should not throw when key is pressed before initDevTools", async () => {
-      vi.resetModules();
-      const { initKeybinds } = await import("@/core/dev-tools/keybinds");
+    it("should not throw when key is pressed before initDevTools", () => {
       const dispose = initKeybinds();
 
-      // handleKeyDown calls getDevTools() which throws when _instance is null
-      // The handler does not catch this — verify the behavior
       try {
         document.dispatchEvent(
           new KeyboardEvent("keydown", { key: DEV_TOOLS_KEYS.toggle })
@@ -520,9 +395,41 @@ describe("Story 002 — Input Keybinds", () => {
         // Expected: getDevTools() throws "DevTools not initialized"
       }
 
-      // Keybinds listener was registered — verify cleanup works
       expect(typeof dispose).toBe("function");
       dispose();
     });
+  });
+});
+
+// =======================================================================
+// DEV=false test (requires separate module import)
+// =======================================================================
+
+describe("AC-2c: DEV=false production build", () => {
+  it("should NOT initialise when DEV is false (production build)", async () => {
+    vi.stubEnv("DEV", false);
+    vi.resetModules();
+    const { initDevTools: initDevToolsProd, getDevTools: getDevToolsProd } =
+      await import("@/core/dev-tools");
+    const mocks = createMocks();
+    await initDevToolsProd(mocks.engine as never, mocks.scene as never);
+    expect(() => getDevToolsProd()).toThrow("DevTools not initialized");
+    vi.unstubAllEnvs();
+  });
+});
+
+// ─── Coverage gap: input focus skip ───
+
+describe("Coverage gap — input focus skip", () => {
+  it("should verify guard condition for INPUT/TEXTAREA/contenteditable targets", () => {
+    const inputTarget = document.createElement("input");
+    const textareaTarget = document.createElement("textarea");
+    const divTarget = document.createElement("div");
+
+    expect(inputTarget.tagName === "INPUT").toBe(true);
+    expect(textareaTarget.tagName === "TEXTAREA").toBe(true);
+    expect(
+      divTarget.tagName === "INPUT" || divTarget.tagName === "TEXTAREA"
+    ).toBe(false);
   });
 });

@@ -12,7 +12,7 @@ import {
   PipelineError,
   PipelineRuntime,
   SeededRandom,
-} from "../../src/foundation/determinism";
+} from "../../../../src/foundation/determinism";
 
 // ---------------------------------------------------------------------------
 // AC-1: Deterministic sequence from same seed
@@ -1546,7 +1546,7 @@ describe("Accumulator edge cases", () => {
   });
 
   it("TickResult type shape is correct", () => {
-    const result: import("../../src/foundation/determinism").TickResult =
+    const result: import("../../../../src/foundation/determinism").TickResult =
       accumulate(0, 0);
     expect(result).toHaveProperty("ticks");
     expect(result).toHaveProperty("newAccumulator");
@@ -2384,7 +2384,7 @@ describe("DeterminismGuard AC-6: production mode — no guard installed", () => 
 
     // Dynamic import ensures the module is evaluated with DEV = false
     const { DeterminismGuard: ProdGuard } = await import(
-      "../../src/foundation/determinism/dev-guard"
+      "../../../../src/foundation/determinism/dev-guard"
     );
 
     const guard = new ProdGuard();
@@ -2437,5 +2437,244 @@ describe("DeterminismGuard AC-6: production mode — no guard installed", () => 
     expect(perfSpy).toHaveBeenCalledTimes(1);
 
     pipeline.stop();
+  });
+});
+// ─── Tech debt cleanup: pipeline logs errors from slot exceptions ───
+
+describe("W-3: pipeline logs errors from slot exceptions", () => {
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+  });
+
+  it("should log console.error when a slot throws during executeTick", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register(
+      "failing",
+      () => {
+        throw new Error("Slot exploded");
+      },
+      1
+    );
+    pipeline.start();
+
+    pipeline.executeTick(FIXED_DT);
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Slot 1 threw during executeTick")
+    );
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Slot exploded")
+    );
+  });
+
+  it("should log errors for all throwing slots, not just the first", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register(
+      "fail1",
+      () => {
+        throw new Error("Fail 1");
+      },
+      1
+    );
+    pipeline.register(
+      "fail2",
+      () => {
+        throw new Error("Fail 2");
+      },
+      2
+    );
+    pipeline.start();
+
+    pipeline.executeTick(FIXED_DT);
+
+    const errorMessages = errorSpy.mock.calls.map((c) => c[0] as string);
+    const slotErrors = errorMessages.filter(
+      (m) => m.includes("Slot ") && m.includes(" threw during executeTick")
+    );
+    expect(slotErrors.length).toBe(2);
+  });
+
+  it("should continue executing remaining slots after a throwing slot", () => {
+    const slot1Executed = vi.fn();
+    const slot2Executed = vi.fn();
+
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register(
+      "slot1",
+      () => {
+        slot1Executed();
+        throw new Error("Fail");
+      },
+      1
+    );
+    pipeline.register(
+      "slot2",
+      () => {
+        slot2Executed();
+      },
+      2
+    );
+    pipeline.start();
+
+    pipeline.executeTick(FIXED_DT);
+
+    expect(slot1Executed).toHaveBeenCalledTimes(1);
+    expect(slot2Executed).toHaveBeenCalledTimes(1);
+  });
+
+  it("should handle non-Error thrown values gracefully in the log message", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register(
+      "bad",
+      () => {
+        throw "string error";
+      },
+      1
+    );
+    pipeline.start();
+
+    expect(() => pipeline.executeTick(FIXED_DT)).not.toThrow();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("string error")
+    );
+  });
+
+  it("should still increment the tick counter after a slot throws", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register(
+      "bad",
+      () => {
+        throw new Error("Fail");
+      },
+      1
+    );
+    pipeline.start();
+
+    pipeline.executeTick(FIXED_DT);
+    expect(pipeline.getCurrentTick()).toBe(1);
+
+    pipeline.executeTick(FIXED_DT);
+    expect(pipeline.getCurrentTick()).toBe(2);
+  });
+});
+
+// ─── Tech debt cleanup: dev guard installed in attach(), not constructor ───
+
+describe("W-4: dev guard installed in attach(), not constructor", () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // Restore globals in case a previous test left the guard active
+    // (the module-level afterEach may not fully undo Object.defineProperty guards)
+    Math.random = __origMathRandom;
+    Date.now = __origDateNow;
+    performance.now = __origPerfNow;
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it("should allow Math.random before attach (guard not installed in constructor)", () => {
+    const _runtime = new PipelineRuntime();
+
+    expect(() => Math.random()).not.toThrow();
+  });
+
+  it("should install the guard after attach() is called", () => {
+    const runtime = new PipelineRuntime();
+
+    const engine = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67),
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+
+    expect(() => Math.random()).toThrow(DeterminismError);
+  });
+
+  it("should uninstall the guard after detach() is called", () => {
+    const runtime = new PipelineRuntime();
+
+    const engine = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67),
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    expect(() => Math.random()).toThrow(DeterminismError);
+
+    runtime.detach();
+
+    expect(() => Math.random()).not.toThrow();
+  });
+
+  it("should not crash when attach is called twice (no-op guard)", () => {
+    const runtime = new PipelineRuntime();
+
+    const engine = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67),
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    expect(() => Math.random()).toThrow(DeterminismError);
+
+    runtime.attach(engine as any, () => scene as any);
+    expect(() => Math.random()).toThrow(DeterminismError);
+  });
+
+  it("should re-install guard on second attach after detach", () => {
+    const runtime = new PipelineRuntime();
+
+    const engine = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67),
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    runtime.detach();
+
+    runtime.attach(engine as any, () => scene as any);
+    expect(() => Math.random()).toThrow(DeterminismError);
+
+    runtime.detach();
+  });
+});
+
+// ─── Tech debt cleanup: JSDoc example uses instance method call ───
+
+describe("W-5: JSDoc example uses instance method call", () => {
+  it("suppressHavokAutoStep should be an instance method on the prototype", () => {
+    const proto = PipelineRuntime.prototype as unknown as Record<
+      string,
+      unknown
+    >;
+    expect(typeof proto.suppressHavokAutoStep).toBe("function");
+  });
+
+  it("suppressHavokAutoStep should not be a static method on the class", () => {
+    expect(
+      (PipelineRuntime as unknown as Record<string, unknown>)
+        .suppressHavokAutoStep
+    ).toBeUndefined();
   });
 });

@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ConfigError, ConfigManager } from "../../src/foundation/config";
+import { ConfigError, ConfigManager } from "../../../../src/foundation/config";
 import {
   getConfigManager,
   setConfigManager,
-} from "../../src/foundation/config/config-manager";
+} from "../../../../src/foundation/config/config-manager";
 
 describe("ConfigManager", () => {
   // Shared env var tracking — used by env override and invalidateNamespace suites
@@ -1060,5 +1060,202 @@ describe("ConfigManager", () => {
       expect(result.get("test.nested.arr")).toEqual([4, 5]);
       expect(result.size).toBe(2);
     });
+  });
+});
+
+// ─── Tech debt cleanup: register() throws ConfigError on invalid config ───
+
+describe("C-4: register() throws ConfigError on invalid config", () => {
+  it("should throw ConfigError when registering null config", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    expect(() => cm.register("teams", null as unknown as object)).toThrow(
+      ConfigError
+    );
+  });
+
+  it("should throw ConfigError when registering undefined config", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    expect(() => cm.register("teams", undefined as unknown as object)).toThrow(
+      ConfigError
+    );
+  });
+
+  it("should throw ConfigError when registering array config", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    expect(() => cm.register("teams", [] as unknown as object)).toThrow(
+      ConfigError
+    );
+  });
+
+  it("should not leave orphaned namespace in _store when registration fails", () => {
+    const cm = new ConfigManager();
+    cm.init();
+
+    // Attempt to register invalid config
+    expect(() => cm.register("bad", null as unknown as object)).toThrow(
+      ConfigError
+    );
+
+    // The namespace should be eligible for registration now
+    // (cleanup happened before the throw propagated)
+    expect(() => cm.register("bad", { valid: true })).not.toThrow();
+
+    // Verify the valid registration actually works
+    expect(cm.get<{ valid: boolean }>("bad")).toEqual({ valid: true });
+  });
+
+  it("should still register normally for valid config", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    expect(() => cm.register("good", { data: 42 })).not.toThrow();
+    expect(cm.get<number>("good.data")).toBe(42);
+  });
+});
+
+// ─── Tech debt cleanup: stack trace extraction handles non-V8 gracefully ───
+
+describe("W-1: stack trace extraction handles non-V8 gracefully", () => {
+  it("should not throw when Error.stack is undefined", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("test", { value: 1 });
+
+    // Some environments may not have a getter — guard accordingly
+    if (Error.prototype.stack === undefined) {
+      return;
+    }
+
+    // Temporarily break stack trace
+    const origStack = Object.getOwnPropertyDescriptor(Error.prototype, "stack");
+    Object.defineProperty(Error.prototype, "stack", {
+      get: () => undefined as unknown as string,
+      configurable: true,
+    });
+
+    // get() should not throw; the caller will be recorded as empty string
+    expect(() => cm.get<number>("test.value")).not.toThrow();
+    expect(cm.get<number>("test.value")).toBe(1);
+    const state = cm.getDebugState();
+    expect(state.accessLog[0].caller).toBe("");
+
+    // Restore
+    if (origStack) {
+      Object.defineProperty(Error.prototype, "stack", origStack);
+    }
+  });
+
+  it("should not throw when Error.stack getter throws", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("x", { a: 1 });
+
+    const origDescriptor = Object.getOwnPropertyDescriptor(
+      Error.prototype,
+      "stack"
+    );
+
+    Object.defineProperty(Error.prototype, "stack", {
+      get: () => {
+        throw new Error("Stack unavailable");
+      },
+      configurable: true,
+    });
+
+    expect(() => cm.get<number>("x.a")).not.toThrow();
+    expect(cm.get<number>("x.a")).toBe(1);
+
+    if (origDescriptor) {
+      Object.defineProperty(Error.prototype, "stack", origDescriptor);
+    }
+  });
+
+  it("should not throw when Error.stack returns empty string", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("x", { a: 1 });
+
+    const origDescriptor = Object.getOwnPropertyDescriptor(
+      Error.prototype,
+      "stack"
+    );
+
+    Object.defineProperty(Error.prototype, "stack", {
+      get: () => "",
+      configurable: true,
+    });
+
+    expect(() => cm.get<number>("x.a")).not.toThrow();
+    expect(cm.get<number>("x.a")).toBe(1);
+
+    if (origDescriptor) {
+      Object.defineProperty(Error.prototype, "stack", origDescriptor);
+    }
+  });
+});
+
+// ─── Tech debt cleanup: process.env guard in browser-like environment ───
+
+describe("W-2: process.env guard works in browser-like environment", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("getDebugState() should not throw when process is undefined", () => {
+    vi.stubGlobal("process", undefined);
+
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("test", { val: 1 });
+
+    expect(() => cm.getDebugState()).not.toThrow();
+  });
+
+  it("getDebugState() should return empty envOverrides when process is undefined", () => {
+    vi.stubGlobal("process", undefined);
+
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("test", { val: 1 });
+
+    const state = cm.getDebugState();
+    expect(state.envOverrides).toEqual([]);
+  });
+
+  it("config get() should work when process is undefined (guard in _applyEnvOverridesToClone)", () => {
+    vi.stubGlobal("process", undefined);
+
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("test", { val: 42 });
+
+    expect(cm.get<number>("test.val")).toBe(42);
+  });
+
+  it("should still apply env overrides when process is available", () => {
+    const origProcess = process.env;
+    process.env = { ...origProcess, OVERDRIVE__TEST__VAL: "99" };
+
+    try {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("test", { val: 42 });
+
+      expect(cm.get<number>("test.val")).toBe(99);
+    } finally {
+      process.env = origProcess;
+    }
+  });
+});
+
+// ─── Coverage gap: get() with missing namespace ───
+
+describe("Coverage gap — configManager get() with missing namespace", () => {
+  it("throws ConfigError when namespace was never registered", () => {
+    const mgr = new ConfigManager();
+    mgr.init();
+    expect(() => mgr.get("nonexistent.key")).toThrow(ConfigError);
   });
 });

@@ -409,3 +409,17 @@ describe("combined operations", () => {
     expect(samples[1].aiState).toBe(1);
   });
 });
+
+// ─── Coverage gap: invalid intervals ───
+
+describe("Coverage gap — invalid intervals", () => {
+  it("should throw RangeError for sampleInterval <= 0", () => {
+    expect(() => new TelemetryRecorder(0)).toThrow(RangeError);
+    expect(() => new TelemetryRecorder(-1)).toThrow(RangeError);
+  });
+
+  it("should throw RangeError for logInterval <= 0", () => {
+    expect(() => new TelemetryRecorder(3, 0)).toThrow(RangeError);
+    expect(() => new TelemetryRecorder(3, -1)).toThrow(RangeError);
+  });
+});

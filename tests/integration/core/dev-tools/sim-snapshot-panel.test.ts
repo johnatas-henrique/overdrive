@@ -19,11 +19,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fnv1a,
   SimulationSnapshot,
-} from "../../../src/foundation/simulation-snapshot";
-import type { ISnapshotable } from "../../../src/foundation/simulation-snapshot/types";
+} from "../../../../src/foundation/simulation-snapshot";
+import type { ISnapshotable } from "../../../../src/foundation/simulation-snapshot/types";
 
 // Import after mocks
-let SimSnapshotPanel: typeof import("../../../src/core/dev-tools/sim-snapshot-panel").SimSnapshotPanel;
+let SimSnapshotPanel: typeof import("../../../../src/core/dev-tools/sim-snapshot-panel").SimSnapshotPanel;
 
 // ---------------------------------------------------------------------------
 // Helper: create a test ISnapshotable system
@@ -80,14 +80,16 @@ class FailingTestSys implements ISnapshotable {
 
 let container: HTMLDivElement;
 
-beforeEach(async () => {
+beforeAll(async () => {
+  vi.stubEnv("DEV", true);
+  const mod = await import("../../../../src/core/dev-tools/sim-snapshot-panel");
+  SimSnapshotPanel = mod.SimSnapshotPanel;
+});
+
+beforeEach(() => {
   container = document.createElement("div");
   document.body.appendChild(container);
-  vi.stubEnv("DEV", true);
   vi.spyOn(console, "warn").mockImplementation(() => {});
-  vi.resetModules();
-  const mod = await import("../../../src/core/dev-tools/sim-snapshot-panel");
-  SimSnapshotPanel = mod.SimSnapshotPanel;
 });
 
 afterEach(() => {
@@ -918,7 +920,7 @@ describe("Gap 9: DEV=false null guards", () => {
     vi.stubEnv("DEV", false);
     vi.resetModules();
 
-    return import("../../../src/core/dev-tools/sim-snapshot-panel").then(
+    return import("../../../../src/core/dev-tools/sim-snapshot-panel").then(
       (mod) => {
         const Panel = mod.SimSnapshotPanel;
         const ss = new SimulationSnapshot();
@@ -1019,6 +1021,32 @@ describe("Gap 12: Non-Error throw in _handleRestore", () => {
     expect(resultEl).not.toBeNull();
     expect(resultEl.textContent).toContain("Unknown error");
     expect(resultEl.classList.contains("ssn-restore-fail")).toBe(true);
+
+    panel.dispose();
+  });
+});
+
+// ─── Coverage gap: missing hash fallback ───
+
+describe("Coverage gap — missing hash fallback", () => {
+  it("should display 'error' when hash is undefined", () => {
+    const snapshot = new SimulationSnapshot();
+    snapshot.init();
+
+    // Register a system whose hash() returns undefined
+    snapshot.register({
+      systemId: "broken-system",
+      serialize: () => ({ v: 1 }),
+      deserialize: () => {},
+      hash: () => undefined as unknown as string,
+    });
+
+    const panel = createPanel(snapshot);
+    panel.refresh();
+
+    // Should display "error" instead of crashing
+    const hashEl = container.querySelector(".ssn-system-hash");
+    expect(hashEl?.textContent).toBe("error");
 
     panel.dispose();
   });

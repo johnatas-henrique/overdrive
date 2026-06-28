@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { IEventBus } from "../../src/foundation/event-bus";
-import type { State } from "../../src/foundation/gsm";
+import type { IEventBus } from "../../../../src/foundation/event-bus";
+import type { State } from "../../../../src/foundation/gsm";
 import {
   GameStateError,
   GameStateMachine,
   TRANSITIONS,
-} from "../../src/foundation/gsm";
+} from "../../../../src/foundation/gsm";
 
 // Suppress console.warn/console.error output during tests
 let warnSpy: ReturnType<typeof vi.spyOn>;

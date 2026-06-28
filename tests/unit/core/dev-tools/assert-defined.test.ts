@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defined } from "../../../src/shared/assert-defined";
+import { defined } from "../../../../src/shared/assert-defined";
 
 describe("defined()", () => {
   it("should not throw for non-null values", () => {

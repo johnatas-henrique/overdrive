@@ -399,3 +399,37 @@ describe("AC-5: Full lifecycle isolation", () => {
     expect(recorder.getTickCount()).toBe(0);
   });
 });
+
+// ─── Coverage gap: re-init subscriptions ───
+
+describe("Coverage gap — re-init subscriptions", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("should unsubscribe previous subscriptions on re-init", () => {
+    const bus = new EventBus();
+    bus.init();
+    const recorder = new TelemetryRecorder();
+
+    // First init
+    recorder.init(bus);
+
+    // Count subscriptions after first init
+    const subs1 = bus.getSubscriptions();
+    const raceStartedCount1 = subs1.get("race.started") ?? 0;
+
+    // Second init — should unsubscribe first, then resubscribe
+    recorder.init(bus);
+
+    const subs2 = bus.getSubscriptions();
+    const raceStartedCount2 = subs2.get("race.started") ?? 0;
+
+    // Should have same count (not doubled)
+    expect(raceStartedCount2).toBe(raceStartedCount1);
+  });
+});

@@ -13,8 +13,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ConfigTreePanel } from "../../../src/core/dev-tools/config-tree";
-import { ConfigManager } from "../../../src/foundation/config";
+import { ConfigTreePanel } from "../../../../src/core/dev-tools/config-tree";
+import { ConfigManager } from "../../../../src/foundation/config";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -885,5 +885,97 @@ describe("Config Tree Panel — AC-4", () => {
 
       vi.stubEnv("DEV", true); // restore for other tests
     });
+  });
+});
+
+// ─── Coverage gap: boolean/null parsing ───
+
+describe("Config Tree — boolean/null parsing", () => {
+  beforeEach(() => {
+    vi.stubEnv("DEV", true);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it("should parse 'true' as boolean true", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("test", { flag: true });
+
+    const container = createContainer();
+    const panel = new ConfigTreePanel(container, () => cm);
+    panel.refresh();
+
+    const details = container.querySelector("details");
+    if (details) details.open = true;
+
+    const valueSpan = container.querySelector(".config-value");
+    expect(valueSpan?.textContent).toBe("true");
+
+    valueSpan?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    const input = container.querySelector("input");
+    expect(input).not.toBeNull();
+
+    // biome-ignore lint/style/noNonNullAssertion: tested via toBeNull guard above
+    const inp = input!;
+    inp.value = "true";
+    inp.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+    );
+
+    expect(cm.get("test.flag")).toBe(true);
+  });
+
+  it("should parse 'false' as boolean false", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("test", { flag: false });
+
+    const container = createContainer();
+    const panel = new ConfigTreePanel(container, () => cm);
+    panel.refresh();
+
+    const details = container.querySelector("details");
+    if (details) details.open = true;
+
+    const valueSpan = container.querySelector(".config-value");
+    valueSpan?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    const input = container.querySelector("input") as HTMLInputElement | null;
+    expect(input).not.toBeNull();
+
+    input.value = "false";
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+    );
+
+    expect(cm.get("test.flag")).toBe(false);
+  });
+
+  it("should parse 'null' as null", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("test", { value: "something" });
+
+    const container = createContainer();
+    const panel = new ConfigTreePanel(container, () => cm);
+    panel.refresh();
+
+    const details = container.querySelector("details");
+    if (details) details.open = true;
+
+    const valueSpan = container.querySelector(".config-value");
+    valueSpan?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    const input = container.querySelector("input") as HTMLInputElement | null;
+    expect(input).not.toBeNull();
+
+    input.value = "null";
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+    );
+
+    expect(cm.get("test.value")).toBeNull();
   });
 });

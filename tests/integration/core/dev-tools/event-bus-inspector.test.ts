@@ -18,8 +18,8 @@
 
 import { Observable } from "@babylonjs/core/Misc/observable";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EventBusInspector } from "../../../src/core/dev-tools/event-bus-inspector";
-import { EventBus } from "../../../src/foundation/event-bus";
+import { EventBusInspector } from "../../../../src/core/dev-tools/event-bus-inspector";
+import { EventBus } from "../../../../src/foundation/event-bus";
 
 // ---------------------------------------------------------------------------
 // Mock Babylon.js dependencies for DevTools integration tests
@@ -326,12 +326,13 @@ describe("Event Bus Inspector — AC-5", () => {
       expect(container.textContent).not.toContain("race.checkered");
     });
 
-    it("should show 'No active subscriptions' when none exist", () => {
+    it("should show the inspector's own wildcard subscription (F-001)", () => {
       const bus = new EventBus();
       bus.init();
       const container = createContainer();
-      // inspector constructor subscribes to "*" — but the inspector's own
-      // subscription is tracked internally and doesn't appear in getSubscriptions()
+      // The inspector constructor subscribes to "*" for event capture.
+      // F-001 now includes wildcard subscriptions in getSubscriptions(),
+      // so the subscription list shows "*:1" rather than "No active subscriptions".
       const inspector = new EventBusInspector(container, bus);
 
       inspector.refresh();
@@ -340,7 +341,8 @@ describe("Event Bus Inspector — AC-5", () => {
         ".inspector-subs-list"
       ) as HTMLElement;
       expect(subsSection).not.toBeNull();
-      expect(subsSection.textContent).toContain("No active subscriptions");
+      // The wildcard subscription from the inspector itself is now visible
+      expect(subsSection.textContent).toContain("*:1");
     });
 
     it("should sort subscriptions alphabetically by event name", () => {
@@ -737,9 +739,23 @@ describe("Event Bus Inspector — AC-5", () => {
 // =======================================================================
 
 describe("Tab system integration", () => {
+  let initDevTools: (...args: unknown[]) => Promise<void>;
+  let getDevTools: () => ReturnType<
+    typeof import("../../../../src/core/dev-tools").getDevTools
+  >;
+  let _resetDevToolsForTesting: () => void;
+
+  beforeAll(async () => {
+    const mod = await import("../../../../src/core/dev-tools");
+    initDevTools = mod.initDevTools;
+    getDevTools = mod.getDevTools;
+    _resetDevToolsForTesting = mod._resetDevToolsForTesting;
+  });
+
   beforeEach(() => {
     vi.stubEnv("DEV", true);
     cleanDOM();
+    _resetDevToolsForTesting();
   });
 
   afterEach(() => {
@@ -749,11 +765,6 @@ describe("Tab system integration", () => {
   });
 
   it("should create tab bar with Event Log button when setEventBus is called", async () => {
-    vi.resetModules();
-    const { initDevTools, getDevTools } = await import(
-      "../../../src/core/dev-tools"
-    );
-
     const bus = new EventBus();
     bus.init();
     const mocks = createMocks();
@@ -790,11 +801,6 @@ describe("Tab system integration", () => {
   });
 
   it("should create Event Log tab when setEventBus is called after overlay init", async () => {
-    vi.resetModules();
-    const { initDevTools, getDevTools } = await import(
-      "../../../src/core/dev-tools"
-    );
-
     const bus = new EventBus();
     bus.init();
     const mocks = createMocks();
@@ -819,11 +825,6 @@ describe("Tab system integration", () => {
   });
 
   it("should activate tab panel on tab button click", async () => {
-    vi.resetModules();
-    const { initDevTools, getDevTools } = await import(
-      "../../../src/core/dev-tools"
-    );
-
     const bus = new EventBus();
     bus.init();
     const mocks = createMocks();
@@ -853,28 +854,23 @@ describe("Tab system integration", () => {
   it("should not create Event Log tab in production mode", async () => {
     vi.stubEnv("DEV", false);
     vi.resetModules();
-    const { initDevTools, getDevTools } = await import(
-      "../../../src/core/dev-tools"
+    const { initDevTools: initDT, getDevTools: getDT } = await import(
+      "../../../../src/core/dev-tools"
     );
 
     const bus = new EventBus();
     bus.init();
     const mocks = createMocks();
 
-    await initDevTools(mocks.engine as never, mocks.scene as never, bus);
+    await initDT(mocks.engine as never, mocks.scene as never, bus);
 
-    expect(() => getDevTools()).toThrow("DevTools not initialized");
+    expect(() => getDT()).toThrow("DevTools not initialized");
 
     // No overlay DOM should exist
     expect(document.getElementById("dev-overlay")).toBeNull();
   });
 
   it("should not create Event Log tab when setEventBus is never called", async () => {
-    vi.resetModules();
-    const { initDevTools, getDevTools } = await import(
-      "../../../src/core/dev-tools"
-    );
-
     const mocks = createMocks();
     await initDevTools(mocks.engine as never, mocks.scene as never);
     const dt = getDevTools();
@@ -886,5 +882,42 @@ describe("Tab system integration", () => {
     expect(tabBar?.children.length).toBe(0);
 
     dt.dispose();
+  });
+});
+
+// ─── Coverage gap: non-cloneable payload ───
+
+describe("Coverage gap — non-cloneable payload", () => {
+  beforeEach(() => {
+    vi.stubEnv("DEV", true);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+    cleanDOM();
+  });
+
+  it("should handle non-cloneable payload gracefully", () => {
+    const bus = new EventBus();
+    bus.init();
+    const container = createContainer();
+    const inspector = new EventBusInspector(container, bus);
+
+    // Create a payload with a circular reference (non-cloneable)
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+
+    bus.emit("test.event" as never, circular as never);
+
+    // Should not throw — structuredClone fails, falls back to reference
+    inspector.refresh();
+
+    // Verify the event was captured
+    const logList = container.querySelector(".inspector-log-list");
+    expect(logList).not.toBeNull();
+    expect(logList?.textContent).toContain("test.event");
+
+    inspector.dispose();
   });
 });

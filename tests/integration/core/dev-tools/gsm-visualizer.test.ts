@@ -16,12 +16,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EventBus } from "../../../src/foundation/event-bus";
-import { TRANSITIONS } from "../../../src/foundation/gsm/TransitionTable";
-import type { State } from "../../../src/foundation/gsm/types";
+import { EventBus } from "../../../../src/foundation/event-bus";
+import { TRANSITIONS } from "../../../../src/foundation/gsm/TransitionTable";
+import type { State } from "../../../../src/foundation/gsm/types";
 
 // Import after mocks
-let GsmVisualizer: typeof import("../../../src/core/dev-tools/gsm-visualizer").GsmVisualizer;
+let GsmVisualizer: typeof import("../../../../src/core/dev-tools/gsm-visualizer").GsmVisualizer;
 
 // ---------------------------------------------------------------------------
 // Fake GameStateMachine for testing
@@ -115,14 +115,14 @@ function cleanDOM(): void {
 // ---------------------------------------------------------------------------
 
 describe("GSM Visualizer — AC-6", () => {
-  beforeEach(async () => {
+  beforeAll(async () => {
+    const mod = await import("../../../../src/core/dev-tools/gsm-visualizer");
+    GsmVisualizer = mod.GsmVisualizer;
+  });
+
+  beforeEach(() => {
     vi.stubEnv("DEV", true);
     vi.useFakeTimers();
-    // Reset modules to get fresh instances
-    vi.resetModules();
-    const mod = await import("../../../src/core/dev-tools/gsm-visualizer");
-    GsmVisualizer = mod.GsmVisualizer;
-    // We store IReadOnlyEventBus but it's just a type alias
   });
 
   afterEach(() => {
@@ -815,7 +815,7 @@ describe("GSM Visualizer — AC-6", () => {
       vi.resetModules();
 
       // Re-import with DEV = false
-      const mod = await import("../../../src/core/dev-tools/gsm-visualizer");
+      const mod = await import("../../../../src/core/dev-tools/gsm-visualizer");
       const Visualizer = mod.GsmVisualizer;
 
       const bus = new EventBus();
@@ -840,7 +840,7 @@ describe("GSM Visualizer — AC-6", () => {
       vi.stubEnv("DEV", false);
       vi.resetModules();
 
-      const mod = await import("../../../src/core/dev-tools/gsm-visualizer");
+      const mod = await import("../../../../src/core/dev-tools/gsm-visualizer");
       const Visualizer = mod.GsmVisualizer;
 
       const bus = new EventBus();
@@ -1005,7 +1005,7 @@ describe("GSM Visualizer — AC-6", () => {
       vi.stubEnv("DEV", false);
       vi.resetModules();
 
-      const mod = await import("../../../src/core/dev-tools/gsm-visualizer");
+      const mod = await import("../../../../src/core/dev-tools/gsm-visualizer");
       const Visualizer = mod.GsmVisualizer;
 
       const bus = new EventBus();
@@ -1033,7 +1033,7 @@ describe("GSM Visualizer — AC-6", () => {
       vi.stubEnv("DEV", false);
       vi.resetModules();
 
-      const mod = await import("../../../src/core/dev-tools/gsm-visualizer");
+      const mod = await import("../../../../src/core/dev-tools/gsm-visualizer");
       const Visualizer = mod.GsmVisualizer;
 
       const bus = new EventBus();

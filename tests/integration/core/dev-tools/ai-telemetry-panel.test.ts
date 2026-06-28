@@ -15,10 +15,10 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AiTelemetryCarData } from "../../../src/core/dev-tools/types";
+import type { AiTelemetryCarData } from "../../../../src/core/dev-tools/types";
 
 // Import after mocks
-let AiTelemetryPanel: typeof import("../../../src/core/dev-tools/ai-telemetry-panel").AiTelemetryPanel;
+let AiTelemetryPanel: typeof import("../../../../src/core/dev-tools/ai-telemetry-panel").AiTelemetryPanel;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -85,7 +85,7 @@ beforeEach(async () => {
   vi.stubEnv("DEV", true);
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.resetModules();
-  const mod = await import("../../../src/core/dev-tools/ai-telemetry-panel");
+  const mod = await import("../../../../src/core/dev-tools/ai-telemetry-panel");
   AiTelemetryPanel = mod.AiTelemetryPanel;
 });
 
@@ -687,7 +687,7 @@ describe("DEV guard", () => {
   it("should render DOM when import.meta.env.DEV is true", () => {
     vi.stubEnv("DEV", true);
     vi.resetModules();
-    return import("../../../src/core/dev-tools/ai-telemetry-panel").then(
+    return import("../../../../src/core/dev-tools/ai-telemetry-panel").then(
       (mod) => {
         const Panel = mod.AiTelemetryPanel;
         const c = document.createElement("div");
@@ -706,7 +706,7 @@ describe("DEV guard", () => {
   it("should not render DOM when import.meta.env.DEV is false", () => {
     vi.stubEnv("DEV", false);
     vi.resetModules();
-    return import("../../../src/core/dev-tools/ai-telemetry-panel").then(
+    return import("../../../../src/core/dev-tools/ai-telemetry-panel").then(
       (mod) => {
         const Panel = mod.AiTelemetryPanel;
         const c = document.createElement("div");
@@ -725,7 +725,7 @@ describe("DEV guard", () => {
   it("should not crash when refresh is called in DEV=false mode", () => {
     vi.stubEnv("DEV", false);
     vi.resetModules();
-    return import("../../../src/core/dev-tools/ai-telemetry-panel").then(
+    return import("../../../../src/core/dev-tools/ai-telemetry-panel").then(
       (mod) => {
         const Panel = mod.AiTelemetryPanel;
         const c = document.createElement("div");

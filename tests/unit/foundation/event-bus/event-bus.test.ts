@@ -4,8 +4,8 @@ import type {
   IEventBus,
   PitState,
   RaceResults,
-} from "../../src/foundation/event-bus";
-import { EventBus, EventBusError } from "../../src/foundation/event-bus";
+} from "../../../../src/foundation/event-bus";
+import { EventBus, EventBusError } from "../../../../src/foundation/event-bus";
 
 // ---------------------------------------------------------------------------
 // EventMap type correctness
@@ -1480,7 +1480,7 @@ describe("Zero imports", () => {
 async function readSourceFile(relativePath: string): Promise<string> {
   const fs = await import("node:fs");
   const path = await import("node:path");
-  const fullPath = path.resolve(__dirname, "../../", relativePath);
+  const fullPath = path.resolve(__dirname, "../../../../", relativePath);
   return fs.readFileSync(fullPath, "utf-8");
 }
 
@@ -1554,13 +1554,14 @@ describe("getSubscriptions", () => {
     expect(bus.getSubscriptions().get("fuel.low")).toBe(1);
   });
 
-  it("should not include wildcard subscriptions", () => {
+  it("should include wildcard subscriptions (F-001)", () => {
     bus.on("*", () => {});
     bus.on("fuel.low", () => {});
 
     const subs = bus.getSubscriptions();
-    expect(subs.has("*")).toBe(false);
-    expect(subs.size).toBe(1);
+    expect(subs.has("*")).toBe(true);
+    expect(subs.get("*")).toBe(1);
+    expect(subs.size).toBe(2);
   });
 });
 

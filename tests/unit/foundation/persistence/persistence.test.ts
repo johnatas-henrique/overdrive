@@ -4,7 +4,7 @@ import {
   Persistence,
   PersistenceError,
   PersistenceState,
-} from "../../src/foundation/persistence";
+} from "../../../../src/foundation/persistence";
 
 // ---------------------------------------------------------------------------
 // localStorage mock
@@ -2379,5 +2379,361 @@ describe("load() migration integration", () => {
     // No migrations registered, but versions match so no error
     const result = await persistence.load<{ config: string }>("test");
     expect(result).toEqual({ config: "value" });
+  });
+});
+
+// ─── Coverage gap: SecurityError handling ───
+
+describe("Coverage gap — SecurityError handling", () => {
+  it("should handle SecurityError in retry() gracefully", async () => {
+    // First, init with working localStorage to get to Ready state
+    const persistence = new Persistence();
+    await persistence.init();
+
+    // Now mock localStorage to throw SecurityError on probe
+    const originalLocalStorage = globalThis.localStorage;
+    const mockStorage = {
+      getItem: vi.fn(),
+      setItem: vi.fn(() => {
+        throw new DOMException("SecurityError", "SecurityError");
+      }),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+      get length() {
+        return 0;
+      },
+      key: vi.fn(),
+    };
+    Object.defineProperty(globalThis, "localStorage", {
+      value: mockStorage,
+      writable: true,
+      configurable: true,
+    });
+
+    // Create a fresh persistence with broken localStorage
+    const persistence2 = new Persistence();
+    // This will fail the probe and enter Degraded mode
+    await persistence2.init();
+
+    // Now call retry() — it should hit the SecurityError catch
+    const result = await persistence2.retry();
+
+    // Should return false (not recovered)
+    expect(result).toBe(false);
+
+    // Restore original localStorage
+    Object.defineProperty(globalThis, "localStorage", {
+      value: originalLocalStorage,
+      writable: true,
+      configurable: true,
+    });
+  });
+});
+
+// ─── Tech debt cleanup: persistence save() throws on JSON.stringify failure ───
+
+describe("C-1: persistence save() throws on JSON.stringify failure", () => {
+  /** In-memory store backing the localStorage mock. */
+  const mockStore = new Map<string, string>();
+  const origLocalStorage = globalThis.localStorage;
+
+  /** Reassign globalThis.localStorage (non-configurable in happy-dom). */
+  function setLocalStorage(ls: Storage): void {
+    Object.defineProperty(globalThis, "localStorage", {
+      value: ls,
+      writable: true,
+      configurable: true,
+    });
+  }
+
+  function createWorkingStorage(): Storage {
+    const store = new Map<string, string>();
+    return {
+      getItem: vi.fn((key: string) => store.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        store.set(key, value);
+      }),
+      removeItem: vi.fn((key: string) => {
+        store.delete(key);
+      }),
+      clear: vi.fn(() => store.clear()),
+      get length(): number {
+        return store.size;
+      },
+      key: vi.fn((_index: number) => null),
+    };
+  }
+
+  beforeEach(() => {
+    mockStore.clear();
+    setLocalStorage(createWorkingStorage());
+  });
+
+  afterEach(() => {
+    setLocalStorage(origLocalStorage);
+    vi.unstubAllGlobals();
+  });
+
+  it("should throw PersistenceError when serializing circular reference", async () => {
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+
+    await expect(persistence.save("circ", circular)).rejects.toThrow(
+      PersistenceError
+    );
+  });
+
+  it("should include the key name in the error message", async () => {
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+
+    await expect(persistence.save("myKey", circular)).rejects.toThrow(
+      'Failed to serialize key "myKey"'
+    );
+  });
+
+  it("should propagate non-Error throws from JSON.stringify as PersistenceError", async () => {
+    const persistence = new Persistence();
+    await persistence.init();
+
+    vi.stubGlobal(
+      "JSON",
+      Object.assign(Object.create(null), {
+        ...JSON,
+        stringify: vi.fn(() => {
+          throw "primitive error";
+        }),
+      })
+    );
+
+    await expect(persistence.save("k", {})).rejects.toThrow(PersistenceError);
+    await expect(persistence.save("k", {})).rejects.toThrow(
+      "Unknown serialization error"
+    );
+
+    vi.unstubAllGlobals();
+  });
+
+  it("should remain in Ready state when JSON.stringify fails (setItem never reached)", async () => {
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+
+    await expect(persistence.save("circ", circular)).rejects.toThrow(
+      PersistenceError
+    );
+    expect(persistence.state).toBe(PersistenceState.Ready);
+  });
+});
+
+// ─── Tech debt cleanup: save() queues to retry queue on localStorage failure ───
+
+describe("C-3: save() queues to retry queue on localStorage failure", () => {
+  /** Mock storage that works for init but fails on the first setItem call. */
+  function createOneShotStorage(): Storage {
+    let calls = 0;
+    const store = new Map<string, string>();
+    return {
+      getItem: vi.fn((key: string) => store.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        calls++;
+        if (calls > 1) {
+          const error = new Error("Storage full");
+          error.name = "QuotaExceededError";
+          throw error;
+        }
+        store.set(key, value);
+      }),
+      removeItem: vi.fn((key: string) => {
+        store.delete(key);
+      }),
+      clear: vi.fn(() => store.clear()),
+      get length(): number {
+        return store.size;
+      },
+      key: vi.fn((_index: number) => null),
+    };
+  }
+
+  /** Mock storage that always works (no failures). */
+  function createWorkingStorage(): Storage {
+    const store = new Map<string, string>();
+    return {
+      getItem: vi.fn((key: string) => store.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        store.set(key, value);
+      }),
+      removeItem: vi.fn((key: string) => {
+        store.delete(key);
+      }),
+      clear: vi.fn(() => store.clear()),
+      get length(): number {
+        return store.size;
+      },
+      key: vi.fn((_index: number) => null),
+    };
+  }
+
+  const origLocalStorage = globalThis.localStorage;
+
+  /** Reassign globalThis.localStorage (non-configurable in happy-dom). */
+  function setLocalStorage(ls: Storage): void {
+    Object.defineProperty(globalThis, "localStorage", {
+      value: ls,
+      writable: true,
+      configurable: true,
+    });
+  }
+
+  afterEach(() => {
+    setLocalStorage(origLocalStorage);
+  });
+
+  it("should queue data to retry queue when setItem fails after successful serialization", async () => {
+    const storage = createOneShotStorage();
+    vi.stubGlobal("localStorage", storage);
+
+    const persistence = new Persistence();
+    await persistence.init();
+    expect(persistence.state).toBe(PersistenceState.Ready);
+
+    // First save works (init already consumed the first setItem slot)
+    // Actually, init uses __overdrive_probe__ which is the first setItem.
+    // So our first save will be the second call to setItem.
+    // The one-shot fails on calls > 1, so the first save fails.
+    await persistence.save("data1", { value: 42 });
+
+    // State should be Degraded
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+
+    // Save more data while Degraded — goes to write queue
+    await persistence.save("data2", "hello");
+
+    // Now restore storage and retry
+    vi.stubGlobal("localStorage", createWorkingStorage());
+
+    const recovered = await persistence.retry();
+    expect(recovered).toBe(true);
+    expect(persistence.state).toBe(PersistenceState.Ready);
+
+    // Data should now be in localStorage (flushed from queue)
+    const savedData1 = await persistence.load<{ value: number }>("data1");
+    expect(savedData1).toEqual({ value: 42 });
+
+    const savedData2 = await persistence.load<string>("data2");
+    expect(savedData2).toBe("hello");
+  });
+
+  it("should queue Degraded-mode data alongside localStorage-failure data", async () => {
+    const storage = createOneShotStorage();
+    vi.stubGlobal("localStorage", storage);
+
+    const persistence = new Persistence();
+    await persistence.init();
+
+    // First save fails (second setItem call) — goes to retry queue
+    await persistence.save("key1", "value1");
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+
+    // Save while Degraded — should also queue
+    await persistence.save("key2", "value2");
+
+    // Restore storage and retry
+    vi.stubGlobal("localStorage", createWorkingStorage());
+
+    const recovered = await persistence.retry();
+    expect(recovered).toBe(true);
+
+    const v1 = await persistence.load<string>("key1");
+    const v2 = await persistence.load<string>("key2");
+    expect(v1).toBe("value1");
+    expect(v2).toBe("value2");
+  });
+
+  it("should return false from retry when storage is still unavailable", async () => {
+    const storage = createOneShotStorage();
+    vi.stubGlobal("localStorage", storage);
+
+    const persistence = new Persistence();
+    await persistence.init();
+
+    // First save fails — goes to retry queue
+    await persistence.save("key1", "value1");
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+
+    // Retry with still-broken storage (oneShot already exhausted)
+    const recovered = await persistence.retry();
+    expect(recovered).toBe(false);
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+  });
+
+  it("should transition to Degraded and return null when getItem fails in load()", async () => {
+    // Create storage that works for init but always fails on getItem
+    const store = new Map<string, string>();
+    const failingGetItemStorage: Storage = {
+      getItem: vi.fn((_key: string) => {
+        throw new Error("Storage corrupted");
+      }),
+      setItem: vi.fn((key: string, value: string) => {
+        store.set(key, value);
+      }),
+      removeItem: vi.fn((key: string) => {
+        store.delete(key);
+      }),
+      clear: vi.fn(() => store.clear()),
+      get length(): number {
+        return store.size;
+      },
+      key: vi.fn((_index: number) => null),
+    };
+    vi.stubGlobal("localStorage", failingGetItemStorage);
+
+    const persistence = new Persistence();
+    await persistence.init();
+
+    // Save some data (this works — uses setItem, not getItem)
+    await persistence.save("key1", "value1");
+    expect(persistence.state).toBe(PersistenceState.Ready);
+
+    // Load triggers getItem which fails → Degraded mode
+    const result = await persistence.load<string>("key1");
+    expect(result).toBeNull();
+    expect(persistence.state).toBe(PersistenceState.Degraded);
+  });
+
+  it("should handle non-Error throw in load() gracefully", async () => {
+    const store = new Map<string, string>();
+    const failingGetItemStorage: Storage = {
+      getItem: vi.fn((_key: string) => {
+        throw "string error"; // non-Error throw
+      }),
+      setItem: vi.fn((key: string, value: string) => {
+        store.set(key, value);
+      }),
+      removeItem: vi.fn((key: string) => {
+        store.delete(key);
+      }),
+      clear: vi.fn(() => store.clear()),
+      get length(): number {
+        return store.size;
+      },
+      key: vi.fn((_index: number) => null),
+    };
+    vi.stubGlobal("localStorage", failingGetItemStorage);
+
+    const persistence = new Persistence();
+    await persistence.init();
+
+    const result = await persistence.load<string>("key1");
+    expect(result).toBeNull();
+    expect(persistence.state).toBe(PersistenceState.Degraded);
   });
 });
