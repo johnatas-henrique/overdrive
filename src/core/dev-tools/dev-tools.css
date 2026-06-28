@@ -535,6 +535,7 @@
   overflow-y: auto;
   padding: 2px 0;
   pointer-events: auto;
+  background: var(--od-ui-bg);
 }
 
 .ssn-system-row {
@@ -649,6 +650,69 @@
 }
 
 .ssn-empty {
+  color: var(--dt-text-dim);
+  padding: 8px;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   AI Telemetry Panel
+   ════════════════════════════════════════════════════════════════════ */
+
+.ait-container {
+  flex-direction: column;
+  height: 100%;
+  font-family: var(--dt-font-mono);
+  font-size: var(--dt-font-size-xs);
+}
+
+.ait-header {
+  padding: 6px 8px;
+  background: var(--od-ui-panel);
+  color: var(--od-signal-yellow);
+  font-weight: bold;
+  font-size: var(--dt-font-size-sm);
+  border-bottom: 1px solid var(--dt-text-muted);
+}
+
+.ait-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+  pointer-events: auto;
+  background: var(--od-ui-bg);
+}
+
+.ait-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ait-th {
+  text-align: left;
+  padding: 4px 8px;
+  color: var(--dt-text-muted);
+  font-weight: bold;
+  border-bottom: 1px solid var(--dt-text-muted);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: var(--od-ui-bg);
+}
+
+.ait-td {
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--od-ui-border);
+  white-space: nowrap;
+}
+
+.ait-row-player {
+  color: var(--od-signal-yellow);
+}
+
+.ait-row-ai {
+  color: var(--dt-text-secondary);
+}
+
+.ait-empty {
   color: var(--dt-text-dim);
   padding: 8px;
 }
