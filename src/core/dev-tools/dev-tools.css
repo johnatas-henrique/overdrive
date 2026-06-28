@@ -1,0 +1,346 @@
+/**
+ * @fileoverview Dev Tools overlay styles.
+ *
+ * Consumes CSS custom properties from src/styles/variables.css.
+ * All styles are scoped to #dev-overlay and its descendants.
+ * Tree-shaken in production via import.meta.env.DEV guard.
+ *
+ * Design rules:
+ * - Monospace font for data density
+ * - Dark backgrounds (Art Bible Section 7.1)
+ * - Gold accent for highlights (debug-only, NOT HUD palette)
+ * - pointer-events cascade: container none → interactive children auto
+ */
+
+@import "../../styles/variables.css";
+
+/* ════════════════════════════════════════════════════════════════════
+   Overlay Container
+   ════════════════════════════════════════════════════════════════════ */
+
+#dev-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  display: none;
+  flex-direction: column;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Top Bar — Metrics (FPS, Frame, DC, Meshes, Phys)
+   ════════════════════════════════════════════════════════════════════ */
+
+.top-bar {
+  display: flex;
+  gap: 16px;
+  padding: 4px 8px;
+  background: var(--od-ui-bg);
+  color: var(--od-hud-white);
+  font-family: var(--dt-font-mono);
+  font-size: var(--dt-font-size-sm);
+  height: 20px;
+}
+
+.metric-label {
+  color: var(--od-signal-yellow);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Middle Row — Sidebar + Main Panel
+   ════════════════════════════════════════════════════════════════════ */
+
+.dev-middle {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────── */
+
+.sidebar {
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  background: var(--od-ui-bg);
+  border-right: 1px solid var(--dt-text-muted);
+  overflow-y: auto;
+  pointer-events: auto;
+}
+
+/* ── Main Panel ───────────────────────────────────────────────────── */
+
+.main-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Tab System
+   ════════════════════════════════════════════════════════════════════ */
+
+.tab-bar {
+  display: flex;
+  gap: 0;
+  background: var(--od-ui-panel);
+  border-bottom: 1px solid var(--dt-text-muted);
+  min-height: 28px;
+  pointer-events: auto;
+}
+
+.tab {
+  padding: 4px 16px;
+  background: transparent;
+  color: var(--dt-text-muted);
+  border: none;
+  cursor: pointer;
+  font-family: var(--dt-font-mono);
+  font-size: var(--dt-font-size-xs);
+  border-bottom: 2px solid transparent;
+}
+
+.tab.active {
+  color: var(--dt-accent);
+  border-bottom-color: var(--dt-accent);
+}
+
+.tab-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.tab-panel {
+  display: none;
+  height: 100%;
+  flex-direction: column;
+}
+
+.tab-panel.active {
+  display: flex;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Bottom Bar (hidden in Story 003)
+   ════════════════════════════════════════════════════════════════════ */
+
+.bottom-bar {
+  display: none;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Notification
+   ════════════════════════════════════════════════════════════════════ */
+
+.dev-notification {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: var(--od-signal-yellow);
+  padding: 4px 12px;
+  border-radius: var(--od-ui-radius-sm);
+  font-family: var(--dt-font-mono);
+  font-size: var(--dt-font-size-md);
+  white-space: nowrap;
+  z-index: 1001;
+  pointer-events: none;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Config Tree (Sidebar)
+   ════════════════════════════════════════════════════════════════════ */
+
+.config-namespace {
+  margin: 1px 0;
+}
+
+.config-namespace > summary {
+  cursor: pointer;
+  color: var(--od-signal-yellow);
+  font-weight: bold;
+}
+
+.config-ns-list {
+  list-style: none;
+  margin: 2px 0;
+  padding: 0 0 0 12px;
+}
+
+.config-entry {
+  margin: 1px 0;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.config-key {
+  color: var(--dt-key);
+  white-space: nowrap;
+}
+
+.config-value {
+  color: var(--dt-value);
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.config-more {
+  color: var(--dt-text-muted);
+  font-style: italic;
+}
+
+.config-input {
+  width: 80px;
+  font-family: inherit;
+  font-size: inherit;
+  background: #1e1e1e;
+  color: var(--dt-value);
+  border: 1px solid var(--od-signal-yellow);
+  outline: none;
+  padding: 0 2px;
+}
+
+.config-empty {
+  color: var(--dt-text-muted);
+  padding: 8px;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Event Bus Inspector
+   ════════════════════════════════════════════════════════════════════ */
+
+.inspector-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ── Filter ───────────────────────────────────────────────────────── */
+
+.inspector-filter {
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px;
+  align-items: center;
+  background: var(--od-ui-panel);
+  border-bottom: 1px solid var(--dt-text-muted);
+  pointer-events: auto;
+}
+
+.inspector-filter-label {
+  color: var(--dt-text-muted);
+  font-size: var(--dt-font-size-xs);
+  white-space: nowrap;
+}
+
+.inspector-filter-input {
+  flex: 1;
+  background: var(--od-ui-bg);
+  color: var(--dt-value);
+  border: 1px solid var(--dt-text-muted);
+  padding: 2px 6px;
+  font-family: var(--dt-font-mono);
+  font-size: var(--dt-font-size-xs);
+  outline: none;
+}
+
+/* ── Subscription List ────────────────────────────────────────────── */
+
+.inspector-subs-header {
+  color: var(--od-signal-yellow);
+  font-size: var(--dt-font-size-xs);
+  font-weight: bold;
+  padding: 4px 8px;
+  background: var(--od-ui-panel);
+  border-bottom: 1px solid var(--dt-text-muted);
+}
+
+.inspector-subs-list {
+  padding: 2px 8px;
+  font-family: var(--dt-font-mono);
+  font-size: var(--dt-font-size-xs);
+  max-height: 120px;
+  overflow-y: auto;
+  background: var(--od-ui-bg);
+  border-bottom: 1px solid var(--dt-text-muted);
+  pointer-events: auto;
+}
+
+.inspector-subs-row {
+  display: flex;
+  gap: 8px;
+  line-height: 1.6;
+}
+
+.inspector-subs-name {
+  color: var(--dt-key);
+}
+
+.inspector-subs-colon {
+  color: var(--dt-text-muted);
+}
+
+.inspector-subs-count {
+  color: var(--dt-value);
+}
+
+/* ── Event Log ────────────────────────────────────────────────────── */
+
+.inspector-log-header {
+  color: var(--od-signal-yellow);
+  font-size: var(--dt-font-size-xs);
+  font-weight: bold;
+  padding: 4px 8px;
+  background: var(--od-ui-panel);
+  border-bottom: 1px solid var(--dt-text-muted);
+}
+
+.inspector-log-list {
+  flex: 1;
+  overflow-y: auto;
+  font-family: var(--dt-font-mono);
+  font-size: var(--dt-font-size-xs);
+  padding: 2px 0;
+  pointer-events: auto;
+}
+
+.inspector-log-row {
+  padding: 1px 8px;
+  display: flex;
+  gap: 8px;
+  line-height: 1.6;
+  color: var(--dt-text-secondary);
+}
+
+.inspector-log-ts {
+  color: var(--dt-text-dim);
+  white-space: nowrap;
+}
+
+.inspector-log-name {
+  color: var(--dt-key);
+  white-space: nowrap;
+}
+
+.inspector-log-payload {
+  color: var(--dt-value);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inspector-empty {
+  color: var(--dt-text-dim);
+  padding: 8px;
+}
+
+.inspector-subs-empty {
+  color: var(--dt-text-dim);
+  padding: 2px 0;
+}
