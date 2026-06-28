@@ -244,22 +244,20 @@ export class GsmVisualizer {
     // ── Current state indicator container (for CSS targeting) ─────────
     // The header above doubles as the indicator. No extra element needed.
 
-    // ── Transition buttons section (DEV-guarded) ──────────────────────
-    if (import.meta.env.DEV) {
-      const buttonsSection = document.createElement("div");
-      buttonsSection.className = "gsm-transition-section";
+    // ── Transition buttons section ─────────────────────────────────────
+    const buttonsSection = document.createElement("div");
+    buttonsSection.className = "gsm-transition-section";
 
-      const buttonsLabel = document.createElement("div");
-      buttonsLabel.className = "gsm-transition-label";
-      buttonsLabel.textContent = "Manual Transitions (DEV)";
-      buttonsSection.appendChild(buttonsLabel);
+    const buttonsLabel = document.createElement("div");
+    buttonsLabel.className = "gsm-transition-label";
+    buttonsLabel.textContent = "Manual Transitions (DEV)";
+    buttonsSection.appendChild(buttonsLabel);
 
-      this._transitionButtonsEl = document.createElement("div");
-      this._transitionButtonsEl.className = "gsm-transition-buttons";
-      buttonsSection.appendChild(this._transitionButtonsEl);
+    this._transitionButtonsEl = document.createElement("div");
+    this._transitionButtonsEl.className = "gsm-transition-buttons";
+    buttonsSection.appendChild(this._transitionButtonsEl);
 
-      this._container.appendChild(buttonsSection);
-    }
+    this._container.appendChild(buttonsSection);
 
     // ── History list section ──────────────────────────────────────────
     const historyHeader = document.createElement("div");
@@ -277,8 +275,6 @@ export class GsmVisualizer {
 
   /** Subscribe to GSM events on the Event Bus. */
   private _startCapture(): void {
-    if (!import.meta.env.DEV) return;
-
     // Track exit timestamp for duration computation
     const exitSub = this._eventBus.on(
       "gsm.state.exited",

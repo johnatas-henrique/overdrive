@@ -7,6 +7,8 @@ import type { Scene } from "@babylonjs/core/scene";
 import { getConfigManager } from "@/foundation/config/config-manager";
 import type { IEventBus } from "../../foundation/event-bus";
 import type { GameStateMachine } from "../../foundation/gsm/GameStateMachine";
+import type { SimulationSnapshot } from "../../foundation/simulation-snapshot";
+import { defined } from "../../shared/assert-defined";
 import { ConfigTreePanel } from "./config-tree";
 import {
   EventBusInspector,
@@ -14,6 +16,7 @@ import {
 } from "./event-bus-inspector";
 import { GsmVisualizer } from "./gsm-visualizer";
 import { disposeKeybinds } from "./keybinds";
+import { SimSnapshotPanel } from "./sim-snapshot-panel";
 import type { IDevTools } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -77,6 +80,10 @@ export class DevTools implements IDevTools {
   private _gsm: GameStateMachine | null = null;
   private _gsmVisualizer: GsmVisualizer | null = null;
 
+  // Simulation Snapshot tab
+  private _simulationSnapshot: SimulationSnapshot | null = null;
+  private _simSnapshotPanel: SimSnapshotPanel | null = null;
+
   constructor(engine: AbstractEngine, scene: Scene) {
     this._engine = engine;
     this._scene = scene;
@@ -100,7 +107,6 @@ export class DevTools implements IDevTools {
 
   /** @inheritdoc */
   setEventBus(eventBus: IEventBus): void {
-    if (!import.meta.env.DEV) return;
     if (this._eventBus) return;
     this._eventBus = eventBus;
 
@@ -116,7 +122,6 @@ export class DevTools implements IDevTools {
 
   /** @inheritdoc */
   setGsm(gsm: GameStateMachine): void {
-    if (!import.meta.env.DEV) return;
     if (this._gsm) return;
     this._gsm = gsm;
 
@@ -128,6 +133,17 @@ export class DevTools implements IDevTools {
       this._eventBus
     ) {
       this._createGsmHistoryTab();
+    }
+  }
+
+  /** @inheritdoc */
+  setSimulationSnapshot(snapshot: SimulationSnapshot): void {
+    if (this._simulationSnapshot) return;
+    this._simulationSnapshot = snapshot;
+
+    // Create Sim Snapshot tab if overlay is initialized
+    if (this._initialized && this._tabBar && this._tabContent) {
+      this._createSimSnapshotTab();
     }
   }
 
@@ -220,6 +236,11 @@ export class DevTools implements IDevTools {
     this._gsmVisualizer?.dispose();
     this._gsmVisualizer = null;
     this._gsm = null;
+
+    // Dispose Sim Snapshot panel
+    this._simSnapshotPanel?.dispose();
+    this._simSnapshotPanel = null;
+    this._simulationSnapshot = null;
 
     // Dispose Event Bus inspector
     this._eventBusInspector?.dispose();
@@ -329,9 +350,7 @@ export class DevTools implements IDevTools {
     this._initialized = true;
 
     // ── Register "config" data source ─────────────────────────────────
-    if (import.meta.env.DEV) {
-      this._initConfigDataSource();
-    }
+    this._initConfigDataSource();
 
     // If event bus was set before overlay init, create the tab now
     if (this._eventBus) {
@@ -340,6 +359,11 @@ export class DevTools implements IDevTools {
       if (this._gsm) {
         this._createGsmHistoryTab();
       }
+    }
+
+    // If SimulationSnapshot was set before overlay init, create the tab now
+    if (this._simulationSnapshot) {
+      this._createSimSnapshotTab();
     }
   }
 
@@ -354,7 +378,9 @@ export class DevTools implements IDevTools {
    * or by `_initOverlay()` when the bus was set before the first toggle.
    */
   private _createEventLogTab(): void {
-    if (!this._tabContent || !this._tabBar || !this._eventBus) return;
+    defined(this._tabContent);
+    defined(this._tabBar);
+    defined(this._eventBus);
 
     // Create tab panel container
     const panel = document.createElement("div");
@@ -395,8 +421,10 @@ export class DevTools implements IDevTools {
    * before the first toggle.
    */
   private _createGsmHistoryTab(): void {
-    if (!this._tabContent || !this._tabBar || !this._eventBus || !this._gsm)
-      return;
+    defined(this._tabContent);
+    defined(this._tabBar);
+    defined(this._eventBus);
+    defined(this._gsm);
 
     // Create tab panel container
     const panel = document.createElement("div");
@@ -422,6 +450,46 @@ export class DevTools implements IDevTools {
       id: "gsm-history",
       label: "GSM History",
       refresh: () => this._gsmVisualizer?.refresh(),
+    });
+  }
+
+  /**
+   * Create the Simulation Snapshot tab panel and its tab button.
+   *
+   * Called by `setSimulationSnapshot()` when the overlay is already
+   * initialized, or by `_initOverlay()` when SimulationSnapshot was set
+   * before the first toggle.
+   */
+  private _createSimSnapshotTab(): void {
+    defined(this._tabContent);
+    defined(this._tabBar);
+    defined(this._simulationSnapshot);
+
+    // Create tab panel container
+    const panel = document.createElement("div");
+    panel.className = "tab-panel";
+    panel.dataset.tabId = "sim-snapshot";
+
+    this._simSnapshotPanel = new SimSnapshotPanel(
+      panel,
+      this._simulationSnapshot,
+      (msg: string) => this.showNotification(msg)
+    );
+    this._tabContent.appendChild(panel);
+
+    // Create tab button
+    const btn = document.createElement("button");
+    btn.className = "tab";
+    btn.dataset.tabId = "sim-snapshot";
+    btn.textContent = "Sim Snapshot";
+    btn.addEventListener("click", () => this._switchTab("sim-snapshot"));
+    this._tabBar?.appendChild(btn);
+
+    // Register tab definition
+    this._tabs.push({
+      id: "sim-snapshot",
+      label: "Sim Snapshot",
+      refresh: () => this._simSnapshotPanel?.refresh(),
     });
   }
 
@@ -469,8 +537,6 @@ export class DevTools implements IDevTools {
    * ConfigManager initialized — avoids early access before init.
    */
   private _initConfigDataSource(): void {
-    if (!this._sidebar) return;
-
     this.registerDataSource("config", () => {
       try {
         return getConfigManager().getDebugState() as unknown as Record<
@@ -495,7 +561,7 @@ export class DevTools implements IDevTools {
    * skipped — no crash, retried on next tick.
    */
   private _refreshConfigTree(): void {
-    if (!this._sidebar) return;
+    defined(this._sidebar);
 
     // Lazy create: if panel doesn't exist yet, try to create it
     if (!this._configTreePanel) {

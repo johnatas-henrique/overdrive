@@ -13,6 +13,7 @@
 
 import type { IEventBus } from "../../foundation/event-bus";
 import type { GameStateMachine } from "../../foundation/gsm/GameStateMachine";
+import type { SimulationSnapshot } from "../../foundation/simulation-snapshot";
 
 export interface IDevTools {
   /**
@@ -46,6 +47,23 @@ export interface IDevTools {
    * @see ADR-0024 — Game State Machine
    */
   setGsm(gsm: GameStateMachine): void;
+
+  /**
+   * Inject the SimulationSnapshot orchestrator for the Sim Snapshot tab panel.
+   *
+   * Must be called after `initDevTools()`. If the overlay is already
+   * initialized, the Sim Snapshot tab is created immediately; otherwise
+   * creation is deferred until the first `toggle()`.
+   *
+   * Provides read access to registered ISnapshotable systems and their
+   * hashes. Take/Restore controls call takeSnapshot()/restoreSnapshot()
+   * as deliberate debug actions (Control Manifest D6 exception).
+   *
+   * @param snapshot — The SimulationSnapshot orchestrator instance
+   * @see TR-DVT-004 — Simulation Snapshot debug panel
+   * @see ADR-0017 — Simulation Snapshot
+   */
+  setSimulationSnapshot(snapshot: SimulationSnapshot): void;
 
   /**
    * Register a data source that provides renderable key/value pairs.

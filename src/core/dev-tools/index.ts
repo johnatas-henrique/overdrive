@@ -48,8 +48,9 @@ let _instance: IDevTools | null = null;
 
 /**
  * Initialize the Dev Tools singleton with the game's engine, scene,
- * optional Event Bus for the Event Log tab panel, and optional Game
- * State Machine for the GSM History tab panel.
+ * optional Event Bus for the Event Log tab panel, optional Game
+ * State Machine for the GSM History tab panel, and optional
+ * SimulationSnapshot for the Sim Snapshot tab panel.
  *
  * Must be called once during startup (behind `import.meta.env.DEV`).
  * Safe to call multiple times — subsequent calls are no-ops.
@@ -58,12 +59,14 @@ let _instance: IDevTools | null = null;
  * @param scene   — The active Babylon.js Scene instance
  * @param eventBus — Optional Event Bus instance for the Event Log tab (Story 005)
  * @param gsm     — Optional GameStateMachine instance for the GSM History tab (Story 006)
+ * @param simulationSnapshot — Optional SimulationSnapshot instance for the Sim Snapshot tab (Story 007)
  */
 export async function initDevTools(
   engine: import("@babylonjs/core/Engines/abstractEngine").AbstractEngine,
   scene: import("@babylonjs/core/scene").Scene,
   eventBus?: import("../../foundation/event-bus").IEventBus,
-  gsm?: import("../../foundation/gsm/GameStateMachine").GameStateMachine
+  gsm?: import("../../foundation/gsm/GameStateMachine").GameStateMachine,
+  simulationSnapshot?: import("../../foundation/simulation-snapshot").SimulationSnapshot
 ): Promise<void> {
   if (!import.meta.env.DEV) return;
   if (_instance) return;
@@ -79,6 +82,11 @@ export async function initDevTools(
   // Inject the Game State Machine for the GSM History tab (Story 006)
   if (gsm) {
     _instance.setGsm(gsm);
+  }
+
+  // Inject SimulationSnapshot for the Sim Snapshot tab (Story 007)
+  if (simulationSnapshot) {
+    _instance.setSimulationSnapshot(simulationSnapshot);
   }
 
   // Set up keyboard keybinds for the dev tools overlay (Story 002)

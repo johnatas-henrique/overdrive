@@ -35,9 +35,18 @@ class App {
     // ── Dev Tools (tree-shaken in production) ─────────────────────
     if (import.meta.env.DEV) {
       const { initDevTools } = await import("./core/dev-tools");
-      const { getPlaygroundGsm } = await import("./playground/main-scene");
+      const { getPlaygroundGsm, getPlaygroundSnapshot } = await import(
+        "./playground/main-scene"
+      );
       const gsm = getPlaygroundGsm();
-      initDevTools(this.engine, this.scene, eventBus, gsm ?? undefined);
+      const simulationSnapshot = getPlaygroundSnapshot();
+      initDevTools(
+        this.engine,
+        this.scene,
+        eventBus,
+        gsm ?? undefined,
+        simulationSnapshot ?? undefined
+      );
     }
 
     this._render();
