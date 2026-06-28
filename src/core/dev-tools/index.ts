@@ -45,6 +45,7 @@ if (import.meta.env.DEV) {
 // ---------------------------------------------------------------------------
 
 let _instance: IDevTools | null = null;
+let _initializing = false;
 
 /**
  * Initialize the Dev Tools singleton with the game's engine, scene,
@@ -71,7 +72,12 @@ export async function initDevTools(
   aiTelemetry?: () => AiTelemetryCarData[]
 ): Promise<void> {
   if (!import.meta.env.DEV) return;
-  if (_instance) return;
+  if (_instance || _initializing) return;
+
+  // Set initializing flag before the dynamic import to serialise
+  // concurrent calls (D-007 race condition fix): a second call
+  // that arrives while import() is pending sees _initializing === true.
+  _initializing = true;
 
   const { DevTools } = await import("./dev-tools");
   _instance = new DevTools(engine, scene);
@@ -113,6 +119,23 @@ export function getDevTools(): IDevTools {
     );
   }
   return _instance;
+}
+
+/**
+ * Reset the singleton state for testing purposes.
+ *
+ * Sets `_instance` and `_initializing` to their initial values,
+ * allowing `initDevTools()` to be called again without re-importing
+ * the entire module tree via `vi.resetModules()`.
+ *
+ * DEV-only — tree-shaken in production builds.
+ *
+ * @internal Only for test use.
+ */
+export function _resetDevToolsForTesting(): void {
+  if (!import.meta.env.DEV) return;
+  _instance = null;
+  _initializing = false;
 }
 
 /**
