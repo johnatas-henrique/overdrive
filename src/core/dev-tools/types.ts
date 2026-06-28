@@ -13,7 +13,7 @@
 
 import type { IEventBus } from "../../foundation/event-bus";
 import type { GameStateMachine } from "../../foundation/gsm/GameStateMachine";
-import type { SimulationSnapshot } from "../../foundation/simulation-snapshot";
+import type { ISimulationSnapshot } from "../../foundation/simulation-snapshot";
 
 export interface IDevTools {
   /**
@@ -63,7 +63,7 @@ export interface IDevTools {
    * @see TR-DVT-004 — Simulation Snapshot debug panel
    * @see ADR-0017 — Simulation Snapshot
    */
-  setSimulationSnapshot(snapshot: SimulationSnapshot): void;
+  setSimulationSnapshot(snapshot: ISimulationSnapshot): void;
 
   /**
    * Register a data source that provides renderable key/value pairs.

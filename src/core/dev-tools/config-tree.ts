@@ -290,9 +290,16 @@ export class ConfigTreePanel {
     if (confirmed) {
       const rawValue = input.value;
       // Attempt to parse as number if it looks numeric
-      const parsed = /^-?\d+(\.\d+)?$/.test(rawValue)
-        ? Number(rawValue)
-        : rawValue;
+      const parsed: unknown =
+        rawValue === "true"
+          ? true
+          : rawValue === "false"
+            ? false
+            : rawValue === "null"
+              ? null
+              : /^-?\d+(\.\d+)?$/.test(rawValue)
+                ? Number(rawValue)
+                : rawValue;
 
       try {
         const cm = this._getConfigManager();

@@ -100,6 +100,7 @@ export class GsmVisualizer {
   private _gsm: GameStateMachine;
   private _history: GsmTransitionEntry[] = [];
   private _currentState: State | null = null;
+  private _stateEntryTime: number = 0;
   private _pendingExit: { from: State; timestamp: number } | null = null;
   private _subscriptions: Subscription[] = [];
 
@@ -294,15 +295,23 @@ export class GsmVisualizer {
         const from = payload.from as State;
         this._currentState = to;
 
-        const duration = this._pendingExit
-          ? Date.now() - this._pendingExit.timestamp
-          : 0;
+        const now = Date.now();
+        // Compute actual time-in-state using the entry timestamp
+        // rather than _pendingExit (which is set synchronously within
+        // the same transition call, yielding ~0ms):
+        const duration =
+          this._stateEntryTime > 0
+            ? now - this._stateEntryTime
+            : this._pendingExit
+              ? now - this._pendingExit.timestamp
+              : 0;
         this._pendingExit = null;
+        this._stateEntryTime = now;
 
         this._recordTransition({
           from,
           to,
-          timestamp: Date.now(),
+          timestamp: now,
           durationInPreviousState: duration,
         });
 

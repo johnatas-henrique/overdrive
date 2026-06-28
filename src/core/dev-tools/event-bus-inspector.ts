@@ -191,9 +191,19 @@ export class EventBusInspector {
     if (!import.meta.env.DEV) return;
 
     this._subscription = this._eventBus.on("*", (detail) => {
+      // Deep-clone payload to prevent mutation of historic event data
+      // (D-011 — payload by reference). Fall back to storing the raw
+      // reference when the payload is not cloneable (e.g. DOM nodes).
+      let clonedPayload: unknown;
+      try {
+        clonedPayload = structuredClone(detail.payload);
+      } catch {
+        clonedPayload = detail.payload;
+      }
+
       this._eventLog.push({
         name: detail.event,
-        payload: detail.payload,
+        payload: clonedPayload,
         timestamp: Date.now(),
       });
 

@@ -127,6 +127,18 @@ export function handleKeyDown(event: KeyboardEvent): void {
   const devTools = getDevTools();
   const key = event.key;
 
+  // Skip when focus is inside a text input to avoid interfering with
+  // user typing (D-008 — keybinds during input focus).
+  const target = event.target as HTMLElement | null;
+  if (
+    target &&
+    (target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.isContentEditable)
+  ) {
+    return;
+  }
+
   // ── Consume toggle/reload keys when overlay is visible ──────────────
   if (devTools.isVisible()) {
     if (key === DEV_TOOLS_KEYS.toggle || key === DEV_TOOLS_KEYS.reload) {
