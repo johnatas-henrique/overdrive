@@ -51,4 +51,4 @@
 | 🔴     | 2026-06-26 | SP2/dev-tools/ST3           | captureRenderTime not enabled (no AC requires it, but ADR-0009 mentions it) | dev-tools.ts | S | |
 | 🔴     | 2026-06-27 | SP2/dev-tools/ST2/LP        | Config defaults mismatch: DEV_TOOLS_KEYS uses `1`/`2`/`3` but story ACs reference backtick/`1`/`2` — config is runtime source of truth, story ACs are stale | src/config/dev-tools-config.ts | S | |
 | 🔴     | 2026-06-27 | SP2/dev-tools/ST4           | `_initConfigDataSource` registers reader that's never consumed — placeholder for future stories (Event Bus Inspector, GSM History) | dev-tools.ts | S | |
-| 🔴     | 2026-06-27 | SP2/dev-tools/ST4           | All inline styles instead of CSS classes — refactor when Story 005+ adds more panels | config-tree.ts, dev-tools.ts | M | |
+| 🔴     | 2026-06-27 | SP2/dev-tools/ST4           | All inline styles instead of CSS classes — refactor when Story 005+ adds more panels | config-tree.ts, dev-tools.ts | M | SP2/dev-tools/ST9 |
