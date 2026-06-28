@@ -48,7 +48,8 @@ let _instance: IDevTools | null = null;
 
 /**
  * Initialize the Dev Tools singleton with the game's engine, scene,
- * and optional Event Bus for the Event Log tab panel.
+ * optional Event Bus for the Event Log tab panel, and optional Game
+ * State Machine for the GSM History tab panel.
  *
  * Must be called once during startup (behind `import.meta.env.DEV`).
  * Safe to call multiple times — subsequent calls are no-ops.
@@ -56,11 +57,13 @@ let _instance: IDevTools | null = null;
  * @param engine  — The Babylon.js Engine instance (Engine or WebGPUEngine)
  * @param scene   — The active Babylon.js Scene instance
  * @param eventBus — Optional Event Bus instance for the Event Log tab (Story 005)
+ * @param gsm     — Optional GameStateMachine instance for the GSM History tab (Story 006)
  */
 export async function initDevTools(
   engine: import("@babylonjs/core/Engines/abstractEngine").AbstractEngine,
   scene: import("@babylonjs/core/scene").Scene,
-  eventBus?: import("../../foundation/event-bus").IEventBus
+  eventBus?: import("../../foundation/event-bus").IEventBus,
+  gsm?: import("../../foundation/gsm/GameStateMachine").GameStateMachine
 ): Promise<void> {
   if (!import.meta.env.DEV) return;
   if (_instance) return;
@@ -71,6 +74,11 @@ export async function initDevTools(
   // Inject the Event Bus for the Event Log tab (Story 005)
   if (eventBus) {
     _instance.setEventBus(eventBus);
+  }
+
+  // Inject the Game State Machine for the GSM History tab (Story 006)
+  if (gsm) {
+    _instance.setGsm(gsm);
   }
 
   // Set up keyboard keybinds for the dev tools overlay (Story 002)

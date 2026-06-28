@@ -12,6 +12,7 @@
  */
 
 import type { IEventBus } from "../../foundation/event-bus";
+import type { GameStateMachine } from "../../foundation/gsm/GameStateMachine";
 
 export interface IDevTools {
   /**
@@ -29,6 +30,22 @@ export interface IDevTools {
    * @see Control Manifest D-F3 — Never emit events on the Event Bus
    */
   setEventBus(eventBus: IEventBus): void;
+
+  /**
+   * Inject the Game State Machine for the GSM History tab panel.
+   *
+   * Must be called after `initDevTools()`. If the overlay is already
+   * initialized, the GSM History tab is created immediately; otherwise
+   * creation is deferred until the first `toggle()`.
+   *
+   * Provides the GSM reference for reading history and for manual
+   * transition buttons (DEV-guarded, Control Manifest D6 exception).
+   *
+   * @param gsm — The game's GameStateMachine instance
+   * @see TR-DVT-005 — GSM state visualiser
+   * @see ADR-0024 — Game State Machine
+   */
+  setGsm(gsm: GameStateMachine): void;
 
   /**
    * Register a data source that provides renderable key/value pairs.
