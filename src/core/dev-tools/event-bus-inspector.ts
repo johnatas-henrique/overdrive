@@ -141,28 +141,21 @@ export class EventBusInspector {
     this._container.innerHTML = "";
 
     // Container fills available space
-    this._container.style.cssText +=
-      "display:flex;flex-direction:column;height:100%";
+    this._container.classList.add("inspector-container");
 
     // ── Filter input row ──
     const filterRow = document.createElement("div");
     filterRow.className = "inspector-filter";
-    filterRow.style.cssText =
-      "display:flex;gap:4px;padding:4px 8px;align-items:center;" +
-      "background:#1a1a1a;border-bottom:1px solid #333";
 
     const filterLabel = document.createElement("span");
+    filterLabel.className = "inspector-filter-label";
     filterLabel.textContent = "Filter:";
-    filterLabel.style.cssText = "color:#888;font-size:11px;white-space:nowrap";
     filterRow.appendChild(filterLabel);
 
     this._filterInput = document.createElement("input");
     this._filterInput.type = "text";
+    this._filterInput.className = "inspector-filter-input";
     this._filterInput.placeholder = "event name...";
-    this._filterInput.style.cssText =
-      "flex:1;background:#0a0a0a;color:#e6db74;border:1px solid #333;" +
-      "padding:2px 6px;font-family:'Courier New',monospace;font-size:11px;" +
-      "outline:none";
     this._filterInput.addEventListener("input", () => {
       this._filter = this._filterInput.value.toLowerCase();
       this._renderEventLog();
@@ -175,33 +168,20 @@ export class EventBusInspector {
     const subsHeader = document.createElement("div");
     subsHeader.className = "inspector-subs-header";
     subsHeader.textContent = "Active Subscriptions";
-    subsHeader.style.cssText =
-      "color:#ffd700;font-size:11px;font-weight:bold;padding:4px 8px;" +
-      "background:#1a1a1a;border-bottom:1px solid #333";
     this._container.appendChild(subsHeader);
 
     this._subsListEl = document.createElement("div");
     this._subsListEl.className = "inspector-subs-list";
-    this._subsListEl.style.cssText =
-      "padding:2px 8px;font-family:'Courier New',monospace;font-size:11px;" +
-      "max-height:120px;overflow-y:auto;background:#0a0a0a;" +
-      "border-bottom:1px solid #333";
     this._container.appendChild(this._subsListEl);
 
     // ── Event log section ──
     const logHeader = document.createElement("div");
     logHeader.className = "inspector-log-header";
     logHeader.textContent = "Event History";
-    logHeader.style.cssText =
-      "color:#ffd700;font-size:11px;font-weight:bold;padding:4px 8px;" +
-      "background:#1a1a1a;border-bottom:1px solid #333";
     this._container.appendChild(logHeader);
 
     this._listEl = document.createElement("div");
     this._listEl.className = "inspector-log-list";
-    this._listEl.style.cssText =
-      "flex:1;overflow-y:auto;font-family:'Courier New',monospace;" +
-      "font-size:11px;padding:2px 0";
     this._container.appendChild(this._listEl);
   }
 
@@ -245,37 +225,34 @@ export class EventBusInspector {
 
     if (reversed.length === 0) {
       const emptyMsg = document.createElement("div");
+      emptyMsg.className = "inspector-empty";
       emptyMsg.textContent = this._filter
         ? `No events matching "${this._filter}"`
         : "No events captured yet";
-      emptyMsg.style.cssText = "color:#666;padding:8px";
       this._listEl.appendChild(emptyMsg);
       return;
     }
 
     for (const entry of reversed) {
       const row = document.createElement("div");
-      row.style.cssText =
-        "padding:1px 8px;display:flex;gap:8px;line-height:1.6";
-      row.style.color = "#ccc";
+      row.className = "inspector-log-row";
       row.dataset.eventName = entry.name;
 
       // Timestamp (HH:MM:SS.mmm)
       const ts = document.createElement("span");
-      ts.style.cssText = "color:#666;white-space:nowrap";
+      ts.className = "inspector-log-ts";
       ts.textContent = new Date(entry.timestamp).toISOString().slice(11, 23);
       row.appendChild(ts);
 
       // Event name
       const name = document.createElement("span");
-      name.style.cssText = "color:#66d9ef;white-space:nowrap";
+      name.className = "inspector-log-name";
       name.textContent = entry.name;
       row.appendChild(name);
 
       // Payload preview (truncated JSON, 80 char max)
       const payload = document.createElement("span");
-      payload.style.cssText =
-        "color:#e6db74;overflow:hidden;text-overflow:ellipsis";
+      payload.className = "inspector-log-payload";
       try {
         payload.textContent =
           entry.payload !== undefined
@@ -298,8 +275,8 @@ export class EventBusInspector {
 
     if (subs.size === 0) {
       const emptyEl = document.createElement("div");
+      emptyEl.className = "inspector-subs-empty";
       emptyEl.textContent = "No active subscriptions";
-      emptyEl.style.cssText = "color:#666;padding:2px 0";
       this._subsListEl.appendChild(emptyEl);
       return;
     }
@@ -311,20 +288,20 @@ export class EventBusInspector {
 
     for (const [eventName, count] of sorted) {
       const row = document.createElement("div");
-      row.style.cssText = "display:flex;gap:8px;line-height:1.6";
+      row.className = "inspector-subs-row";
 
       const nameEl = document.createElement("span");
-      nameEl.style.cssText = "color:#66d9ef";
+      nameEl.className = "inspector-subs-name";
       nameEl.textContent = eventName;
       row.appendChild(nameEl);
 
       const colonEl = document.createElement("span");
-      colonEl.style.cssText = "color:#888";
+      colonEl.className = "inspector-subs-colon";
       colonEl.textContent = ":";
       row.appendChild(colonEl);
 
       const countEl = document.createElement("span");
-      countEl.style.cssText = "color:#e6db74";
+      countEl.className = "inspector-subs-count";
       countEl.textContent = `${count}`;
       row.appendChild(countEl);
 

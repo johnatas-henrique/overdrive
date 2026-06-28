@@ -71,6 +71,12 @@ export interface IDevTools {
   showNotification(message: string): void;
 
   /**
+   * Rebuild the config tree panel DOM.
+   * Called when overlay becomes visible and on reload key press.
+   */
+  refreshConfigTree(): void;
+
+  /**
    * Tear down the overlay, remove DOM elements, release references.
    */
   dispose(): void;

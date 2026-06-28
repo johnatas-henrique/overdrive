@@ -8,6 +8,10 @@ import { PhysicsAggregate } from "@babylonjs/core/Physics/v2/physicsAggregate";
 import { DefaultRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline";
 import type { Scene } from "@babylonjs/core/scene";
 import { templateConfig } from "../config/template-config";
+import {
+  ConfigManager,
+  setConfigManager,
+} from "../foundation/config/config-manager";
 import { CreateSceneGUI } from "./gui";
 
 export const CreateMainScene = async (scene: Scene): Promise<void> => {
@@ -55,5 +59,25 @@ export const CreateMainScene = async (scene: Scene): Promise<void> => {
 
   if (templateConfig.features.gui) {
     await CreateSceneGUI(scene);
+  }
+
+  // Initialize ConfigManager for Dev Tools testing (reload key, config tree)
+  if (import.meta.env.DEV) {
+    try {
+      const cm = new ConfigManager();
+      cm.init();
+      setConfigManager(cm);
+
+      // Register test config keys for AC-9 performance verification
+      const testNamespace = "test";
+      const testConfig: Record<string, number | string | boolean> = {};
+      for (let i = 0; i < 120; i++) {
+        testConfig[`key_${i}`] =
+          i % 3 === 0 ? `value_${i}` : i % 3 === 1 ? i * 0.1 : i % 2 === 0;
+      }
+      cm.register(testNamespace, testConfig);
+    } catch {
+      // ConfigManager may already be initialized
+    }
   }
 };

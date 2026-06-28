@@ -1,3 +1,5 @@
+import "./dev-tools.css";
+
 import type { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
 import { SceneInstrumentation } from "@babylonjs/core/Instrumentation/sceneInstrumentation";
 import type { Observer } from "@babylonjs/core/Misc/observable";
@@ -49,7 +51,10 @@ export class DevTools implements IDevTools {
   private _scene: Scene;
   private _initialized = false;
   private _visible = false;
+  private _minimised = false;
   private _overlay: HTMLDivElement | null = null;
+  private _middle: HTMLDivElement | null = null;
+  private _topBar: HTMLDivElement | null = null;
   private _instrumentation: SceneInstrumentation | null = null;
   private _dataSources = new Map<string, () => Record<string, unknown>>();
   private _metricElements: Record<string, HTMLSpanElement> = {};
@@ -120,6 +125,8 @@ export class DevTools implements IDevTools {
     this._overlay.style.display = this._visible ? "flex" : "none";
 
     if (this._visible) {
+      this.setMinimised(this._minimised);
+      this._refreshConfigTree();
       this._refreshDisplay();
     }
   }
@@ -130,8 +137,17 @@ export class DevTools implements IDevTools {
   }
 
   /** @inheritdoc */
-  setMinimised(_val: boolean): void {
-    // Story 003 will implement the visual collapse/expand of the overlay.
+  setMinimised(val: boolean): void {
+    this._minimised = val;
+    if (!this._middle || !this._topBar) return;
+
+    if (val) {
+      this._middle.style.display = "none";
+      if (this._sidebar) this._sidebar.style.display = "none";
+    } else {
+      this._middle.style.display = "flex";
+      if (this._sidebar) this._sidebar.style.display = "";
+    }
   }
 
   /** @inheritdoc */
@@ -152,17 +168,17 @@ export class DevTools implements IDevTools {
     const el = document.createElement("div");
     el.className = "dev-notification";
     el.textContent = message;
-    el.style.cssText =
-      "position:absolute;bottom:4px;left:50%;transform:translateX(-50%);" +
-      "background:#333;color:#ffd700;padding:4px 12px;border-radius:4px;" +
-      "font-family:'Courier New',monospace;font-size:12px;white-space:nowrap;" +
-      "z-index:1001;pointer-events:none";
 
     this._overlay.appendChild(el);
 
     setTimeout(() => {
       if (el.parentElement) el.remove();
     }, 2000);
+  }
+
+  /** @inheritdoc */
+  refreshConfigTree(): void {
+    this._refreshConfigTree();
   }
 
   /** @inheritdoc */
@@ -222,17 +238,10 @@ export class DevTools implements IDevTools {
 
     const overlay = document.createElement("div");
     overlay.id = "dev-overlay";
-    overlay.style.cssText =
-      "position:absolute;inset:0;pointer-events:none;z-index:10;" +
-      "display:none;flex-direction:column";
 
     // ── Top bar: FPS, frame time, draw calls, mesh count ──────────────
     const topBar = document.createElement("div");
     topBar.className = "top-bar";
-    topBar.style.cssText =
-      "display:flex;gap:16px;padding:4px 8px;" +
-      "background:#0a0a0a;color:#fff;" +
-      "font-family:'Courier New',monospace;font-size:12px;height:20px";
 
     this._createMetric(topBar, "FPS", "fps");
     this._createMetric(topBar, "Frame", "frame");
@@ -241,49 +250,39 @@ export class DevTools implements IDevTools {
     this._createMetric(topBar, "Phys", "phys");
 
     overlay.appendChild(topBar);
+    this._topBar = topBar;
 
     // ── Middle row: sidebar + main panel (flex row, fills remaining space) ──
     const middle = document.createElement("div");
-    middle.style.cssText =
-      "flex:1;display:flex;flex-direction:row;overflow:hidden";
+    middle.className = "dev-middle";
 
     // ── Sidebar: config tree ──────────────────────────────────────────
     const sidebar = document.createElement("div");
     sidebar.className = "sidebar";
-    sidebar.style.cssText =
-      "width:320px;display:flex;flex-direction:column;" +
-      "background:#0a0a0a;border-right:1px solid #333;overflow-y:auto";
     middle.appendChild(sidebar);
 
     // ── Main panel: tab container ─────────────────────────────────────
     const mainPanel = document.createElement("div");
     mainPanel.className = "main-panel";
-    mainPanel.style.cssText =
-      "flex:1;display:flex;flex-direction:column;overflow:hidden";
 
     // Tab bar
     this._tabBar = document.createElement("div");
     this._tabBar.className = "tab-bar";
-    this._tabBar.style.cssText =
-      "display:flex;gap:0;background:#1a1a1a;border-bottom:1px solid #333;" +
-      "min-height:28px;pointer-events:auto";
     mainPanel.appendChild(this._tabBar);
 
     // Tab content area
     this._tabContent = document.createElement("div");
     this._tabContent.className = "tab-content";
-    this._tabContent.style.cssText =
-      "flex:1;overflow:hidden;display:flex;flex-direction:column;pointer-events:auto";
     mainPanel.appendChild(this._tabContent);
 
     middle.appendChild(mainPanel);
 
     overlay.appendChild(middle);
+    this._middle = middle;
 
     // ── Bottom bar: input/physics state (hidden in Story 003) ─────────
     const bottomBar = document.createElement("div");
     bottomBar.className = "bottom-bar";
-    bottomBar.style.display = "none";
     overlay.appendChild(bottomBar);
 
     container.appendChild(overlay);
@@ -320,7 +319,6 @@ export class DevTools implements IDevTools {
     const panel = document.createElement("div");
     panel.className = "tab-panel";
     panel.dataset.tabId = "event-log";
-    panel.style.cssText = "display:none;height:100%;flex-direction:column";
 
     // Create read-only wrapper via type narrowing (IEventBus → IReadOnlyEventBus)
     // TypeScript allows this because IEventBus structurally satisfies the pick.
@@ -334,10 +332,6 @@ export class DevTools implements IDevTools {
     btn.className = "tab";
     btn.dataset.tabId = "event-log";
     btn.textContent = "Event Log";
-    btn.style.cssText =
-      "padding:4px 16px;background:transparent;color:#888;border:none;" +
-      "cursor:pointer;font-family:'Courier New',monospace;font-size:11px;" +
-      "border-bottom:2px solid transparent";
     btn.addEventListener("click", () => this._switchTab("event-log"));
     this._tabBar.appendChild(btn);
 
@@ -366,10 +360,6 @@ export class DevTools implements IDevTools {
     tabBtns?.forEach((btn) => {
       const el = btn as HTMLButtonElement;
       const isActive = el.dataset.tabId === tabId;
-      el.style.color = isActive ? "#ffd700" : "#888";
-      el.style.borderBottom = isActive
-        ? "2px solid #ffd700"
-        : "2px solid transparent";
       el.classList.toggle("active", isActive);
     });
 
@@ -378,7 +368,6 @@ export class DevTools implements IDevTools {
     panels?.forEach((panel) => {
       const el = panel as HTMLDivElement;
       const isActive = el.dataset.tabId === tabId;
-      el.style.display = isActive ? "flex" : "none";
       el.classList.toggle("active", isActive);
     });
 
@@ -463,7 +452,7 @@ export class DevTools implements IDevTools {
    */
   private _createMetric(parent: HTMLElement, label: string, key: string): void {
     const labelEl = document.createElement("span");
-    labelEl.style.color = "#ffd700";
+    labelEl.className = "metric-label";
     labelEl.textContent = label;
 
     const valueEl = document.createElement("span");
@@ -510,7 +499,8 @@ export class DevTools implements IDevTools {
       activeTab.refresh();
     }
 
-    // Refresh data source panels (config tree, etc.)
-    this._refreshConfigTree();
+    // Config tree is NOT refreshed here — it's refreshed once on toggle
+    // and on explicit refreshConfigTree() calls (reload key). Doing it
+    // every frame resets <details> open/close state and causes flicker.
   }
 }

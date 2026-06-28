@@ -149,6 +149,7 @@ function _handleReload(): void {
 
   if (changes.length === 0) {
     devTools.showNotification("config reloaded — no changes");
+    devTools.refreshConfigTree();
     return;
   }
 
@@ -156,4 +157,5 @@ function _handleReload(): void {
     (c) => `${c.key}: ${String(c.old)} → ${String(c.new)}`
   );
   devTools.showNotification(`config reloaded — ${parts.join("; ")}`);
+  devTools.refreshConfigTree();
 }

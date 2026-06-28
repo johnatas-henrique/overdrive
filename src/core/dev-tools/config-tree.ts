@@ -89,7 +89,7 @@ export class ConfigTreePanel {
       cm = this._getConfigManager();
     } catch {
       this._container.innerHTML =
-        "<div style='color:#888;padding:8px'>ConfigManager not initialized</div>";
+        "<div class='config-empty'>ConfigManager not initialized</div>";
       return;
     }
 
@@ -113,28 +113,27 @@ export class ConfigTreePanel {
     const namespaceNames = Object.keys(state.namespaces);
     if (namespaceNames.length === 0) {
       this._container.innerHTML =
-        "<div style='color:#888;padding:8px'>No config namespaces</div>";
+        "<div class='config-empty'>No config namespaces</div>";
       return;
     }
 
     for (const ns of namespaceNames) {
       const details = document.createElement("details");
+      details.className = "config-namespace";
       details.dataset.ns = ns;
       if (expanded.has(ns)) {
         details.open = true;
       }
-      details.style.cssText = "margin:1px 0";
 
       const summary = document.createElement("summary");
       summary.textContent = ns;
-      summary.style.cssText = "cursor:pointer;color:#ffd700;font-weight:bold";
       details.appendChild(summary);
 
       const nsData = state.namespaces[ns] as Record<string, unknown>;
       const flatKeys = this._flattenNamespace(ns, nsData);
 
       const ul = document.createElement("ul");
-      ul.style.cssText = "list-style:none;margin:2px 0;padding:0 0 0 12px";
+      ul.className = "config-ns-list";
 
       const keyCount = flatKeys.length;
       const displayKeys =
@@ -144,17 +143,15 @@ export class ConfigTreePanel {
 
       for (const entry of displayKeys) {
         const li = document.createElement("li");
-        li.style.cssText =
-          "margin:1px 0;display:flex;gap:4px;align-items:center";
+        li.className = "config-entry";
 
         const keyCode = document.createElement("code");
+        keyCode.className = "config-key";
         keyCode.textContent = entry.dotPath;
-        keyCode.style.cssText = "color:#66d9ef;white-space:nowrap";
 
         const valueSpan = document.createElement("span");
         valueSpan.className = "config-value";
         valueSpan.textContent = entry.displayValue;
-        valueSpan.style.cssText = "color:#e6db74;cursor:pointer;padding:0 2px";
         valueSpan.dataset.configKey = entry.dotPath;
 
         // Double-click to edit (DEV guard inside _startEdit)
@@ -171,8 +168,8 @@ export class ConfigTreePanel {
 
       if (keyCount > MAX_KEYS_PER_NAMESPACE) {
         const moreLi = document.createElement("li");
+        moreLi.className = "config-more";
         moreLi.textContent = `… and ${keyCount - MAX_KEYS_PER_NAMESPACE} more keys`;
-        moreLi.style.cssText = "color:#888;font-style:italic";
         ul.appendChild(moreLi);
       }
 
@@ -251,11 +248,8 @@ export class ConfigTreePanel {
 
     const input = document.createElement("input");
     input.type = "text";
+    input.className = "config-input";
     input.value = currentText === "\u2014" ? "" : currentText;
-    input.style.cssText =
-      "width:80px;font-family:inherit;font-size:inherit;" +
-      "background:#1e1e1e;color:#e6db74;border:1px solid #ffd700;" +
-      "outline:none;padding:0 2px";
 
     valueSpan.replaceWith(input);
     input.focus();
