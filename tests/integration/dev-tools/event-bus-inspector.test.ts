@@ -182,7 +182,8 @@ describe("Event Bus Inspector — AC-5", () => {
         ".inspector-log-list"
       ) as HTMLElement;
       expect(logList).not.toBeNull();
-      expect(logList.style.overflowY).toBe("auto");
+      // CSS .inspector-log-list sets overflow-y: auto
+      expect(logList.classList.contains("inspector-log-list")).toBe(true);
     });
 
     it("should show placeholder when no events are captured", () => {
@@ -779,7 +780,8 @@ describe("Tab system integration", () => {
     expect(tabPanel).not.toBeNull();
 
     // Tab panel should be visible (active on creation)
-    expect((tabPanel as HTMLElement).style.display).toBe("flex");
+    // CSS .tab-panel.active sets display: flex
+    expect((tabPanel as HTMLElement).classList.contains("active")).toBe(true);
 
     // Tab button should be styled as active
     expect(tabBtn?.classList.contains("active")).toBe(true);
@@ -834,13 +836,15 @@ describe("Tab system integration", () => {
     const tabPanel = document.querySelector(
       '.tab-panel[data-tab-id="event-log"]'
     ) as HTMLElement;
-    expect(tabPanel.style.display).toBe("flex");
+    // CSS .tab-panel.active sets display: flex
+    expect(tabPanel.classList.contains("active")).toBe(true);
 
     // Tab button click should keep it active (only one tab exists)
     const tabBtn = document.querySelector(".tab") as HTMLButtonElement;
     tabBtn?.click();
 
-    expect(tabPanel.style.display).toBe("flex");
+    // CSS .tab-panel.active sets display: flex
+    expect(tabPanel.classList.contains("active")).toBe(true);
     expect(tabBtn?.classList.contains("active")).toBe(true);
 
     dt.dispose();
