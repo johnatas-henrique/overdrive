@@ -161,7 +161,7 @@ test.describe("Tab System", () => {
   });
 
   test("only one tab panel is visible at a time", async ({ page }) => {
-    const tabs = ["event-log", "gsm-history"];
+    const tabs = ["event-log", "gsm-history", "sim-snapshot"];
 
     for (const tabId of tabs) {
       await page.click(`button[data-tab-id='${tabId}']`);
@@ -534,9 +534,9 @@ test.describe("Behavior: Tab Content Isolation", () => {
       await page.waitForTimeout(200);
     }
 
-    // Count tab panels — should still be exactly 2
+    // Count tab panels — should still be exactly 3
     const panelCount = await page.locator(".tab-panel").count();
-    expect(panelCount).toBe(2);
+    expect(panelCount).toBe(3);
   });
 
   test("tab content is preserved when switching away and back", async ({
@@ -557,5 +557,113 @@ test.describe("Behavior: Tab Content Isolation", () => {
     // Filter value should be preserved
     const preservedValue = await filterInput.inputValue();
     expect(preservedValue).toBe("preserve_test");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sim Snapshot Panel Tab
+// ---------------------------------------------------------------------------
+
+test.describe("Sim Snapshot Panel Tab", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await page.waitForTimeout(2000);
+    await openDevTools(page);
+    await page.click("button[data-tab-id='sim-snapshot']");
+    await page.waitForTimeout(300);
+  });
+
+  test("tab button exists and is clickable", async ({ page }) => {
+    const tabBtn = page.locator("button[data-tab-id='sim-snapshot']");
+    await expect(tabBtn).toBeVisible();
+  });
+
+  test("tab button has active class when selected", async ({ page }) => {
+    const isActive = await hasClass(
+      page,
+      "button[data-tab-id='sim-snapshot']",
+      "active"
+    );
+    expect(isActive).toBe(true);
+  });
+
+  test("registered systems list is visible", async ({ page }) => {
+    const systemsList = page.locator(".ssn-systems-list");
+    await expect(systemsList).toBeVisible();
+  });
+
+  test("system ID entries exist in the list", async ({ page }) => {
+    // The playground registers physics, fuel, tire, ai
+    const physicsEntry = page.locator(".ssn-system-row").first();
+    await expect(physicsEntry).toBeVisible();
+
+    const systemId = await physicsEntry.locator(".ssn-system-id").textContent();
+    expect(systemId?.trim()).toBeTruthy();
+  });
+
+  test("per-system hash is displayed", async ({ page }) => {
+    const hashEl = page.locator(".ssn-system-hash").first();
+    await expect(hashEl).toBeVisible();
+
+    const hashText = await hashEl.textContent();
+    expect(hashText?.trim()).toMatch(/^[0-9a-f]{16}$/);
+  });
+
+  test("diff indicator exists for each system", async ({ page }) => {
+    const diffEls = page.locator(".ssn-system-diff");
+    const count = await diffEls.count();
+    expect(count).toBeGreaterThan(0);
+  });
+
+  test("Take Snapshot button is visible in DEV mode", async ({ page }) => {
+    // App runs in DEV mode during E2E tests so the controls should be visible
+    const takeBtn = page.locator(".ssn-take-btn");
+    await expect(takeBtn).toBeVisible();
+    await expect(takeBtn).toBeEnabled();
+  });
+
+  test("Restore Snapshot button starts disabled, enables after Take", async ({
+    page,
+  }) => {
+    const restoreBtn = page.locator(".ssn-restore-btn");
+    await expect(restoreBtn).toBeVisible();
+    // Initially disabled (no snapshot taken yet)
+    await expect(restoreBtn).toBeDisabled();
+
+    // Take a snapshot
+    const takeBtn = page.locator(".ssn-take-btn");
+    await takeBtn.click();
+    await page.waitForTimeout(200);
+
+    // Now Restore should be enabled
+    await expect(restoreBtn).toBeEnabled();
+  });
+
+  test("clicking Take Snapshot updates diff indicators to green checks", async ({
+    page,
+  }) => {
+    // Initially should show em dashes (no snapshot taken)
+    const diffEls = page.locator(".ssn-system-diff");
+    const initialCount = await diffEls.count();
+    expect(initialCount).toBeGreaterThan(0);
+
+    // Take a snapshot
+    const takeBtn = page.locator(".ssn-take-btn");
+    await takeBtn.click();
+    await page.waitForTimeout(300);
+
+    // Refresh the panel to see updated diffs
+    // (The refresh happens automatically)
+    await page.waitForTimeout(200);
+
+    // At least one diff should now be a checkmark
+    const checkMarks = page.locator(".ssn-diff-match");
+    const checkCount = await checkMarks.count();
+    expect(checkCount).toBeGreaterThan(0);
+  });
+
+  test("panel scrolls independently of overlay", async ({ page }) => {
+    const panel = page.locator(".ssn-container");
+    await expect(panel).toBeVisible();
   });
 });

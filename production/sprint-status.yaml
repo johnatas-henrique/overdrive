@@ -154,7 +154,8 @@ stories:
     name: "Story 007: Sim Snapshot Panel"
     file: "production/epics/dev-tools/story-007-sim-snapshot-panel.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
+    completed: "2026-06-27"
     owner: ""
     estimate_days: 1
     blocker: ""

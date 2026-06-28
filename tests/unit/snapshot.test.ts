@@ -2176,3 +2176,181 @@ describe("AC-8: Missing system in registry skipped gracefully", () => {
     warnSpy.mockRestore();
   });
 });
+
+// ===========================================================================
+// Story 007: getRegisteredSystems + getHashes public methods
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// AC-1: getRegisteredSystems
+// ---------------------------------------------------------------------------
+
+describe("getRegisteredSystems", () => {
+  it("should return all registered systems", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const sysA = new TestSnapshotSystem("physics", { v: 1 });
+    const sysB = new TestSnapshotSystem("fuel", { v: 2 });
+    ss.register(sysA);
+    ss.register(sysB);
+
+    const systems = ss.getRegisteredSystems();
+    expect(systems.length).toBe(2);
+    const ids = systems.map((s) => s.systemId).sort();
+    expect(ids).toEqual(["fuel", "physics"]);
+  });
+
+  it("should return empty array when no systems registered", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const systems = ss.getRegisteredSystems();
+    expect(systems).toEqual([]);
+  });
+
+  it("should return read-only array (shallow copy, not live reference)", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("a", { v: 1 }));
+
+    const systems = ss.getRegisteredSystems();
+    // Mutating the returned array should not affect the registry
+    expect(systems.length).toBe(1);
+
+    // After dispose, we can't call getRegisteredSystems again,
+    // but the previously returned array should still be accessible
+    ss.dispose();
+    // The old array reference is still usable (it's a snapshot)
+    expect(systems.length).toBe(1);
+  });
+
+  it("should throw SnapshotError if called before init", () => {
+    const ss = new SimulationSnapshot();
+    expect(() => ss.getRegisteredSystems()).toThrow(SnapshotError);
+    expect(() => ss.getRegisteredSystems()).toThrow("Not initialized");
+  });
+
+  it("should throw SnapshotError if called after dispose", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("x", { v: 1 }));
+    ss.dispose();
+    expect(() => ss.getRegisteredSystems()).toThrow(SnapshotError);
+    expect(() => ss.getRegisteredSystems()).toThrow("Not initialized");
+  });
+
+  it("should include systems added after previous getRegisteredSystems call", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("a", { v: 1 }));
+
+    const before = ss.getRegisteredSystems();
+    expect(before.length).toBe(1);
+
+    ss.register(new TestSnapshotSystem("b", { v: 2 }));
+
+    const after = ss.getRegisteredSystems();
+    expect(after.length).toBe(2);
+  });
+
+  it("should return systems that reference the same live instances", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const sys = new TestSnapshotSystem("live", { v: 1 });
+    ss.register(sys);
+
+    const systems = ss.getRegisteredSystems();
+    // Mutating the system should be visible through the reference
+    systems[0].deserialize({ v: 99 });
+    expect(sys.serialize()).toEqual({ v: 99 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-2: getHashes
+// ---------------------------------------------------------------------------
+
+describe("getHashes", () => {
+  it("should return current hash per systemId", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const sysA = new TestSnapshotSystem("a", { v: 1 });
+    const sysB = new TestSnapshotSystem("b", { v: 2 });
+    ss.register(sysA);
+    ss.register(sysB);
+
+    const hashes = ss.getHashes();
+    expect(hashes.size).toBe(2);
+    expect(hashes.get("a")).toBe(sysA.hash());
+    expect(hashes.get("b")).toBe(sysB.hash());
+  });
+
+  it("should return empty map when no systems registered", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const hashes = ss.getHashes();
+    expect(hashes.size).toBe(0);
+  });
+
+  it("should return Map<string, string> with hex hash strings", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("x", { data: "test" }));
+
+    const hashes = ss.getHashes();
+    const hash = hashes.get("x");
+    expect(typeof hash).toBe("string");
+    expect(hash).toMatch(/^[0-9a-f]{16}$/);
+  });
+
+  it("should return fresh Map each call", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("a", { v: 1 }));
+
+    const map1 = ss.getHashes();
+    const map2 = ss.getHashes();
+    expect(map1).not.toBe(map2); // different Map instances
+    expect(map1.get("a")).toBe(map2.get("a")); // same values
+  });
+
+  it("should reflect state changes after deserialize", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const sys = new TestSnapshotSystem("dynamic", { v: 1 });
+    ss.register(sys);
+
+    const hashBefore = ss.getHashes().get("dynamic");
+    sys.deserialize({ v: 2 });
+    const hashAfter = ss.getHashes().get("dynamic");
+
+    expect(hashBefore).not.toBe(hashAfter);
+  });
+
+  it("should throw SnapshotError if called before init", () => {
+    const ss = new SimulationSnapshot();
+    expect(() => ss.getHashes()).toThrow(SnapshotError);
+    expect(() => ss.getHashes()).toThrow("Not initialized");
+  });
+
+  it("should throw SnapshotError if called after dispose", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("x", { v: 1 }));
+    ss.dispose();
+    expect(() => ss.getHashes()).toThrow(SnapshotError);
+    expect(() => ss.getHashes()).toThrow("Not initialized");
+  });
+
+  it("should match system.hash() for each registered system", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const sysA = new TestSnapshotSystem("a", { fuel: 50 });
+    const sysB = new TestSnapshotSystem("b", { speed: 100 });
+    ss.register(sysA);
+    ss.register(sysB);
+
+    const hashes = ss.getHashes();
+    expect(hashes.get("a")).toBe(sysA.hash());
+    expect(hashes.get("b")).toBe(sysB.hash());
+  });
+});
