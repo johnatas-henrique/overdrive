@@ -364,6 +364,12 @@ test.describe("Regression: Config Keybinds", () => {
   });
 
   test("key 2 triggers config reload", async ({ page }) => {
+    // Register pageerror listener before any keyboard interaction
+    // (D-015 — pageerror listener must be registered before key presses
+    //  to catch errors from the first press).
+    const errorLogs: string[] = [];
+    page.on("pageerror", (err) => errorLogs.push(err.message));
+
     // Press key 2
     await page.keyboard.press("2");
     await page.waitForTimeout(500);
@@ -372,8 +378,6 @@ test.describe("Regression: Config Keybinds", () => {
     const _notification = page.locator(".dev-notification");
     // Notification may or may not appear depending on ConfigManager state
     // At minimum, the key should not throw an error
-    const errorLogs: string[] = [];
-    page.on("pageerror", (err) => errorLogs.push(err.message));
     await page.keyboard.press("2");
     await page.waitForTimeout(500);
     expect(errorLogs).toHaveLength(0);
