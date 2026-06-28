@@ -2,6 +2,7 @@ export { fnv1a } from "./fnv1a";
 export { computeSnapshotHash, sha256 } from "./sha256";
 export type {
   FullGameSnapshot,
+  ISimulationSnapshot,
   TakeSnapshotOptions,
 } from "./simulation-snapshot";
 export { SimulationSnapshot } from "./simulation-snapshot";

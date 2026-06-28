@@ -2,6 +2,65 @@ import type { SnapshotRestoreResult } from "./snapshot-error";
 import { SnapshotError } from "./snapshot-error";
 import type { ISnapshotable } from "./types";
 
+// ---------------------------------------------------------------------------
+// ISimulationSnapshot — public contract for the snapshot orchestrator
+// ---------------------------------------------------------------------------
+
+/**
+ * Public interface for the simulation snapshot orchestrator.
+ *
+ * Defines the contract that consumers (Dev Tools, replay system, multiplayer
+ * sync) use to register systems, capture snapshots, restore state, and query
+ * registered systems and their hashes.
+ *
+ * @see TR-SSN-001 through TR-SSN-007
+ * @see ADR-0017 — Simulation Snapshot
+ * @see Control Manifest F33-F36
+ */
+export interface ISimulationSnapshot {
+  /** Transition from Uninitialized to Ready state. */
+  init(): void;
+
+  /**
+   * Register a system for snapshot participation.
+   * @throws {SnapshotError} If systemId is already registered.
+   */
+  register(system: ISnapshotable): void;
+
+  /**
+   * Capture a full-game snapshot (with frequency check).
+   * @returns The snapshot, or `null` if frequency condition is not met.
+   */
+  takeSnapshot(tick: number): FullGameSnapshot | null;
+
+  /**
+   * Capture a full-game snapshot (with options for on-demand).
+   * @returns The snapshot, or `null` if frequency condition is not met
+   *   and `force` is not `true`.
+   */
+  takeSnapshot(options: TakeSnapshotOptions): FullGameSnapshot | null;
+
+  /**
+   * Restore a full-game snapshot, returning per-system outcomes.
+   */
+  restoreSnapshot(snapshot: FullGameSnapshot): SnapshotRestoreResult;
+
+  /**
+   * Return all registered systems as a read-only array.
+   * @throws {SnapshotError} If called before `init()` or after `dispose()`.
+   */
+  getRegisteredSystems(): ReadonlyArray<ISnapshotable>;
+
+  /**
+   * Return the current hash per systemId by calling each system's `hash()`.
+   * @throws {SnapshotError} If called before `init()` or after `dispose()`.
+   */
+  getHashes(): Map<string, string>;
+
+  /** Dispose the orchestrator, releasing all resources. */
+  dispose(): void;
+}
+
 /**
  * A complete snapshot of the entire game simulation at a single point in time.
  *
@@ -317,5 +376,59 @@ export class SimulationSnapshot {
 
     this.registry.clear();
     this.state = "Disposed";
+  }
+
+  /**
+   * Return all registered systems as a read-only array.
+   *
+   * Provides a snapshot of the registry at the time of the call — the returned
+   * array is a shallow copy; systems themselves are live references (their
+   * state mutates as the simulation advances).
+   *
+   * @returns A read-only array of all registered {@link ISnapshotable} systems.
+   * @throws {SnapshotError} If called before `init()` or after `dispose()`.
+   *
+   * @example
+   * ```typescript
+   * const systems = snapshot.getRegisteredSystems();
+   * for (const sys of systems) {
+   *   console.log(sys.systemId, sys.hash());
+   * }
+   * ```
+   */
+  getRegisteredSystems(): ReadonlyArray<ISnapshotable> {
+    if (this.state !== "Ready") {
+      throw new SnapshotError("Not initialized");
+    }
+    return Array.from(this.registry.values());
+  }
+
+  /**
+   * Return the current FNV-1a hash per systemId.
+   *
+   * Calls each registered system's `hash()` method and collects the results
+   * into a new `Map<string, string>`. The map is a fresh copy each call.
+   *
+   * @returns A map of `systemId → current hash string` for every registered
+   *   system.
+   * @throws {SnapshotError} If called before `init()` or after `dispose()`.
+   *
+   * @example
+   * ```typescript
+   * const hashes = snapshot.getHashes();
+   * for (const [id, hash] of hashes) {
+   *   console.log(`${id}: ${hash}`);
+   * }
+   * ```
+   */
+  getHashes(): Map<string, string> {
+    if (this.state !== "Ready") {
+      throw new SnapshotError("Not initialized");
+    }
+    const hashes = new Map<string, string>();
+    for (const [id, system] of this.registry) {
+      hashes.set(id, system.hash());
+    }
+    return hashes;
   }
 }
