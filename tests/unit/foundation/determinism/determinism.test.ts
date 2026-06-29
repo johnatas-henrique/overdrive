@@ -1,18 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   accumulate,
-  DeterminismError,
-  DeterminismGuard,
   FIXED_DT,
-  FixedUpdatePipeline,
-  InputBuffer,
-  InputState,
   MAX_CATCHUP,
   MAX_FRAME_DELTA,
-  PipelineError,
-  PipelineRuntime,
-  SeededRandom,
-} from "../../../../src/foundation/determinism";
+} from "@/foundation/determinism/accumulator";
+import { DeterminismGuard } from "@/foundation/determinism/dev-guard";
+import { DeterminismError } from "@/foundation/determinism/errors";
+import { FixedUpdatePipeline } from "@/foundation/determinism/fixed-update-pipeline";
+import { InputBuffer } from "@/foundation/determinism/input-buffer";
+import { PipelineError } from "@/foundation/determinism/pipeline-error";
+import { PipelineRuntime } from "@/foundation/determinism/pipeline-runtime";
+import { SeededRandom } from "@/foundation/determinism/seeded-random";
+import { InputState } from "@/foundation/determinism/types";
 
 // ---------------------------------------------------------------------------
 // AC-1: Deterministic sequence from same seed
@@ -1546,7 +1546,7 @@ describe("Accumulator edge cases", () => {
   });
 
   it("TickResult type shape is correct", () => {
-    const result: import("../../../../src/foundation/determinism").TickResult =
+    const result: import("@/foundation/determinism/accumulator").TickResult =
       accumulate(0, 0);
     expect(result).toHaveProperty("ticks");
     expect(result).toHaveProperty("newAccumulator");

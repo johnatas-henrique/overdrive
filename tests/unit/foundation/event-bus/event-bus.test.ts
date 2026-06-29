@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  EMIT_DEPTH_EXCEEDED,
+  EventBusError,
+} from "@/foundation/event-bus/errors";
+import { EventBus } from "@/foundation/event-bus/event-bus";
 import type {
   EventMap,
   IEventBus,
   PitState,
   RaceResults,
-} from "../../../../src/foundation/event-bus";
-import { EventBus, EventBusError } from "../../../../src/foundation/event-bus";
-import { EMIT_DEPTH_EXCEEDED } from "../../../../src/foundation/event-bus/errors";
+} from "@/foundation/event-bus/types";
 
 // ---------------------------------------------------------------------------
 // EventMap type correctness
@@ -1446,11 +1449,6 @@ describe("Zero imports", () => {
     expect(hasForbiddenImport(content)).toBe(false);
   });
 
-  it("should have zero imports from @babylonjs in index.ts", async () => {
-    const content = await readSourceFile("src/foundation/event-bus/index.ts");
-    expect(hasForbiddenImport(content)).toBe(false);
-  });
-
   it("should have zero imports from any npm package in types.ts", async () => {
     const content = await readSourceFile("src/foundation/event-bus/types.ts");
     expect(content).not.toContain("from '@");
@@ -1461,18 +1459,6 @@ describe("Zero imports", () => {
     const content = await readSourceFile("src/foundation/event-bus/errors.ts");
     expect(content).not.toContain("from '@");
     expect(content).not.toContain('from "npm:');
-  });
-
-  it("should have zero imports from any npm package in index.ts", async () => {
-    const content = await readSourceFile("src/foundation/event-bus/index.ts");
-    expect(content).not.toContain("from '@");
-    expect(content).not.toContain('from "npm:');
-  });
-
-  it("should allow local sibling imports in index.ts", async () => {
-    const content = await readSourceFile("src/foundation/event-bus/index.ts");
-    expect(content).toContain("./errors");
-    expect(content).toContain("./types");
   });
 
   it("should allow standard TypeScript lib references in types.ts", async () => {
