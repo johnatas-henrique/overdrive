@@ -22,10 +22,16 @@
  */
 
 import { NullEngine } from "@babylonjs/core/Engines/nullEngine";
+import { LoadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
 import { Scene } from "@babylonjs/core/scene";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AssetError } from "@/asset-manager/asset-error";
 import { AssetManager } from "@/asset-manager/asset-manager";
+import type { TrackManifest } from "@/asset-manager/types";
+
+vi.mock("@babylonjs/core/Loading/sceneLoader", () => ({
+  LoadAssetContainerAsync: vi.fn(),
+}));
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -246,5 +252,130 @@ describe("Playground removal", () => {
       { encoding: "utf-8" }
     );
     expect(result.trim()).toBe("");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Story 002: registerManifest + load lifecycle (integration with NullEngine)
+// ---------------------------------------------------------------------------
+
+describe("registerManifest + load lifecycle", () => {
+  let engine: NullEngine;
+  let am: AssetManager;
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    if (engine) engine.dispose();
+  });
+
+  function createScene(_name: string): Scene {
+    const scene = new Scene(engine);
+    return scene;
+  }
+
+  it("should register and load with real scenes (NullEngine)", async () => {
+    engine = createEngine();
+    const menuScene = createScene("menu");
+    const raceScene = createScene("race");
+    am = new AssetManager();
+    am.init(menuScene, raceScene);
+
+    const manifest: TrackManifest = {
+      glb: { rootUrl: "assets/tracks/spa/", filename: "spa.glb" },
+    };
+    am.registerManifest("spa", manifest);
+
+    const fakeContainer = {
+      addAllToScene: vi.fn(),
+      removeAllFromScene: vi.fn(),
+      dispose: vi.fn(),
+      meshes: [],
+      transformNodes: [],
+    };
+    vi.mocked(LoadAssetContainerAsync).mockResolvedValue(fakeContainer as any);
+
+    const container = await am.load("spa");
+
+    expect(LoadAssetContainerAsync).toHaveBeenCalledTimes(1);
+    expect(LoadAssetContainerAsync).toHaveBeenCalledWith("spa.glb", raceScene, {
+      rootUrl: "assets/tracks/spa/",
+    });
+    expect(fakeContainer.removeAllFromScene).toHaveBeenCalledTimes(1);
+    expect(fakeContainer.addAllToScene).toHaveBeenCalledTimes(1);
+    expect(container).toBe(fakeContainer);
+    expect(am.cacheSize).toBe(1);
+  });
+
+  it("should return cached container on second load (cache hit)", async () => {
+    engine = createEngine();
+    const menuScene = createScene("menu");
+    const raceScene = createScene("race");
+    am = new AssetManager();
+    am.init(menuScene, raceScene);
+
+    const manifest: TrackManifest = {
+      glb: { rootUrl: "assets/tracks/spa/", filename: "spa.glb" },
+    };
+    am.registerManifest("spa", manifest);
+
+    const fakeContainer = {
+      addAllToScene: vi.fn(),
+      removeAllFromScene: vi.fn(),
+      dispose: vi.fn(),
+      meshes: [],
+      transformNodes: [],
+    };
+    vi.mocked(LoadAssetContainerAsync).mockResolvedValue(fakeContainer as any);
+
+    // First load
+    await am.load("spa");
+    expect(LoadAssetContainerAsync).toHaveBeenCalledTimes(1);
+
+    // Second load — cache hit, no I/O
+    const result = await am.load("spa");
+    expect(LoadAssetContainerAsync).toHaveBeenCalledTimes(1); // Still 1
+    expect(fakeContainer.addAllToScene).toHaveBeenCalledTimes(2); // re-added
+    expect(result).toBe(fakeContainer);
+  });
+
+  it("should retrieve nodes via get() with real containers", async () => {
+    engine = createEngine();
+    const menuScene = createScene("menu");
+    const raceScene = createScene("race");
+    am = new AssetManager();
+    am.init(menuScene, raceScene);
+
+    const manifest: TrackManifest = {
+      glb: { rootUrl: "assets/tracks/spa/", filename: "spa.glb" },
+    };
+    am.registerManifest("spa", manifest);
+
+    const rootNode = { name: "spa_root", id: "spa_root" };
+    const fakeContainer = {
+      addAllToScene: vi.fn(),
+      removeAllFromScene: vi.fn(),
+      dispose: vi.fn(),
+      meshes: [],
+      transformNodes: [rootNode],
+    };
+    vi.mocked(LoadAssetContainerAsync).mockResolvedValue(fakeContainer as any);
+
+    await am.load("spa");
+
+    // get() returns the node from transformNodes
+    const result = am.get("spa_root");
+    expect(result).toBe(rootNode);
+    expect(am.get("nonexistent")).toBeUndefined();
+  });
+
+  it("should throw AssetError for unregistered load", async () => {
+    engine = createEngine();
+    const menuScene = createScene("menu");
+    const raceScene = createScene("race");
+    am = new AssetManager();
+    am.init(menuScene, raceScene);
+
+    await expect(am.load("unknown")).rejects.toThrow(AssetError);
+    await expect(am.load("unknown")).rejects.toThrow("Manifest not found");
   });
 });
