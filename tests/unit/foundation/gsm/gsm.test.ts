@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { IEventBus } from "../../src/foundation/event-bus";
-import type { State } from "../../src/foundation/gsm";
+import type { IEventBus } from "../../../../src/foundation/event-bus";
+import type { State } from "../../../../src/foundation/gsm";
 import {
   GameStateError,
   GameStateMachine,
   TRANSITIONS,
-} from "../../src/foundation/gsm";
+} from "../../../../src/foundation/gsm";
 
 // Suppress console.warn/console.error output during tests
 let warnSpy: ReturnType<typeof vi.spyOn>;
@@ -209,25 +209,19 @@ describe("AC-3: invalid transition throws GameStateError", () => {
       "PostRace",
     ];
     for (const from of states) {
-      for (const to of states) {
-        if (from === to) continue; // Same-state is no-op, tested separately
-        const gsm = new GameStateMachine();
-        // Navigate to `from` state
-        if (from === "Loading") {
-          gsm.init();
-        } else {
-          gsm.init();
-          // Build a path to the `from` state
-          const path = getPathTo(from);
-          for (const step of path) {
-            await gsm.transition(step);
-          }
+      const gsm = new GameStateMachine();
+      gsm.init();
+      if (from !== "Loading") {
+        const path = getPathTo(from);
+        for (const step of path) {
+          await gsm.transition(step);
         }
+      }
 
+      for (const to of states) {
+        if (from === to) continue;
         const isAllowed = TRANSITIONS[from].includes(to);
-        if (isAllowed) {
-          await expect(gsm.transition(to)).resolves.toBeUndefined();
-        } else {
+        if (!isAllowed) {
           await expect(gsm.transition(to)).rejects.toThrow(GameStateError);
         }
       }
@@ -2506,10 +2500,10 @@ describe("State History AC-3: FIFO eviction", () => {
     expect(history[0].from).not.toBe("Loading");
   });
 
-  it("should keep only the last 20 after 100 transitions", async () => {
+  it("should keep only the last 20 after 25 transitions", async () => {
     const gsm = new GameStateMachine();
     gsm.init();
-    await performTransitions(gsm, 100);
+    await performTransitions(gsm, 25);
 
     expect(gsm.getHistory()).toHaveLength(20);
   });

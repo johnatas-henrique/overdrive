@@ -24,3 +24,13 @@ jobs:
         run: npm run coverage
       - name: Build
         run: npm run build
+      - name: Verify Dev Tools tree-shaking
+        run: |
+          test -d dist || { echo "FAIL: dist/ not found"; exit 1; }
+          for pattern in DevTools dev-tools SceneInstrumentation; do
+            if grep -r "$pattern" dist/ --include="*.js" > /dev/null 2>&1; then
+              echo "FAIL: Found '$pattern' in production bundle"
+              exit 1
+            fi
+          done
+          echo "PASS: Production bundle clean — no Dev Tools strings found"

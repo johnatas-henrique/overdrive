@@ -16,6 +16,13 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
+      exclude: [
+        "src/**/index.ts",
+        "src/foundation/event-bus/types.ts",
+        "src/foundation/gsm/types.ts",
+        "src/foundation/simulation-snapshot/types.ts",
+        "src/core/dev-tools/types.ts",
+      ],
       reporter: ["text", "lcov"],
     },
   },

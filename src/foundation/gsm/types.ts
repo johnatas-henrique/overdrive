@@ -1,4 +1,19 @@
 /**
+ * Game State Machine types.
+ *
+ * @see ADR-0024 — Game State Machine
+ */
+
+/** @see ADR-0024 — Game State Machine, Decision 1 */
+export type State =
+  | "Loading"
+  | "Menu"
+  | "PreRace"
+  | "Racing"
+  | "Paused"
+  | "PostRace";
+
+/**
  * State definition with optional lifecycle hooks for the Game State Machine.
  *
  * Each state in the GSM can define `onEnter` and `onExit` hooks that are
@@ -7,9 +22,6 @@
  * @see ADR-0024 — Game State Machine, Decision 2
  * @see TR-GSM-002 — Per-state onEnter/onExit hooks
  */
-
-import type { State } from "./State";
-
 export interface StateDefinition {
   /** The state this definition represents. */
   name: State;

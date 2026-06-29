@@ -15,7 +15,7 @@
 - TR-AI-012: Telemetry data provider — per-car exposes personality label, current FSM state, mistakeMag, and speed for Dev Tools overlay consumption.
 
 **ADR Governing Implementation**: ADR-0013: AI Driver Architecture
-**ADR Decision Summary**: AI telemetry is a read-only snapshot produced each tick. Exposed via `IAIDriver.getTelemetry(): Map<string, AITelemetry>`. Consumed by Dev Tools overlay (F1/F2/F3 debug panel). Structure is an open set for Alpha extension.
+**ADR Decision Summary**: AI telemetry is a read-only snapshot produced each tick. Exposed via `IAIDriver.getTelemetry(): Map<string, AITelemetry>`. Consumed by Dev Tools overlay (debug panel). Structure is an open set for Alpha extension.
 
 **Engine**: Babylon.js 9.12.0 | **Risk**: LOW
 **Engine Notes**: Pure TypeScript — zero engine imports. Telemetry is data-only, no engine types involved.
@@ -23,7 +23,7 @@
 **Control Manifest Rules (this layer)**:
 
 - Required: C46 (AIDriverParams open set — telemetry exposes params for debug)
-- Dev Infra: D4 (Dev Tools overlay refresh on `engine.onEndFrameObservable`), D5 (F1/F2 polled via DSM)
+- Dev Infra: D4 (Dev Tools overlay refresh on `engine.onEndFrameObservable`), D5 (toggle/reload keys via DOM keydown listener — keys configurable via `devTools.keys.*`)
 - Dev Infra: D-F3 (never emit events on Event Bus for telemetry — it's read-only)
 
 ---

@@ -1,11 +1,12 @@
 # Story 002: 20Hz Sampling Loop
 
 > **Epic**: Telemetry Recorder
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 6h
+> **Last Updated**: 2026-06-26
 
 ## Context
 
@@ -23,7 +24,7 @@ _(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh 
 
 - Required: D7 (20Hz sampling every 3 ticks), D-F2 (read-only — never writes state)
 - Forbidden: D-F3 (never emit Event Bus events)
-- Guardrail: D-G1 (zero bytes in production build) — applies globally via `__DEV__`
+- Guardrail: D-G1 (zero bytes in production build) — applies globally via `import.meta.env.DEV`
 
 ---
 
@@ -32,10 +33,10 @@ _(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh 
 _From GDD `design/gdd/telemetry-recorder.md`, scoped to this story:_
 
 - [ ] **AC-1**: `tick()` called 9 times with 1 car appends exactly 3 samples (every 3rd call: tick 0, 3, 6)
-- [ ] **AC-2**: Each sample's fields match the CarEntity state at the moment of sampling — speed, rpm, throttle, brake, steer, gear, lateralG, fuelLevel, tireCondition, splinePos, aiState
+- [ ] **AC-2**: Each sample's fields match the CarEntity state at the moment of sampling — speed, rpm, throttle, brake, steer, gear, lateralG, fuel, tireCondition, splinePos, aiState, plus tick number (`tickCount`) and timestamp (`Date.now()` at capture time)
 - [ ] **AC-3**: `tick()` with empty `cars` array produces no error and no samples
 - [ ] **AC-4**: New car appearing mid-session (late joiner) starts receiving samples on the next sample tick — no gap or crash
-- [ ] **AC-5**: `tick()` does nothing when `__DEV__` is false (early return guard)
+- [ ] **AC-5**: `tick()` does nothing when `import.meta.env.DEV` is false (early return guard)
 
 ---
 
@@ -47,7 +48,7 @@ _Derived from ADR-0022 Implementation Guidelines:_
 
 ```typescript
 tick(dt: number, cars: CarEntity[], tickCount: number): void {
-  if (!__DEV__) return;
+  if (!import.meta.env.DEV) return;
   // ...
 }
 ```
@@ -69,6 +70,8 @@ tick(dt: number, cars: CarEntity[], tickCount: number): void {
 | `car.runtime.tireCondition` | tireCondition | Tire Wear         |
 | `car.runtime.splinePos`     | splinePos     | Race Management   |
 | `car.aiDriver?.state ?? -1` | aiState       | AI Driver         |
+| `tickCount`                 | tick          | Pipeline          |
+| `Date.now()`                | t             | Runtime           |
 
 **CarEntity interface reference:** See ADR-0005 (CarEntity identity-only) and the per-system ADRs listed in ADR-0022 Dependencies.
 
@@ -115,7 +118,7 @@ _Handled by neighbouring stories — do not implement here:_
   - And: All 3 cars have correct sample counts
 
 - **AC-5**: No-op when **DEV** is false
-  - Given: A mock with `__DEV__ = false`
+  - Given: A mock with `import.meta.env.DEV = false`
   - When: `tick()` is called
   - Then: Returns immediately without allocating or appending
 
@@ -126,7 +129,7 @@ _Handled by neighbouring stories — do not implement here:_
 **Story Type**: Logic
 **Required evidence**:
 
-- Logic: `tests/unit/dev-infra/telemetry-sampling_test.ts` — must exist and pass
+- Logic: `tests/unit/dev-infra/telemetry-sampling.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 
@@ -136,3 +139,11 @@ _Handled by neighbouring stories — do not implement here:_
 
 - Depends on: Story 001 (TelemetrySample type, Map storage)
 - Unlocks: Story 003 (needs samples to generate console output)
+
+## Completion Notes
+
+**Completed**: 2026-06-26
+**Criteria**: 5/5 passing
+**Deviations**: None
+**Test Evidence**: Logic: tests/unit/dev-infra/telemetry-sampling.test.ts (18 tests)
+**Code Review**: Complete — APPROVED (babylonjs-specialist CLEAN, qa-tester TESTABLE, lead-programmer APPROVED WITH SUGGESTIONS)

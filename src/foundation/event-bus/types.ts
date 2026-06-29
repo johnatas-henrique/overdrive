@@ -80,6 +80,8 @@ export type EventMap = {
   "race.checkered": { carId: string; lap: number; results: RaceResults };
   /** The race has been abandoned (e.g., critical error, all-car DNF). */
   "race.abandoned": Record<string, never>;
+  /** A new race has started with the given configuration. */
+  "race.started": { track: string; totalLaps: number; playerCarId: string };
   /** An asset failed to load. */
   "asset.error": { assetId: string; error: Error };
 };
@@ -150,11 +152,25 @@ export interface IEventBus {
    * Subscribe to an event. The handler receives the typed payload
    * matching the event name in {@link EventMap}.
    *
+   * Use `"*"` to subscribe to all events — the handler receives a
+   * `{ event: string; payload: unknown }` object.
+   *
    * Returns a {@link Subscription} that can be used to unsubscribe.
    */
   on<E extends keyof EventMap>(
     event: E,
     handler: (payload: EventMap[E]) => void
+  ): Subscription;
+
+  /**
+   * Subscribe to all events (wildcard).
+   * The handler receives `{ event: string; payload: unknown }`.
+   *
+   * Returns a {@link Subscription} that can be used to unsubscribe.
+   */
+  on(
+    event: "*",
+    handler: (detail: { event: string; payload: unknown }) => void
   ): Subscription;
 
   /**
@@ -179,10 +195,28 @@ export interface IEventBus {
   emit<E extends keyof EventMap>(event: E, payload: EventMap[E]): void;
 
   /**
+   * Remove all handlers for the given event and return the bus for chaining.
+   *
+   * Use the reentrant pattern `bus.off("race.started").on("race.started", ...)`
+   * to prevent duplicate subscriptions when re-initialising.
+   */
+  off<E extends keyof EventMap>(event: E): IEventBus;
+
+  /**
    * Unsubscribe a previously returned Subscription.
    * Idempotent — calling twice on the same Subscription is safe.
    */
   off(handler: Subscription): void;
+
+  /**
+   * Get a snapshot of all active subscriptions.
+   *
+   * Returns a Map of event names to their handler counts.
+   * Useful for debugging and dev tools inspection.
+   *
+   * @returns Map<string, number> — event name → handler count
+   */
+  getSubscriptions(): Map<string, number>;
 
   /**
    * Dispose the Event Bus, removing all subscriptions.

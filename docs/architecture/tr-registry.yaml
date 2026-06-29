@@ -529,7 +529,7 @@ requirements:
   - id: TR-DVT-005
     system: dev-tools
     gdd: design/gdd/dev-tools.md
-    requirement: "GSM state visualiser — current state, history timeline, manual transition buttons (guarded by __DEV__)."
+    requirement: "GSM state visualiser — current state, history timeline, manual transition buttons (guarded by import.meta.env.DEV)."
     domain: Dev
     coverage_adrs: [ADR-0009]
     engine_risk: LOW
@@ -539,7 +539,7 @@ requirements:
   - id: TR-DVT-006
     system: dev-tools
     gdd: design/gdd/dev-tools.md
-    requirement: "Tree-shaken in production via __DEV__ guard — entire class tree and its imports must not appear in production bundle."
+    requirement: "Tree-shaken in production via import.meta.env.DEV guard — entire class tree and its imports must not appear in production bundle."
     domain: Dev
     coverage_adrs: [ADR-0009]
     engine_risk: LOW
@@ -549,7 +549,7 @@ requirements:
   - id: TR-DVT-007
     system: dev-tools
     gdd: design/gdd/dev-tools.md
-    requirement: "dev-menu keybind — F1 to toggle overlay, F2 to toggle full event display, F3 to toggle minimised overlay."
+    requirement: "dev-menu keybind — toggle key (default: backtick) to toggle overlay, reload key (default: 1) to toggle full event display, minimise key (default: 2) to toggle minimised overlay. Keys configurable via devTools.keys.* in Data & Config Manager."
     domain: Dev
     coverage_adrs: [ADR-0009]
     engine_risk: LOW
@@ -2163,22 +2163,22 @@ requirements:
   - id: TR-TELEMETRY-001
     system: telemetry-recorder
     gdd: design/gdd/telemetry-recorder.md
-    requirement: "TelemetrySample { carId: string, tick: number, speedKmh, rpm, throttle, brake, steer, gear, lateralG, accelG, fuelLevel, tireCondition, aiState }."
+    requirement: "TelemetrySample { tick: number, t: number, speed: number, rpm: number, throttle: number, brake: number, steer: number, gear: number, lateralG: number, fuel: number, tireCondition: number, splinePos: number, aiState: number }. Car ID is Map key, not a field."
     domain: Dev
     coverage_adrs: [ADR-0022]
     engine_risk: LOW
     created: 2026-06-21
-    revised: ""
+    revised: "2026-06-26"
     status: active
   - id: TR-TELEMETRY-002
     system: telemetry-recorder
     gdd: design/gdd/telemetry-recorder.md
-    requirement: "Records samples every N ticks (configurable telemetry.sampleInterval, default 60 = 1s) — captures direct reads from systems, no Event Bus."
+    requirement: "Records samples every N ticks (configurable telemetry.sampleInterval, default 3 = 20Hz at 60Hz tick rate) — captures direct reads from systems, no Event Bus."
     domain: Dev
     coverage_adrs: [ADR-0022]
     engine_risk: LOW
     created: 2026-06-21
-    revised: ""
+    revised: "2026-06-26"
     status: active
   - id: TR-TELEMETRY-003
     system: telemetry-recorder
@@ -2213,7 +2213,7 @@ requirements:
   - id: TR-TELEMETRY-006
     system: telemetry-recorder
     gdd: design/gdd/telemetry-recorder.md
-    requirement: "Guarded by __DEV__ compile flag — entire class tree and its system imports produce zero bytes in production build."
+    requirement: "Guarded by import.meta.env.DEV compile flag — entire class tree and its system imports produce zero bytes in production build."
     domain: Dev
     coverage_adrs: [ADR-0022]
     engine_risk: LOW

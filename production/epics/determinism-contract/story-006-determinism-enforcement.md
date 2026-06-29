@@ -14,7 +14,7 @@
 **Requirements**: `TR-DET-004`
 
 **ADR Governing Implementation**: ADR-0002: Fixed Timestep & Determinism Pipeline
-**ADR Decision Summary**: `Date.now()` / `performance.now()` forbidden inside slot `update()` — breaks determinism. `getCurrentTick()` replaces wall clock reads. Dev-mode runtime assertions patch `Math.random`, `Date.now`, and `performance.now` with throwing wrappers during `executeTick()`. Guards are tree-shaken in production via `__DEV__` guard (`import.meta.env.DEV`).
+**ADR Decision Summary**: `Date.now()` / `performance.now()` forbidden inside slot `update()` — breaks determinism. `getCurrentTick()` replaces wall clock reads. Dev-mode runtime assertions patch `Math.random`, `Date.now`, and `performance.now` with throwing wrappers during `executeTick()`. Guards are tree-shaken in production via `import.meta.env.DEV` guard.
 
 **Engine**: Babylon.js 9.12.0 | **Risk**: LOW
 **Engine Notes**: Zero Babylon.js APIs — pure TypeScript guard infrastructure. Uses `import.meta.env.DEV` for build-time tree-shaking (Vite convention). Guards are install/uninstall hooks on the pipeline lifecycle.
@@ -55,7 +55,7 @@ _Derived from ADR-0002 Implementation Guidelines:_
     private guardActive = false;
 
     install(): void {
-      if (!__DEV__) return; // production — no-op
+      if (!import.meta.env.DEV) return; // production — no-op
       this.originalMathRandom = Math.random;
       this.originalDateNow = Date.now;
       this.originalPerfNow = performance.now;
@@ -84,7 +84,7 @@ _Derived from ADR-0002 Implementation Guidelines:_
   ```
 
 - The guard is composed into the pipeline: `start()` calls `guard.install()`, `stop()` calls `guard.uninstall()`.
-- In production (`import.meta.env.DEV === false`), the `install()` method body is stripped by the bundler (tree-shaking via `__DEV__` guard pattern), leaving a no-op or empty call.
+- In production (`import.meta.env.DEV === false`), the `install()` method body is stripped by the bundler (tree-shaking via `import.meta.env.DEV` guard pattern), leaving a no-op or empty call.
 - `DeterminismError` — custom error class in `src/foundation/determinism/errors.ts`, extends `Error`, exported alongside `PipelineError` from Story 002.
 - File location: `src/foundation/determinism/dev-guard.ts` and `src/foundation/determinism/errors.ts`.
 - The guard only covers `Math.random`, `Date.now`, and `performance.now`. It does NOT cover `Math.sin` or other floating-point operations that may differ between platforms (those are addressed by code review and design conventions, not runtime assertion).
@@ -105,7 +105,7 @@ _Handled by neighbouring stories — do not implement here:_
 
 **AC-1: Math.random guard throws**
 
-- Given: Pipeline started with dev guard active (`__DEV__ = true`), a system registered at slot 1 that calls `Math.random()` inside `update()`
+- Given: Pipeline started with dev guard active (`import.meta.env.DEV = true`), a system registered at slot 1 that calls `Math.random()` inside `update()`
 - When: `executeTick(FIXED_DT)` is called
 - Then: `DeterminismError('Math.random forbidden during fixed update')` is thrown (caught by pipeline's per-slot error handling)
 - Edge cases: `Math.random()` called inside a try-catch inside the slot — still caught by the guard before user code can catch it
@@ -143,7 +143,7 @@ _Handled by neighbouring stories — do not implement here:_
 - Given: `vi.stubEnv('DEV', 'false')` to simulate production build
 - When: `pipeline.start()` is called
 - Then: `Math.random`, `Date.now`, and `performance.now` are unchanged (same function references as before `start()`). A slot calling `Math.random()` inside `executeTick()` does NOT throw
-- Edge cases: production mode with `__DEV__` false, then a dev guard call — no-op; env var restored after test via `vi.unstubAllEnvs()`
+- Edge cases: production mode with `import.meta.env.DEV` false, then a dev guard call — no-op; env var restored after test via `vi.unstubAllEnvs()`
 
 ---
 
@@ -153,11 +153,11 @@ _Handled by neighbouring stories — do not implement here:_
 
 ### AC-1: dev assertions fire
 - Inside pipeline tick, call `Date.now()` or `Math.random()`
-- Assert: dev assertion fires in `__DEV__` mode
+- Assert: dev assertion fires in `import.meta.env.DEV` mode
 
 ### AC-2: byte-identical output
 - Run two `fixedUpdate()` sequences with same seed
-- Assert: `SimulationSnapshot.hash()` produces identical output for every system
+- Assert: each registered system's `ISnapshotable.hash()` produces identical output across runs
 
 ### AC-3: production mode
 - In production mode (`vi.stubEnv` or similar), call non-deterministic function

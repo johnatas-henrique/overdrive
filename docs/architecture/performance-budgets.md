@@ -190,7 +190,7 @@ Every budget in this document must be verifiable. The table below defines **how*
 | Domain                     | Measurement Tool                                                       | Integration                                      | Cadence                         |
 | -------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------- |
 | **Frame time (total)**     | `engine.getFps()` + `engine.getDeltaTime()`                            | Dev Tools overlay (sceneInstrumentation)         | Real-time in Dev Tools          |
-| **Per-slot timing**        | `performance.now()` wraps around each `slot.update()`                  | Dev Tools timeline view. Averaged over 60 ticks. | On demand (F1 overlay)          |
+| **Per-slot timing**        | `performance.now()` wraps around each `slot.update()`                  | Dev Tools timeline view. Averaged over 60 ticks. | On demand (toggle key — default: backtick)          |
 | **Render time**            | `SceneInstrumentation.renderTimeCounter`                               | Babylon.js built-in                              | Real-time in Dev Tools          |
 | **Draw calls**             | `sceneInstrumentation.drawCallsCounter.current`                        | Babylon.js built-in                              | Real-time in Dev Tools          |
 | **Triangle count**         | `engine.getTotalVertices()`                                            | Dev Tools                                        | On demand                       |

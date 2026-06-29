@@ -1,6 +1,13 @@
-import { ConfigError } from "./configError";
+import { ConfigError } from "./config-error";
 
 type ConfigStore = Map<string, object>;
+
+/** A single config value change detected by reload(). */
+export interface ConfigChange {
+  key: string;
+  old: unknown;
+  new: unknown;
+}
 
 /** Entry in the access log ring buffer. */
 interface AccessEntry {
@@ -10,7 +17,7 @@ interface AccessEntry {
 }
 
 /** Read-only debug snapshot returned by getDebugState(). */
-interface DebugState {
+export interface DebugState {
   namespaces: Record<string, object>;
   accessLog: AccessEntry[];
   envOverrides: string[];
@@ -26,6 +33,34 @@ interface DebugState {
  * - `"Macklen"`  → `"Macklen"` (string)
  * - `"Infinity"` → `"Infinity"` (string — not finite)
  */
+// ---------------------------------------------------------------------------
+// ConfigManager singleton
+// ---------------------------------------------------------------------------
+
+let _configManagerInstance: ConfigManager | null = null;
+
+/**
+ * Register the ConfigManager singleton instance.
+ * Must be called once during init phase 0.
+ */
+export function setConfigManager(instance: ConfigManager): void {
+  _configManagerInstance = instance;
+}
+
+/**
+ * Return the registered ConfigManager singleton instance.
+ *
+ * @throws {Error} If setConfigManager() has not been called
+ */
+export function getConfigManager(): ConfigManager {
+  if (!_configManagerInstance) {
+    throw new Error(
+      "ConfigManager not initialized. Call setConfigManager(cm) first."
+    );
+  }
+  return _configManagerInstance;
+}
+
 function _coerceEnvValue(value: string): string | number {
   const num = Number(value);
   if (Number.isFinite(num)) {
@@ -115,12 +150,8 @@ export class ConfigManager {
     }
 
     const root = this._resolved.get(namespace);
-    if (!root) {
-      // Resolved is empty — raw store contained invalid data
-      // _buildResolved already logged console.error
-      this._recordAccess(key, "production");
-      throw new ConfigError(`Key not found: ${key}`);
-    }
+    // _buildResolved() now throws on invalid/non-serializable config,
+    // so root is guaranteed to exist after the cache-building block above.
 
     // Traverse remaining path segments from the namespace root
     const value = rest.reduce<unknown>(
@@ -141,7 +172,13 @@ export class ConfigManager {
 
     // Log successful access (only when logAllAccess is true)
     if (this._logAllAccess) {
-      const caller = (new Error().stack as string).split("\n")[2].trim();
+      let caller = "";
+      try {
+        caller = (new Error().stack as string).split("\n")[2].trim();
+      } catch {
+        // Stack trace unavailable (non-V8 engine, minified code, or restricted
+        // environment) — leave caller as empty string.
+      }
       this._recordAccess(key, caller);
     }
 
@@ -180,6 +217,88 @@ export class ConfigManager {
   }
 
   /**
+   * Reload all config namespaces: invalidate cached resolved configs,
+   * re-apply environment overrides, and return any value changes.
+   *
+   * Called by Dev Tools (reload key) to force a configuration refresh.
+   * Config values are registered programmatically at init time, so this
+   * primarily re-evaluates env overrides.
+   *
+   * @returns Array of changed key paths with old and new values.
+   *          Empty array when no values changed.
+   */
+  reload(): ConfigChange[] {
+    if (!this._initialized) return [];
+
+    // Snapshot current resolved values before invalidation
+    const snapshot = this._flattenResolved();
+
+    // Invalidate all namespaces and rebuild from raw configs
+    for (const [namespace] of this._store) {
+      this.invalidateNamespace(namespace);
+      try {
+        this._buildResolved(namespace);
+      } catch {
+        // Namespace stays without resolved cache;
+        // next get() will attempt rebuild on demand
+      }
+    }
+
+    // Snapshot new resolved values and diff
+    const newValues = this._flattenResolved();
+    const changes: ConfigChange[] = [];
+
+    for (const [key, oldVal] of snapshot) {
+      const newVal = newValues.get(key);
+      if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+        changes.push({ key, old: oldVal, new: newVal });
+      }
+    }
+
+    return changes;
+  }
+
+  /**
+   * Flatten all resolved config namespaces into dot-path key to value map.
+   */
+  private _flattenResolved(): Map<string, unknown> {
+    const flat = new Map<string, unknown>();
+    for (const [namespace] of this._store) {
+      const resolved = this._resolved.get(namespace);
+      if (resolved) {
+        this._flattenObject(
+          namespace,
+          resolved as Record<string, unknown>,
+          flat
+        );
+      }
+    }
+    return flat;
+  }
+
+  /**
+   * Recursively flatten an object into dot-path entries.
+   */
+  private _flattenObject(
+    prefix: string,
+    obj: Record<string, unknown>,
+    result: Map<string, unknown>
+  ): void {
+    for (const [key, value] of Object.entries(obj)) {
+      const fullKey = `${prefix}.${key}`;
+      if (
+        value !== null &&
+        typeof value === "object" &&
+        !Array.isArray(value)
+      ) {
+        this._flattenObject(fullKey, value as Record<string, unknown>, result);
+      } else {
+        result.set(fullKey, value);
+      }
+    }
+  }
+
+  /**
    * Build the resolved (env-overridden) config for a namespace and
    * store it in the internal resolved cache.
    *
@@ -197,17 +316,16 @@ export class ConfigManager {
     const raw = this._store.get(namespace);
 
     if (!this._isValidConfig(raw)) {
-      console.error(
+      throw new ConfigError(
         `ConfigManager: cannot build resolved config for namespace '${namespace}' — raw config is invalid`
       );
-      return;
     }
 
-    // Deep clone: config objects must be JSON-serializable
-    // (no functions, Dates, Maps, Sets — per ADR-0023 constraint)
+    // Deep clone, preserving undefined values for debug tree rendering.
+    // Non-serializable values (circular refs) are still rejected.
     let resolved: Record<string, unknown>;
     try {
-      resolved = JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
+      resolved = this._deepClone(raw as Record<string, unknown>);
     } catch {
       throw new ConfigError(
         `ConfigManager: namespace '${namespace}' contains non-serializable values (functions, circular references, etc.). All config values must be JSON-serializable per ADR-0023.`
@@ -231,6 +349,47 @@ export class ConfigManager {
       typeof payload === "object" &&
       !Array.isArray(payload)
     );
+  }
+
+  /**
+   * Deep-clone a plain object, preserving `undefined` values.
+   *
+   * Unlike `JSON.parse(JSON.stringify(obj))`, this does NOT strip
+   * `undefined` — leaf values with `undefined` are preserved so that
+   * debug overlays can display them as "—" (em dash).
+   *
+   * Circular references are detected and throw an error to prevent
+   * infinite recursion.
+   *
+   * Uses the native `structuredClone()` under the hood (F-003), which
+   * correctly handles arrays, Date, Map, Set, and other built-in types
+   * that the previous hand-rolled clone skipped. Because `structuredClone`
+   * throws on `undefined` values, we post-process the result to restore
+   * `undefined` leaf values from the original object.
+   *
+   * @param obj - The object to clone
+   * @returns A deep clone of the input object
+   */
+  private _deepClone(obj: Record<string, unknown>): Record<string, unknown> {
+    // structuredClone handles the deep traversal including arrays,
+    // nested objects, Date, Map, Set, etc. (F-003 — deep clone arrays).
+    const clone = structuredClone(obj);
+
+    // Restore undefined leaf values that structuredClone strips.
+    for (const [key, value] of Object.entries(obj)) {
+      if (value === undefined) {
+        clone[key] = undefined;
+      } else if (
+        value !== null &&
+        typeof value === "object" &&
+        !Array.isArray(value)
+      ) {
+        // Recursively restore undefined leaves in nested objects
+        clone[key] = this._deepClone(value as Record<string, unknown>);
+      }
+    }
+
+    return clone;
   }
 
   /**
@@ -260,6 +419,85 @@ export class ConfigManager {
   }
 
   /**
+   * Set a resolved config value at a dot-path key at runtime (dev-only).
+   *
+   * THIS IS A DEV-ONLY MUTATION API. It writes directly to the resolved cache
+   * (`_resolved`), bypassing the raw registered config (`_store`). Changes are
+   * ephemeral — they survive until the next `invalidateNamespace()` or `reload()`,
+   * which re-read from `_store` and re-apply env overrides.
+   *
+   * The old value is returned so callers can format a notification string
+   * (e.g. `"3 → 4"`).
+   *
+   * @param key - Dot-path key (e.g. `"teams.macklen.motor"`)
+   * @param value - The new value to assign
+   * @returns The previous value at that key (for diff messaging)
+   * @throws {ConfigError} If the key does not exist in the resolved cache
+   *
+   * @see TR-DVT-003 — Config namespace inspector with in-place editing
+   * @see ADR-0009 — Dev Tools Architecture (sole write exception)
+   */
+  setRuntime(key: string, value: unknown): unknown {
+    if (!import.meta.env.DEV) {
+      return undefined;
+    }
+
+    const parts = key.split(".");
+    const namespace = parts[0];
+    const rest = parts.slice(1);
+
+    if (namespace === "") {
+      throw new ConfigError(`Key not found: ${key}`);
+    }
+
+    // Ensure resolved cache is built for this namespace
+    if (!this._resolved.has(namespace)) {
+      const rawExists = this._store.has(namespace);
+      if (!rawExists) {
+        this._recordAccess(key, "production");
+        throw new ConfigError(`Key not found: ${key}`);
+      }
+      this._buildResolved(namespace);
+    }
+
+    const root = this._resolved.get(namespace) as Record<string, unknown>;
+
+    // Navigate to the parent of the leaf value
+    let current: unknown = root;
+
+    for (let i = 0; i < rest.length - 1; i++) {
+      const segment = rest[i];
+      if (
+        current === null ||
+        current === undefined ||
+        typeof current !== "object" ||
+        Array.isArray(current) ||
+        !(segment in current)
+      ) {
+        this._recordAccess(key, "production");
+        throw new ConfigError(`Key not found: ${key}`);
+      }
+      current = (current as Record<string, unknown>)[segment];
+    }
+
+    const lastSegment = rest[rest.length - 1];
+    if (
+      current === null ||
+      current === undefined ||
+      typeof current !== "object" ||
+      Array.isArray(current) ||
+      !(lastSegment in current)
+    ) {
+      this._recordAccess(key, "production");
+      throw new ConfigError(`Key not found: ${key}`);
+    }
+
+    const oldValue = (current as Record<string, unknown>)[lastSegment];
+    (current as Record<string, unknown>)[lastSegment] = value;
+    return oldValue;
+  }
+
+  /**
    * Return a read-only snapshot of the current config state for debug/dev
    * tool overlays.
    *
@@ -278,7 +516,7 @@ export class ConfigManager {
       const resolved = this._resolved.get(ns);
       const source = resolved ?? raw;
       try {
-        namespaces[ns] = JSON.parse(JSON.stringify(source));
+        namespaces[ns] = this._deepClone(source as Record<string, unknown>);
       } catch {
         // Non-serializable config — return a safe placeholder instead of crashing
         namespaces[ns] = { error: "non-serializable config" };
@@ -286,9 +524,11 @@ export class ConfigManager {
     }
 
     const envOverrides: string[] = [];
-    for (const key of Object.keys(process.env)) {
-      if (key.startsWith("OVERDRIVE__")) {
-        envOverrides.push(key);
+    if (typeof process !== "undefined") {
+      for (const key of Object.keys(process.env)) {
+        if (key.startsWith("OVERDRIVE__")) {
+          envOverrides.push(key);
+        }
       }
     }
 
@@ -317,6 +557,8 @@ export class ConfigManager {
     resolved: Record<string, unknown>
   ): void {
     const namespaceUpper = namespace.toUpperCase();
+
+    if (typeof process === "undefined") return;
 
     for (const [envKey, envValue] of Object.entries(process.env)) {
       if (!envKey.startsWith("OVERDRIVE__")) continue;

@@ -1,6 +1,7 @@
 node_modules/
 dist/
 coverage/
+playwright/
 *.log
 .env
 .env.*
@@ -29,3 +30,6 @@ tools/aseprite-mcp/.venv/
 
 # Scratch files (keep for debugging)
 .opencode/scratch
+
+# AI ignore 
+.cortexkit/

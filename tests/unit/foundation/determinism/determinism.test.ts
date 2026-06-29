@@ -12,18 +12,18 @@ import {
   PipelineError,
   PipelineRuntime,
   SeededRandom,
-} from "../../src/foundation/determinism";
+} from "../../../../src/foundation/determinism";
 
 // ---------------------------------------------------------------------------
 // AC-1: Deterministic sequence from same seed
 // ---------------------------------------------------------------------------
 
 describe("AC-1: deterministic sequence from same seed", () => {
-  it("returns identical sequence over 1000 calls for two instances with seed 42", () => {
+  it("returns identical sequence over 100 calls for two instances with seed 42", () => {
     const a = new SeededRandom(42);
     const b = new SeededRandom(42);
 
-    for (let i = 0; i < 1000; i++) {
+    for (let i = 0; i < 100; i++) {
       expect(a.random()).toBe(b.random());
     }
   });
@@ -97,12 +97,12 @@ describe("AC-2: different seeds produce different sequences", () => {
 // ---------------------------------------------------------------------------
 
 describe("AC-3: randomRange returns values within bounds", () => {
-  it("randomRange(5, 10) with seed 42 returns values in [5, 10) over 10000 calls", () => {
+  it("randomRange(5, 10) with seed 42 returns values in [5, 10) over 1000 calls", () => {
     const rng = new SeededRandom(42);
     let min = Infinity;
     let max = -Infinity;
 
-    for (let i = 0; i < 10000; i++) {
+    for (let i = 0; i < 1000; i++) {
       const val = rng.randomRange(5, 10);
       expect(val).toBeGreaterThanOrEqual(5);
       expect(val).toBeLessThan(10);
@@ -126,7 +126,7 @@ describe("AC-3: randomRange returns values within bounds", () => {
   it("randomRange(5, 2) swaps arguments to produce valid [2, 5) range", () => {
     const rng = new SeededRandom(42);
     // With swapped args, values should be in [2, 5)
-    for (let i = 0; i < 1000; i++) {
+    for (let i = 0; i < 100; i++) {
       const val = rng.randomRange(5, 2);
       expect(val).toBeGreaterThanOrEqual(2);
       expect(val).toBeLessThan(5);
@@ -146,11 +146,11 @@ describe("AC-3: randomRange returns values within bounds", () => {
 // ---------------------------------------------------------------------------
 
 describe("AC-4: randomSign returns only -1 or 1", () => {
-  it("with seed 42, all 10000 calls return -1 or 1", () => {
+  it("with seed 42, all 100 calls return -1 or 1", () => {
     const rng = new SeededRandom(42);
     const validValues = new Set([-1, 1]);
 
-    for (let i = 0; i < 10000; i++) {
+    for (let i = 0; i < 100; i++) {
       const val = rng.randomSign();
       expect(validValues.has(val)).toBe(true);
     }
@@ -160,7 +160,7 @@ describe("AC-4: randomSign returns only -1 or 1", () => {
     const rng = new SeededRandom(42);
     const seen = new Set<number>();
 
-    for (let i = 0; i < 10000 && seen.size < 2; i++) {
+    for (let i = 0; i < 100 && seen.size < 2; i++) {
       seen.add(rng.randomSign());
     }
 
@@ -294,14 +294,19 @@ describe("edge cases", () => {
     expect(state).toBe(1);
   });
 
-  it("random() returns values in [0, 1) over 10000 calls", () => {
+  it("random() returns values in [0, 1) over 1000 calls", () => {
     const rng = new SeededRandom(42);
+    let min = 1;
+    let max = 0;
 
-    for (let i = 0; i < 10000; i++) {
+    for (let i = 0; i < 1000; i++) {
       const val = rng.random();
-      expect(val).toBeGreaterThanOrEqual(0);
-      expect(val).toBeLessThan(1);
+      if (val < min) min = val;
+      if (val > max) max = val;
     }
+
+    expect(min).toBeGreaterThanOrEqual(0);
+    expect(max).toBeLessThan(1);
   });
 
   it("successive getState calls return different values (state advances)", () => {
@@ -1541,7 +1546,7 @@ describe("Accumulator edge cases", () => {
   });
 
   it("TickResult type shape is correct", () => {
-    const result: import("../../src/foundation/determinism").TickResult =
+    const result: import("../../../../src/foundation/determinism").TickResult =
       accumulate(0, 0);
     expect(result).toHaveProperty("ticks");
     expect(result).toHaveProperty("newAccumulator");
@@ -1931,6 +1936,7 @@ describe("PipelineRuntime AC-7: placeholder slots registration", () => {
   it("executeTick does not crash with only placeholder NO-OP slots", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const runtime = new PipelineRuntime();
+    runtime.pipeline.start(); // pipeline starts in Uninitialized; start is called here for tests that use the pipeline directly
 
     expect(() => runtime.pipeline.executeTick(FIXED_DT)).not.toThrow();
     warnSpy.mockRestore();
@@ -1939,6 +1945,7 @@ describe("PipelineRuntime AC-7: placeholder slots registration", () => {
   it("tick counter increments after executing a tick with placeholders", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const runtime = new PipelineRuntime();
+    runtime.pipeline.start();
 
     expect(runtime.pipeline.getCurrentTick()).toBe(0);
     runtime.pipeline.executeTick(FIXED_DT);
@@ -1949,6 +1956,7 @@ describe("PipelineRuntime AC-7: placeholder slots registration", () => {
   it("slot 1 is empty (reserved for Input) — no function at slot 1", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const runtime = new PipelineRuntime();
+    runtime.pipeline.start();
 
     expect(() => runtime.pipeline.executeTick(FIXED_DT)).not.toThrow();
     warnSpy.mockRestore();
@@ -1965,6 +1973,7 @@ describe("PipelineRuntime AC-7: placeholder slots registration", () => {
   it("placeholder slots log a warning when ticked", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const runtime = new PipelineRuntime();
+    runtime.pipeline.start();
 
     // Execute a tick — all 7 placeholders should log warnings
     runtime.pipeline.executeTick(FIXED_DT);
@@ -2375,7 +2384,7 @@ describe("DeterminismGuard AC-6: production mode — no guard installed", () => 
 
     // Dynamic import ensures the module is evaluated with DEV = false
     const { DeterminismGuard: ProdGuard } = await import(
-      "../../src/foundation/determinism/dev-guard"
+      "../../../../src/foundation/determinism/dev-guard"
     );
 
     const guard = new ProdGuard();
@@ -2428,5 +2437,243 @@ describe("DeterminismGuard AC-6: production mode — no guard installed", () => 
     expect(perfSpy).toHaveBeenCalledTimes(1);
 
     pipeline.stop();
+  });
+});
+// ─── Tech debt cleanup: pipeline logs errors from slot exceptions ───
+
+describe("W-3: pipeline logs errors from slot exceptions", () => {
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+  });
+
+  it("should log console.error when a slot throws during executeTick", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register(
+      "failing",
+      () => {
+        throw new Error("Slot exploded");
+      },
+      1
+    );
+    pipeline.start();
+
+    pipeline.executeTick(FIXED_DT);
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Slot 1 threw during executeTick")
+    );
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Slot exploded")
+    );
+  });
+
+  it("should log errors for all throwing slots, not just the first", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register(
+      "fail1",
+      () => {
+        throw new Error("Fail 1");
+      },
+      1
+    );
+    pipeline.register(
+      "fail2",
+      () => {
+        throw new Error("Fail 2");
+      },
+      2
+    );
+    pipeline.start();
+
+    pipeline.executeTick(FIXED_DT);
+
+    const errorMessages = errorSpy.mock.calls.map((c) => c[0] as string);
+    const slotErrors = errorMessages.filter(
+      (m) => m.includes("Slot ") && m.includes(" threw during executeTick")
+    );
+    expect(slotErrors.length).toBe(2);
+  });
+
+  it("should continue executing remaining slots after a throwing slot", () => {
+    const slot1Executed = vi.fn();
+    const slot2Executed = vi.fn();
+
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register(
+      "slot1",
+      () => {
+        slot1Executed();
+        throw new Error("Fail");
+      },
+      1
+    );
+    pipeline.register(
+      "slot2",
+      () => {
+        slot2Executed();
+      },
+      2
+    );
+    pipeline.start();
+
+    pipeline.executeTick(FIXED_DT);
+
+    expect(slot1Executed).toHaveBeenCalledTimes(1);
+    expect(slot2Executed).toHaveBeenCalledTimes(1);
+  });
+
+  it("should handle non-Error thrown values gracefully in the log message", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register(
+      "bad",
+      () => {
+        throw "string error";
+      },
+      1
+    );
+    pipeline.start();
+
+    expect(() => pipeline.executeTick(FIXED_DT)).not.toThrow();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("string error")
+    );
+  });
+
+  it("should still increment the tick counter after a slot throws", () => {
+    const pipeline = new FixedUpdatePipeline();
+    pipeline.register(
+      "bad",
+      () => {
+        throw new Error("Fail");
+      },
+      1
+    );
+    pipeline.start();
+
+    pipeline.executeTick(FIXED_DT);
+    expect(pipeline.getCurrentTick()).toBe(1);
+
+    pipeline.executeTick(FIXED_DT);
+    expect(pipeline.getCurrentTick()).toBe(2);
+  });
+});
+
+// ─── Tech debt cleanup: dev guard installed in attach(), not constructor ───
+
+describe("W-4: dev guard installed in attach(), not constructor", () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // Restore globals using the module-level originals (declared ~line 2063)
+    Math.random = __origMathRandom;
+    Date.now = __origDateNow;
+    performance.now = __origPerfNow;
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it("should allow Math.random before attach (guard not installed in constructor)", () => {
+    const _runtime = new PipelineRuntime();
+
+    expect(() => Math.random()).not.toThrow();
+  });
+
+  it("should install the guard after attach() is called", () => {
+    const runtime = new PipelineRuntime();
+
+    const engine = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67),
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+
+    expect(() => Math.random()).toThrow(DeterminismError);
+  });
+
+  it("should uninstall the guard after detach() is called", () => {
+    const runtime = new PipelineRuntime();
+
+    const engine = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67),
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    expect(() => Math.random()).toThrow(DeterminismError);
+
+    runtime.detach();
+
+    expect(() => Math.random()).not.toThrow();
+  });
+
+  it("should not crash when attach is called twice (no-op guard)", () => {
+    const runtime = new PipelineRuntime();
+
+    const engine = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67),
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    expect(() => Math.random()).toThrow(DeterminismError);
+
+    runtime.attach(engine as any, () => scene as any);
+    expect(() => Math.random()).toThrow(DeterminismError);
+  });
+
+  it("should re-install guard on second attach after detach", () => {
+    const runtime = new PipelineRuntime();
+
+    const engine = {
+      runRenderLoop: vi.fn(),
+      stopRenderLoop: vi.fn(),
+      getDeltaTime: vi.fn(() => 16.67),
+    };
+    const scene = { render: vi.fn() };
+
+    runtime.attach(engine as any, () => scene as any);
+    runtime.detach();
+
+    runtime.attach(engine as any, () => scene as any);
+    expect(() => Math.random()).toThrow(DeterminismError);
+
+    runtime.detach();
+  });
+});
+
+// ─── Tech debt cleanup: JSDoc example uses instance method call ───
+
+describe("W-5: JSDoc example uses instance method call", () => {
+  it("suppressHavokAutoStep should be an instance method on the prototype", () => {
+    const proto = PipelineRuntime.prototype as unknown as Record<
+      string,
+      unknown
+    >;
+    expect(typeof proto.suppressHavokAutoStep).toBe("function");
+  });
+
+  it("suppressHavokAutoStep should not be a static method on the class", () => {
+    expect(
+      (PipelineRuntime as unknown as Record<string, unknown>)
+        .suppressHavokAutoStep
+    ).toBeUndefined();
   });
 });

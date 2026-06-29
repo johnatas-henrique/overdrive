@@ -1,11 +1,12 @@
 # Story 003: Console Summary Log
 
 > **Epic**: Telemetry Recorder
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 3h
+> **Last Updated**: 2026-06-26
 
 ## Context
 
@@ -77,6 +78,15 @@ _Handled by neighbouring stories — do not implement here:_
 
 ---
 
+## Integration Contract
+
+**Lifecycle order for Story 005:**
+`clear()` → `setTotalLaps(n)` → `setRecording(true)`
+
+`clear()` resets `_isRecording` to `false` and `_totalLaps` to `0`. Story 005 must re-establish both values after calling `clear()` on `race.started`.
+
+---
+
 ## QA Test Cases
 
 - **AC-1**: Console.log called every 300 ticks
@@ -119,7 +129,7 @@ _Handled by neighbouring stories — do not implement here:_
 **Story Type**: Logic
 **Required evidence**:
 
-- Logic: `tests/unit/dev-infra/telemetry-console-summary_test.ts` — must exist and pass
+- Logic: `tests/unit/dev-infra/telemetry-console-summary.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 
@@ -129,3 +139,11 @@ _Handled by neighbouring stories — do not implement here:_
 
 - Depends on: Story 001 (data model), Story 002 (sampled data in arrays), Story 005 (`isRecording` flag)
 - Unlocks: None (leaf story in output layer)
+
+## Completion Notes
+
+**Completed**: 2026-06-26
+**Criteria**: 6/6 passing
+**Deviations**: None
+**Test Evidence**: Logic: tests/unit/dev-infra/telemetry-console-summary.test.ts (27 tests)
+**Code Review**: Complete — APPROVED (babylonjs-specialist CLEAN, qa-tester ADEQUATE, lead-programmer APPROVED)

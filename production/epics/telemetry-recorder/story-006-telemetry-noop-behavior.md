@@ -1,11 +1,12 @@
 # Story 006: Production No-op Behavior
 
 > **Epic**: Telemetry Recorder
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 4h
+> **Last Updated**: 2026-06-26
 
 ## Context
 
@@ -14,10 +15,10 @@
 _(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh at review time)_
 
 **ADR Governing Implementation**: ADR-0022: Telemetry Recorder
-**ADR Decision Summary**: All code guarded by `if (__DEV__)`. Zero bytes in production build. No static imports from production code — Dev Infra loads via dynamic `import()`.
+**ADR Decision Summary**: All code guarded by `if (import.meta.env.DEV)`. Zero bytes in production build. No static imports from production code — Dev Infra loads via dynamic `import()`.
 
 **Engine**: Babylon.js 9.12.0 | **Risk**: LOW
-**Engine Notes**: None — pure TypeScript, zero Babylon.js imports. `__DEV__` resolves to `import.meta.env.DEV` (Vite convention).
+**Engine Notes**: None — pure TypeScript, zero Babylon.js imports. `import.meta.env.DEV` is Vite's built-in environment variable.
 
 **Control Manifest Rules (this layer)**:
 
@@ -31,10 +32,10 @@ _(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh 
 
 _From GDD `design/gdd/telemetry-recorder.md`, scoped to this story:_
 
-- [ ] **AC-1**: When `__DEV__` is false, `tick()` returns immediately without allocating memory, appending to arrays, or calling `console.log`
-- [ ] **AC-2**: When `__DEV__` is false, `window.__telemetry.export()` returns `null` (no-op guard)
-- [ ] **AC-3**: When `__DEV__` is false, `console.log` is never called by any TelemetryRecorder method
-- [ ] **AC-4**: No static import of Telemetry Recorder module exists in production code paths — all Dev Infra loading is dynamic via `import()` behind `if (__DEV__)`
+- [ ] **AC-1**: When `import.meta.env.DEV` is false, `tick()` returns immediately without allocating memory, appending to arrays, or calling `console.log`
+- [ ] **AC-2**: When `import.meta.env.DEV` is false, `window.__telemetry.export()` returns `null` (no-op guard)
+- [ ] **AC-3**: When `import.meta.env.DEV` is false, `console.log` is never called by any TelemetryRecorder method
+- [ ] **AC-4**: No static import of Telemetry Recorder module exists in production code paths — all Dev Infra loading is dynamic via `import()` behind `if (import.meta.env.DEV)`
 
 ---
 
@@ -47,18 +48,18 @@ _Derived from ADR-0022 Implementation Guidelines:_
 ```typescript
 export class TelemetryRecorder {
   tick(dt: number, cars: CarEntity[], tickCount: number): void {
-    if (!__DEV__) return; // FIRST LINE — before any work
+    if (!import.meta.env.DEV) return; // FIRST LINE — before any work
     // ... implementation
   }
 
   export(): string | null {
-    if (!__DEV__) return null;
+    if (!import.meta.env.DEV) return null;
     // ... implementation
   }
 }
 ```
 
-**`__DEV__` resolution:** `import.meta.env.DEV` (Vite convention — resolved at compile time). The build system tree-shakes all guarded code when `import.meta.env.DEV` evaluates to `false`.
+**`import.meta.env.DEV` resolution:** Vite's built-in environment variable (resolved at compile time). The build system tree-shakes all guarded code when `import.meta.env.DEV` evaluates to `false`.
 
 **No static imports from production code:**
 
@@ -80,25 +81,25 @@ export class TelemetryRecorder {
 _Handled by separate tasks:_
 
 - **Bundle analysis**: Verifying zero bytes in production build is an Epic DoD task (CI/bundle check), not a unit test. Run after all stories are implemented.
-- Story 002, 003, 004, 005 each have their own `__DEV__` guards — Story 006 validates they exist.
+- Story 002, 003, 004, 005 each have their own `import.meta.env.DEV` guards — Story 006 validates they exist.
 
 ---
 
 ## QA Test Cases
 
 - **AC-1**: tick() returns immediately when **DEV** = false
-  - Given: `__DEV__ = false` (mocked), Recorder with tickCounter at 290 (near log interval)
+  - Given: `import.meta.env.DEV = false` (mocked), Recorder with tickCounter at 290 (near log interval)
   - When: `tick()` is called with valid car data
   - Then: Returns without allocating, without appending, without console.log
   - And: tickCounter is NOT incremented
 
 - **AC-2**: export() returns null when **DEV** = false
-  - Given: `__DEV__ = false`
+  - Given: `import.meta.env.DEV = false`
   - When: `export()` is called
   - Then: Returns `null`
 
 - **AC-3**: console.log never called when **DEV** = false
-  - Given: `__DEV__ = false`, Recorder with samples that would trigger a log
+  - Given: `import.meta.env.DEV = false`, Recorder with samples that would trigger a log
   - When: Tick reaches a log boundary
   - Then: `console.log` spy records 0 calls
   - Edge cases: Multiple log boundary ticks
@@ -126,3 +127,11 @@ _Handled by separate tasks:_
 
 - Depends on: Story 001 (guards in data model), Story 002 (guards in sampling), Story 003 (guards in console), Story 004 (guards in export), Story 005 (guards in lifecycle)
 - Unlocks: Bundle verification CI task (Epic DoD line item)
+
+## Completion Notes
+
+**Completed**: 2026-06-26
+**Criteria**: 3/3 passing (AC-4 deferred to build verification)
+**Deviations**: None
+**Test Evidence**: Logic: tests/unit/dev-infra/telemetry-noop.test.ts (10 tests)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS fixed (babylonjs-specialist, qa-tester ADEQUATE)

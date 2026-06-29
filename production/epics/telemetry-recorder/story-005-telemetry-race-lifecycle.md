@@ -1,11 +1,12 @@
 # Story 005: Race Lifecycle Integration
 
 > **Epic**: Telemetry Recorder
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 6h
+> **Last Updated**: 2026-06-26
 
 ## Context
 
@@ -138,9 +139,9 @@ _Handled by neighbouring stories — do not implement here:_
 **Story Type**: Integration
 **Required evidence**:
 
-- Integration: `tests/integration/dev-infra/telemetry-lifecycle_test.ts` or documented playtest
+- Integration: `tests/integration/dev-infra/telemetry-lifecycle.test.ts` (12 tests passing)
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 12 tests passing
 
 ---
 
@@ -148,3 +149,11 @@ _Handled by neighbouring stories — do not implement here:_
 
 - Depends on: Story 001 (data model — `clear()`, Map storage), Event Bus (ADR-0001), GSM (ADR-0024)
 - Unlocks: Story 003 (`isRecording` flag), Story 004 (race metadata, startTime)
+
+## Completion Notes
+
+**Completed**: 2026-06-26
+**Criteria**: 5/5 passing
+**Deviations**: None
+**Test Evidence**: Integration: tests/integration/dev-infra/telemetry-lifecycle.test.ts (12 tests)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS fixed (babylonjs-specialist CONCERNS resolved, qa-tester GAPS resolved)

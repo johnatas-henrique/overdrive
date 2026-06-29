@@ -29,7 +29,7 @@
 - **Interfaces**: PascalCase with `I` prefix (e.g., `IPlayerState`, `IVehicleConfig`)
 - **Types**: PascalCase (e.g., `PlayerState`, `GamePhase`)
 - **Enums**: PascalCase (e.g., `GameState`, `PlayerAction`)
-- **Files**: camelCase (e.g., `playerController.ts`, `sceneManager.ts`)
+- **Files**: kebab-case (e.g., `player-controller.ts`, `scene-manager.ts`). PascalCase allowed only when filename = exported class name (e.g., `GameStateMachine.ts`)
 - **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_PLAYER_SPEED`, `GRAVITY`)
 - **Private members**: `_` prefix (e.g., `_health`, `_updatePosition()`)
 - **Test files**: co-located `*.test.ts` or `*.spec.ts`

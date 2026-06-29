@@ -44,7 +44,7 @@ _From GDD `design/gdd/audio.md`:_
 _Derived from ADR-0020 Implementation Guidelines:_
 
 ```typescript
-import { ConfigManager } from "../../foundation/config/configManager";
+import { ConfigManager } from "../../foundation/config/config-manager";
 import type { Persistence } from "../../foundation/persistence/persistence";
 
 const BUS_DEFAULTS = {

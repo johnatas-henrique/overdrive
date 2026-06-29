@@ -32,6 +32,9 @@ const DEFAULT_CONFIG: EventBusConfig = {
 export class EventBus implements IEventBus {
   private _state: BusState = "uninitialized";
   private _handlers = new Map<keyof EventMap, Set<Handler>>();
+  private _wildcardHandlers = new Set<
+    (detail: { event: string; payload: unknown }) => void
+  >();
   private _emitDepth = 0;
   private _maxEmitDepth: number;
   private _leakDetectionLevel: "warn" | "silent";
@@ -76,17 +79,44 @@ export class EventBus implements IEventBus {
           `[EventBus] Leaked subscriptions on dispose (event namespace${activeEvents.length > 1 ? "s" : ""}): ${activeEvents.join(", ")}`
         );
       }
+      if (this._wildcardHandlers.size > 0) {
+        console.warn(
+          `[EventBus] Leaked wildcard subscriptions on dispose (${this._wildcardHandlers.size} handler${this._wildcardHandlers.size > 1 ? "s" : ""})`
+        );
+      }
     }
 
     this._handlers.clear();
+    this._wildcardHandlers.clear();
     this._state = "disposed";
   }
 
   on<E extends keyof EventMap>(
     event: E,
     handler: (payload: EventMap[E]) => void
+  ): Subscription;
+  on(
+    event: "*",
+    handler: (detail: { event: string; payload: unknown }) => void
+  ): Subscription;
+  on(
+    event: keyof EventMap | "*",
+    handler: Handler | ((detail: { event: string; payload: unknown }) => void)
   ): Subscription {
     this._assertReady();
+
+    if (event === "*") {
+      this._wildcardHandlers.add(
+        handler as (detail: { event: string; payload: unknown }) => void
+      );
+      return {
+        unsubscribe: () => {
+          this._wildcardHandlers.delete(
+            handler as (detail: { event: string; payload: unknown }) => void
+          );
+        },
+      };
+    }
 
     let handlers = this._handlers.get(event);
     if (!handlers) {
@@ -124,7 +154,10 @@ export class EventBus implements IEventBus {
     this._assertReady();
 
     const handlers = this._handlers.get(event);
-    if (!handlers || handlers.size === 0) {
+    const hasTypedHandlers = handlers && handlers.size > 0;
+    const hasWildcardHandlers = this._wildcardHandlers.size > 0;
+
+    if (!hasTypedHandlers && !hasWildcardHandlers) {
       return;
     }
 
@@ -139,23 +172,47 @@ export class EventBus implements IEventBus {
       }
 
       // Snapshot iteration: subscribe/unsubscribe during dispatch is safe
-      const snapshot = Array.from(handlers);
-      for (const handler of snapshot) {
-        try {
-          handler(payload);
-        } catch (error) {
-          // Re-throw depth errors — they must abort the entire dispatch chain,
-          // not be caught by handler error isolation.
-          if (
-            error instanceof EventBusError &&
-            error.message === "Max emit depth exceeded"
-          ) {
-            throw error;
+      if (hasTypedHandlers) {
+        const snapshot = Array.from(handlers);
+        for (const handler of snapshot) {
+          try {
+            handler(payload);
+          } catch (error) {
+            // Re-throw depth errors — they must abort the entire dispatch chain,
+            // not be caught by handler error isolation.
+            if (
+              error instanceof EventBusError &&
+              error.message === "Max emit depth exceeded"
+            ) {
+              throw error;
+            }
+            console.error(
+              `[EventBus] Handler error on "${event as string}":`,
+              error
+            );
           }
-          console.error(
-            `[EventBus] Handler error on "${event as string}":`,
-            error
-          );
+        }
+      }
+
+      // Wildcard handlers: call after typed handlers with { event, payload }
+      if (hasWildcardHandlers) {
+        const wildcardSnapshot = Array.from(this._wildcardHandlers);
+        const detail = { event: event as string, payload: payload as unknown };
+        for (const handler of wildcardSnapshot) {
+          try {
+            handler(detail);
+          } catch (error) {
+            if (
+              error instanceof EventBusError &&
+              error.message === "Max emit depth exceeded"
+            ) {
+              throw error;
+            }
+            console.error(
+              `[EventBus] Wildcard handler error on "${event as string}":`,
+              error
+            );
+          }
         }
       }
     } finally {
@@ -163,9 +220,43 @@ export class EventBus implements IEventBus {
     }
   }
 
-  off(subscription: Subscription): void {
+  off(subscription: Subscription): void;
+  off<E extends keyof EventMap>(event: E): IEventBus;
+  off(
+    subscriptionOrEvent: Subscription | keyof EventMap
+  ): undefined | IEventBus {
     this._assertReady();
-    subscription.unsubscribe();
+
+    if (typeof subscriptionOrEvent === "string") {
+      this._handlers.delete(subscriptionOrEvent);
+      return this;
+    }
+
+    subscriptionOrEvent.unsubscribe();
+  }
+
+  /**
+   * Get a snapshot of all active subscriptions.
+   *
+   * Returns a Map of event names to their handler counts.
+   * Useful for debugging and dev tools inspection.
+   *
+   * @returns Map<string, number> — event name → handler count
+   */
+  getSubscriptions(): Map<string, number> {
+    const result = new Map<string, number>();
+    for (const [event, handlers] of this._handlers) {
+      if (handlers.size > 0) {
+        result.set(event as string, handlers.size);
+      }
+    }
+    // Include wildcard handler count (F-001 — wildcard subscriptions
+    // were omitted from the snapshot, making the subscription count
+    // appear incomplete in dev tools inspection).
+    if (this._wildcardHandlers.size > 0) {
+      result.set("*", this._wildcardHandlers.size);
+    }
+    return result;
   }
 
   /**

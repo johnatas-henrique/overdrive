@@ -1,11 +1,13 @@
 # Story 005: Event Bus Inspector
 
 > **Epic**: Dev Tools
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 6h
+> **Last Updated**: 2026-06-27
+> **Completed**: 2026-06-27
 
 ## Context
 
@@ -46,7 +48,7 @@ _Derived from ADR-0009 Implementation Guidelines:_
 1. **Event capture**: Dev Tools subscribes to all Event Bus events via a wildcard or by hooking into `emit()`. Stores in a 100-entry ring buffer:
 
    ```typescript
-   if (__DEV__) {
+   if (import.meta.env.DEV) {
      // Store a reference to emit for inspection, but never call it
      const originalEmit = eventBus.emit.bind(eventBus);
      // Subscribe to all events via a catch-all handler
@@ -84,7 +86,7 @@ _Derived from ADR-0009 Implementation Guidelines:_
 
 5. **GSM history integration**: Dev Tools listens to `gsm.state.entered` events for the GSM visualizer (Story 006) — same mechanism, different rendering:
    ```typescript
-   if (__DEV__) {
+   if (import.meta.env.DEV) {
      eventBus.on("gsm.state.entered", (state) => {
        devTools.recordTransition(state, Date.now());
      });

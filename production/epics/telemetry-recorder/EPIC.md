@@ -8,7 +8,7 @@
 
 ## Overview
 
-Dev-only telemetry capture. Sampling at 20 Hz (every 3 ticks at 60 fps). Reads directly from Physics, Fuel, Tire, AI Driver, Race Management via CarEntity. console.log every 5s during Racing. Export via Dev Tools F3 button + `window.__telemetry.export()` (returns JSON string). All behind `__DEV__` guard — zero bytes in production. Zero Babylon.js imports.
+Dev-only telemetry capture. Sampling at 20 Hz (every 3 ticks at 60 fps). Reads directly from Physics, Fuel, Tire, AI Driver, Race Management via CarEntity. console.log every 5s during Racing. Export via Dev Tools minimise key (default: 2) + `window.__telemetry.export()` (returns JSON string). All behind `import.meta.env.DEV` guard — zero bytes in production. Zero Babylon.js imports.
 
 ## Governing ADRs
 
@@ -23,7 +23,7 @@ Dev-only telemetry capture. Sampling at 20 Hz (every 3 ticks at 60 fps). Reads d
 | TR-TEL-001 | Telemetry capture at 20 Hz (every 3 ticks)                                  | ADR-0022 ✅  |
 | TR-TEL-002 | Records player and AI driver input, speed, position, fuel, tire, collisions | ADR-0022 ✅  |
 | TR-TEL-003 | In-memory ring buffer, capped per race session                              | ADR-0022 ✅  |
-| TR-TEL-004 | JSON export — F3 trigger + window.\_\_telemetry.export()                    | ADR-0022 ✅  |
+| TR-TEL-004 | JSON export — minimise key trigger (default: 2) + window.\_\_telemetry.export() | ADR-0022 ✅  |
 | TR-TEL-005 | Entirely tree-shaken behind **DEV** guard                                   | ADR-0022 ✅  |
 
 ## Stories
@@ -45,7 +45,7 @@ This epic is complete when:
 - All acceptance criteria from `design/gdd/telemetry-recorder.md` are verified
 - All Logic and Integration stories have passing test files in `tests/`
 - Bundle analysis CI task confirms zero bytes of Telemetry Recorder in production build (`dist/`)
-- All `__DEV__` guards confirmed present across all 6 story implementations
+- All `import.meta.env.DEV` guards confirmed present across all 6 story implementations
 
 ## Next Step
 

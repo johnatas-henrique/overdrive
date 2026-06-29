@@ -1,11 +1,12 @@
 # Story 003: HTML Overlay
 
 > **Epic**: Dev Tools
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: UI
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 10h
+> **Last Updated**: 2026-06-27
 
 ## Context
 
@@ -14,7 +15,7 @@
 _HTML overlay rendering above 3D viewport — FPS, draw calls, mesh count, physics bodies count, and system tick timing; position absolute, z-index 1000._
 
 **ADR Governing Implementation**: ADR-0009: Dev Tools Architecture
-**ADR Decision Summary**: HTML overlay div positioned absolutely over canvas container (`pointer-events: none`). `SceneInstrumentation` for metrics. `engine.onEndFrameObservable` for overlay refresh. Config tree uses `<details>` for collapsed sections (zero DOM nodes). Lazy init on first F1 press.
+**ADR Decision Summary**: HTML overlay div positioned absolutely over canvas container (`pointer-events: none`). `SceneInstrumentation` for metrics. `engine.onEndFrameObservable` for overlay refresh. Config tree uses `<details>` for collapsed sections (zero DOM nodes). Lazy init on first toggle press (default: backtick). Keybind values read from `DEV_TOOLS_KEYS` config (see `src/config/dev-tools-config.ts`).
 
 **Engine**: Babylon.js 9.12.0 | **Risk**: LOW
 **Engine Notes**: `SceneInstrumentation` imported from `@babylonjs/core/Instrumentation/sceneInstrumentation` — standard Core API. `engine.onEndFrameObservable` fires synchronously after each complete frame render.
@@ -22,7 +23,7 @@ _HTML overlay rendering above 3D viewport — FPS, draw calls, mesh count, physi
 **Control Manifest Rules (this layer)**:
 
 - **Required** (D1): HTML overlay — positioned absolutely over canvas container (`pointer-events: none`)
-- **Required** (D2): Lazy init on first F1 press — zero cost if never opened
+- **Required** (D2): Lazy init on first toggle press — zero cost if never opened
 - **Required** (D3): `SceneInstrumentation` for metrics (FPS, frame time, draw calls, physics time). Not custom counters.
 - **Required** (D4): `engine.onEndFrameObservable` for overlay refresh — fires after complete frame render
 - **Forbidden** (D-F1): Never intercept game input — overlay must have `pointer-events: none`
@@ -33,7 +34,7 @@ _HTML overlay rendering above 3D viewport — FPS, draw calls, mesh count, physi
 
 _From GDD `design/gdd/dev-tools.md`, scoped to this story:_
 
-- [ ] AC-3a: Overlay DOM is created on first F1 press as a sibling of `<canvas>` inside `engine.getRenderingCanvas().parentElement`; subsequent F1 presses toggle `display:none`/`display:flex`
+- [ ] AC-3a: Overlay DOM is created on first `toggle()` call as a sibling of `<canvas>` inside `engine.getRenderingCanvas().parentElement`; subsequent `toggle()` calls switch `display:none`/`display:flex`
 - [ ] AC-3b: Top bar shows FPS, frame time, draw calls, mesh count — values update every frame (refreshed by `engine.onEndFrameObservable`)
 - [ ] AC-3c: `SceneInstrumentation` captures `frameTime`, `physicsTime`, `drawCalls` — visible in top bar
 - [ ] AC-3d: Overlay refresh is driven by `engine.onEndFrameObservable` (fires synchronously after each complete frame)
@@ -62,10 +63,10 @@ _Derived from ADR-0009 Implementation Guidelines:_
    }
    ```
 
-2. **Overlay DOM creation** (lazy, on first F1 press):
+2. **Overlay DOM creation** (lazy, on first toggle press):
 
    ```typescript
-   if (__DEV__) {
+   if (import.meta.env.DEV) {
      const canvas = engine.getRenderingCanvas();
      const container = canvas?.parentElement;
      if (!container) return;
@@ -104,7 +105,7 @@ _Derived from ADR-0009 Implementation Guidelines:_
 5. **Frame-end refresh**:
 
    ```typescript
-   if (__DEV__) {
+   if (import.meta.env.DEV) {
      engine.onEndFrameObservable.add(() => {
        this._refreshDisplay();
      });
@@ -121,8 +122,8 @@ _Derived from ADR-0009 Implementation Guidelines:_
 
 _Handled by neighbouring stories — do not implement here:_
 
-- [Story 001]: `__DEV__` compile guard and module shell
-- [Story 002]: Keybind handling (F1/F2/F3) — this story provides `IDevTools` interface they consume
+- [Story 001]: `import.meta.env.DEV` compile guard and module shell
+- [Story 002]: Keybind handling (toggle/reload/minimise keys) — this story provides `IDevTools` interface they consume
 - [Story 004]: Config tree content population and in-place editing
 - [Story 005]: Event Bus inspector panel
 - [Story 006]: GSM visualizer panel
@@ -137,12 +138,12 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 - **AC-3a**: DOM creation and visibility toggle
   - Setup: Run game in dev mode, open browser DevTools Elements panel
-  - Step 1: Verify no `div#dev-overlay` exists in DOM before pressing F1
-  - Step 2: Press F1 → `div#dev-overlay` appears in DOM as a sibling of `<canvas>`
+  - Step 1: Verify no `div#dev-overlay` exists in DOM before pressing the toggle key
+  - Step 2: Press the toggle key → `div#dev-overlay` appears in DOM as a sibling of `<canvas>`
   - Step 3: Verify `overlay.style.display === "flex"`
-  - Step 4: Press F1 again → `overlay.style.display === "none"`
-  - Step 5: Press F1 again → `overlay.style.display === "flex"`
-  - Pass condition: DOM node created only on first F1 toggles between visible/hidden on subsequent presses
+  - Step 4: Press the toggle key again → `overlay.style.display === "none"`
+  - Step 5: Press the toggle key again → `overlay.style.display === "flex"`
+  - Pass condition: DOM node created only on first toggle press; toggles between visible/hidden on subsequent presses
 
 - **AC-3b/3c**: metrics visible in top bar
   - Setup: Overlay visible, game running (any state)
@@ -178,11 +179,34 @@ _Written by qa-lead at story creation. The developer implements against these �
 **Story Type**: UI
 **Required evidence**: `production/qa/evidence/html-overlay-evidence.md` or interaction test with sign-off
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 2026-06-27, manual step-through by Johnatas (Brave/Windows/3440×1440), all items PASS
 
 ---
 
 ## Dependencies
 
-- Depends on: Story 001 (compile guard must exist for `__DEV__` gating)
+- Depends on: Story 001 (compile guard must exist for `import.meta.env.DEV` gating)
 - Unlocks: Story 002 (needs `IDevTools.toggle()`), Stories 004-008 (need `IDevTools.registerDataSource()`)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-27
+**Criteria**: 6/6 passing (AC-9 verified — 1667 FPS with 120 config keys)
+**Deviations**: 
+- ADVISORY (logged as tech debt): Keybinds changed from F1/F2/F3 to backtick/1/2 (browser conflict)
+- ADVISORY (logged as tech debt): captureRenderTime not enabled (no AC requires it)
+- ADVISORY (logged as tech debt): Config tree uses inline CSS — refactor to stylesheet (Story 009)
+- FIXED: `update(dt)` → `update()` (ADR-0009 updated)
+- FIXED: B-1 — dispose() now removes onEndFrameObservable observer
+- FIXED: B-2 — SceneInstrumentation.dispose() now called before nulling
+- FIXED: AC-3c — physicsTime added as 5th metric in top bar
+- FIXED: pointer-events cascade (tabContent → none, interactive elements → auto)
+- FIXED: setMinimised() implementation (collapse to top bar only)
+- FIXED: Config tree refresh removed from _refreshDisplay() (was re-rendering 60x/sec)
+- FIXED: Config value color bug (_finishEdit created spans without style.cssText)
+- FIXED: Notification font size 12px → 14px
+- FIXED: Playground ConfigManager injection (120 test keys for AC-9)
+**Test Evidence**: 1160/1160 tests pass. Manual evidence at `production/qa/evidence/html-overlay-evidence.md`.
+**Code Review**: APPROVED WITH SUGGESTIONS (babylonjs-specialist APPROVED, qa-tester ADEQUATE, lead-programmer APPROVED WITH SUGGESTIONS — all suggestions addressed)

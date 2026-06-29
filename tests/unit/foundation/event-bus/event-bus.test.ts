@@ -4,8 +4,8 @@ import type {
   IEventBus,
   PitState,
   RaceResults,
-} from "../../src/foundation/event-bus";
-import { EventBus, EventBusError } from "../../src/foundation/event-bus";
+} from "../../../../src/foundation/event-bus";
+import { EventBus, EventBusError } from "../../../../src/foundation/event-bus";
 
 // ---------------------------------------------------------------------------
 // EventMap type correctness
@@ -190,6 +190,17 @@ describe("EventMap type correctness", () => {
     expect(payload).toEqual({});
   });
 
+  it("should accept valid payload for race.started", () => {
+    const payload: EventMap["race.started"] = {
+      track: "interlagos",
+      totalLaps: 40,
+      playerCarId: "player_one",
+    };
+    expect(payload.track).toBe("interlagos");
+    expect(payload.totalLaps).toBe(40);
+    expect(payload.playerCarId).toBe("player_one");
+  });
+
   it("should accept valid payload for asset.error", () => {
     const payload: EventMap["asset.error"] = {
       assetId: "car_ferrari_01",
@@ -355,13 +366,16 @@ describe("EventBusError", () => {
 
 describe("IEventBus interface", () => {
   // Test double: no Event Bus runtime exists in Story 001 (types only)
-  const createMockBus = (): IEventBus => ({
-    on: () => ({ unsubscribe: () => {} }),
-    once: () => ({ unsubscribe: () => {} }),
-    emit: () => {},
-    off: () => {},
-    dispose: () => {},
-  });
+  function createMockBus(): IEventBus {
+    const bus: IEventBus = {
+      on: () => ({ unsubscribe: () => {} }),
+      once: () => ({ unsubscribe: () => {} }),
+      emit: () => {},
+      off: () => bus,
+      dispose: () => {},
+    };
+    return bus;
+  }
 
   it("should define an on method returning Subscription", () => {
     const bus = createMockBus();
@@ -628,6 +642,39 @@ describe("EventBus runtime", () => {
 
       expect(raceStartCalled).toBe(false);
       expect(raceFinishCalled).toBe(true);
+    });
+
+    it("should remove ALL handlers for an event via off(event: E)", () => {
+      bus.init();
+      const log: string[] = [];
+
+      bus.on("race.starting", () => log.push("A"));
+      bus.on("race.starting", () => log.push("B"));
+
+      bus.off("race.starting");
+      bus.emit("race.starting", {});
+
+      expect(log).toEqual([]);
+    });
+
+    it("should return IEventBus from off(event: E) for chaining (reentrant pattern)", () => {
+      bus.init();
+      let called = false;
+
+      const result = bus.off("race.starting").on("race.starting", () => {
+        called = true;
+      });
+
+      expect(typeof result.unsubscribe).toBe("function");
+      bus.emit("race.starting", {});
+      expect(called).toBe(true);
+    });
+
+    it("should throw 'Not initialized' when off(event: E) called before init()", () => {
+      // Create a new uninitialized bus
+      const uninitBus = new EventBus();
+      expect(() => uninitBus.off("race.starting")).toThrow(EventBusError);
+      expect(() => uninitBus.off("race.starting")).toThrow("Not initialized");
     });
   });
 
@@ -1433,7 +1480,7 @@ describe("Zero imports", () => {
 async function readSourceFile(relativePath: string): Promise<string> {
   const fs = await import("node:fs");
   const path = await import("node:path");
-  const fullPath = path.resolve(__dirname, "../../", relativePath);
+  const fullPath = path.resolve(__dirname, "../../../../", relativePath);
   return fs.readFileSync(fullPath, "utf-8");
 }
 
@@ -1459,3 +1506,178 @@ function hasForbiddenImport(content: string): boolean {
   }
   return false;
 }
+
+// ---------------------------------------------------------------------------
+// getSubscriptions()
+// ---------------------------------------------------------------------------
+
+describe("getSubscriptions", () => {
+  let bus: IEventBus;
+
+  beforeEach(() => {
+    bus = new EventBus();
+    bus.init();
+  });
+
+  it("should return empty map when no subscriptions exist", () => {
+    const subs = bus.getSubscriptions();
+    expect(subs.size).toBe(0);
+  });
+
+  it("should return event name and handler count", () => {
+    bus.on("gsm.state.entered", () => {});
+    bus.on("gsm.state.entered", () => {});
+    bus.on("fuel.low", () => {});
+
+    const subs = bus.getSubscriptions();
+    expect(subs.get("gsm.state.entered")).toBe(2);
+    expect(subs.get("fuel.low")).toBe(1);
+    expect(subs.size).toBe(2);
+  });
+
+  it("should not include events with zero handlers", () => {
+    const sub = bus.on("fuel.low", () => {});
+    sub.unsubscribe();
+
+    const subs = bus.getSubscriptions();
+    expect(subs.has("fuel.low")).toBe(false);
+  });
+
+  it("should reflect real-time changes", () => {
+    bus.on("fuel.low", () => {});
+    expect(bus.getSubscriptions().get("fuel.low")).toBe(1);
+
+    const sub2 = bus.on("fuel.low", () => {});
+    expect(bus.getSubscriptions().get("fuel.low")).toBe(2);
+
+    sub2.unsubscribe();
+    expect(bus.getSubscriptions().get("fuel.low")).toBe(1);
+  });
+
+  it("should include wildcard subscriptions (F-001)", () => {
+    bus.on("*", () => {});
+    bus.on("fuel.low", () => {});
+
+    const subs = bus.getSubscriptions();
+    expect(subs.has("*")).toBe(true);
+    expect(subs.get("*")).toBe(1);
+    expect(subs.size).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Wildcard subscription
+// ---------------------------------------------------------------------------
+
+describe("wildcard subscription", () => {
+  let bus: IEventBus;
+
+  beforeEach(() => {
+    bus = new EventBus();
+    bus.init();
+  });
+
+  it("should receive all events via wildcard", () => {
+    const calls: Array<{ event: string; payload: unknown }> = [];
+    bus.on("*", (detail) => calls.push(detail));
+
+    bus.emit("gsm.state.entered", { state: "Racing", previous: "Grid" });
+    bus.emit("fuel.low", { remaining: 5 });
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0].event).toBe("gsm.state.entered");
+    expect(calls[1].event).toBe("fuel.low");
+  });
+
+  it("should receive typed payload in wildcard detail", () => {
+    let received: unknown = null;
+    bus.on("*", (detail) => {
+      received = detail.payload;
+    });
+
+    bus.emit("fuel.low", { remaining: 5 });
+    expect(received).toEqual({ remaining: 5 });
+  });
+
+  it("should unsubscribe wildcard correctly", () => {
+    const calls: Array<{ event: string; payload: unknown }> = [];
+    const sub = bus.on("*", (detail) => calls.push(detail));
+
+    bus.emit("fuel.low", { remaining: 5 });
+    expect(calls).toHaveLength(1);
+
+    sub.unsubscribe();
+    bus.emit("fuel.low", { remaining: 3 });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("should not block typed handlers if wildcard throws", () => {
+    const typedCalls: unknown[] = [];
+    bus.on("fuel.low", (p) => typedCalls.push(p));
+    bus.on("*", () => {
+      throw new Error("wildcard error");
+    });
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    bus.emit("fuel.low", { remaining: 5 });
+
+    expect(typedCalls).toHaveLength(1);
+    expect(consoleSpy).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  it("should support multiple wildcard handlers", () => {
+    const calls1: string[] = [];
+    const calls2: string[] = [];
+    bus.on("*", (d) => calls1.push(d.event));
+    bus.on("*", (d) => calls2.push(d.event));
+
+    bus.emit("fuel.low", { remaining: 5 });
+
+    expect(calls1).toHaveLength(1);
+    expect(calls2).toHaveLength(1);
+  });
+
+  it("should emit wildcard after typed handlers", () => {
+    const order: string[] = [];
+    bus.on("fuel.low", () => order.push("typed"));
+    bus.on("*", () => order.push("wildcard"));
+
+    bus.emit("fuel.low", { remaining: 5 });
+
+    expect(order).toEqual(["typed", "wildcard"]);
+  });
+
+  it("should clean up wildcard handlers on dispose", () => {
+    bus.on("*", () => {});
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    bus.dispose();
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("wildcard"));
+    warnSpy.mockRestore();
+  });
+
+  it("should use plural 'handlers' in warning when multiple wildcard handlers leaked", () => {
+    bus.on("*", () => {});
+    bus.on("*", () => {});
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    bus.dispose();
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("2 handlers"));
+    warnSpy.mockRestore();
+  });
+
+  it("should propagate EventBusError from wildcard handler recursive emit", () => {
+    bus.on("*", () => bus.emit("fuel.low", { remaining: 5 }));
+    expect(() => bus.emit("fuel.low", { remaining: 5 })).toThrow(EventBusError);
+    expect(() => bus.emit("fuel.low", { remaining: 5 })).toThrow(
+      "Max emit depth exceeded"
+    );
+  });
+});

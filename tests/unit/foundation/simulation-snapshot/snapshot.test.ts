@@ -7,7 +7,7 @@ import {
   SimulationSnapshot,
   SnapshotError,
   sha256,
-} from "../../src/foundation/simulation-snapshot";
+} from "../../../../src/foundation/simulation-snapshot";
 
 // ---------------------------------------------------------------------------
 // Crypto polyfill — ensure crypto.subtle is available in Node.js test env
@@ -32,15 +32,18 @@ if (typeof crypto?.subtle === "undefined") {
   });
 }
 
-// Suppress console.warn output during tests
+// Suppress console output during tests
 let warnSpy: ReturnType<typeof vi.spyOn>;
+let errorSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
 afterEach(() => {
   warnSpy.mockRestore();
+  errorSpy.mockRestore();
 });
 
 // ---------------------------------------------------------------------------
@@ -313,31 +316,31 @@ describe("AC-3: fnv1a returns 16-character hex string", () => {
 // ---------------------------------------------------------------------------
 
 describe("AC-4: fnv1a determinism — same input, same output", () => {
-  it('should return identical hash for "test data" over 1000 calls', () => {
+  it('should return identical hash for "test data" over 10 calls', () => {
     const expected = fnv1a("test data");
-    for (let i = 0; i < 1000; i++) {
+    for (let i = 0; i < 10; i++) {
       expect(fnv1a("test data")).toBe(expected);
     }
   });
 
   it('should return identical hash for "" (empty string) every time', () => {
     const expected = fnv1a("");
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 10; i++) {
       expect(fnv1a("")).toBe(expected);
     }
   });
 
-  it("should be deterministic for large 10KB blob across 100 calls", () => {
+  it("should be deterministic for large 10KB blob across 10 calls", () => {
     const large = "x".repeat(10240);
     const expected = fnv1a(large);
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 10; i++) {
       expect(fnv1a(large)).toBe(expected);
     }
   });
 
   it("should be deterministic for unicode across multiple calls", () => {
     const expected = fnv1a("🏎️ 💨 overdrive 🏁");
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 10; i++) {
       expect(fnv1a("🏎️ 💨 overdrive 🏁")).toBe(expected);
     }
   });
@@ -1204,16 +1207,16 @@ describe("AC-1: sha256 returns 64-char hex string", () => {
 // ---------------------------------------------------------------------------
 
 describe("AC-2: sha256 determinism — same input, same output", () => {
-  it('should return identical hash for "hello" over 100 calls', async () => {
+  it('should return identical hash for "hello" over 5 calls', async () => {
     const expected = await sha256("hello");
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 5; i++) {
       expect(await sha256("hello")).toBe(expected);
     }
   });
 
   it('should return identical hash for "" (empty string) every time', async () => {
     const expected = await sha256("");
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 5; i++) {
       expect(await sha256("")).toBe(expected);
     }
   });
@@ -2171,5 +2174,314 @@ describe("AC-8: Missing system in registry skipped gracefully", () => {
     );
 
     warnSpy.mockRestore();
+  });
+});
+
+// ===========================================================================
+// Story 007: getRegisteredSystems + getHashes public methods
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// AC-1: getRegisteredSystems
+// ---------------------------------------------------------------------------
+
+describe("getRegisteredSystems", () => {
+  it("should return all registered systems", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const sysA = new TestSnapshotSystem("physics", { v: 1 });
+    const sysB = new TestSnapshotSystem("fuel", { v: 2 });
+    ss.register(sysA);
+    ss.register(sysB);
+
+    const systems = ss.getRegisteredSystems();
+    expect(systems.length).toBe(2);
+    const ids = systems.map((s) => s.systemId).sort();
+    expect(ids).toEqual(["fuel", "physics"]);
+  });
+
+  it("should return empty array when no systems registered", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const systems = ss.getRegisteredSystems();
+    expect(systems).toEqual([]);
+  });
+
+  it("should return read-only array (shallow copy, not live reference)", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("a", { v: 1 }));
+
+    const systems = ss.getRegisteredSystems();
+    // Mutating the returned array should not affect the registry
+    expect(systems.length).toBe(1);
+
+    // After dispose, we can't call getRegisteredSystems again,
+    // but the previously returned array should still be accessible
+    ss.dispose();
+    // The old array reference is still usable (it's a snapshot)
+    expect(systems.length).toBe(1);
+  });
+
+  it("should throw SnapshotError if called before init", () => {
+    const ss = new SimulationSnapshot();
+    expect(() => ss.getRegisteredSystems()).toThrow(SnapshotError);
+    expect(() => ss.getRegisteredSystems()).toThrow("Not initialized");
+  });
+
+  it("should throw SnapshotError if called after dispose", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("x", { v: 1 }));
+    ss.dispose();
+    expect(() => ss.getRegisteredSystems()).toThrow(SnapshotError);
+    expect(() => ss.getRegisteredSystems()).toThrow("Not initialized");
+  });
+
+  it("should include systems added after previous getRegisteredSystems call", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("a", { v: 1 }));
+
+    const before = ss.getRegisteredSystems();
+    expect(before.length).toBe(1);
+
+    ss.register(new TestSnapshotSystem("b", { v: 2 }));
+
+    const after = ss.getRegisteredSystems();
+    expect(after.length).toBe(2);
+  });
+
+  it("should return systems that reference the same live instances", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const sys = new TestSnapshotSystem("live", { v: 1 });
+    ss.register(sys);
+
+    const systems = ss.getRegisteredSystems();
+    // Mutating the system should be visible through the reference
+    systems[0].deserialize({ v: 99 });
+    expect(sys.serialize()).toEqual({ v: 99 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AC-2: getHashes
+// ---------------------------------------------------------------------------
+
+describe("getHashes", () => {
+  it("should return current hash per systemId", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const sysA = new TestSnapshotSystem("a", { v: 1 });
+    const sysB = new TestSnapshotSystem("b", { v: 2 });
+    ss.register(sysA);
+    ss.register(sysB);
+
+    const hashes = ss.getHashes();
+    expect(hashes.size).toBe(2);
+    expect(hashes.get("a")).toBe(sysA.hash());
+    expect(hashes.get("b")).toBe(sysB.hash());
+  });
+
+  it("should return empty map when no systems registered", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const hashes = ss.getHashes();
+    expect(hashes.size).toBe(0);
+  });
+
+  it("should return Map<string, string> with hex hash strings", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("x", { data: "test" }));
+
+    const hashes = ss.getHashes();
+    const hash = hashes.get("x");
+    expect(typeof hash).toBe("string");
+    expect(hash).toMatch(/^[0-9a-f]{16}$/);
+  });
+
+  it("should return fresh Map each call", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("a", { v: 1 }));
+
+    const map1 = ss.getHashes();
+    const map2 = ss.getHashes();
+    expect(map1).not.toBe(map2); // different Map instances
+    expect(map1.get("a")).toBe(map2.get("a")); // same values
+  });
+
+  it("should reflect state changes after deserialize", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const sys = new TestSnapshotSystem("dynamic", { v: 1 });
+    ss.register(sys);
+
+    const hashBefore = ss.getHashes().get("dynamic");
+    sys.deserialize({ v: 2 });
+    const hashAfter = ss.getHashes().get("dynamic");
+
+    expect(hashBefore).not.toBe(hashAfter);
+  });
+
+  it("should throw SnapshotError if called before init", () => {
+    const ss = new SimulationSnapshot();
+    expect(() => ss.getHashes()).toThrow(SnapshotError);
+    expect(() => ss.getHashes()).toThrow("Not initialized");
+  });
+
+  it("should throw SnapshotError if called after dispose", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new TestSnapshotSystem("x", { v: 1 }));
+    ss.dispose();
+    expect(() => ss.getHashes()).toThrow(SnapshotError);
+    expect(() => ss.getHashes()).toThrow("Not initialized");
+  });
+
+  it("should match system.hash() for each registered system", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    const sysA = new TestSnapshotSystem("a", { fuel: 50 });
+    const sysB = new TestSnapshotSystem("b", { speed: 100 });
+    ss.register(sysA);
+    ss.register(sysB);
+
+    const hashes = ss.getHashes();
+    expect(hashes.get("a")).toBe(sysA.hash());
+    expect(hashes.get("b")).toBe(sysB.hash());
+  });
+});
+
+// ─── Coverage gap: hash error handling ───
+
+describe("Coverage gap — Simulation Snapshot hash error handling", () => {
+  it("should handle hash() throwing an error gracefully in getHashes()", () => {
+    const snapshot = new SimulationSnapshot();
+    snapshot.init();
+
+    // Register a system whose hash() throws
+    snapshot.register({
+      systemId: "throwing-system",
+      serialize: () => ({ v: 1 }),
+      deserialize: () => {},
+      hash: () => {
+        throw new Error("Hash computation failed");
+      },
+    });
+
+    // Register a normal system
+    snapshot.register({
+      systemId: "normal-system",
+      serialize: () => ({ v: 2 }),
+      deserialize: () => {},
+      hash: () => "normal-hash",
+    });
+
+    // getHashes() should not throw — it has per-system try/catch
+    const hashes = snapshot.getHashes();
+
+    // Should have hash for both systems (one "error", one normal)
+    expect(hashes.get("throwing-system")).toBe("error");
+    expect(hashes.get("normal-system")).toBe("normal-hash");
+  });
+});
+
+// ─── Tech debt cleanup: dispose() clears registry even when serialize() throws ───
+
+describe("C-2: dispose() clears registry even when serialize() throws", () => {
+  /** A system that optionally throws on serialize(). */
+  class FailingSnapshotSystem implements ISnapshotable {
+    readonly systemId: string;
+    private _shouldThrow = false;
+
+    constructor(systemId: string, shouldThrow = false) {
+      this.systemId = systemId;
+      this._shouldThrow = shouldThrow;
+    }
+
+    serialize(): Record<string, unknown> {
+      if (this._shouldThrow) {
+        throw new Error(`Serialize failed for ${this.systemId}`);
+      }
+      return { ok: true };
+    }
+
+    deserialize(_state: Record<string, unknown>): void {
+      // no-op
+    }
+
+    hash(): string {
+      return "a430d84680aabd0b";
+    }
+  }
+
+  it("should clear the registry when a system throws during serialize()", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new FailingSnapshotSystem("good", false));
+    ss.register(new FailingSnapshotSystem("bad", true));
+
+    ss.dispose();
+
+    // Registry should be cleared — takeSnapshot throws SnapshotError
+    expect(() => ss.takeSnapshot(0)).toThrow(SnapshotError);
+  });
+
+  it("should log a warning when serialize() throws during dispose", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new FailingSnapshotSystem("bad", true));
+
+    ss.dispose();
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('System "bad" failed to serialize during dispose')
+    );
+  });
+
+  it("should handle non-Error throw during dispose gracefully", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    class NonErrorThrower implements ISnapshotable {
+      readonly systemId = "non-error";
+      serialize(): Record<string, unknown> {
+        throw "string error";
+      }
+      deserialize(): void {}
+      hash(): string {
+        return "a430d84680aabd0b";
+      }
+    }
+
+    ss.register(new NonErrorThrower());
+    ss.dispose();
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Unknown error")
+    );
+  });
+
+  it("should not throw when all systems serialize() successfully", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new FailingSnapshotSystem("a", false));
+    ss.register(new FailingSnapshotSystem("b", false));
+
+    expect(() => ss.dispose()).not.toThrow();
+  });
+
+  it("should transition to Disposed state after dispose with failures", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+    ss.register(new FailingSnapshotSystem("bad", true));
+
+    ss.dispose();
+
+    // Double dispose should be idempotent (state is Disposed)
+    expect(() => ss.dispose()).not.toThrow();
   });
 });

@@ -1,0 +1,55 @@
+/**
+ * @fileoverview Shared CSS custom properties — Art Bible palette.
+ *
+ * Source of truth: design/art/art-bible.md (Sections 4.1, 4.4, 7.1)
+ *
+ * These variables are consumed by:
+ * - src/core/dev-tools/dev-tools.css (debug overlay, tree-shaken in prod)
+ * - src/styles/game.css (player-facing UI, future)
+ *
+ * Rule 4.6.4: "UI does not mix with world. The HUD palette is separate
+ * from the game palette." Dev Tools uses game palette for background/border
+ * consistency, but adds debug-specific accent colours (gold, cyan, yellow)
+ * that are NOT part of the HUD palette.
+ */
+
+:root {
+  /* ── Game Palette (Section 4.1) ──────────────────────────────── */
+  --od-race-red: #e8301a;
+  --od-track-black: #2a2a2a;
+  --od-kerb-white: #f0f0f0;
+  --od-asphalt-grey: #4a4a4a;
+  --od-signal-yellow: #f5c800;
+
+  /* ── HUD Palette (Section 4.4) ───────────────────────────────── */
+  --od-hud-white: #ffffff;
+  --od-hud-red: #e8301a;
+  --od-hud-blue: #00bfff;
+  --od-hud-yellow: #f5c800;
+  --od-hud-cyan: #00e5ff;
+  --od-hud-ghost: #808080;
+  --od-hud-green: #00ff66;
+
+  /* ── UI Palette (Section 7.1 — "Misto") ──────────────────────── */
+  --od-ui-bg: #0d0d0f;
+  --od-ui-panel: #111114;
+  --od-ui-border: rgba(255, 255, 255, 0.05);
+  --od-ui-border-strong: rgba(255, 255, 255, 0.1);
+  --od-ui-radius: 8px;
+  --od-ui-radius-sm: 4px;
+
+  /* ── Dev Tools Debug Palette (NOT in Art Bible) ──────────────── */
+  /* Accent colours for data-dense debug display. These are deliberately
+     different from HUD palette to avoid confusion with game UI. */
+  --dt-accent: #ffd700;
+  --dt-key: #66d9ef;
+  --dt-value: #e6db74;
+  --dt-success: #4a4;
+  --dt-text-muted: #888;
+  --dt-text-dim: #666;
+  --dt-text-secondary: #ccc;
+  --dt-font-mono: "Courier New", monospace;
+  --dt-font-size-xs: 11px;
+  --dt-font-size-sm: 12px;
+  --dt-font-size-md: 14px;
+}

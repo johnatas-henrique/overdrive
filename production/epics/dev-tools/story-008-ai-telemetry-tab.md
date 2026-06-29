@@ -1,7 +1,8 @@
 # Story 008: AI Telemetry Tab
 
 > **Epic**: Dev Tools
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-28
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
@@ -33,6 +34,7 @@ _From GDD `design/gdd/dev-tools.md`, scoped to this story:_
 
 - [ ] AC-8a: AI Telemetry tab shows per-car speed (`physics.getSpeed(carId)`), position (`raceManager.getPosition(carId)`: lap + track progress), and active behavior node (`aiDriver.getBehavior(carId)`: `'Normal' | 'Following' | 'Passing'`)
 - [ ] AC-8b: Table has one row per car with all three values; values update live each tick (sample rate: every 10 ticks)
+- [ ] AC-8c: When no AI cars are registered (single-player test without AI), the tab renders a placeholder row with text "No AI cars on track" — graceful empty state
 
 ---
 
@@ -43,7 +45,7 @@ _Derived from ADR-0009 Implementation Guidelines:_
 1. **Data source registration**:
 
    ```typescript
-   if (__DEV__) {
+   if (import.meta.env.DEV) {
      devTools.registerDataSource("ai-telemetry", () => {
        const cars = physics.getAllTelemetry();
        return cars.map((car) => ({
@@ -104,13 +106,16 @@ _Written by qa-lead at story creation. The developer implements against these �
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/dev-tools/ai-telemetry-tab_test.ts` or documented playtest
+**Required evidence**: `tests/integration/dev-tools/ai-telemetry-panel.test.ts` or documented playtest
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 32 tests passing
 
 ---
 
-## Dependencies
+## Completion Notes
 
-- Depends on: Story 003 (needs overlay shell + `IDevTools.registerDataSource`)
-- Unlocks: None
+**Completed**: 2026-06-28
+**Criteria**: 3/3 passing
+**Deviations**: ADVISORY — pointer-events cascade documented in ADR-0009 (intentional inconsistency between tabs with scrollable content vs small content)
+**Test Evidence**: Integration test at tests/integration/dev-tools/ai-telemetry-panel.test.ts (32 tests)
+**Code Review**: APPROVED WITH SUGGESTIONS (3 suggestions: configurable player ID, innerHTML clearing, integration test for DevTools.setAiTelemetry)

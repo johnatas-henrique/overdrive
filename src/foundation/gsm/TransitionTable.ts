@@ -7,7 +7,7 @@
  * @see ADR-0024 — Game State Machine, Decision 1
  */
 
-import type { State } from "./State";
+import type { State } from "./types";
 
 export const TRANSITIONS: Record<State, State[]> = {
   Loading: ["Menu"],

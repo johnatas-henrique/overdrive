@@ -350,10 +350,9 @@ export class Persistence {
     try {
       json = JSON.stringify(entry);
     } catch (error) {
-      console.warn(
-        `[Persistence] Failed to serialize key "${key}": ${error instanceof Error ? error.message : "Unknown serialization error"}`
+      throw new PersistenceError(
+        `Failed to serialize key "${key}": ${error instanceof Error ? error.message : "Unknown serialization error"}`
       );
-      return;
     }
 
     try {
@@ -361,6 +360,18 @@ export class Persistence {
     } catch (error) {
       this._lastError = error instanceof Error ? error.name : "UnknownError";
       this._state = PersistenceState.Degraded;
+      // Check for SecurityError (e.g. private browsing / storage access
+      // denied by the browser's security policies). Non-recoverable security
+      // errors mark the state as Degraded permanently (retry() will not
+      // attempt to recover).
+      // See F-006 — SecurityError handling in degraded transitions.
+      if (this._lastError === "SecurityError") {
+        this._recoverable = false;
+      }
+      // Queue the serialized data for retry so it is not lost when
+      // storage becomes available again. Queue is empty on first
+      // failure (state just transitioned to Degraded), so no eviction needed.
+      this._writeQueue.push({ key, data });
     }
   }
 
@@ -402,7 +413,14 @@ export class Persistence {
     }
 
     // Ready state
-    const raw = localStorage.getItem(this._prefix + key);
+    let raw: string | null;
+    try {
+      raw = localStorage.getItem(this._prefix + key);
+    } catch (error) {
+      this._lastError = error instanceof Error ? error.name : "UnknownError";
+      this._state = PersistenceState.Degraded;
+      return null;
+    }
 
     if (raw === null) {
       return null;

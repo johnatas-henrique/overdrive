@@ -25,7 +25,37 @@ class App {
     this.engine = await this._createEngine();
     this.scene = new Scene(this.engine);
     await this._setPhysics();
-    await CreateMainScene(this.scene);
+
+    // ── Event Bus (shared across all systems) ─────────────────────
+    // Created before CreateMainScene so game systems can use it
+    // during their own initialisation (D-013 — EventBus creation order).
+    const { EventBus } = await import("./foundation/event-bus");
+    const eventBus = new EventBus();
+    eventBus.init();
+
+    await CreateMainScene(this.scene, eventBus);
+
+    // ── Dev Tools (tree-shaken in production) ─────────────────────
+    if (import.meta.env.DEV) {
+      const { initDevTools } = await import("./core/dev-tools");
+      const {
+        getPlaygroundGsm,
+        getPlaygroundSnapshot,
+        getPlaygroundAiTelemetry,
+      } = await import("./playground/main-scene");
+      const gsm = getPlaygroundGsm();
+      const simulationSnapshot = getPlaygroundSnapshot();
+      const aiTelemetry = getPlaygroundAiTelemetry;
+      await initDevTools(
+        this.engine,
+        this.scene,
+        eventBus,
+        gsm ?? undefined,
+        simulationSnapshot ?? undefined,
+        aiTelemetry
+      );
+    }
+
     this._render();
   }
 

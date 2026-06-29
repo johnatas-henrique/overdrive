@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { ConfigManager } from "../../src/foundation/config";
-import { wireConfigHmr } from "../../src/foundation/config/hmr";
+import { ConfigManager } from "../../../../src/foundation/config";
+import { wireConfigHmr } from "../../../../src/foundation/config/hmr";
 
 describe("wireConfigHmr", () => {
   it("should call ctx.accept when hot context is provided", () => {

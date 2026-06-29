@@ -251,7 +251,7 @@
 **What to test**:
 - `FixedUpdatePipeline.executeTick()` runs within Babylon.js `engine.runRenderLoop()`
 - Pipeline tick aligned with render loop execution order
-- Dev assertion fires only in `__DEV__` mode
+- Dev assertion fires only in `import.meta.env.DEV` mode
 **Estimated test count**: ~2 integration tests
 
 ---
@@ -367,7 +367,7 @@ Critical paths to verify before any QA hand-off for Sprint 1:
 5. Determinism: two runs with same seed produce identical snapshot hashes
 6. Persistence: save + load round-trip completes without data loss
 7. Snapshot: full capture + restore cycle produces matching hashes
-8. Dev assertions fire correctly in `__DEV__` mode
+8. Dev assertions fire correctly in `import.meta.env.DEV` mode
 9. No console errors during normal init sequence
 10. Build passes (`npm run build`) with no type errors or lint warnings
 

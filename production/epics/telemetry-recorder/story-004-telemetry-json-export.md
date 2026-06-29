@@ -1,11 +1,12 @@
 # Story 004: JSON Export
 
 > **Epic**: Telemetry Recorder
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 4h
+> **Last Updated**: 2026-06-26
 
 ## Context
 
@@ -21,7 +22,7 @@ _(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh 
 
 **Control Manifest Rules (this layer)**:
 
-- Required: D9 (export via Dev Tools F3 + `window.__telemetry.export()`), D-F2 (read-only)
+- Required: D9 (export via Dev Tools minimise key + `window.__telemetry.export()`), D-F2 (read-only)
 - Forbidden: D-F3 (never emit Event Bus events)
 - Guardrail: D-G1 (zero bytes in production build)
 
@@ -36,7 +37,7 @@ _From GDD `design/gdd/telemetry-recorder.md`, scoped to this story:_
 - [ ] **AC-3**: Empty export (no samples recorded) returns valid JSON with empty `cars: {}` and race metadata with sensible defaults (duration=0)
 - [ ] **AC-4**: `export()` returns a point-in-time snapshot — subsequent sample recording does not mutate the already-returned JSON
 - [ ] **AC-5**: Team names appear correctly in JSON — `cars["macklen"].team === "Macklen"`
-- [ ] **AC-6**: When `__DEV__` is false, `export()` returns `null` (guard behavior)
+- [ ] **AC-6**: When `import.meta.env.DEV` is false, `export()` returns `null` (guard behavior)
 
 ---
 
@@ -76,9 +77,9 @@ _Derived from ADR-0022 Implementation Guidelines:_
 
 - Initialized by this story with `window.__telemetry = { export: () => string }`
 - No other system writes to `window.__telemetry`
-- Guarded by `if (__DEV__)` — in production, `window.__telemetry` is never assigned
+- Guarded by `if (import.meta.env.DEV)` — in production, `window.__telemetry` is never assigned
 
-**F3 keybind integration:** This story does NOT handle the F3 keypress. The Dev Tools system (separate epic) triggers `window.__telemetry.export()` on F3 press. This story only provides the function — the binding belongs to the Dev Tools epic.
+**Minimise keybind integration:** This story does NOT handle the minimise keypress. The Dev Tools system (separate epic) triggers `window.__telemetry.export()` on minimise key press (default: 2, configurable via `devTools.keys.minimise`). This story only provides the function — the binding belongs to the Dev Tools epic.
 
 **Performance:** JSON serialization of up to ~11 MB of data. This is a developer action (not per-frame) — no performance concern.
 
@@ -91,8 +92,14 @@ _Derived from ADR-0022 Implementation Guidelines:_
 _Handled by neighbouring stories — do not implement here:_
 
 - [Story 005]: Capturing `startTime` from `race.started` event
-- Dev Tools epic: F3 keybind to trigger export + download `.json` file
+- Dev Tools epic: minimise keybind (default: 2) to trigger export + download `.json` file
 - CSV or other export formats (MVP is JSON only)
+
+---
+
+## Implementation Deviations
+
+**ADR-0022 sampling approach**: The ADR pseudocode samples based on `this.tickCounter` (count of `tick()` calls), while the implementation samples based on `tickCount` (the pipeline tick parameter). The implementation's approach is more correct — it ties samples to simulation ticks rather than recorder invocations. This is a strict improvement, not a regression.
 
 ---
 
@@ -132,7 +139,7 @@ _Handled by neighbouring stories — do not implement here:_
   - And: `cars["willard"].team === "Willard"`
 
 - **AC-6**: No-op when **DEV** is false
-  - Given: `__DEV__ = false`
+  - Given: `import.meta.env.DEV = false`
   - When: `export()` is called
   - Then: Returns `null`
 
@@ -143,7 +150,7 @@ _Handled by neighbouring stories — do not implement here:_
 **Story Type**: Logic
 **Required evidence**:
 
-- Logic: `tests/unit/dev-infra/telemetry-json-export_test.ts` — must exist and pass
+- Logic: `tests/unit/dev-infra/telemetry-json-export.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 
@@ -153,3 +160,11 @@ _Handled by neighbouring stories — do not implement here:_
 
 - Depends on: Story 001 (TelemetrySample type, storage), Story 005 (race metadata, startTime)
 - Unlocks: Dev Tools epic (provides `window.__telemetry.export()` surface)
+
+## Completion Notes
+
+**Completed**: 2026-06-26
+**Criteria**: 6/6 passing
+**Deviations**: None
+**Test Evidence**: Logic: tests/unit/dev-infra/telemetry-json-export.test.ts (24 tests)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (babylonjs-specialist, qa-tester ADEQUATE, lead-programmer)

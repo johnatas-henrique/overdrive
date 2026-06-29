@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ConfigError, ConfigManager } from "../../src/foundation/config";
+import { ConfigError, ConfigManager } from "../../../../src/foundation/config";
+import {
+  getConfigManager,
+  setConfigManager,
+} from "../../../../src/foundation/config/config-manager";
 
 describe("ConfigManager", () => {
   // Shared env var tracking — used by env override and invalidateNamespace suites
@@ -768,7 +772,6 @@ describe("ConfigManager", () => {
     });
 
     it("should throw ConfigError when raw config becomes invalid after manual store manipulation", () => {
-      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       const cm = new ConfigManager();
       cm.init();
       cm.register("teams", { macklen: { motor: 250 } });
@@ -778,16 +781,8 @@ describe("ConfigManager", () => {
       (cm as any)._resolved.delete("teams");
       (cm as any)._store.set("teams", null);
 
-      // _buildResolved logs error, resolved stays empty → ConfigError thrown
+      // _buildResolved now throws ConfigError instead of logging to console.error
       expect(() => cm.get("teams.macklen.motor")).toThrow(ConfigError);
-
-      // Verify _buildResolved logged the error
-      expect(errorSpy).toHaveBeenCalled();
-      expect(errorSpy.mock.calls[0][0]).toContain(
-        "cannot build resolved config"
-      );
-
-      errorSpy.mockRestore();
     });
 
     it("should not break other namespaces when one is invalidated", () => {
@@ -809,5 +804,458 @@ describe("ConfigManager", () => {
       // Teams gets rebuilt
       expect(cm.get<number>("teams.macklen.motor")).toBe(250);
     });
+  });
+
+  describe("setConfigManager / getConfigManager", () => {
+    afterEach(() => {
+      // Reset the singleton to null so tests don't leak state
+      setConfigManager(null as unknown as ConfigManager);
+    });
+
+    it("should set and get the singleton instance", () => {
+      const cm = new ConfigManager();
+      setConfigManager(cm);
+      expect(getConfigManager()).toBe(cm);
+    });
+
+    it("should throw when getConfigManager is called before setConfigManager", () => {
+      expect(() => getConfigManager()).toThrow("ConfigManager not initialized");
+    });
+  });
+
+  describe("reload()", () => {
+    it("should return empty array when no changes detected", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.get("teams.macklen.motor"); // populate resolved cache
+
+      const changes = cm.reload();
+      expect(changes).toEqual([]);
+    });
+
+    it("should detect changed env-var values and return ConfigChange array", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.get("teams.macklen.motor"); // populate resolved cache
+
+      // Set env override AFTER populating resolved — forces a diff on reload
+      _setEnv("OVERDRIVE__TEAMS__MACKLEN__MOTOR", "300");
+
+      const changes = cm.reload();
+      expect(changes).toEqual([
+        { key: "teams.macklen.motor", old: 250, new: 300 },
+      ]);
+    });
+
+    it("should return empty array when not initialized", () => {
+      const cm = new ConfigManager();
+      const changes = cm.reload();
+      expect(changes).toEqual([]);
+    });
+
+    it("should handle reload when resolved cache was not pre-populated", () => {
+      // First call to _flattenResolved encounters namespaces with no
+      // resolved cache entry — exercises the `if (resolved)` falsy branch
+      const cm = new ConfigManager();
+      cm.init();
+      // Use register to add namespace (which also populates resolved),
+      // then invalidate to clear the resolved cache
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.invalidateNamespace("teams");
+      // Now _store has "teams" but _resolved does not
+
+      const changes = cm.reload();
+      expect(changes).toEqual([]);
+    });
+  });
+
+  describe("setRuntime", () => {
+    // ── AC-1: set leaf value and return old value ──
+
+    it("AC-1: should set a leaf value and return the old value", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Warm up the resolved cache
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+
+      const old = cm.setRuntime("teams.macklen.motor", 300);
+      expect(old).toBe(250);
+      expect(cm.get<number>("teams.macklen.motor")).toBe(300);
+    });
+
+    it("AC-1: should return the correct old value when setting a string", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { name: "Macklen" });
+
+      const old = cm.setRuntime("teams.name", "Vasari");
+      expect(old).toBe("Macklen");
+      expect(cm.get<string>("teams.name")).toBe("Vasari");
+    });
+
+    it("AC-1: should set a deeply nested value (4+ levels)", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("physics", {
+        car: { suspension: { stiffness: 12000, damping: 4000 } },
+      });
+
+      const old = cm.setRuntime("physics.car.suspension.stiffness", 15000);
+      expect(old).toBe(12000);
+      expect(cm.get<number>("physics.car.suspension.stiffness")).toBe(15000);
+    });
+
+    // ── AC-2: throw ConfigError for non-existent key ──
+
+    it("AC-2: should throw ConfigError for a non-existent key", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      expect(() => cm.setRuntime("teams.macklen.motor.invalid", 99)).toThrow(
+        ConfigError
+      );
+      expect(() => cm.setRuntime("teams.macklen.motor.invalid", 99)).toThrow(
+        "Key not found: teams.macklen.motor.invalid"
+      );
+    });
+
+    it("AC-2: should throw ConfigError for a non-existent namespace", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", {});
+
+      expect(() => cm.setRuntime("nonexistent.key", 99)).toThrow(ConfigError);
+      expect(() => cm.setRuntime("nonexistent.key", 99)).toThrow(
+        "Key not found: nonexistent.key"
+      );
+    });
+
+    it("AC-2: should throw ConfigError for an empty string key", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", {});
+
+      expect(() => cm.setRuntime("", 99)).toThrow(ConfigError);
+      expect(() => cm.setRuntime("", 99)).toThrow("Key not found:");
+    });
+
+    it("should throw ConfigError for intermediate segment not found in dot-path", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 3 } });
+      expect(() => cm.setRuntime("teams.nonexistent.motor", 99)).toThrow(
+        ConfigError
+      );
+      expect(() => cm.setRuntime("teams.nonexistent.motor", 99)).toThrow(
+        "Key not found: teams.nonexistent.motor"
+      );
+    });
+
+    // ── AC-3: write to _resolved, not _store ──
+
+    it("AC-3: should write to _resolved, not to _store", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Warm up resolved cache
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+
+      cm.setRuntime("teams.macklen.motor", 999);
+
+      // _resolved has the new value
+      expect(cm.get<number>("teams.macklen.motor")).toBe(999);
+
+      // Invalidate and re-read — _store value is restored
+      cm.invalidateNamespace("teams");
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+    });
+
+    it("AC-3: _store values unchanged after setRuntime", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Access the private _store via cast to verify raw config is untouched
+      cm.setRuntime("teams.macklen.motor", 999);
+
+      const rawStore = (cm as any)._store.get("teams");
+      expect(rawStore.macklen.motor).toBe(250);
+    });
+
+    // ── AC-4: guarded by import.meta.env.DEV ──
+
+    it("AC-4: should be a no-op when DEV is false", () => {
+      vi.stubEnv("DEV", false);
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.get("teams.macklen.motor"); // warm up resolved
+
+      const result = cm.setRuntime("teams.macklen.motor", 999);
+      expect(result).toBeUndefined();
+
+      // Value should remain unchanged
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+      vi.unstubAllEnvs();
+    });
+
+    // ── AC-5: rebuild resolved cache if it was invalidated ──
+
+    it("AC-5: should rebuild resolved cache when namespace was invalidated", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+
+      // Populate resolved, then invalidate
+      expect(cm.get<number>("teams.macklen.motor")).toBe(250);
+      cm.invalidateNamespace("teams");
+
+      // setRuntime should rebuild and then set
+      const old = cm.setRuntime("teams.macklen.motor", 400);
+      expect(old).toBe(250);
+      expect(cm.get<number>("teams.macklen.motor")).toBe(400);
+    });
+
+    // ── Edge: set to undefined ──
+
+    it("should allow setting a value to undefined", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("teams", { macklen: { motor: 250 } });
+      cm.get("teams.macklen.motor"); // warm up
+
+      const old = cm.setRuntime("teams.macklen.motor", undefined);
+      expect(old).toBe(250);
+
+      // After setRuntime to undefined, get() should throw (undefined check)
+      expect(() => cm.get("teams.macklen.motor")).toThrow(ConfigError);
+    });
+  });
+
+  describe("_flattenObject (private)", () => {
+    it("should recursively flatten nested objects into dot-path entries", () => {
+      const cm = new ConfigManager();
+      const result = new Map<string, unknown>();
+      (cm as any)._flattenObject("test", { a: { b: { c: 1, d: 2 } } }, result);
+      expect(result.get("test.a.b.c")).toBe(1);
+      expect(result.get("test.a.b.d")).toBe(2);
+      expect(result.size).toBe(2);
+    });
+
+    it("should not recursively flatten arrays", () => {
+      const cm = new ConfigManager();
+      const result = new Map<string, unknown>();
+      (cm as any)._flattenObject(
+        "test",
+        { items: [1, 2, 3], nested: { arr: [4, 5] } },
+        result
+      );
+      expect(result.get("test.items")).toEqual([1, 2, 3]);
+      expect(result.get("test.nested.arr")).toEqual([4, 5]);
+      expect(result.size).toBe(2);
+    });
+  });
+});
+
+// ─── Tech debt cleanup: register() throws ConfigError on invalid config ───
+
+describe("C-4: register() throws ConfigError on invalid config", () => {
+  it("should throw ConfigError when registering null config", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    expect(() => cm.register("teams", null as unknown as object)).toThrow(
+      ConfigError
+    );
+  });
+
+  it("should throw ConfigError when registering undefined config", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    expect(() => cm.register("teams", undefined as unknown as object)).toThrow(
+      ConfigError
+    );
+  });
+
+  it("should throw ConfigError when registering array config", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    expect(() => cm.register("teams", [] as unknown as object)).toThrow(
+      ConfigError
+    );
+  });
+
+  it("should not leave orphaned namespace in _store when registration fails", () => {
+    const cm = new ConfigManager();
+    cm.init();
+
+    // Attempt to register invalid config
+    expect(() => cm.register("bad", null as unknown as object)).toThrow(
+      ConfigError
+    );
+
+    // The namespace should be eligible for registration now
+    // (cleanup happened before the throw propagated)
+    expect(() => cm.register("bad", { valid: true })).not.toThrow();
+
+    // Verify the valid registration actually works
+    expect(cm.get<{ valid: boolean }>("bad")).toEqual({ valid: true });
+  });
+
+  it("should still register normally for valid config", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    expect(() => cm.register("good", { data: 42 })).not.toThrow();
+    expect(cm.get<number>("good.data")).toBe(42);
+  });
+});
+
+// ─── Tech debt cleanup: stack trace extraction handles non-V8 gracefully ───
+
+describe("W-1: stack trace extraction handles non-V8 gracefully", () => {
+  it("should not throw when Error.stack is undefined", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("test", { value: 1 });
+
+    // Some environments may not have a getter — guard accordingly
+    if (Error.prototype.stack === undefined) {
+      return;
+    }
+
+    // Temporarily break stack trace
+    const origStack = Object.getOwnPropertyDescriptor(Error.prototype, "stack");
+    Object.defineProperty(Error.prototype, "stack", {
+      get: () => undefined as unknown as string,
+      configurable: true,
+    });
+
+    // get() should not throw; the caller will be recorded as empty string
+    expect(() => cm.get<number>("test.value")).not.toThrow();
+    expect(cm.get<number>("test.value")).toBe(1);
+    const state = cm.getDebugState();
+    expect(state.accessLog[0].caller).toBe("");
+
+    // Restore
+    if (origStack) {
+      Object.defineProperty(Error.prototype, "stack", origStack);
+    }
+  });
+
+  it("should not throw when Error.stack getter throws", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("x", { a: 1 });
+
+    const origDescriptor = Object.getOwnPropertyDescriptor(
+      Error.prototype,
+      "stack"
+    );
+
+    Object.defineProperty(Error.prototype, "stack", {
+      get: () => {
+        throw new Error("Stack unavailable");
+      },
+      configurable: true,
+    });
+
+    expect(() => cm.get<number>("x.a")).not.toThrow();
+    expect(cm.get<number>("x.a")).toBe(1);
+
+    if (origDescriptor) {
+      Object.defineProperty(Error.prototype, "stack", origDescriptor);
+    }
+  });
+
+  it("should not throw when Error.stack returns empty string", () => {
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("x", { a: 1 });
+
+    const origDescriptor = Object.getOwnPropertyDescriptor(
+      Error.prototype,
+      "stack"
+    );
+
+    Object.defineProperty(Error.prototype, "stack", {
+      get: () => "",
+      configurable: true,
+    });
+
+    expect(() => cm.get<number>("x.a")).not.toThrow();
+    expect(cm.get<number>("x.a")).toBe(1);
+
+    if (origDescriptor) {
+      Object.defineProperty(Error.prototype, "stack", origDescriptor);
+    }
+  });
+});
+
+// ─── Tech debt cleanup: process.env guard in browser-like environment ───
+
+describe("W-2: process.env guard works in browser-like environment", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("getDebugState() should not throw when process is undefined", () => {
+    vi.stubGlobal("process", undefined);
+
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("test", { val: 1 });
+
+    expect(() => cm.getDebugState()).not.toThrow();
+  });
+
+  it("getDebugState() should return empty envOverrides when process is undefined", () => {
+    vi.stubGlobal("process", undefined);
+
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("test", { val: 1 });
+
+    const state = cm.getDebugState();
+    expect(state.envOverrides).toEqual([]);
+  });
+
+  it("config get() should work when process is undefined (guard in _applyEnvOverridesToClone)", () => {
+    vi.stubGlobal("process", undefined);
+
+    const cm = new ConfigManager();
+    cm.init();
+    cm.register("test", { val: 42 });
+
+    expect(cm.get<number>("test.val")).toBe(42);
+  });
+
+  it("should still apply env overrides when process is available", () => {
+    const origProcess = process.env;
+    process.env = { ...origProcess, OVERDRIVE__TEST__VAL: "99" };
+
+    try {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("test", { val: 42 });
+
+      expect(cm.get<number>("test.val")).toBe(99);
+    } finally {
+      process.env = origProcess;
+    }
+  });
+});
+
+// ─── Coverage gap: get() with missing namespace ───
+
+describe("Coverage gap — configManager get() with missing namespace", () => {
+  it("throws ConfigError when namespace was never registered", () => {
+    const mgr = new ConfigManager();
+    mgr.init();
+    expect(() => mgr.get("nonexistent.key")).toThrow(ConfigError);
   });
 });

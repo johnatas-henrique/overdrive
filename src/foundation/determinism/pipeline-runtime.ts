@@ -74,7 +74,7 @@ export interface IPipelineRuntime {
    *
    * @example
    * ```typescript
-   * PipelineRuntime.suppressHavokAutoStep(raceScene);
+   * runtime.suppressHavokAutoStep(raceScene);
    * ```
    */
   suppressHavokAutoStep(scene: Scene): void;
@@ -162,7 +162,6 @@ export class PipelineRuntime implements IPipelineRuntime {
   constructor() {
     this._pipeline = new FixedUpdatePipeline();
     this._registerPlaceholders();
-    this._pipeline.start();
   }
 
   /**
@@ -191,6 +190,11 @@ export class PipelineRuntime implements IPipelineRuntime {
     this._attached = true;
     this._engine = engine;
     this._accumulator = 0;
+
+    // Start the pipeline — transitions to Ready and installs the
+    // dev-mode determinism guard (Math.random, Date.now, performance.now
+    // are replaced with throwing wrappers in dev builds).
+    this._pipeline.start();
 
     // Capture as locals — guaranteed non-null for the lifetime of this callback
     const getDeltaTime = () => engine.getDeltaTime();
@@ -222,6 +226,7 @@ export class PipelineRuntime implements IPipelineRuntime {
     }
 
     this._engine.stopRenderLoop(this._loopCallback);
+    this._pipeline.stop();
     this._attached = false;
   }
 

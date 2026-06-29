@@ -85,13 +85,13 @@
 
 | Req ID     | GDD          | System    | Requirement                                                                                                                                                                                 | Domain  |
 | ---------- | ------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| TR-DVT-001 | dev-tools.md | Dev Tools | All Dev Tools code guarded by `if (__DEV__)` compile flag; `__DEV__` replaced with `false` in production builds — code tree-shaken, zero bytes shipped.                                     | Tooling |
-| TR-DVT-002 | dev-tools.md | Dev Tools | F1 toggles HTML overlay with `position: absolute; pointer-events: none;` over the canvas — never intercepts game input.                                                                     | Tooling |
+| TR-DVT-001 | dev-tools.md | Dev Tools | All Dev Tools code guarded by `if (import.meta.env.DEV)` — evaluated at compile time, code tree-shaken in production builds, zero bytes shipped.                                              | Tooling |
+| TR-DVT-002 | dev-tools.md | Dev Tools | The toggle key (from `devTools.keys.toggle`) shows/hides HTML overlay with `position: absolute; pointer-events: none;` over the canvas — never intercepts game input. | Tooling |
 | TR-DVT-003 | dev-tools.md | Dev Tools | Dev Tools is read-only on all systems — reads via public APIs, never writes game state, never calls `emit()` on Event Bus.                                                                  | Tooling |
-| TR-DVT-004 | dev-tools.md | Dev Tools | F2 triggers manual config re-scan; overlay responds with changed value indication.                                                                                                          | Tooling |
+| TR-DVT-004 | dev-tools.md | Dev Tools | The reload key (from `devTools.keys.reload`) triggers manual config re-scan; overlay responds with changed value indication. | Tooling |
 | TR-DVT-005 | dev-tools.md | Dev Tools | Overlay components: config tree (collapsible `<details>` per namespace), AI telemetry table (per-car), event log (last 100 events, scrollable), GSM history timeline (last 20 transitions). | Tooling |
 | TR-DVT-006 | dev-tools.md | Dev Tools | Read and display engine stats: FPS, frame time, draw calls, mesh count — from Babylon.js engine.                                                                                            | Tooling |
-| TR-DVT-007 | dev-tools.md | Dev Tools | When overlay is visible, F1/F2 are consumed by Dev Tools and not forwarded to game input.                                                                                                   | Tooling |
+| TR-DVT-007 | dev-tools.md | Dev Tools | When overlay is visible, the toggle and reload keys (from `devTools.keys.*`) are consumed by Dev Tools and not forwarded to game input. | Tooling |
 
 ### determinism-contract.md
 
@@ -321,10 +321,10 @@
 
 | Req ID           | GDD                   | System             | Requirement                                                                                                                                                   | Domain              |
 | ---------------- | --------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| TR-TELEMETRY-001 | telemetry-recorder.md | Telemetry Recorder | All code guarded by `if (__DEV__)` — zero bytes in production builds.                                                                                         | Build / Performance |
+| TR-TELEMETRY-001 | telemetry-recorder.md | Telemetry Recorder | All code guarded by `if (import.meta.env.DEV)` — zero bytes in production builds.                                                                            | Build / Performance |
 | TR-TELEMETRY-002 | telemetry-recorder.md | Telemetry Recorder | Samples at 20 Hz (every 3 ticks). 13 fields per sample: tick, t, speed, rpm, throttle, brake, steer, gear, lateralG, fuel, tireCondition, splinePos, aiState. | Performance / Data  |
 | TR-TELEMETRY-003 | telemetry-recorder.md | Telemetry Recorder | Console log every 5 seconds (configurable `logInterval`, default 300 ticks) during Racing: positions and speeds for all 8 cars.                               | Performance         |
-| TR-TELEMETRY-004 | telemetry-recorder.md | Telemetry Recorder | JSON export via Dev Tools (F3) and `window.__telemetry.export()`. Output: race metadata + per-car sample arrays.                                              | Data / Cross-system |
+| TR-TELEMETRY-004 | telemetry-recorder.md | Telemetry Recorder | JSON export via Dev Tools (minimise key, from `devTools.keys.minimise`) and `window.__telemetry.export()`. Output: race metadata + per-car sample arrays. | Data / Cross-system |
 | TR-TELEMETRY-005 | telemetry-recorder.md | Telemetry Recorder | Samples accumulated in plain arrays per car. Cleared on `race.started`. Retained for despawned cars. ~1.4 MB/hour/car.                                        | Data / Performance  |
 | TR-TELEMETRY-006 | telemetry-recorder.md | Telemetry Recorder | Reads from 5 systems: Physics, Fuel, Tire Wear, AI Driver, Race Management — direct CarEntity reads.                                                          | Cross-system        |
 

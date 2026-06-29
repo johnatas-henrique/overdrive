@@ -10,7 +10,7 @@
 ## Context
 
 **GDD**: `design/gdd/camera.md`
-**Requirement**: Covers GDD Acceptance Criterion 14 (all 27 tuning knobs)
+**Requirement**: TR-CAM-011: Camera config registration + HMR invalidation. Covers GDD Acceptance Criterion 14 (all 25 tuning knobs). Cross-refs: TR-DCM-004 (ConfigManager HMR), TR-DCM-002 (namespace registration).
 
 **ADR Governing Implementation**: ADR-0007: Camera Architecture
 **ADR Decision Summary**: `CameraConfig` registered with ConfigManager via `ConfigManager.register("camera", config)`. Config values read each tick via `ConfigManager.get<CameraConfig>("camera")`. Vite HMR hot-reload triggers per-namespace cache flush for `camera.*`.
@@ -27,8 +27,8 @@
 
 _From GDD `design/gdd/camera.md`, split per QL-STORY-READY:_
 
-- [ ] **AC-14a**: Camera registers a `camera.*` namespace with ConfigManager containing exactly 27 keys matching the GDD tuning knob table (key names and default values verified).
-- [ ] **AC-14b (sampled)**: For 5 representative knobs (`cockpit.fov`, `chase.distance`, `shake.kerbIntensity`, `headBob.intensity`, `drone.speed`), changing the value via `ConfigManager.setRuntime()` is reflected in camera behavior on the next `update()` tick.
+- [ ] **AC-14a**: Camera registers a `camera.*` namespace with ConfigManager containing exactly 25 keys matching the GDD tuning knob table (key names and default values verified).
+- [ ] **AC-14b (sampled)**: For 5 representative knobs (`cockpit.fov`, `chase.distance`, `shake.kerbIntensity`, `headBob.intensity`, `drone.speed`), changing the value via `ConfigManager.setRuntime()` (created by Dev Tools story 004) is reflected in camera behavior on the next `update()` tick.
 - [ ] **AC-14c**: `ConfigManager.get<CameraConfig>("camera")` is called at least once per `camera.update()` cycle (values read fresh each tick, not stale).
 
 ---
@@ -79,7 +79,7 @@ private getConfig(): CameraConfig {
 
 Config is read once per tick and destructured inline. There is no cached copy within CameraManager — HMR invalidation at the ConfigManager level ensures fresh values.
 
-### Full Knob Map (27 knobs)
+### Full Knob Map (25 knobs)
 
 | #   | Key                               | Default | Range      |
 | --- | --------------------------------- | ------- | ---------- |
@@ -127,7 +127,7 @@ _Written by qa-lead at story creation:_
 - **AC-14a** (namespace registration):
   - Given: ConfigManager initialized
   - When: Camera system registers its namespace
-  - Then: ConfigManager knows the `camera` namespace; the key list contains exactly 27 entries matching the GDD tuning knob table (key names match, defaults match)
+  - Then: ConfigManager knows the `camera` namespace; the key list contains exactly 25 entries matching the GDD tuning knob table (key names match, defaults match)
 
 - **AC-14b** (behavioral change — 5 sampled knobs):
   - For each of 5 representative knobs: `cockpit.fov`, `chase.distance`, `shake.kerbIntensity`, `headBob.intensity`, `drone.speed`
@@ -141,7 +141,7 @@ _Written by qa-lead at story creation:_
   - Then: `ConfigManager.get("camera")` is called at least once (values read fresh each tick)
 
 - **Remaining 22 knobs** (smoke):
-  - Given: Registration verification passes for all 27 keys
+  - Given: Registration verification passes for all 25 keys
   - When: Altering each of the remaining 22 keys via `ConfigManager.setRuntime()`
   - Then: No error is thrown (key exists in the namespace), and the camera system does not crash on the next `update()`
 

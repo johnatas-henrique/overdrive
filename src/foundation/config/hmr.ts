@@ -1,4 +1,4 @@
-import type { ConfigManager } from "./configManager";
+import type { ConfigManager } from "./config-manager";
 
 /**
  * Minimal hot context interface matching Vite's `import.meta.hot`.

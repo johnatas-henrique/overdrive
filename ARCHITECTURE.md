@@ -13,6 +13,7 @@
 - Async-first persistence with state machine and degraded mode
 - Simulation snapshot system for deterministic state capture and restore
 - Engine abstraction supports WebGPU-first with WebGL2 fallback
+- Dev Tools overlay and Telemetry Recorder are tree-shaken in production via `import.meta.env.DEV`
 
 ## Layers
 
@@ -44,6 +45,20 @@
 - Depends on: Babylon.js, Configuration layer, Playground layer
 - Used by: Browser runtime
 
+**Dev Tools Layer:**
+- Purpose: Debug overlay, keybinds, data panel registration, and tabbed debug panels for development
+- Location: `src/core/dev-tools/`
+- Contains: DevTools overlay class, IDevTools interface, keyboard keybinds, singleton proxy, Event Bus Inspector, Config Tree Panel, GSM Visualizer, Sim Snapshot Panel, AI Telemetry Panel
+- Depends on: Babylon.js (SceneInstrumentation), Foundation layer (ConfigManager, EventBus, GSM, SimulationSnapshot)
+- Used by: Development workflow only (tree-shaken in production via `import.meta.env.DEV`)
+
+**Dev Infra Layer:**
+- Purpose: Dev-only telemetry recording and data export for simulation analysis
+- Location: `src/dev-infra/`
+- Contains: TelemetryRecorder — data model, sampling loop, console summary, JSON export
+- Depends on: Foundation layer (EventBus), Babylon.js types
+- Used by: Development workflow only (tree-shaken in production via `import.meta.env.DEV`)
+
 ## Data Flow
 
 **Configuration Resolution:**
@@ -57,6 +72,10 @@
 2. Circular emit depth check — `src/foundation/event-bus/event-bus.ts`
 3. Snapshot iteration over registered handlers — `src/foundation/event-bus/event-bus.ts`
 4. Handler error isolation (catch and log) — `src/foundation/event-bus/event-bus.ts`
+5. Wildcard `"*"` handlers fire after typed handlers with `{ event, payload }` — `src/foundation/event-bus/event-bus.ts`
+6. `EventBus.off(event)` removes all handlers for a given event, returns bus for chaining — `src/foundation/event-bus/event-bus.ts`
+7. `EventBus.off(subscription)` unsubscribes a specific handler (idempotent) — `src/foundation/event-bus/event-bus.ts`
+8. `EventBus.getSubscriptions()` returns `Map<string, number>` of event → handler count — `src/foundation/event-bus/event-bus.ts`
 
 **Game State Transition:**
 1. System calls `GameStateMachine.transition(targetState)` — `src/foundation/gsm/GameStateMachine.ts`
@@ -82,8 +101,11 @@
 1. `SimulationSnapshot.init()` — `src/foundation/simulation-snapshot/simulation-snapshot.ts`
 2. `SimulationSnapshot.register(system)` — `src/foundation/simulation-snapshot/simulation-snapshot.ts`
 3. `SimulationSnapshot.takeSnapshot(tick)` calls `serialize()` on all registered systems — `src/foundation/simulation-snapshot/simulation-snapshot.ts`
-4. `fnv1a()` hashes each system state, `sha256()` hashes the combined snapshot — `src/foundation/simulation-snapshot/fnv1a.ts`, `src/foundation/simulation-snapshot/sha256.ts`
-5. `SimulationSnapshot.restoreSnapshot(snap)` calls `deserialize()` per system with error isolation — `src/foundation/simulation-snapshot/simulation-snapshot.ts`
+4. `SimulationSnapshot.takeSnapshot({ force: true })` bypasses frequency check for on-demand snapshots — `src/foundation/simulation-snapshot/simulation-snapshot.ts`
+5. `SimulationSnapshot.getRegisteredSystems()` returns all registered systems as read-only array — `src/foundation/simulation-snapshot/simulation-snapshot.ts`
+6. `SimulationSnapshot.getHashes()` returns current FNV-1a hash per systemId — `src/foundation/simulation-snapshot/simulation-snapshot.ts`
+7. `fnv1a()` hashes each system state, `sha256()` hashes the combined snapshot — `src/foundation/simulation-snapshot/fnv1a.ts`, `src/foundation/simulation-snapshot/sha256.ts`
+8. `SimulationSnapshot.restoreSnapshot(snap)` calls `deserialize()` per system with error isolation — `src/foundation/simulation-snapshot/simulation-snapshot.ts`
 
 ## Key Abstractions
 
@@ -93,9 +115,9 @@
 - Pattern: Singleton registry with init guard, two-tier storage (raw + resolved)
 
 **EventBus:**
-- Purpose: Typed synchronous pub-sub with error isolation and leak detection
+- Purpose: Typed synchronous pub-sub with error isolation, leak detection, and wildcard observation
 - Location: `src/foundation/event-bus/event-bus.ts`, `src/foundation/event-bus/types.ts`
-- Pattern: Interface-based design (`IEventBus`), subscription handles, snapshot dispatch
+- Pattern: Interface-based design (`IEventBus`), subscription handles, snapshot dispatch, wildcard `"*"` subscription for dev tools inspection, `getSubscriptions()` for live subscription counts
 
 **GameStateMachine:**
 - Purpose: Manages game lifecycle phases (Loading → Menu → PreRace → Racing → Paused → PostRace)
@@ -135,12 +157,57 @@
 **SimulationSnapshot:**
 - Purpose: Orchestrates deterministic state capture and restore across registered systems
 - Location: `src/foundation/simulation-snapshot/simulation-snapshot.ts`
-- Pattern: Interface-based (`ISnapshotable`), per-system FNV-1a hashing, combined SHA-256 hashing, duplicate registration guard, deserialize error isolation
+- Pattern: Interface-based (`ISnapshotable`, `ISimulationSnapshot`), per-system FNV-1a hashing, combined SHA-256 hashing, duplicate registration guard, deserialize error isolation, `getRegisteredSystems()` and `getHashes()` for debug panel queries, `takeSnapshot({ force })` overload for on-demand snapshots
 
 **EventMap:**
 - Purpose: Central type registry for all game events with compile-time safety
 - Location: `src/foundation/event-bus/types.ts`
 - Pattern: TypeScript mapped types for event payload validation
+
+**DevTools:**
+- Purpose: HTML overlay positioned over the canvas showing FPS, frame time, draw calls, mesh count, physics time, custom data panels, and tabbed debug panels (Event Log, GSM History, Sim Snapshot)
+- Location: `src/core/dev-tools/dev-tools.ts`, `src/core/dev-tools/index.ts`
+- Pattern: Singleton proxy with lazy DOM creation, `engine.onEndFrameObservable` metric refresh, `registerDataSource()` for extensible panels, tab system with four panels (Event Log, GSM History, Sim Snapshot, AI Telemetry), config tree sidebar with in-place editing via `ConfigManager.setRuntime()`, tree-shaken in production via `import.meta.env.DEV`
+
+**IDevTools:**
+- Purpose: Public interface for the Dev Tools singleton — consumed by keybinds, data panels, and debug panel injection
+- Location: `src/core/dev-tools/types.ts`
+- Pattern: Type-only interface (zero runtime cost), methods: `toggle()`, `isVisible()`, `setMinimised()`, `update()`, `registerDataSource()`, `setEventBus()`, `setGsm()`, `setSimulationSnapshot()`, `refreshConfigTree()`, `showNotification()`, `dispose()`
+
+**EventBusInspector:**
+- Purpose: Event Log tab panel — captures all events via wildcard subscription, maintains a 100-entry ring buffer, renders event history with filter support and live subscription list
+- Location: `src/core/dev-tools/event-bus-inspector.ts`
+- Pattern: Read-only observer (receives `IReadOnlyEventBus` proxy), wildcard `"*"` capture, FIFO ring buffer eviction, newest-first rendering, case-insensitive filter
+
+**GsmVisualizer:**
+- Purpose: GSM History tab panel — displays current state, last 20 state transitions with timestamps and duration, and manual transition buttons for debugging
+- Location: `src/core/dev-tools/gsm-visualizer.ts`
+- Pattern: Read-only observer (subscribes to `gsm.state.exited`/`gsm.state.entered`), seeds from GSM internal ring buffer, manual transition buttons under DEV guard (Control Manifest D6 exception)
+
+**SimSnapshotPanel:**
+- Purpose: Sim Snapshot tab panel — displays registered ISnapshotable systems with per-system FNV-1a hashes, hash diff indicators, and Take/Restore snapshot controls
+- Location: `src/core/dev-tools/sim-snapshot-panel.ts`
+- Pattern: Read-only observer (reads from `SimulationSnapshot.getRegisteredSystems()`/`getHashes()`), Take/Restore buttons call public API as deliberate debug actions (Control Manifest D6 exception)
+
+**ConfigTreePanel:**
+- Purpose: Config sidebar panel — renders a tree view of all ConfigManager namespaces with in-place editing via double-click
+- Location: `src/core/dev-tools/config-tree.ts`
+- Pattern: `<details>` element per namespace, double-click to edit → `<input>` replaces `<span>` → Enter confirms via `ConfigManager.setRuntime()`, em-dash for `undefined` values, DEV guard on edit path
+
+**DevToolsConfig:**
+- Purpose: Centralised keybind definitions for Dev Tools overlay controls
+- Location: `src/config/dev-tools-config.ts`
+- Pattern: Static config object (`DEV_TOOLS_KEYS`), default keys: toggle=`1`, reload=`2`, minimise=`3`
+
+**TelemetryRecorder:**
+- Purpose: Dev-only telemetry data model, sampling loop, console summary, and JSON export for simulation analysis
+- Location: `src/dev-infra/telemetry-recorder.ts`
+- Pattern: Per-car `TelemetrySample` accumulation, `window.__telemetry.export()` surface, event bus lifecycle subscriptions (race.started → sampling → race.completed), console summary gated by `isRecording`, tree-shaken in production via `import.meta.env.DEV`
+
+**Defined (assert-defined):**
+- Purpose: Assertion function that narrows a nullable value to non-null at compile time
+- Location: `src/shared/assert-defined.ts`
+- Pattern: TypeScript `asserts` keyword, throws `Error` with custom message if value is `null` or `undefined`, used across dev tools panels for safe nullable narrowing
 
 ## Entry Points
 
@@ -159,6 +226,11 @@
 - Triggers: `npm test` or `vitest run`
 - Responsibilities: Unit test execution, coverage reporting
 
+**E2E Test Runner:**
+- Location: `tests/e2e/` (Playwright)
+- Triggers: `npx playwright test`
+- Responsibilities: Browser-based E2E tests for Dev Tools overlay, verifying DOM state, CSS computed styles, and user interactions that unit/integration tests cannot catch
+
 ## Error Handling
 
 **Strategy:** Fail-fast with typed errors and descriptive messages
@@ -168,8 +240,10 @@
 - `GameStateMachine`: Throws `GameStateError` for invalid transitions, uninitialized state
 - `FixedUpdatePipeline`: Throws `PipelineError` for invalid state transitions, disposed state
 - `Persistence`: Throws `PersistenceError` for uninitialized state; `MigrationError` for missing migration steps
-- `SimulationSnapshot`: Throws `SnapshotError` for duplicate registration, deserialize failures
+- `SimulationSnapshot`: Throws `SnapshotError` for duplicate registration, deserialize failures, init-after-dispose, not-initialized state
 - `DeterminismGuard`: Throws `DeterminismError` when non-deterministic APIs are called during pipeline ticks
+- `DevTools`: Throws no custom errors; overlay DOM creation is guarded by `import.meta.env.DEV`
+- `TelemetryRecorder`: Throws no custom errors; noop in production builds
 - Handler errors in EventBus are caught and logged individually (error isolation)
 - Physics initialization failures fall back to WebGL2 with console warning
 
@@ -181,5 +255,6 @@
 **HMR:** Vite hot module replacement via `wireConfigHmr()` for config files
 **Type Safety:** TypeScript strict mode with compile-time event payload validation
 **Determinism:** Dev-mode guard replaces non-deterministic APIs; pipeline runs at fixed 1/60s timestep
+**Dev Infra:** Dev Tools overlay and Telemetry Recorder are tree-shaken in production via `import.meta.env.DEV` — zero bytes in production builds
 **Linting:** Biome with `--error-on-warnings`, test override for `noExplicitAny`
 **CI:** GitHub Actions runs lint, typecheck, test with coverage, and build on push/PR to main

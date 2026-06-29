@@ -37,11 +37,15 @@ _Revised per QL-STORY-READY gate on 2026-06-22:_
 
 - [ ] **AC-1**: Pipeline slot #2 executes Physics update in fixed order: Input → **Physics** → AI → Collision → Fuel → Tire → Race Management → Pit Stop (verified via pipeline instrumentation)
 - [ ] **AC-2**: Havok `executeStep(dt, activeBodies)` is called **exactly once per tick** during Racing state. Auto-step suppression verified: after `(scene as any)._advancePhysicsEngineStep = () => {}`, calling `scene.render()` does NOT trigger a second Havok step — verified via body velocity readout after Phase 3 (no accumulated Havok integration outside our pipeline call)
-- [ ] **AC-3**: Per-car `CarPhysicsState` initialized on `entity.spawned` and cleaned on `entity.despawned` — state map has exactly 8 entries during race, 0 after `destroyAll()`
+- [ ] **[lifecycle-gated] AC-3**: Per-car `CarPhysicsState` initialized on `entity.spawned` and cleaned on `entity.despawned` — state map has exactly 8 entries during race, 0 after `destroyAll()`
 - [ ] **AC-4**: Phase 3 runs after Phase 2. After Phase 3, car body position = previous position + collision push-apart delta (from Phase 2 Havok step) + arcade target velocity × dt (from Phase 3 `setLinearVelocity`). Each term measurable in isolation via body.position readout
 - [ ] **AC-5**: Ground tracking: car Y position (Y-up physics world) follows track spline elevation within epsilon each tick after Phase 3 — verified with mock spline at known elevation
-- [ ] **AC-6**: `activeBodies[]` length matches car count during race; empty after `destroyAll()`
+- [ ] **[lifecycle-gated] AC-6**: `activeBodies[]` length matches car count during race; empty after `destroyAll()`
 - [ ] **AC-7** (determinism): Two pipeline ticks with identical seed and identical `InputState` produce identical per-car position, velocity, and heading output — verified via snapshot comparison
+
+**Performance budget**: Physics slot #2 target ≤ 0.06ms/tick (C-G1), body allocation ≤ 4KB per car (C-G2).
+
+**Dependency note**: AC-3 and AC-6 depend on `entity.spawned`/`entity.despawned` events and `destroyAll()` from ADR-0005 (Entity/Car Lifecycle). That epic has no implementation stories yet — AC-3 and AC-6 will be verified once Entity/Car Lifecycle stories are created. The `CarPhysicsState` map structure is defined here; the lifecycle hooks are a cross-epic dependency.
 
 ---
 
