@@ -2892,9 +2892,13 @@ describe("Coverage: migration cycle guard", () => {
     p.registerMigration("2.0.0", "1.0.0", async () => {});
 
     // Call _runMigrations directly to test the cycle guard
-    expect(() => p._runMigrations("1.0.0", { v: 1 }, "3.0.0")).toThrow(
-      MigrationError
-    );
+    expect(() =>
+      (
+        p as unknown as {
+          _runMigrations: (sv: string, d: unknown, cv: string) => unknown;
+        }
+      )._runMigrations("1.0.0", { v: 1 }, "3.0.0")
+    ).toThrow(MigrationError);
   });
 });
 
@@ -2905,18 +2909,42 @@ describe("Coverage: _parseVersion invalid format", () => {
   });
 
   it("should throw MigrationError for invalid version format", () => {
-    expect(() => Persistence._parseVersion("invalid")).toThrow(MigrationError);
+    expect(() =>
+      (
+        Persistence as unknown as {
+          _parseVersion: (v: string) => [number, number, number];
+        }
+      )._parseVersion("invalid")
+    ).toThrow(MigrationError);
   });
 
   it("should throw MigrationError for version with non-numeric parts", () => {
-    expect(() => Persistence._parseVersion("1.abc.0")).toThrow(MigrationError);
+    expect(() =>
+      (
+        Persistence as unknown as {
+          _parseVersion: (v: string) => [number, number, number];
+        }
+      )._parseVersion("1.abc.0")
+    ).toThrow(MigrationError);
   });
 
   it("should throw MigrationError for version with empty parts", () => {
-    expect(() => Persistence._parseVersion("1..0")).toThrow(MigrationError);
+    expect(() =>
+      (
+        Persistence as unknown as {
+          _parseVersion: (v: string) => [number, number, number];
+        }
+      )._parseVersion("1..0")
+    ).toThrow(MigrationError);
   });
 
   it("should throw MigrationError for version with too few parts", () => {
-    expect(() => Persistence._parseVersion("1.0")).toThrow(MigrationError);
+    expect(() =>
+      (
+        Persistence as unknown as {
+          _parseVersion: (v: string) => [number, number, number];
+        }
+      )._parseVersion("1.0")
+    ).toThrow(MigrationError);
   });
 });

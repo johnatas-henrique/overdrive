@@ -345,11 +345,13 @@ export class Persistence {
     }
 
     if (this._state === PersistenceState.Degraded) {
-      if (this._writeQueue.length >= MAX_WRITE_QUEUE) {
-        this._writeQueue.shift();
-      }
       try {
         const json = this._serializeEntry(key, data);
+        // Evict oldest entry only after successful serialization to avoid
+        // orphaned eviction when serialization throws
+        if (this._writeQueue.length >= MAX_WRITE_QUEUE) {
+          this._writeQueue.shift();
+        }
         this._writeQueue.push({ key, json });
       } catch (error) {
         console.warn(
@@ -655,17 +657,6 @@ export class Persistence {
     return aPat - bPat;
   }
 
-  /**
-   * Find the implied next version when a migration is missing.
-   *
-   * Scans the registry for the registered migration with the smallest
-   * `from` version that is greater than `cursor`. If none found, falls
-   * back to `currentVersion`.
-   *
-   * @param cursor - The current version cursor where the chain is stuck
-   * @param currentVersion - The target version as a fallback
-   * @returns The implied next version string
-   */
   /**
    * Check if a parsed value looks like a PersistedEntry (has data and version).
    *
