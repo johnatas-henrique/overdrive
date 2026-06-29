@@ -242,7 +242,7 @@ getState(): InputState {
 ### Negative
 
 - Input imports `@babylonjs/core` submodules (DeviceSourceManager, GamepadManager) — cannot live in Foundation layer
-  - Import paths must be tree-shakeable: `@babylonjs/core/DeviceInput/deviceSourceManager` and `@babylonjs/core/Gamepads/gamepadManager`
+  - Import paths must be tree-shakeable: `@babylonjs/core/DeviceInput/InputDevices/deviceSourceManager` and `@babylonjs/core/Gamepads/gamepadManager`
 - One additional function call per tick (IInput → getState) — negligible (<0.001ms)
 - AI Driver must implement the same interface — adds no-op methods (init/dispose/onDeviceChanged) to satisfy TypeScript
 
