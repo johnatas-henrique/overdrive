@@ -38,6 +38,11 @@ async function closeDevTools(page: Page): Promise<void> {
   );
 }
 
+/** Wait for the engine to finish initializing. */
+async function waitForEngineReady(page: Page): Promise<void> {
+  await page.waitForTimeout(1000);
+}
+
 /** Get computed display of an element */
 async function getDisplay(page: Page, selector: string): Promise<string> {
   return page.locator(selector).evaluate((el) => getComputedStyle(el).display);
@@ -61,7 +66,7 @@ async function hasClass(
 test.describe("Overlay Toggle", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForTimeout(2000); // wait for engine init
+    await waitForEngineReady(page); // wait for engine init
   });
 
   test("key 1 opens overlay", async ({ page }) => {
@@ -104,7 +109,7 @@ test.describe("Overlay Toggle", () => {
 test.describe("Tab System", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForTimeout(2000);
+    await waitForEngineReady(page);
     await openDevTools(page);
   });
 
@@ -119,7 +124,7 @@ test.describe("Tab System", () => {
 
   test("clicking GSM History hides Event Log content", async ({ page }) => {
     await page.click("button[data-tab-id='gsm-history']");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     // Event Log panel should be hidden
     const eventLogDisplay = await getDisplay(
@@ -139,11 +144,11 @@ test.describe("Tab System", () => {
   test("clicking Event Log hides GSM History content", async ({ page }) => {
     // First switch to GSM
     await page.click("button[data-tab-id='gsm-history']");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     // Then switch back to Event Log
     await page.click("button[data-tab-id='event-log']");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     // GSM History panel should be hidden
     const gsmDisplay = await getDisplay(
@@ -165,7 +170,7 @@ test.describe("Tab System", () => {
 
     for (const tabId of tabs) {
       await page.click(`button[data-tab-id='${tabId}']`);
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(100);
 
       // Count visible panels
       const visibleCount = await page.evaluate((allTabIds: string[]) => {
@@ -183,7 +188,7 @@ test.describe("Tab System", () => {
 
   test("tab button has active class when selected", async ({ page }) => {
     await page.click("button[data-tab-id='gsm-history']");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     const isActive = await hasClass(
       page,
@@ -209,7 +214,7 @@ test.describe("Tab System", () => {
 test.describe("Event Log Tab", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForTimeout(2000);
+    await waitForEngineReady(page);
     await openDevTools(page);
   });
 
@@ -236,10 +241,10 @@ test.describe("Event Log Tab", () => {
 test.describe("GSM History Tab", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForTimeout(2000);
+    await waitForEngineReady(page);
     await openDevTools(page);
     await page.click("button[data-tab-id='gsm-history']");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
   });
 
   test("current state indicator exists", async ({ page }) => {
@@ -281,7 +286,7 @@ test.describe("GSM History Tab", () => {
 test.describe("Config Tree Sidebar", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForTimeout(2000);
+    await waitForEngineReady(page);
     await openDevTools(page);
   });
 
@@ -296,7 +301,7 @@ test.describe("Config Tree Sidebar", () => {
 
     // Click to expand
     await testNs.locator("summary").click();
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     // Should have child elements
     const children = await testNs.locator(".config-key").count();
@@ -311,7 +316,7 @@ test.describe("Config Tree Sidebar", () => {
 test.describe("Regression: Pointer-Events", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForTimeout(2000);
+    await waitForEngineReady(page);
     await openDevTools(page);
   });
 
@@ -359,7 +364,7 @@ test.describe("Regression: Pointer-Events", () => {
 test.describe("Regression: Config Keybinds", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForTimeout(2000);
+    await waitForEngineReady(page);
     await openDevTools(page);
   });
 
@@ -427,7 +432,7 @@ test.describe("Regression: Config Keybinds", () => {
 test.describe("Regression: Config Tree Edit", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForTimeout(2000);
+    await waitForEngineReady(page);
     await openDevTools(page);
   });
 
@@ -435,7 +440,7 @@ test.describe("Regression: Config Tree Edit", () => {
     // Expand test namespace
     const testNs = page.locator("details[data-ns='test']");
     await testNs.locator("summary").click();
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     // Find first config value
     const firstValue = testNs.locator(".config-value").first();
@@ -443,7 +448,7 @@ test.describe("Regression: Config Tree Edit", () => {
 
     // Double-click to edit
     await firstValue.dblclick();
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     // Find the input field
     const input = testNs.locator(".config-input").first();
@@ -476,7 +481,7 @@ test.describe("Regression: Config Tree Edit", () => {
 test.describe("Regression: Event Bus Inspector", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForTimeout(2000);
+    await waitForEngineReady(page);
     await openDevTools(page);
   });
 
@@ -525,7 +530,7 @@ test.describe("Regression: Event Bus Inspector", () => {
 test.describe("Behavior: Tab Content Isolation", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForTimeout(2000);
+    await waitForEngineReady(page);
     await openDevTools(page);
   });
 
@@ -538,9 +543,9 @@ test.describe("Behavior: Tab Content Isolation", () => {
       await page.waitForTimeout(200);
     }
 
-    // Count tab panels — should still be exactly 3
+    // Count tab panels — should still be exactly 4
     const panelCount = await page.locator(".tab-panel").count();
-    expect(panelCount).toBe(3);
+    expect(panelCount).toBe(4);
   });
 
   test("tab content is preserved when switching away and back", async ({
@@ -552,15 +557,75 @@ test.describe("Behavior: Tab Content Isolation", () => {
 
     // Switch to GSM History
     await page.click("button[data-tab-id='gsm-history']");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     // Switch back to Event Log
     await page.click("button[data-tab-id='event-log']");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     // Filter value should be preserved
     const preservedValue = await filterInput.inputValue();
     expect(preservedValue).toBe("preserve_test");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CSS Regression: Panel Backgrounds and Layout
+// ---------------------------------------------------------------------------
+
+test.describe("CSS Regression: Panel Backgrounds and Layout", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await waitForEngineReady(page);
+    await openDevTools(page);
+  });
+
+  test("Event Log panel has opaque background", async ({ page }) => {
+    await page.click("button[data-tab-id='event-log']");
+    await page.waitForTimeout(100);
+
+    const container = page.locator(".inspector-container");
+    const bg = await container.evaluate(
+      (el) => getComputedStyle(el).backgroundColor
+    );
+    // Should not be transparent (rgba(0, 0, 0, 0) or transparent)
+    expect(bg).not.toBe("rgba(0, 0, 0, 0)");
+    expect(bg).not.toBe("transparent");
+  });
+
+  test("GSM History panel has opaque background", async ({ page }) => {
+    await page.click("button[data-tab-id='gsm-history']");
+    await page.waitForTimeout(100);
+
+    const container = page.locator(".gsm-container");
+    const bg = await container.evaluate(
+      (el) => getComputedStyle(el).backgroundColor
+    );
+    // Should not be transparent
+    expect(bg).not.toBe("rgba(0, 0, 0, 0)");
+    expect(bg).not.toBe("transparent");
+  });
+
+  test("Sim Snapshot controls are below systems header, not at bottom", async ({
+    page,
+  }) => {
+    await page.click("button[data-tab-id='sim-snapshot']");
+    await page.waitForTimeout(100);
+
+    const systemsHeader = page.locator(".ssn-systems-header");
+    const controls = page.locator(".ssn-controls");
+
+    const headerBox = await systemsHeader.boundingBox();
+    const controlsBox = await controls.boundingBox();
+
+    expect(headerBox).not.toBeNull();
+    expect(controlsBox).not.toBeNull();
+
+    // Controls should be directly below systems header (within 50px)
+    const gap =
+      (controlsBox?.y ?? 0) - ((headerBox?.y ?? 0) + (headerBox?.height ?? 0));
+    expect(gap).toBeLessThan(50);
+    expect(gap).toBeGreaterThanOrEqual(0);
   });
 });
 
@@ -571,10 +636,10 @@ test.describe("Behavior: Tab Content Isolation", () => {
 test.describe("Sim Snapshot Panel Tab", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForTimeout(2000);
+    await waitForEngineReady(page);
     await openDevTools(page);
     await page.click("button[data-tab-id='sim-snapshot']");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
   });
 
   test("tab button exists and is clickable", async ({ page }) => {
@@ -654,7 +719,7 @@ test.describe("Sim Snapshot Panel Tab", () => {
     // Take a snapshot
     const takeBtn = page.locator(".ssn-take-btn");
     await takeBtn.click();
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     // Refresh the panel to see updated diffs
     // (The refresh happens automatically)
@@ -679,13 +744,13 @@ test.describe("Sim Snapshot Panel Tab", () => {
 test.describe("AI Telemetry Tab", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.waitForTimeout(2000);
+    await waitForEngineReady(page);
     await openDevTools(page);
   });
 
   test("AI Telemetry tab exists and is clickable", async ({ page }) => {
     await page.click("button[data-tab-id='ai-telemetry']");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     const display = await getDisplay(
       page,
@@ -696,7 +761,7 @@ test.describe("AI Telemetry Tab", () => {
 
   test("AI Telemetry table shows 3 cars from mock data", async ({ page }) => {
     await page.click("button[data-tab-id='ai-telemetry']");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     // Wait for the table to appear
     const table = page.locator(".ait-table");
@@ -710,7 +775,7 @@ test.describe("AI Telemetry Tab", () => {
 
   test("player car row is highlighted", async ({ page }) => {
     await page.click("button[data-tab-id='ai-telemetry']");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     // Find the player row
     const playerRow = page.locator(".ait-row-player");
@@ -723,7 +788,7 @@ test.describe("AI Telemetry Tab", () => {
 
   test("table shows correct columns", async ({ page }) => {
     await page.click("button[data-tab-id='ai-telemetry']");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     // Find all column header elements
     const columnHeaders = page.locator(".ait-th");
@@ -743,7 +808,7 @@ test.describe("AI Telemetry Tab", () => {
 
   test("empty state shows when no AI cars", async ({ page }) => {
     await page.click("button[data-tab-id='ai-telemetry']");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
 
     // The empty-state element exists in the DOM
     const emptyEl = page.locator(".ait-empty");
