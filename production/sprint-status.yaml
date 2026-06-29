@@ -306,9 +306,10 @@ stories:
     name: "Story 005a: Preload Concurrency"
     file: "production/epics/asset-manager/story-005a-preload-concurrency.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1
+    completed: "2026-06-29"
     blocker: ""
     completed: ""
 
