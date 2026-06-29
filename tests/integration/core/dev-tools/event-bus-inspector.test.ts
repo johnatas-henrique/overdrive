@@ -920,4 +920,27 @@ describe("Coverage gap — non-cloneable payload", () => {
 
     inspector.dispose();
   });
+
+  it("should store original reference when structuredClone fails (catch block proof)", () => {
+    const bus = new EventBus();
+    bus.init();
+    const container = createContainer();
+    const inspector = new EventBusInspector(container, bus);
+
+    // Create a payload with a function (non-cloneable by structuredClone)
+    const original = { value: 42, fn: () => "hello" };
+    bus.emit("test.event" as never, original as never);
+
+    // The event log should contain the ORIGINAL reference, not a clone
+    const log = inspector.getEventLog();
+    expect(log.length).toBe(1);
+    // If structuredClone succeeded, payload would be a plain object without fn.
+    // If catch block fired, payload is the original reference with fn.
+    expect(log[0].payload).toBe(original);
+    expect(typeof (log[0].payload as Record<string, unknown>).fn).toBe(
+      "function"
+    );
+
+    inspector.dispose();
+  });
 });

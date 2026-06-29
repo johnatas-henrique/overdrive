@@ -80,7 +80,7 @@ class FailingTestSys implements ISnapshotable {
 
 let container: HTMLDivElement;
 
-beforeAll(async () => {
+beforeEach(async () => {
   vi.stubEnv("DEV", true);
   const mod = await import("../../../../src/core/dev-tools/sim-snapshot-panel");
   SimSnapshotPanel = mod.SimSnapshotPanel;
