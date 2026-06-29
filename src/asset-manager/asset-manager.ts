@@ -1,6 +1,10 @@
 import type { AssetContainer } from "@babylonjs/core/assetContainer";
+import { LoadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
+import type { Node } from "@babylonjs/core/node";
 import type { Scene } from "@babylonjs/core/scene";
+import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 import { AssetError } from "./asset-error";
+import type { TrackManifest } from "./types";
 
 /**
  * Internal state machine for AssetManager lifecycle.
@@ -71,6 +75,13 @@ export class AssetManager {
    * Populated by `load()` / `preload()` (Story 002+).
    */
   private readonly _cache: Map<string, AssetContainer> = new Map();
+
+  /**
+   * Manifest registry — maps asset IDs to their load paths.
+   * Populated by `registerManifest()` during boot and consumed
+   * by `load()` to build the URL for `LoadAssetContainerAsync`.
+   */
+  private readonly _manifests: Map<string, TrackManifest> = new Map();
 
   /** Current state machine state. */
   private _state: AssetState = "uninitialized";
@@ -183,6 +194,125 @@ export class AssetManager {
     container.addAllToScene();
   }
 
+  // ── Manifest Registration ─────────────────────────────────────
+
+  /**
+   * Register an asset manifest for deferred loading.
+   *
+   * Stores the manifest keyed by `id` in an internal map. The manifest
+   * is consumed by `load()` to build the URL for `LoadAssetContainerAsync`.
+   *
+   * @param id - Unique asset identifier (e.g. `'spa'` for Spa track)
+   * @param manifest - Manifest describing the GLB asset paths
+   *
+   * @throws {AssetError} If called before `init()`
+   *
+   * @example
+   * ```typescript
+   * am.registerManifest("spa", {
+   *   glb: { rootUrl: "assets/tracks/spa/", filename: "spa.glb" },
+   * });
+   * ```
+   */
+  registerManifest(id: string, manifest: TrackManifest): void {
+    this._assertNotDisposed();
+    this._assertInitialized();
+    this._manifests.set(id, manifest);
+  }
+
+  // ── Asset Loading ────────────────────────────────────────────
+
+  /**
+   * Load an asset by ID, caching the resulting AssetContainer.
+   *
+   * If the asset is already cached, returns the cached container
+   * synchronously (zero I/O). On first load, resolves the manifest,
+   * calls `LoadAssetContainerAsync`, unparents source meshes from
+   * the race scene, caches the container, and adds it to the active
+   * scene.
+   *
+   * Load errors propagate naturally via Promise rejection — errors
+   * are NOT caught-and-silenced.
+   *
+   * @param id - Asset identifier previously registered via `registerManifest()`
+   * @returns The AssetContainer containing the loaded meshes and nodes
+   *
+   * @throws {AssetError} If called before `init()`
+   * @throws {AssetError} If called after `dispose()`
+   * @throws {AssetError} If `id` was not registered via `registerManifest()`
+   *
+   * @example
+   * ```typescript
+   * const container = await am.load("spa");
+   * container.instantiateModelsToScene();
+   * ```
+   */
+  async load(id: string): Promise<AssetContainer> {
+    this._assertNotDisposed();
+    this._assertInitialized();
+
+    // Cache hit — zero I/O
+    if (this._cache.has(id)) {
+      // biome-ignore lint/style/noNonNullAssertion: has() guarantees get() returns value — Map consistency
+      const container = this._cache.get(id)!;
+      this._addAllToScene(container);
+      return container;
+    }
+
+    // Cache miss — resolve manifest and load
+    const manifest = this._manifests.get(id);
+    if (!manifest) {
+      throw new AssetError(`Manifest not found for asset '${id}'`);
+    }
+
+    const container = await LoadAssetContainerAsync(
+      manifest.glb.filename,
+      this._raceScene as Scene,
+      { rootUrl: manifest.glb.rootUrl }
+    );
+
+    container.removeAllFromScene();
+    this._cache.set(id, container);
+    this._addAllToScene(container);
+    return container;
+  }
+
+  // ── Node Lookup ──────────────────────────────────────────────
+
+  /**
+   * Look up a node by ID or name across all cached AssetContainers.
+   *
+   * Searches both `meshes` and `transformNodes` in every cached
+   * container. Returns the first match (by `id` or `name`) or
+   * `undefined` if no match is found.
+   *
+   * Safe to call before `init()` — returns `undefined` with no error.
+   *
+   * @param id - The node's `id` or `name` property to search for
+   * @returns The matching Node, or `undefined`
+   *
+   * @example
+   * ```typescript
+   * const root = am.get<TransformNode>("spa_root");
+   * if (root) root.position.x += 10;
+   * ```
+   */
+  get<T extends Node = Node>(id: string): T | undefined {
+    for (const container of this._cache.values()) {
+      // Search meshes (by id or name — Babylon.js convention)
+      const mesh = container.meshes.find((n) => n.id === id || n.name === id) as
+        | T
+        | undefined;
+      if (mesh) return mesh;
+      // Search transform nodes (catches root TransformNodes from GLBs)
+      const tn = container.transformNodes.find(
+        (n) => n.id === id || n.name === id
+      ) as T | undefined;
+      if (tn) return tn;
+    }
+    return undefined;
+  }
+
   // ── Internal Helpers ──────────────────────────────────────────
 
   /**
@@ -193,6 +323,17 @@ export class AssetManager {
   private _assertInitialized(): void {
     if (this._state !== "ready") {
       throw new AssetError("Not initialized");
+    }
+  }
+
+  /**
+   * Guard: assert the AssetManager is NOT in the Disposed state.
+   *
+   * @throws {AssetError} With message `'Already disposed'` if state is `'disposed'`
+   */
+  private _assertNotDisposed(): void {
+    if (this._state === "disposed") {
+      throw new AssetError("Already disposed");
     }
   }
 }

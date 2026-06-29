@@ -10,3 +10,4 @@
 
 export { AssetError } from "./asset-error";
 export { AssetManager } from "./asset-manager";
+export type { TrackManifest } from "./types";
