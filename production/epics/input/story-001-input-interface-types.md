@@ -107,7 +107,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 **Story Type**: Logic
 **Required evidence**:
 
-- Tests: `tests/unit/input/input-interface-types.test.ts` — must exist and pass
+- Tests: `tests/unit/core/input/input-interface-types.test.ts` — must exist and pass
 - Type-level tests (compile-time assertions) + runtime constant verification
 
 **Status**: [ ] Not yet created
