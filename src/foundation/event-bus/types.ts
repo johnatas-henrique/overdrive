@@ -86,6 +86,12 @@ export type EventMap = {
   "race.started": { track: string; totalLaps: number; playerCarId: string };
   /** An asset failed to load. */
   "asset.error": { assetId: string; error: Error };
+  /** An asset load has started. */
+  "asset.load.start": { ids: string[] };
+  /** Progress update during an asset load. */
+  "asset.load.progress": { id: string; loaded: number; total: number };
+  /** An asset load has completed successfully. */
+  "asset.load.complete": { id: string };
 };
 
 /**

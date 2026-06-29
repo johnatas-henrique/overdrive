@@ -3,6 +3,7 @@ import { LoadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
 import type { Node } from "@babylonjs/core/node";
 import type { Scene } from "@babylonjs/core/scene";
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
+import type { EventMap, IEventBus } from "@/foundation/event-bus/types";
 import { AssetError } from "./asset-error";
 import type { TrackManifest } from "./types";
 
@@ -83,8 +84,20 @@ export class AssetManager {
    */
   private readonly _manifests: Map<string, TrackManifest> = new Map();
 
+  /** Optional EventBus for emitting lifecycle events. */
+  private readonly _eventBus?: IEventBus;
+
   /** Current state machine state. */
   private _state: AssetState = "uninitialized";
+
+  /**
+   * @param eventBus - Optional EventBus for asset lifecycle events. When provided,
+   *                   `load()` emits `asset.load.start`, `.progress`, `.complete`,
+   *                   and `asset.error` events. When omitted, no events are emitted.
+   */
+  constructor(eventBus?: IEventBus) {
+    this._eventBus = eventBus;
+  }
 
   // ── Public API ────────────────────────────────────────────────
 
@@ -178,10 +191,11 @@ export class AssetManager {
   }
 
   /**
-   * Internal: add all meshes from an AssetContainer to the active scene.
+   * Internal: add all meshes from an AssetContainer to its bound scene.
    *
    * Delegates to `container.addAllToScene()`. Note: `AssetContainer.addAllToScene()`
-   * takes no parameters — the container is scene-bound at load time.
+   * takes no parameters — the container is scene-bound at load time (the scene
+   * passed to `LoadAssetContainerAsync`), not the currently active scene.
    *
    * @param container - The AssetContainer whose meshes should be added to the active scene
    *
@@ -251,10 +265,14 @@ export class AssetManager {
     this._assertNotDisposed();
     this._assertInitialized();
 
+    this._emit("asset.load.start", { ids: [id] });
+
     // Cache hit — zero I/O
     if (this._cache.has(id)) {
       // biome-ignore lint/style/noNonNullAssertion: has() guarantees get() returns value — Map consistency
       const container = this._cache.get(id)!;
+      this._emit("asset.load.progress", { id, loaded: 1, total: 1 });
+      this._emit("asset.load.complete", { id });
       this._addAllToScene(container);
       return container;
     }
@@ -262,15 +280,35 @@ export class AssetManager {
     // Cache miss — resolve manifest and load
     const manifest = this._manifests.get(id);
     if (!manifest) {
+      this._emit("asset.error", {
+        assetId: id,
+        error: new AssetError(`Manifest not found for asset '${id}'`),
+      });
       throw new AssetError(`Manifest not found for asset '${id}'`);
     }
 
-    const container = await LoadAssetContainerAsync(
-      manifest.glb.filename,
-      this._raceScene as Scene,
-      { rootUrl: manifest.glb.rootUrl }
-    );
+    let container: AssetContainer;
+    try {
+      container = await LoadAssetContainerAsync(
+        manifest.glb.filename,
+        this._raceScene as Scene,
+        { rootUrl: manifest.glb.rootUrl }
+      );
+    } catch (error) {
+      this._emit("asset.error", {
+        assetId: id,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+      throw error;
+    }
 
+    // TODO: Detect texture load failures via scene.onTextureLoadingErrorObservable.
+    // Babylon.js logs a warning and shows checkerboard for missing textures —
+    // not a rejection. Emit 'asset.error' with the texture ID when detected.
+    // Not unit-testable; requires manual smoke check.
+
+    this._emit("asset.load.progress", { id, loaded: 1, total: 1 });
+    this._emit("asset.load.complete", { id });
     container.removeAllFromScene();
     this._cache.set(id, container);
     this._addAllToScene(container);
@@ -335,5 +373,18 @@ export class AssetManager {
     if (this._state === "disposed") {
       throw new AssetError("Already disposed");
     }
+  }
+
+  /**
+   * Emit an event on the optional EventBus (no-op when no bus is configured).
+   *
+   * @param event - Event name from EventMap
+   * @param payload - Typed payload matching the event
+   */
+  private _emit<T extends keyof EventMap>(
+    event: T,
+    payload: EventMap[T]
+  ): void {
+    this._eventBus?.emit(event, payload);
   }
 }
