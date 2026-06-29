@@ -106,7 +106,19 @@ export class SimSnapshotPanel {
     this._container = container;
     this._snapshot = snapshot;
     this._showNotification = showNotification;
+    this._initState();
     this._initDOM();
+  }
+
+  // -----------------------------------------------------------------------
+  // Private: state initialization (AC-21)
+  // -----------------------------------------------------------------------
+
+  /** Initialize or reset all reactive panel state. */
+  private _initState(): void {
+    this._lastSnapshot = null;
+    this._lastRestoreResult = null;
+    this._lastRestoreIsSuccess = false;
   }
 
   /**

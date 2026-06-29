@@ -28,6 +28,22 @@ interface TabDefinition {
   refresh?: () => void;
 }
 
+// ---------------------------------------------------------------------------
+// Named constants for Dev Tools strings (AC-26)
+// ---------------------------------------------------------------------------
+
+/** Tab labels — extracted to named constants for maintainability. */
+const TAB_LABEL_EVENT_LOG = "Event Log";
+const TAB_LABEL_GSM_HISTORY = "GSM History";
+const TAB_LABEL_SIM_SNAPSHOT = "Sim Snapshot";
+const TAB_LABEL_AI_TELEMETRY = "AI Telemetry";
+
+/** Tab IDs — stable identifiers for programmatic panel access (AC-19). */
+const TAB_ID_EVENT_LOG = "event-log";
+const TAB_ID_GSM_HISTORY = "gsm-history";
+const TAB_ID_SIM_SNAPSHOT = "sim-snapshot";
+const TAB_ID_AI_TELEMETRY = "ai-telemetry";
+
 /**
  * Dev Tools overlay — HTML overlay positioned absolutely over the canvas,
  * showing FPS, frame time, draw calls, mesh count, physics time via
@@ -274,6 +290,14 @@ export class DevTools implements IDevTools {
       this._frameEndObserver = null;
     }
 
+    // Remove tab button click listeners before DOM removal
+    const tabButtons = this._tabBar?.querySelectorAll<HTMLButtonElement>(
+      "button[data-tab-id]"
+    );
+    tabButtons?.forEach((btn) => {
+      btn.replaceWith(btn.cloneNode(true)); // removes all event listeners
+    });
+
     // Remove overlay from DOM
     if (this._overlay?.parentElement) {
       this._overlay.parentElement.removeChild(this._overlay);
@@ -371,10 +395,7 @@ export class DevTools implements IDevTools {
     this._sidebar = sidebar;
     this._initialized = true;
 
-    // ── Register "config" data source ─────────────────────────────────
-    this._initConfigDataSource();
-
-    // If event bus was set before overlay init, create the tab now
+    // ── If event bus was set before overlay init, create the tab now
     if (this._eventBus) {
       this._createEventLogTab();
       // Also create GSM History tab if GSM is already available
@@ -396,7 +417,7 @@ export class DevTools implements IDevTools {
     // Set default active tab — each _create*Tab() calls _switchTab() which
     // leaves the LAST created tab active. Override to Event Log as default.
     if (this._tabs.length > 0) {
-      this._switchTab("event-log");
+      this._switchTab(TAB_ID_EVENT_LOG);
     }
   }
 
@@ -418,7 +439,7 @@ export class DevTools implements IDevTools {
     // Create tab panel container
     const panel = document.createElement("div");
     panel.className = "tab-panel";
-    panel.dataset.tabId = "event-log";
+    panel.dataset.tabId = TAB_ID_EVENT_LOG;
 
     // Create read-only wrapper via type narrowing (IEventBus → IReadOnlyEventBus)
     // TypeScript allows this because IEventBus structurally satisfies the pick.
@@ -430,20 +451,20 @@ export class DevTools implements IDevTools {
     // Create tab button
     const btn = document.createElement("button");
     btn.className = "tab";
-    btn.dataset.tabId = "event-log";
-    btn.textContent = "Event Log";
-    btn.addEventListener("click", () => this._switchTab("event-log"));
+    btn.dataset.tabId = TAB_ID_EVENT_LOG;
+    btn.textContent = TAB_LABEL_EVENT_LOG;
+    btn.addEventListener("click", () => this._switchTab(TAB_ID_EVENT_LOG));
     this._tabBar.appendChild(btn);
 
     // Register tab definition
     this._tabs.push({
-      id: "event-log",
-      label: "Event Log",
+      id: TAB_ID_EVENT_LOG,
+      label: TAB_LABEL_EVENT_LOG,
       refresh: () => this._eventBusInspector?.refresh(),
     });
 
     // Switch to this tab (activates it)
-    this._switchTab("event-log");
+    this._switchTab(TAB_ID_EVENT_LOG);
   }
 
   /**
@@ -462,7 +483,7 @@ export class DevTools implements IDevTools {
     // Create tab panel container
     const panel = document.createElement("div");
     panel.className = "tab-panel";
-    panel.dataset.tabId = "gsm-history";
+    panel.dataset.tabId = TAB_ID_GSM_HISTORY;
 
     // Create read-only Event Bus wrapper
     const readOnlyBus: IReadOnlyEventBus = this._eventBus;
@@ -473,15 +494,15 @@ export class DevTools implements IDevTools {
     // Create tab button
     const btn = document.createElement("button");
     btn.className = "tab";
-    btn.dataset.tabId = "gsm-history";
-    btn.textContent = "GSM History";
-    btn.addEventListener("click", () => this._switchTab("gsm-history"));
+    btn.dataset.tabId = TAB_ID_GSM_HISTORY;
+    btn.textContent = TAB_LABEL_GSM_HISTORY;
+    btn.addEventListener("click", () => this._switchTab(TAB_ID_GSM_HISTORY));
     this._tabBar.appendChild(btn);
 
     // Register tab definition
     this._tabs.push({
-      id: "gsm-history",
-      label: "GSM History",
+      id: TAB_ID_GSM_HISTORY,
+      label: TAB_LABEL_GSM_HISTORY,
       refresh: () => this._gsmVisualizer?.refresh(),
     });
   }
@@ -501,7 +522,7 @@ export class DevTools implements IDevTools {
     // Create tab panel container
     const panel = document.createElement("div");
     panel.className = "tab-panel";
-    panel.dataset.tabId = "sim-snapshot";
+    panel.dataset.tabId = TAB_ID_SIM_SNAPSHOT;
 
     this._simSnapshotPanel = new SimSnapshotPanel(
       panel,
@@ -513,15 +534,15 @@ export class DevTools implements IDevTools {
     // Create tab button
     const btn = document.createElement("button");
     btn.className = "tab";
-    btn.dataset.tabId = "sim-snapshot";
-    btn.textContent = "Sim Snapshot";
-    btn.addEventListener("click", () => this._switchTab("sim-snapshot"));
-    this._tabBar?.appendChild(btn);
+    btn.dataset.tabId = TAB_ID_SIM_SNAPSHOT;
+    btn.textContent = TAB_LABEL_SIM_SNAPSHOT;
+    btn.addEventListener("click", () => this._switchTab(TAB_ID_SIM_SNAPSHOT));
+    this._tabBar.appendChild(btn);
 
     // Register tab definition
     this._tabs.push({
-      id: "sim-snapshot",
-      label: "Sim Snapshot",
+      id: TAB_ID_SIM_SNAPSHOT,
+      label: TAB_LABEL_SIM_SNAPSHOT,
       refresh: () => this._simSnapshotPanel?.refresh(),
     });
   }
@@ -540,7 +561,7 @@ export class DevTools implements IDevTools {
     // Create tab panel container
     const panel = document.createElement("div");
     panel.className = "tab-panel";
-    panel.dataset.tabId = "ai-telemetry";
+    panel.dataset.tabId = TAB_ID_AI_TELEMETRY;
 
     this._aiTelemetryPanel = new AiTelemetryPanel(
       panel,
@@ -551,15 +572,15 @@ export class DevTools implements IDevTools {
     // Create tab button
     const btn = document.createElement("button");
     btn.className = "tab";
-    btn.dataset.tabId = "ai-telemetry";
-    btn.textContent = "AI Telemetry";
-    btn.addEventListener("click", () => this._switchTab("ai-telemetry"));
+    btn.dataset.tabId = TAB_ID_AI_TELEMETRY;
+    btn.textContent = TAB_LABEL_AI_TELEMETRY;
+    btn.addEventListener("click", () => this._switchTab(TAB_ID_AI_TELEMETRY));
     this._tabBar.appendChild(btn);
 
     // Register tab definition
     this._tabs.push({
-      id: "ai-telemetry",
-      label: "AI Telemetry",
+      id: TAB_ID_AI_TELEMETRY,
+      label: TAB_LABEL_AI_TELEMETRY,
       refresh: () => this._aiTelemetryPanel?.refresh(),
     });
 
@@ -611,22 +632,6 @@ export class DevTools implements IDevTools {
    * The panel is created on first `_refreshDisplay()` that finds
    * ConfigManager initialized — avoids early access before init.
    */
-  private _initConfigDataSource(): void {
-    this.registerDataSource("config", () => {
-      try {
-        return getConfigManager().getDebugState() as unknown as Record<
-          string,
-          unknown
-        >;
-      } catch {
-        return { namespaces: {}, accessLog: [], envOverrides: [] } as Record<
-          string,
-          unknown
-        >;
-      }
-    });
-  }
-
   /**
    * Lazily create and/or refresh the config tree panel.
    *
