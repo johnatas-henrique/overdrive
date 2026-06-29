@@ -225,11 +225,11 @@ stories:
     name: "Story 004: Focus/Disconnect Safety"
     file: "production/epics/input/story-004-focus-disconnect-safety.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-29"
 
   - id: "2-22"
     name: "Story 005: GSM State Integration"
