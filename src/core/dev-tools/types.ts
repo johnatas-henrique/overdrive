@@ -11,9 +11,9 @@
  * @see ADR-0009 — Dev Tools Architecture
  */
 
-import type { IEventBus } from "../../foundation/event-bus";
-import type { GameStateMachine } from "../../foundation/gsm/GameStateMachine";
-import type { ISimulationSnapshot } from "../../foundation/simulation-snapshot";
+import type { IEventBus } from "@/foundation/event-bus/types";
+import type { GameStateMachine } from "@/foundation/gsm/GameStateMachine";
+import type { ISimulationSnapshot } from "@/foundation/simulation-snapshot/simulation-snapshot";
 
 /**
  * Read-only subset of IEventBus that exposes only observation methods.

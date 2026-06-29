@@ -30,9 +30,9 @@
 
 import type {
   FullGameSnapshot,
-  ISnapshotable,
   SimulationSnapshot,
-} from "../../foundation/simulation-snapshot";
+} from "@/foundation/simulation-snapshot/simulation-snapshot";
+import type { ISnapshotable } from "@/foundation/simulation-snapshot/types";
 
 // ---------------------------------------------------------------------------
 // Constants
