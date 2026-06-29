@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/johnatas-henrique/overdrive/compare/overdrive-v0.4.0...overdrive-v0.4.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* PR review — jsdoc, type assertions, and FIFO eviction ([7d22446](https://github.com/johnatas-henrique/overdrive/commit/7d224460a80cad0f2311afc077920e5f7737ea30))
+* remove dead code in persistence and config-tree ([9bede1d](https://github.com/johnatas-henrique/overdrive/commit/9bede1d695ff7fcc9a277f66aeec6caa8a7b008e))
+
 ## [0.4.0](https://github.com/johnatas-henrique/overdrive/compare/overdrive-v0.3.0...overdrive-v0.4.0) (2026-06-29)
 
 
