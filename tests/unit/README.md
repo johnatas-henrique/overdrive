@@ -27,7 +27,7 @@ tests/unit/
 
 ## Rules
 
-1. **One file per system** — named `[system].test.ts`, matching the source file.
+1. **One file per source module** — named `[module].test.ts`, matching the source file. Complex systems with multiple modules (e.g., telemetry with data model, sampling, console summary, JSON export, noop) may use one test file per module under the system directory.
 2. **Mirror `src/`** — when adding a system under `src/foundation/[system]/`, create `tests/unit/foundation/[system]/[system].test.ts`.
 3. **No catch-all files** — do not create `tech-debt-cleanup.test.ts` or `coverage-gap.test.ts`. Distribute tests into the correct per-system file.
 4. **No engine imports** — if a test needs `@babylonjs/*`, it belongs in `tests/integration/`.
