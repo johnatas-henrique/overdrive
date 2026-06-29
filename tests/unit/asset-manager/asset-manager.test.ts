@@ -17,6 +17,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AssetError } from "@/asset-manager/asset-error";
 import { AssetManager } from "@/asset-manager/asset-manager";
 import type { TrackManifest } from "@/asset-manager/types";
+import type { IEventBus } from "@/foundation/event-bus/types";
 
 vi.mock("@babylonjs/core/Loading/sceneLoader", () => ({
   LoadAssetContainerAsync: vi.fn(),
@@ -461,6 +462,223 @@ describe("AssetManager", () => {
 
       const result = assetManager.get("anything");
       expect(result).toBeUndefined();
+    });
+  });
+
+  // ── Event Bus integration ────────────────────────────────────
+
+  describe("Event Bus integration", () => {
+    const testManifest: TrackManifest = {
+      glb: { rootUrl: "assets/tracks/spa/", filename: "spa.glb" },
+    };
+
+    /** Create a mock IEventBus with spied emit(). */
+    function createMockBus(): IEventBus {
+      return {
+        emit: vi.fn(),
+        on: vi.fn(),
+        once: vi.fn(),
+        off: vi.fn(),
+        getSubscriptions: vi.fn(),
+        dispose: vi.fn(),
+      };
+    }
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("should emit asset.load.start when load begins (AC-10a)", async () => {
+      const bus = createMockBus();
+      const am = new AssetManager(bus);
+      am.init(menuScene, raceScene);
+      am.registerManifest("spa", testManifest);
+
+      vi.mocked(LoadAssetContainerAsync).mockResolvedValue(
+        createFakeContainer()
+      );
+
+      await am.load("spa");
+
+      // start must be the first emission
+      expect(bus.emit).toHaveBeenNthCalledWith(1, "asset.load.start", {
+        ids: ["spa"],
+      });
+    });
+
+    it("should emit asset.load.progress and asset.load.complete on successful first load (AC-10b)", async () => {
+      const bus = createMockBus();
+      const am = new AssetManager(bus);
+      am.init(menuScene, raceScene);
+      am.registerManifest("spa", testManifest);
+
+      vi.mocked(LoadAssetContainerAsync).mockResolvedValue(
+        createFakeContainer()
+      );
+
+      await am.load("spa");
+
+      // order: start → progress → complete + all the non-event calls
+      const emitCalls = vi.mocked(bus.emit).mock.calls;
+      const eventCalls = emitCalls.filter(([event]) =>
+        (event as string).startsWith("asset.load")
+      );
+      expect(eventCalls).toEqual([
+        ["asset.load.start", { ids: ["spa"] }],
+        ["asset.load.progress", { id: "spa", loaded: 1, total: 1 }],
+        ["asset.load.complete", { id: "spa" }],
+      ]);
+    });
+
+    it("should emit progress and complete on cache hit (AC-10c)", async () => {
+      const bus = createMockBus();
+      const am = new AssetManager(bus);
+      am.init(menuScene, raceScene);
+      am.registerManifest("spa", testManifest);
+
+      vi.mocked(LoadAssetContainerAsync).mockResolvedValue(
+        createFakeContainer()
+      );
+
+      // First load — populate cache
+      await am.load("spa");
+
+      // Reset the spy to isolate second-load emissions
+      vi.mocked(bus.emit).mockClear();
+
+      // Second load — cache hit
+      const container = await am.load("spa");
+
+      const emitCalls = vi.mocked(bus.emit).mock.calls;
+      expect(emitCalls).toEqual([
+        ["asset.load.start", { ids: ["spa"] }],
+        ["asset.load.progress", { id: "spa", loaded: 1, total: 1 }],
+        ["asset.load.complete", { id: "spa" }],
+      ]);
+      expect(container).toBeDefined();
+    });
+
+    it("should emit asset.error with payload and NOT complete on manifest-not-found (AC-10d)", async () => {
+      const bus = createMockBus();
+      const am = new AssetManager(bus);
+      am.init(menuScene, raceScene);
+
+      await expect(am.load("unknown")).rejects.toThrow(AssetError);
+
+      const emitCalls = vi.mocked(bus.emit).mock.calls;
+      // Should see start then error, but NO progress or complete
+      const eventCalls = emitCalls.map(([event]) => event as string);
+      expect(eventCalls).toContain("asset.load.start");
+      expect(eventCalls).toContain("asset.error");
+      expect(eventCalls).not.toContain("asset.load.progress");
+      expect(eventCalls).not.toContain("asset.load.complete");
+
+      // Verify asset.error payload shape
+      const errorCall = emitCalls.find(([e]) => e === "asset.error");
+      expect(errorCall).toBeDefined();
+      const payload = errorCall?.[1] as { assetId: string; error: Error };
+      expect(payload.assetId).toBe("unknown");
+      expect(payload.error).toBeInstanceOf(AssetError);
+    });
+
+    it("should emit asset.error with payload and NOT complete on loader rejection (AC-10d variant)", async () => {
+      const bus = createMockBus();
+      const am = new AssetManager(bus);
+      am.init(menuScene, raceScene);
+      am.registerManifest("spa", testManifest);
+
+      vi.mocked(LoadAssetContainerAsync).mockRejectedValue(
+        new Error("Network failure")
+      );
+
+      await expect(am.load("spa")).rejects.toThrow("Network failure");
+
+      const emitCalls = vi.mocked(bus.emit).mock.calls;
+      const eventCalls = emitCalls.map(([event]) => event as string);
+      expect(eventCalls).toContain("asset.load.start");
+      expect(eventCalls).toContain("asset.error");
+      expect(eventCalls).not.toContain("asset.load.progress");
+      expect(eventCalls).not.toContain("asset.load.complete");
+
+      // Verify asset.error payload shape
+      const errorCall = emitCalls.find(([e]) => e === "asset.error");
+      expect(errorCall).toBeDefined();
+      const payload = errorCall?.[1] as { assetId: string; error: Error };
+      expect(payload.assetId).toBe("spa");
+      expect(payload.error).toBeInstanceOf(Error);
+      expect(payload.error.message).toBe("Network failure");
+    });
+
+    it("should wrap non-Error rejection in Error for asset.error payload", async () => {
+      const bus = createMockBus();
+      const am = new AssetManager(bus);
+      am.init(menuScene, raceScene);
+      am.registerManifest("spa", testManifest);
+
+      // Reject with a string (non-Error) to exercise instanceof fallback
+      vi.mocked(LoadAssetContainerAsync).mockRejectedValue("string error");
+
+      await expect(am.load("spa")).rejects.toBe("string error");
+
+      const emitCalls = vi.mocked(bus.emit).mock.calls;
+      const errorCall = emitCalls.find(([e]) => e === "asset.error");
+      expect(errorCall).toBeDefined();
+      const payload = errorCall?.[1] as { assetId: string; error: Error };
+      expect(payload.assetId).toBe("spa");
+      expect(payload.error).toBeInstanceOf(Error);
+      expect(payload.error.message).toBe("string error");
+    });
+
+    it("should NOT emit any events when no EventBus is provided (no-bus path)", async () => {
+      // AM without bus (default constructor)
+      const am = new AssetManager();
+      am.init(menuScene, raceScene);
+      am.registerManifest("spa", testManifest);
+
+      vi.mocked(LoadAssetContainerAsync).mockResolvedValue(
+        createFakeContainer()
+      );
+
+      const result = await am.load("spa");
+      expect(result).toBeDefined();
+      // No crash — just no emissions
+    });
+
+    it("should emit asset.load.start before cache check (AC-6a)", async () => {
+      const bus = createMockBus();
+      const am = new AssetManager(bus);
+      am.init(menuScene, raceScene);
+      am.registerManifest("spa", testManifest);
+
+      vi.mocked(LoadAssetContainerAsync).mockResolvedValue(
+        createFakeContainer()
+      );
+
+      // First load — cache miss
+      await am.load("spa");
+      vi.mocked(bus.emit).mockClear();
+
+      // Second load — cache hit, but start still fires
+      await am.load("spa");
+
+      // start fires even for cache hit
+      expect(bus.emit).toHaveBeenCalledWith("asset.load.start", {
+        ids: ["spa"],
+      });
+    });
+
+    it("should NOT emit asset.load.complete when error occurs (AC-6b)", async () => {
+      const bus = createMockBus();
+      const am = new AssetManager(bus);
+      am.init(menuScene, raceScene);
+
+      await expect(am.load("unknown")).rejects.toThrow(AssetError);
+
+      const emitCalls = vi.mocked(bus.emit).mock.calls;
+      const completeCalls = emitCalls.filter(
+        ([event]) => event === "asset.load.complete"
+      );
+      expect(completeCalls).toHaveLength(0);
     });
   });
 });

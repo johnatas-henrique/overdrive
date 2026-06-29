@@ -28,6 +28,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AssetError } from "@/asset-manager/asset-error";
 import { AssetManager } from "@/asset-manager/asset-manager";
 import type { TrackManifest } from "@/asset-manager/types";
+import { EventBus } from "@/foundation/event-bus/event-bus";
 
 vi.mock("@babylonjs/core/Loading/sceneLoader", () => ({
   LoadAssetContainerAsync: vi.fn(),
@@ -377,5 +378,189 @@ describe("registerManifest + load lifecycle", () => {
 
     await expect(am.load("unknown")).rejects.toThrow(AssetError);
     await expect(am.load("unknown")).rejects.toThrow("Manifest not found");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Event emission lifecycle (real EventBus)
+// ---------------------------------------------------------------------------
+
+describe("Event emission lifecycle", () => {
+  let engine: NullEngine;
+  let am: AssetManager;
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    if (engine) engine.dispose();
+  });
+
+  function createScene(_name: string): Scene {
+    const scene = new Scene(engine);
+    return scene;
+  }
+
+  it("should emit start/progress/complete on successful load via real EventBus", async () => {
+    engine = createEngine();
+    const menuScene = createScene("menu");
+    const raceScene = createScene("race");
+    const bus = new EventBus();
+    bus.init();
+    am = new AssetManager(bus);
+    am.init(menuScene, raceScene);
+
+    const manifest: TrackManifest = {
+      glb: { rootUrl: "assets/tracks/spa/", filename: "spa.glb" },
+    };
+    am.registerManifest("spa", manifest);
+
+    const events: string[] = [];
+    bus.on("asset.load.start", () => events.push("start"));
+    bus.on("asset.load.progress", () => events.push("progress"));
+    bus.on("asset.load.complete", () => events.push("complete"));
+
+    const fakeContainer = {
+      addAllToScene: vi.fn(),
+      removeAllFromScene: vi.fn(),
+      dispose: vi.fn(),
+      meshes: [],
+      transformNodes: [],
+    };
+    vi.mocked(LoadAssetContainerAsync).mockResolvedValue(fakeContainer as any);
+
+    const container = await am.load("spa");
+
+    expect(events).toEqual(["start", "progress", "complete"]);
+    expect(container).toBe(fakeContainer);
+  });
+
+  it("should emit start/progress/complete on cache hit via real EventBus", async () => {
+    engine = createEngine();
+    const menuScene = createScene("menu");
+    const raceScene = createScene("race");
+    const bus = new EventBus();
+    bus.init();
+    am = new AssetManager(bus);
+    am.init(menuScene, raceScene);
+
+    const manifest: TrackManifest = {
+      glb: { rootUrl: "assets/tracks/spa/", filename: "spa.glb" },
+    };
+    am.registerManifest("spa", manifest);
+
+    const fakeContainer = {
+      addAllToScene: vi.fn(),
+      removeAllFromScene: vi.fn(),
+      dispose: vi.fn(),
+      meshes: [],
+      transformNodes: [],
+    };
+    vi.mocked(LoadAssetContainerAsync).mockResolvedValue(fakeContainer as any);
+
+    // Populate cache
+    await am.load("spa");
+
+    // Subscribe AFTER first load to capture only the second load
+    const events: string[] = [];
+    bus.on("asset.load.start", () => events.push("start"));
+    bus.on("asset.load.progress", () => events.push("progress"));
+    bus.on("asset.load.complete", () => events.push("complete"));
+
+    const result = await am.load("spa");
+
+    expect(events).toEqual(["start", "progress", "complete"]);
+    expect(result).toBe(fakeContainer);
+  });
+
+  it("should emit error and NOT complete on loader rejection via real EventBus", async () => {
+    engine = createEngine();
+    const menuScene = createScene("menu");
+    const raceScene = createScene("race");
+    const bus = new EventBus();
+    bus.init();
+    am = new AssetManager(bus);
+    am.init(menuScene, raceScene);
+
+    const manifest: TrackManifest = {
+      glb: { rootUrl: "assets/tracks/spa/", filename: "spa.glb" },
+    };
+    am.registerManifest("spa", manifest);
+
+    vi.mocked(LoadAssetContainerAsync).mockRejectedValue(
+      new Error("Connection lost")
+    );
+
+    const events: string[] = [];
+    const errors: any[] = [];
+    bus.on("asset.load.start", () => events.push("start"));
+    bus.on("asset.load.progress", () => events.push("progress"));
+    bus.on("asset.load.complete", () => events.push("complete"));
+    bus.on("asset.error", (payload) => errors.push(payload));
+
+    await expect(am.load("spa")).rejects.toThrow("Connection lost");
+
+    // Error event has the right shape
+    expect(errors).toHaveLength(1);
+    expect(errors[0].assetId).toBe("spa");
+    expect(errors[0].error.message).toBe("Connection lost");
+
+    // start was emitted, but NOT progress or complete
+    expect(events).toEqual(["start"]);
+  });
+
+  it("should emit error and NOT complete on manifest-not-found via real EventBus", async () => {
+    engine = createEngine();
+    const menuScene = createScene("menu");
+    const raceScene = createScene("race");
+    const bus = new EventBus();
+    bus.init();
+    am = new AssetManager(bus);
+    am.init(menuScene, raceScene);
+
+    const events: string[] = [];
+    const errors: any[] = [];
+    bus.on("asset.load.start", () => events.push("start"));
+    bus.on("asset.load.progress", () => events.push("progress"));
+    bus.on("asset.load.complete", () => events.push("complete"));
+    bus.on("asset.error", (payload) => errors.push(payload));
+
+    await expect(am.load("nonexistent")).rejects.toThrow(AssetError);
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0].assetId).toBe("nonexistent");
+
+    expect(events).toEqual(["start"]);
+  });
+
+  it("should NOT throw when EventBus emits during load (handler error isolation)", async () => {
+    engine = createEngine();
+    const menuScene = createScene("menu");
+    const raceScene = createScene("race");
+    const bus = new EventBus();
+    bus.init();
+    am = new AssetManager(bus);
+    am.init(menuScene, raceScene);
+
+    const manifest: TrackManifest = {
+      glb: { rootUrl: "assets/tracks/spa/", filename: "spa.glb" },
+    };
+    am.registerManifest("spa", manifest);
+
+    // Subscriber that throws — EventBus isolates errors per ADR-0001
+    bus.on("asset.load.start", () => {
+      throw new Error("Handler crash");
+    });
+
+    const fakeContainer = {
+      addAllToScene: vi.fn(),
+      removeAllFromScene: vi.fn(),
+      dispose: vi.fn(),
+      meshes: [],
+      transformNodes: [],
+    };
+    vi.mocked(LoadAssetContainerAsync).mockResolvedValue(fakeContainer as any);
+
+    // Should NOT throw despite the handler throwing
+    const result = await am.load("spa");
+    expect(result).toBe(fakeContainer);
   });
 });
