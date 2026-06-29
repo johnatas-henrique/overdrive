@@ -134,6 +134,7 @@ export function getDevTools(): IDevTools {
  */
 export function _resetDevToolsForTesting(): void {
   if (!import.meta.env.DEV) return;
+  _instance?.dispose();
   _instance = null;
   _initializing = false;
 }
