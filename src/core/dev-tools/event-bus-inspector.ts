@@ -24,22 +24,8 @@
  * @see Control Manifest D-F3 — Never emit events on the Event Bus
  */
 
-import type { IEventBus, Subscription } from "../../foundation/event-bus";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/**
- * Read-only subset of IEventBus that exposes only observation methods.
- *
- * Used by Dev Tools panels to enforce the "never emit" constraint
- * at the type level.
- */
-export type IReadOnlyEventBus = Pick<
-  IEventBus,
-  "on" | "off" | "getSubscriptions"
->;
+import type { Subscription } from "../../foundation/event-bus";
+import type { IReadOnlyEventBus } from "./types";
 
 /**
  * A single captured event in the log buffer.

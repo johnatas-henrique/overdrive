@@ -27,21 +27,7 @@ import type { Subscription } from "../../foundation/event-bus";
 import type { GameStateMachine } from "../../foundation/gsm/GameStateMachine";
 import { TRANSITIONS } from "../../foundation/gsm/TransitionTable";
 import type { State } from "../../foundation/gsm/types";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/**
- * Read-only subset of IEventBus that exposes only observation methods.
- *
- * Used by Dev Tools panels to enforce the "never emit" constraint
- * at the type level.
- */
-export type IReadOnlyEventBus = Pick<
-  import("../../foundation/event-bus").IEventBus,
-  "on" | "off" | "getSubscriptions"
->;
+import type { IReadOnlyEventBus } from "./types";
 
 /**
  * A single recorded transition for display in the GSM History tab.

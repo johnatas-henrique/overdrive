@@ -11,14 +11,11 @@ import type { SimulationSnapshot } from "../../foundation/simulation-snapshot";
 import { defined } from "../../shared/assert-defined";
 import { AiTelemetryPanel } from "./ai-telemetry-panel";
 import { ConfigTreePanel } from "./config-tree";
-import {
-  EventBusInspector,
-  type IReadOnlyEventBus,
-} from "./event-bus-inspector";
+import { EventBusInspector } from "./event-bus-inspector";
 import { GsmVisualizer } from "./gsm-visualizer";
 import { disposeKeybinds } from "./keybinds";
 import { SimSnapshotPanel } from "./sim-snapshot-panel";
-import type { AiTelemetryCarData, IDevTools } from "./types";
+import type { AiTelemetryCarData, IDevTools, IReadOnlyEventBus } from "./types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,6 +54,7 @@ export class DevTools implements IDevTools {
   private _engine: AbstractEngine;
   private _scene: Scene;
   private _initialized = false;
+  private _disposed = false;
   private _visible = false;
   private _minimised = false;
   private _overlay: HTMLDivElement | null = null;
@@ -174,6 +172,7 @@ export class DevTools implements IDevTools {
   /** @inheritdoc */
   toggle(): void {
     if (!import.meta.env.DEV) return;
+    if (this._disposed) return;
 
     if (!this._initialized) {
       this._initOverlay();
@@ -244,6 +243,7 @@ export class DevTools implements IDevTools {
   /** @inheritdoc */
   dispose(): void {
     if (!import.meta.env.DEV) return;
+    if (this._disposed) return;
 
     // Remove the keyboard listener to prevent stale singleton reference
     disposeKeybinds();
@@ -295,6 +295,7 @@ export class DevTools implements IDevTools {
     this._instrumentation = null;
     this._tabs = [];
     this._activeTabId = null;
+    this._disposed = true;
   }
 
   // ---------------------------------------------------------------------------
@@ -390,6 +391,12 @@ export class DevTools implements IDevTools {
     // If AI Telemetry reader was set before overlay init, create the tab now
     if (this._aiTelemetryReader) {
       this._createAiTelemetryTab();
+    }
+
+    // Set default active tab — each _create*Tab() calls _switchTab() which
+    // leaves the LAST created tab active. Override to Event Log as default.
+    if (this._tabs.length > 0) {
+      this._switchTab("event-log");
     }
   }
 
@@ -555,6 +562,10 @@ export class DevTools implements IDevTools {
       label: "AI Telemetry",
       refresh: () => this._aiTelemetryPanel?.refresh(),
     });
+
+    // Activate the AI Telemetry tab so the panel is visible
+    // when this is the first (or only) available tab.
+    this._switchTab("ai-telemetry");
   }
 
   /**
@@ -683,9 +694,9 @@ export class DevTools implements IDevTools {
    */
   private _refreshDisplay(): void {
     if (!this._initialized || !this._visible) return;
-    if (!this._instrumentation) return;
 
     const inst = this._instrumentation;
+    defined(inst);
     const ft = inst.frameTimeCounter.current;
 
     this._metricElements.fps.textContent =
