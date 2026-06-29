@@ -2572,8 +2572,7 @@ describe("W-4: dev guard installed in attach(), not constructor", () => {
 
   beforeEach(() => {
     warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    // Restore globals in case a previous test left the guard active
-    // (the module-level afterEach may not fully undo Object.defineProperty guards)
+    // Restore globals using the module-level originals (declared ~line 2063)
     Math.random = __origMathRandom;
     Date.now = __origDateNow;
     performance.now = __origPerfNow;

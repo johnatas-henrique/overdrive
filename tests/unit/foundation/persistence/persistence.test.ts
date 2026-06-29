@@ -115,9 +115,13 @@ describe("AC-1: init() probes storage availability", () => {
 
   it("should enter Degraded when setItem throws SecurityError", async () => {
     vi.stubGlobal("localStorage", createFailingStorage("SecurityError"));
-    const persistence = new Persistence();
-    await persistence.init();
-    expect(persistence.state).toBe(PersistenceState.Degraded);
+    try {
+      const persistence = new Persistence();
+      await persistence.init();
+      expect(persistence.state).toBe(PersistenceState.Degraded);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("should enter Degraded when setItem throws QuotaExceededError", async () => {
@@ -378,6 +382,19 @@ describe("retry() guard", () => {
     vi.stubGlobal("localStorage", createFailingStorage("SecurityError"));
     const persistence = new Persistence();
     await persistence.init();
+    await expect(persistence.retry()).resolves.toBe(false);
+  });
+
+  it("should set _recoverable=false on SecurityError so second retry skips probe", async () => {
+    vi.stubGlobal("localStorage", createFailingStorage("SecurityError"));
+    const persistence = new Persistence();
+    await persistence.init();
+
+    // First retry — hits catch block, sets _recoverable = false
+    await expect(persistence.retry()).resolves.toBe(false);
+
+    // Second retry — should return false immediately (line 701-702)
+    // without reaching the probe, proving _recoverable was set to false
     await expect(persistence.retry()).resolves.toBe(false);
   });
 
