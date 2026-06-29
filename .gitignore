@@ -25,6 +25,9 @@ desktop.ini
 *.swo
 *~
 
+# VSCode
+.vscode/
+
 # Submodule dependencies
 tools/aseprite-mcp/.venv/
 
