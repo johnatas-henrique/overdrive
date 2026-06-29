@@ -50,7 +50,7 @@ declare global {
   }
 }
 
-import type { IEventBus, Subscription } from "@/foundation/event-bus";
+import type { IEventBus, Subscription } from "@/foundation/event-bus/types";
 
 // ---------------------------------------------------------------------------
 // TelemetrySample
