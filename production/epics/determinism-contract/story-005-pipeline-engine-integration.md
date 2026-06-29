@@ -146,7 +146,7 @@ _Handled by neighbouring stories — do not implement here:_
 
 ## QA Test Cases
 
-**Test file**: `tests/integration/determinism.test.ts`
+**Test file**: `tests/unit/determinism.test.ts`
 
 ### AC-1: pipeline runs inside render loop
 - Start Babylon.js engine with pipeline registered

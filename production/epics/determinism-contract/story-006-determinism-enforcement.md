@@ -179,3 +179,4 @@ Test evidence: `tests/unit/determinism.test.ts` — verify all acceptance criter
 **Deviations**: None
 **Test Evidence**: Unit test at `tests/unit/determinism.test.ts` — 156/156 tests, DeterminismGuard AC-1 through AC-6 covered
 **Code Review**: Complete (APPROVE — LP-CODE-REVIEW + QL-TEST-COVERAGE ADEQUATE)
+**Risk Note**: Tests use `vi.resetModules()` for module re-import. This is NOT thread-safe — parallel test runners may race on module state. All determinism tests are serialized within a single file (Vitest file-level parallelism is safe; test-level parallelism within the file is not).

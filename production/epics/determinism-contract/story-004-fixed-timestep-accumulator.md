@@ -145,7 +145,7 @@ _Handled by neighbouring stories — do not implement here:_
 
 ### AC-2: large frame (catch-up capped)
 - Frame delta = 5/60s
-- Assert: exactly 4 ticks processed (cap applied)
+- Assert: exactly `MAX_TICKS_PER_FRAME` ticks processed (cap applied)
 - Assert: remaining time used for rendering interpolation
 
 ### AC-3: accumulator carries across frames

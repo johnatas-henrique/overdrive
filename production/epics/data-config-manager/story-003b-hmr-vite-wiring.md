@@ -3,7 +3,7 @@
 > **Epic**: Data & Config Manager
 > **Status**: Complete
 > **Layer**: Foundation
-> **Type**: Integration
+> **Type**: Logic
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 2h
 
@@ -62,7 +62,7 @@ _Handled by neighbouring stories — do not implement here:_
 
 ## QA Test Cases
 
-**Test file**: `tests/integration/config-manager.test.ts`
+**Test file**: `tests/unit/hmr.test.ts`
 
 ### AC-1: HMR payload triggers invalidation
 - Simulate Vite HMR payload for config namespace
