@@ -33,7 +33,7 @@ class App {
     const eventBus = new EventBus();
     eventBus.init();
 
-    await CreateMainScene(this.scene);
+    await CreateMainScene(this.scene, eventBus);
 
     // ── Dev Tools (tree-shaken in production) ─────────────────────
     if (import.meta.env.DEV) {
@@ -46,7 +46,7 @@ class App {
       const gsm = getPlaygroundGsm();
       const simulationSnapshot = getPlaygroundSnapshot();
       const aiTelemetry = getPlaygroundAiTelemetry;
-      initDevTools(
+      await initDevTools(
         this.engine,
         this.scene,
         eventBus,

@@ -12,6 +12,7 @@ import {
   ConfigManager,
   setConfigManager,
 } from "../foundation/config/config-manager";
+import type { IEventBus } from "../foundation/event-bus";
 import { GameStateMachine } from "../foundation/gsm/GameStateMachine";
 import type { ISnapshotable } from "../foundation/simulation-snapshot";
 import { fnv1a, SimulationSnapshot } from "../foundation/simulation-snapshot";
@@ -64,7 +65,10 @@ class PlaygroundSnapshotSystem implements ISnapshotable {
   }
 }
 
-export const CreateMainScene = async (scene: Scene): Promise<void> => {
+export const CreateMainScene = async (
+  scene: Scene,
+  eventBus?: IEventBus
+): Promise<void> => {
   scene.clearColor = new Color4(0.05, 0.05, 0.08, 1);
 
   const camera = new ArcRotateCamera(
@@ -132,7 +136,7 @@ export const CreateMainScene = async (scene: Scene): Promise<void> => {
 
     // Initialize GameStateMachine for Dev Tools GSM History tab (Story 006)
     try {
-      _gsm = new GameStateMachine();
+      _gsm = new GameStateMachine(eventBus);
       _gsm.init();
     } catch {
       // GameStateMachine may already be initialized

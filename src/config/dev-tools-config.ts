@@ -12,11 +12,11 @@
 
 /** Key codes for Dev Tools overlay controls. */
 export interface DevToolsKeys {
-  /** Toggle overlay visibility (default: backtick `) */
+  /** Toggle overlay visibility */
   toggle: string;
-  /** Force-reload config (default: 1) */
+  /** Force-reload config from source */
   reload: string;
-  /** Toggle minimised overlay (default: 2) */
+  /** Toggle minimised overlay state */
   minimise: string;
 }
 

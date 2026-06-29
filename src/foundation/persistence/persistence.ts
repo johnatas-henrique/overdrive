@@ -360,9 +360,10 @@ export class Persistence {
     } catch (error) {
       this._lastError = error instanceof Error ? error.name : "UnknownError";
       this._state = PersistenceState.Degraded;
-      // Check for SecurityError (e.g. private browsing / storage quota
-      // exceeded). Non-recoverable security errors mark the state as
-      // Degraded permanently (retry() will not attempt to recover).
+      // Check for SecurityError (e.g. private browsing / storage access
+      // denied by the browser's security policies). Non-recoverable security
+      // errors mark the state as Degraded permanently (retry() will not
+      // attempt to recover).
       // See F-006 — SecurityError handling in degraded transitions.
       if (this._lastError === "SecurityError") {
         this._recoverable = false;
