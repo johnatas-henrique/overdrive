@@ -17,7 +17,7 @@
 import { Observable } from "@babylonjs/core/Misc/observable";
 import { describe, expect, it } from "vitest";
 import { applyDeadZone } from "@/core/input/dead-zone";
-import type { IInput, InputState } from "@/core/input/IInput";
+import { type IInput, InputState } from "@/core/input/IInput";
 
 // =============================================================================
 // Shared mutable mock state — hoisted before imports so vi.mock factories
@@ -195,6 +195,13 @@ function connectGamepad(): typeof hoisted.mockBrowserGamepad {
     hoisted.gpConnectedCbs[0](babylonGamepad);
   }
   return hoisted.mockBrowserGamepad;
+}
+
+/** Simulate disconnecting a gamepad via the observable. */
+function disconnectGamepad(): void {
+  if (hoisted.gpDisconnectedCbs.length > 0) {
+    hoisted.gpDisconnectedCbs[0]();
+  }
 }
 
 /** Press a keyboard key for the next getState() call. */
@@ -1006,5 +1013,524 @@ describe("DSM keyboard source null guard", () => {
       // Restore mock
       hoisted.mockDsmInstance.getDeviceSource = originalGetDeviceSource;
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Additional: transitionBlocking + hidden interaction (both flags)
+// ---------------------------------------------------------------------------
+
+describe("transitionBlocking + hidden interaction", () => {
+  it("test_transition_blocking_takes_priority_over_hidden", () => {
+    const input = createPlayerInput();
+    pressKey(KEY_W);
+    input.getState(); // clear edges
+
+    // Set both flags
+    input.setTransitionBlocking(true);
+    input.setHidden(true);
+
+    // Should return ZERO (transition blocking checked first)
+    const state = input.getState();
+    expect(state).toStrictEqual(InputState.ZERO);
+  });
+
+  it("test_hidden_checked_second_when_not_blocking", () => {
+    const input = createPlayerInput();
+    pressKey(KEY_W);
+    input.getState(); // clear edges
+
+    // Only hidden set (transition blocking off)
+    input.setHidden(true);
+    const state = input.getState();
+    expect(state).toStrictEqual(InputState.ZERO);
+  });
+
+  it("test_resume_from_both_flags_resumes_polling", () => {
+    const input = createPlayerInput();
+    input.setTransitionBlocking(true);
+    input.setHidden(true);
+    input.getState(); // zeros
+
+    // Resume both
+    input.setTransitionBlocking(false);
+    input.setHidden(false);
+    pressKey(KEY_W);
+    const state = input.getState();
+    expect(state.throttle).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Additional: dispose clears gamepad observer subscriptions
+// ---------------------------------------------------------------------------
+
+describe("dispose clears gamepad observers", () => {
+  it("test_dispose_stops_gamepad_connect_notifications", () => {
+    const input = createPlayerInput();
+    let deviceChangedCount = 0;
+    input.onDeviceChanged.add(() => {
+      deviceChangedCount++;
+    });
+
+    // Connect — should fire
+    connectGamepad();
+    expect(deviceChangedCount).toBe(1);
+
+    // Dispose
+    input.dispose();
+
+    // Reconnect — should NOT fire because observers were cleared
+    connectGamepad();
+    expect(deviceChangedCount).toBe(1); // no new notification
+  });
+
+  it("test_dispose_stops_gamepad_disconnect_observable", () => {
+    const input = createPlayerInput();
+    connectGamepad();
+
+    // Dispose
+    input.dispose();
+
+    // Disconnect after dispose — should not throw
+    expect(() => disconnectGamepad()).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Additional: re-init creates fresh gamepad observers
+// ---------------------------------------------------------------------------
+
+describe("re-init creates fresh gamepad observers", () => {
+  it("test_reinit_allows_gamepad_connect_to_work", () => {
+    const input = createPlayerInput();
+    connectGamepad();
+
+    // Re-init
+    input.init({} as unknown as never);
+
+    // New gamepad connect should work
+    const bgp = connectGamepad();
+    bgp.axes[0] = 0.8;
+    const state = input.getState();
+    expect(state.steer).not.toBe(0);
+  });
+
+  it("test_reinit_resets_last_active_device", () => {
+    const input = createPlayerInput();
+    const bgp = connectGamepad();
+    bgp.axes[0] = 0.5;
+    input.getState();
+    expect(input.getLastActiveDevice()).toBe("gamepad");
+
+    // Re-init resets to keyboard
+    input.init({} as unknown as never);
+    expect(input.getLastActiveDevice()).toBe("keyboard");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Additional: getLastActiveDevice transitions (full coverage)
+// ---------------------------------------------------------------------------
+
+describe("getLastActiveDevice transitions", () => {
+  it("test_keyboard_to_gamepad_to_keyboard_full_cycle", () => {
+    const input = createPlayerInput();
+    expect(input.getLastActiveDevice()).toBe("keyboard");
+
+    // Switch to gamepad via analog input
+    const bgp = connectGamepad();
+    bgp.axes[0] = 0.5;
+    input.getState();
+    expect(input.getLastActiveDevice()).toBe("gamepad");
+
+    // Clear gamepad activity so keyboard can win
+    bgp.axes[0] = 0;
+    pressKey(KEY_W);
+    input.getState();
+    expect(input.getLastActiveDevice()).toBe("keyboard");
+
+    // Switch to gamepad via digital input
+    bgp.buttons[0].pressed = true; // A button
+    input.getState(); // clear edge
+    input.getState(); // detect gamepad activity
+    expect(input.getLastActiveDevice()).toBe("gamepad");
+  });
+
+  it("test_gamepad_digital_only_switches_device", () => {
+    const input = createPlayerInput();
+    const bgp = connectGamepad();
+    bgp.buttons[9].pressed = true; // Start button
+    input.getState(); // clear edge
+    input.getState(); // detect
+    expect(input.getLastActiveDevice()).toBe("gamepad");
+  });
+
+  it("test_keyboard_switches_back_from_gamepad_digital", () => {
+    const input = createPlayerInput();
+    const bgp = connectGamepad();
+    bgp.buttons[0].pressed = true; // A button
+    input.getState();
+    input.getState();
+    expect(input.getLastActiveDevice()).toBe("gamepad");
+
+    // Clear gamepad activity so keyboard can win
+    bgp.buttons[0].pressed = false;
+    pressKey(KEY_A);
+    input.getState();
+    expect(input.getLastActiveDevice()).toBe("keyboard");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Additional: _readGamepad device activity tracking branches
+// ---------------------------------------------------------------------------
+
+describe("_readGamepad device activity tracking", () => {
+  it("test_gamepad_analog_input_switches_device", () => {
+    const input = createPlayerInput();
+    const bgp = connectGamepad();
+
+    // Only analog input (stick > 0.1)
+    bgp.axes[0] = 0.5;
+    input.getState();
+    expect(input.getLastActiveDevice()).toBe("gamepad");
+  });
+
+  it("test_gamepad_throttle_above_threshold_switches_device", () => {
+    const input = createPlayerInput();
+    const bgp = connectGamepad();
+
+    // Only throttle > 0.1
+    bgp.buttons[7].value = 0.2;
+    input.getState();
+    expect(input.getLastActiveDevice()).toBe("gamepad");
+  });
+
+  it("test_gamepad_brake_above_threshold_switches_device", () => {
+    const input = createPlayerInput();
+    const bgp = connectGamepad();
+
+    // Only brake > 0.1
+    bgp.buttons[6].value = 0.2;
+    input.getState();
+    expect(input.getLastActiveDevice()).toBe("gamepad");
+  });
+
+  it("test_gamepad_digital_input_switches_device", () => {
+    const input = createPlayerInput();
+    const bgp = connectGamepad();
+
+    // Only D-pad up
+    bgp.buttons[12].pressed = true;
+    input.getState();
+    expect(input.getLastActiveDevice()).toBe("gamepad");
+  });
+
+  it("test_gamepad_connect_sets_device_to_gamepad", () => {
+    const input = createPlayerInput();
+    // connectGamepad fires onGamepadConnectedObservable which sets _lastActiveDevice = "gamepad"
+    connectGamepad();
+    expect(input.getLastActiveDevice()).toBe("gamepad");
+  });
+
+  it("test_keyboard_overwrites_when_gamepad_idle", () => {
+    const input = createPlayerInput();
+    connectGamepad(); // sets device to gamepad
+
+    // Gamepad is idle (all axes at 0, no buttons pressed)
+    // Keyboard activity should win because _readGamepad doesn't overwrite
+    pressKey(KEY_D);
+    input.getState();
+    expect(input.getLastActiveDevice()).toBe("keyboard");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Additional: gamepad digital + keyboard digital OR
+// ---------------------------------------------------------------------------
+
+describe("gamepad digital + keyboard digital OR", () => {
+  it("test_space_plus_gamepad_a_both_trigger_confirm", () => {
+    const input = createPlayerInput();
+    const bgp = connectGamepad();
+
+    // Both pressed simultaneously
+    pressKey(KEY_SPACE);
+    bgp.buttons[0].pressed = true; // A button
+
+    // Confirm should fire (OR logic)
+    const state1 = input.getState();
+    expect(state1.confirm).toBe(true);
+
+    // Second tick: both still held, no edge
+    const state2 = input.getState();
+    expect(state2.confirm).toBe(false);
+  });
+
+  it("test_keyboard_only_confirm_pulse", () => {
+    const input = createPlayerInput();
+    connectGamepad(); // gamepad connected but no buttons pressed
+
+    pressKey(KEY_SPACE);
+    const [state1] = tickTwice(input);
+    expect(state1.confirm).toBe(true);
+  });
+
+  it("test_gamepad_only_confirm_pulse", () => {
+    const input = createPlayerInput();
+    const bgp = connectGamepad();
+    bgp.buttons[0].pressed = true; // A button
+
+    const [state1] = tickTwice(input);
+    expect(state1.confirm).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Additional: W+S simultaneous (both throttle and brake)
+// ---------------------------------------------------------------------------
+
+describe("W+S simultaneous", () => {
+  it("test_w_and_s_both_pressed_throttle_and_brake_are_one", () => {
+    const input = createPlayerInput();
+    pressKey(KEY_W);
+    pressKey(KEY_S);
+    const state = input.getState();
+    // Both are binary 1 — no cancellation
+    expect(state.throttle).toBe(1);
+    expect(state.brake).toBe(1);
+  });
+
+  it("test_w_only_throttle_one_brake_zero", () => {
+    const input = createPlayerInput();
+    pressKey(KEY_W);
+    const state = input.getState();
+    expect(state.throttle).toBe(1);
+    expect(state.brake).toBe(0);
+  });
+
+  it("test_s_only_brake_one_throttle_zero", () => {
+    const input = createPlayerInput();
+    pressKey(KEY_S);
+    const state = input.getState();
+    expect(state.throttle).toBe(0);
+    expect(state.brake).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Additional: gamepad trigger zero value does not override keyboard
+// ---------------------------------------------------------------------------
+
+describe("gamepad trigger zero value", () => {
+  it("test_gamepad_throttle_zero_does_not_override_keyboard_w", () => {
+    const input = createPlayerInput();
+    const bgp = connectGamepad();
+    pressKey(KEY_W); // keyboard throttle = 1
+    bgp.buttons[GP_RT].value = 0; // gamepad throttle = 0
+    // Gamepad only overrides when value > 0
+    expect(input.getState().throttle).toBe(1);
+  });
+
+  it("test_gamepad_brake_zero_does_not_override_keyboard_s", () => {
+    const input = createPlayerInput();
+    const bgp = connectGamepad();
+    pressKey(KEY_S); // keyboard brake = 1
+    bgp.buttons[GP_LT].value = 0; // gamepad brake = 0
+    // Gamepad only overrides when value > 0
+    expect(input.getState().brake).toBe(1);
+  });
+
+  it("test_gamepad_steer_zero_does_not_override_keyboard_d", () => {
+    const input = createPlayerInput();
+    const bgp = connectGamepad();
+    pressKey(KEY_D); // keyboard steer = 1
+    bgp.axes[0] = 0; // gamepad steer = 0
+    // Gamepad only overrides when steerRaw !== 0
+    expect(input.getState().steer).toBe(1);
+  });
+
+  it("test_gamepad_steer_zero_does_not_override_keyboard_a", () => {
+    const input = createPlayerInput();
+    const bgp = connectGamepad();
+    pressKey(KEY_A); // keyboard steer = -1
+    bgp.axes[0] = 0; // gamepad steer = 0
+    // Gamepad only overrides when steerRaw !== 0
+    expect(input.getState().steer).toBe(-1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Additional: branch coverage for ?? and || operators
+// ---------------------------------------------------------------------------
+
+describe("branch coverage: ?? and || fallbacks", () => {
+  it("test_axes_truthy_buttons_falsy_returns_early", () => {
+    // Line 454: if (!axes || !buttons) return;
+    // Tests the !buttons branch specifically (axes exists, buttons doesn't)
+    const input = createPlayerInput();
+    const noButtonsGamepad = {
+      browserGamepad: {
+        connected: true,
+        axes: [0, 0, 0, 0],
+        buttons: null,
+      },
+    };
+    if (hoisted.gpConnectedCbs.length > 0) {
+      hoisted.gpConnectedCbs[0](noButtonsGamepad);
+    }
+    pressKey(KEY_D);
+    // Falls through to keyboard because gamepad read returns early
+    expect(input.getState().steer).toBe(1);
+  });
+
+  it("test_axes_falsy_buttons_truthy_returns_early", () => {
+    // Line 454: if (!axes || !buttons) return;
+    // Tests the !axes branch specifically (buttons exists, axes doesn't)
+    const input = createPlayerInput();
+    const noAxesGamepad = {
+      browserGamepad: {
+        connected: true,
+        axes: null,
+        buttons: Array(16).fill({ pressed: false, value: 0 }),
+      },
+    };
+    if (hoisted.gpConnectedCbs.length > 0) {
+      hoisted.gpConnectedCbs[0](noAxesGamepad);
+    }
+    pressKey(KEY_D);
+    expect(input.getState().steer).toBe(1);
+  });
+
+  it("test_axes_index_undefined_fallback_to_zero", () => {
+    // Line 458: axes[GP_AXIS_LEFT_STICK_X] ?? 0
+    // Tests the ?? fallback when axes[0] is undefined
+    const input = createPlayerInput();
+    const sparseAxesGamepad = {
+      browserGamepad: {
+        connected: true,
+        axes: [], // empty array — axes[0] is undefined
+        buttons: Array(16).fill({ pressed: false, value: 0 }),
+      },
+    };
+    if (hoisted.gpConnectedCbs.length > 0) {
+      hoisted.gpConnectedCbs[0](sparseAxesGamepad);
+    }
+    // steerRaw should be 0 via ?? fallback, keyboard D takes over
+    pressKey(KEY_D);
+    expect(input.getState().steer).toBe(1);
+  });
+
+  it("test_throttle_trigger_button_undefined_fallback", () => {
+    // Line 464: buttons[GP_BUTTON_R_TRIGGER]?.value ?? 0
+    // Tests the ?? fallback when buttons[7] is undefined
+    const input = createPlayerInput();
+    const noRTGamepad = {
+      browserGamepad: {
+        connected: true,
+        axes: [0, 0, 0, 0],
+        buttons: (() => {
+          const arr = Array(16)
+            .fill(null)
+            .map(() => ({
+              pressed: false,
+              value: 0,
+            }));
+          arr[7] = undefined; // RT missing
+          return arr;
+        })(),
+      },
+    };
+    if (hoisted.gpConnectedCbs.length > 0) {
+      hoisted.gpConnectedCbs[0](noRTGamepad);
+    }
+    pressKey(KEY_W);
+    // throttleRaw = 0 via ?? fallback, keyboard W throttle = 1 preserved
+    expect(input.getState().throttle).toBe(1);
+  });
+
+  it("test_brake_trigger_button_undefined_fallback", () => {
+    // Line 469: buttons[GP_BUTTON_L_TRIGGER]?.value ?? 0
+    // Tests the ?? fallback when buttons[6] is undefined
+    const input = createPlayerInput();
+    const noLTGamepad = {
+      browserGamepad: {
+        connected: true,
+        axes: [0, 0, 0, 0],
+        buttons: (() => {
+          const arr = Array(16)
+            .fill(null)
+            .map(() => ({
+              pressed: false,
+              value: 0,
+            }));
+          arr[6] = undefined; // LT missing
+          return arr;
+        })(),
+      },
+    };
+    if (hoisted.gpConnectedCbs.length > 0) {
+      hoisted.gpConnectedCbs[0](noLTGamepad);
+    }
+    pressKey(KEY_S);
+    // brakeRaw = 0 via ?? fallback, keyboard S brake = 1 preserved
+    expect(input.getState().brake).toBe(1);
+  });
+
+  it("test_digital_button_index_undefined_fallback", () => {
+    // Line 476: buttons[idx]?.pressed ?? false
+    // Tests the ?? fallback when buttons[0] (A) is undefined
+    const input = createPlayerInput();
+    const noABtnGamepad = {
+      browserGamepad: {
+        connected: true,
+        axes: [0, 0, 0, 0],
+        buttons: (() => {
+          const arr = Array(16)
+            .fill(null)
+            .map(() => ({
+              pressed: false,
+              value: 0,
+            }));
+          arr[0] = undefined; // A button missing
+          return arr;
+        })(),
+      },
+    };
+    if (hoisted.gpConnectedCbs.length > 0) {
+      hoisted.gpConnectedCbs[0](noABtnGamepad);
+    }
+    // isPressed(0) returns false via ?? fallback — no gamepad confirm pulse
+    const [state1] = tickTwice(input);
+    expect(state1.confirm).toBe(false);
+  });
+
+  it("test_keyboard_digital_fallback_when_gamepad_button_undefined", () => {
+    // Line 476: buttons[idx]?.pressed ?? false
+    // Tests that keyboard confirm still works when gamepad A button is undefined
+    const input = createPlayerInput();
+    const noABtnGamepad = {
+      browserGamepad: {
+        connected: true,
+        axes: [0, 0, 0, 0],
+        buttons: (() => {
+          const arr = Array(16)
+            .fill(null)
+            .map(() => ({
+              pressed: false,
+              value: 0,
+            }));
+          arr[0] = undefined; // A button missing
+          return arr;
+        })(),
+      },
+    };
+    if (hoisted.gpConnectedCbs.length > 0) {
+      hoisted.gpConnectedCbs[0](noABtnGamepad);
+    }
+    pressKey(KEY_SPACE); // keyboard confirm
+    const [state1] = tickTwice(input);
+    expect(state1.confirm).toBe(true);
   });
 });
