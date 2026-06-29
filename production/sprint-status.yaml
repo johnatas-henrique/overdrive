@@ -286,11 +286,11 @@ stories:
     name: "Story 003: Loading Events"
     file: "production/epics/asset-manager/story-003-loading-events.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1
+    completed: "2026-06-29"
     blocker: ""
-    completed: ""
 
   - id: "2-28"
     name: "Story 004: Unload/Dispose Edge Cases"

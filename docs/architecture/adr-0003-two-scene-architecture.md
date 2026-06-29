@@ -211,7 +211,7 @@ interface IAssetManager {
   // - 'asset.load.start'(ids: string[])     — batch started
   // - 'asset.load.progress'(id: string, loaded: number, total: number) — per-file progress
   // - 'asset.load.complete'(id: string)     — single asset finished
-  // - 'asset.load.error'(id: string, error: Error) — existing
+  // - 'asset.error'(assetId: string, error: Error) — load failure (re-thrown)
   // - 'asset.load.allComplete'(ids: string[]) — entire batch finished
 }
 ```
@@ -228,7 +228,7 @@ async preload(ids: string[]): Promise<void> {
       this.cache.set(id, container);
       eventBus.emit('asset.load.complete', id);
     } catch (e) {
-      eventBus.emit('asset.load.error', id, e);
+      eventBus.emit('asset.error', { assetId: id, error: e });
       throw e;
     }
     completed++;
