@@ -22,8 +22,9 @@
  *     this.fuelLevel = state.fuelLevel as number;
  *   }
  *
- *   hash(): string {
- *     return fnv1a(JSON.stringify(this.serialize()));
+ *   hash(state?: Record<string, unknown>): string {
+ *     const data = state ?? this.serialize();
+ *     return fnv1a(JSON.stringify(data));
  *   }
  * }
  * ```
@@ -54,8 +55,16 @@ export interface ISnapshotable {
   /**
    * Returns a deterministic hash of the system's current state.
    *
+   * Accepts an optional pre-serialized state to avoid double-serializing
+   * when the caller has already called `serialize()`. When `state` is
+   * provided, implementations MUST ignore it (not re-serialize from
+   * internal state).
+   *
    * Same state must always produce the same hash string, across all platforms
-   * and runs. Implemented as `fnv1a(JSON.stringify(this.serialize()))`.
+   * and runs. Implemented as `fnv1a(JSON.stringify(data))`.
+   *
+   * @param state — Optional pre-serialized state. When provided, hash uses
+   *   this instead of calling `serialize()`.
    */
-  hash(): string;
+  hash(state?: Record<string, unknown>): string;
 }

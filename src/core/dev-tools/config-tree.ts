@@ -18,11 +18,11 @@ import type {
 // Constants
 // ---------------------------------------------------------------------------
 
-/**
- * Max number of flat key entries to show per namespace.
- * Prevents massive DOM when a namespace has hundreds of keys.
- */
+/** Max number of flat key entries to show per namespace. */
 const MAX_KEYS_PER_NAMESPACE = 200;
+
+/** Debounce delay for in-place edit save (AC-24). */
+const EDIT_DEBOUNCE_MS = 300;
 
 // ---------------------------------------------------------------------------
 // ConfigTreePanel
@@ -88,8 +88,11 @@ export class ConfigTreePanel {
     try {
       cm = this._getConfigManager();
     } catch {
-      this._container.innerHTML =
-        "<div class='config-empty'>ConfigManager not initialized</div>";
+      this._container.innerHTML = "";
+      const errEl = document.createElement("div");
+      errEl.className = "config-empty";
+      errEl.textContent = "ConfigManager not initialized";
+      this._container.appendChild(errEl);
       return;
     }
 
@@ -112,8 +115,10 @@ export class ConfigTreePanel {
 
     const namespaceNames = Object.keys(state.namespaces);
     if (namespaceNames.length === 0) {
-      this._container.innerHTML =
-        "<div class='config-empty'>No config namespaces</div>";
+      const emptyEl = document.createElement("div");
+      emptyEl.className = "config-empty";
+      emptyEl.textContent = "No config namespaces";
+      this._container.appendChild(emptyEl);
       return;
     }
 
@@ -266,11 +271,14 @@ export class ConfigTreePanel {
     });
 
     // Fallback: if focus is lost without Enter/Escape, treat as cancel
-    input.addEventListener("blur", () => {
+    const blurHandler = () => {
       if (this._editingKey) {
         this._finishEdit(input, key, currentText, false);
       }
-    });
+    };
+    input.addEventListener("blur", blurHandler);
+    // biome-ignore lint/suspicious/noExplicitAny: expando property for blur handler
+    (input as any)._editBlurHandler = blurHandler;
   }
 
   /**
@@ -312,7 +320,7 @@ export class ConfigTreePanel {
         newSpan.style.background = "#4a4";
         setTimeout(() => {
           newSpan.style.background = "transparent";
-        }, 300);
+        }, EDIT_DEBOUNCE_MS);
 
         // Show notification with old → new
         if (this._showNotification) {
@@ -333,6 +341,11 @@ export class ConfigTreePanel {
       e.stopPropagation();
       this._startEdit(key, newSpan);
     });
+
+    // Remove the blur listener before detaching the input from DOM
+    // biome-ignore lint/suspicious/noExplicitAny: expando property for blur handler
+    const blurHandler = (input as any)._editBlurHandler as () => void;
+    input.removeEventListener("blur", blurHandler);
 
     // Clear the guard BEFORE replaceWith: if replaceWith triggers blur
     // on the input, the blur fallback handler checks _editingKey and

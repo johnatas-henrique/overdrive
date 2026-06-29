@@ -44,6 +44,12 @@ const CSS_PREFIX = "ait";
  */
 const DEFAULT_SAMPLE_RATE = 10;
 
+/**
+ * The car ID reserved for the local player's vehicle (AC-23).
+ * Used to apply the player row highlight class.
+ */
+const PLAYER_CAR_ID = "player-1";
+
 // ---------------------------------------------------------------------------
 // AiTelemetryPanel
 // ---------------------------------------------------------------------------
@@ -95,13 +101,13 @@ export class AiTelemetryPanel {
       // Assign refs so dispose() can be safely called in DEV=false mode
       this._container = container;
       this._getTelemetry = getTelemetry;
-      this._sampleRate = sampleRate;
+      this._sampleRate = Math.max(1, sampleRate);
       return;
     }
 
     this._container = container;
     this._getTelemetry = getTelemetry;
-    this._sampleRate = sampleRate;
+    this._sampleRate = Math.max(1, sampleRate);
     this._initDOM();
   }
 
@@ -256,7 +262,7 @@ export class AiTelemetryPanel {
 
     for (const car of sorted) {
       const row = document.createElement("tr");
-      const isPlayer = car.carId === "player-1";
+      const isPlayer = car.carId === PLAYER_CAR_ID;
       row.className = isPlayer
         ? `${CSS_PREFIX}-row-player`
         : `${CSS_PREFIX}-row-ai`;

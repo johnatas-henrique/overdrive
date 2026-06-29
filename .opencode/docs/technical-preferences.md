@@ -54,6 +54,7 @@
 <!-- Add patterns that should never appear in this project's codebase -->
 
 - `import * as BABYLON from "@babylonjs/core"` — barrel import breaks tree-shaking
+- Barrel files (`index.ts` re-exports) — use direct `@/` path imports instead. Exception: entry points with runtime logic (e.g., `src/core/dev-tools/index.ts` singleton)
 - Singletons for game systems — use dependency injection via constructor parameters
 - Hardcoded gameplay values — must be data-driven from config files
 - Direct DOM manipulation — use Babylon.js GUI for UI

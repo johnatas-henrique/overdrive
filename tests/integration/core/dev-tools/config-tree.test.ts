@@ -13,8 +13,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ConfigManager } from "@/foundation/config/config-manager";
 import { ConfigTreePanel } from "../../../../src/core/dev-tools/config-tree";
-import { ConfigManager } from "../../../../src/foundation/config";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -977,5 +977,60 @@ describe("Config Tree — boolean/null parsing", () => {
     );
 
     expect(cm.get("test.value")).toBeNull();
+  });
+
+  // =======================================================================
+  // Coverage: blur handler _editingKey guard (config-tree.ts L275)
+  //
+  // The blur handler checks `if (this._editingKey)` before calling
+  // _finishEdit. When _editingKey is null (already finished), the handler
+  // returns early — preventing double-processing when replaceWith fires
+  // blur in real browsers.
+  //
+  // This unit test exercises the mechanism by setting _editingKey to null
+  // via reflection and dispatching blur manually.
+  // =======================================================================
+
+  describe("Coverage: blur handler _editingKey guard (L275)", () => {
+    it("should not call _finishEdit when _editingKey is null", () => {
+      const cm = new ConfigManager();
+      cm.init();
+      cm.register("test", { value: "hello" });
+
+      const container = createContainer();
+      const notify = vi.fn();
+      const panel = new ConfigTreePanel(container, () => cm, notify);
+
+      panel.refresh();
+
+      // Expand namespace and start editing
+      const details = container.querySelector("details");
+      if (details) details.open = true;
+
+      const valueSpan = container.querySelector(".config-value");
+      expect(valueSpan).not.toBeNull();
+      valueSpan?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+
+      const input = container.querySelector("input") as HTMLInputElement;
+      expect(input).not.toBeNull();
+      expect(input.value).toBe("hello");
+
+      // Simulate _finishEdit having already run by clearing _editingKey
+      // This is the state after replaceWith fires blur in a real browser
+      (panel as Record<string, unknown>)._editingKey = null;
+
+      // Dispatch blur — the handler should check _editingKey, find null,
+      // and return early (L275 false branch) without calling _finishEdit
+      input.dispatchEvent(new Event("blur", { bubbles: true }));
+
+      // Input should still be in DOM (not replaced by _finishEdit)
+      const inputAfter = container.querySelector("input");
+      expect(inputAfter).not.toBeNull();
+      expect(inputAfter?.value).toBe("hello");
+
+      // Value should NOT have been changed via setRuntime
+      expect(cm.get("test.value")).toBe("hello");
+      expect(notify).not.toHaveBeenCalled();
+    });
   });
 });

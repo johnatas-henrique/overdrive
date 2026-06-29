@@ -7,15 +7,16 @@ import { PhysicsShapeType } from "@babylonjs/core/Physics/v2/IPhysicsEnginePlugi
 import { PhysicsAggregate } from "@babylonjs/core/Physics/v2/physicsAggregate";
 import { DefaultRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline";
 import type { Scene } from "@babylonjs/core/scene";
+import type { IEventBus } from "@/foundation/event-bus/types";
+import { GameStateMachine } from "@/foundation/gsm/GameStateMachine";
+import { fnv1a } from "@/foundation/simulation-snapshot/fnv1a";
+import { SimulationSnapshot } from "@/foundation/simulation-snapshot/simulation-snapshot";
+import type { ISnapshotable } from "@/foundation/simulation-snapshot/types";
 import { templateConfig } from "../config/template-config";
 import {
   ConfigManager,
   setConfigManager,
 } from "../foundation/config/config-manager";
-import type { IEventBus } from "../foundation/event-bus";
-import { GameStateMachine } from "../foundation/gsm/GameStateMachine";
-import type { ISnapshotable } from "../foundation/simulation-snapshot";
-import { fnv1a, SimulationSnapshot } from "../foundation/simulation-snapshot";
 import { CreateSceneGUI } from "./gui";
 
 /** Singleton GSM instance for Dev Tools testing (Story 006) */
@@ -60,8 +61,9 @@ class PlaygroundSnapshotSystem implements ISnapshotable {
     this._state = JSON.parse(JSON.stringify(state));
   }
 
-  hash(): string {
-    return fnv1a(JSON.stringify(this._state));
+  hash(state?: Record<string, unknown>): string {
+    const data = state ?? this._state;
+    return fnv1a(JSON.stringify(data));
   }
 }
 

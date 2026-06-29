@@ -29,7 +29,7 @@ class App {
     // ── Event Bus (shared across all systems) ─────────────────────
     // Created before CreateMainScene so game systems can use it
     // during their own initialisation (D-013 — EventBus creation order).
-    const { EventBus } = await import("./foundation/event-bus");
+    const { EventBus } = await import("@/foundation/event-bus/event-bus");
     const eventBus = new EventBus();
     eventBus.init();
 

@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ConfigError, ConfigManager } from "../../../../src/foundation/config";
+import { ConfigError } from "@/foundation/config/config-error";
 import {
+  ConfigManager,
   getConfigManager,
   setConfigManager,
-} from "../../../../src/foundation/config/config-manager";
+} from "@/foundation/config/config-manager";
 
 describe("ConfigManager", () => {
   // Shared env var tracking — used by env override and invalidateNamespace suites

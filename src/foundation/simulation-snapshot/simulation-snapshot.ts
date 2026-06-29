@@ -287,7 +287,7 @@ export class SimulationSnapshot {
       const state = system.serialize();
       systems[id] = {
         state,
-        hash: system.hash(),
+        hash: system.hash(state),
       };
     }
 

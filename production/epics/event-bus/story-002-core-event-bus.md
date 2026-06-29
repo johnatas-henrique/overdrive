@@ -166,5 +166,5 @@ Test evidence: `tests/unit/event-bus.test.ts` — verify all acceptance criteria
 **Completed**: 2026-06-24
 **Criteria**: 8/8 passing
 **Deviations**: once() stub not tested (87.5% functions coverage) — deferred to Story 003
-**Test Evidence**: Unit test at `tests/unit/event-bus.test.ts` — 86/86 tests, tsc clean
+**Test Evidence**: Unit test at `tests/unit/event-bus.test.ts` — 86/86 tests at completion; full file now has ~289 tests covering all event-bus stories
 **Code Review**: Complete (APPROVED WITH SUGGESTIONS — all 5 gaps fixed)

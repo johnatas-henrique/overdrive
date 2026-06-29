@@ -10,11 +10,11 @@
 #   blocked        ↔  Blocked
 
 sprint: 2
-goal: "Core A — Carro na Tela (Telemetry → Dev Tools → Input → Asset Manager → Physics → Camera)"
+goal: "Core A — Carro na Tela (Telemetry → Dev Tools → Tech Debt → Input → Asset Manager → Physics → Camera)"
 start: "2026-06-27"
 end: "2026-07-10"
 generated: "2026-06-26"
-updated: "2026-06-26"
+updated: "2026-06-28"
 
 stories:
   - id: "2-1"
@@ -124,10 +124,10 @@ stories:
     file: "production/epics/dev-tools/story-004-config-tree.md"
     priority: must-have
     status: done
-    completed: "2026-06-27"
     owner: ""
     estimate_days: 1
     blocker: ""
+    completed: "2026-06-27"
 
   - id: "2-12"
     name: "Story 005: Event Bus Inspector"
@@ -154,10 +154,10 @@ stories:
     file: "production/epics/dev-tools/story-007-sim-snapshot-panel.md"
     priority: must-have
     status: done
-    completed: "2026-06-27"
     owner: ""
     estimate_days: 1
     blocker: ""
+    completed: "2026-06-27"
 
   - id: "2-15"
     name: "Story 008: AI Telemetry Tab"
@@ -169,7 +169,7 @@ stories:
     blocker: ""
     completed: "2026-06-28"
 
-  - id: "2-15b"
+  - id: "2-16"
     name: "Story 009: CSS Refactor"
     file: "production/epics/dev-tools/story-009-css-refactor.md"
     priority: should-have
@@ -179,8 +179,19 @@ stories:
     blocker: ""
     completed: "2026-06-27"
 
+  # Tech Debt Full Cleanup (before Input)
+  - id: "2-17"
+    name: "Story 002: Full Tech Debt Cleanup"
+    file: "production/epics/tech-debt/story-002-full-cleanup.md"
+    priority: must-have
+    status: done
+    owner: ""
+    estimate_days: 5
+    blocker: ""
+    completed: "2026-06-29"
+
   # Input
-  - id: "2-16"
+  - id: "2-18"
     name: "Story 001: Input Interface Types"
     file: "production/epics/input/story-001-input-interface-types.md"
     priority: must-have
@@ -190,7 +201,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-17"
+  - id: "2-19"
     name: "Story 002: Dead Zone Formula"
     file: "production/epics/input/story-002-dead-zone-formula.md"
     priority: must-have
@@ -200,7 +211,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-18"
+  - id: "2-20"
     name: "Story 003: Player Input Polling"
     file: "production/epics/input/story-003-player-input-polling.md"
     priority: must-have
@@ -210,7 +221,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-19"
+  - id: "2-21"
     name: "Story 004: Focus/Disconnect Safety"
     file: "production/epics/input/story-004-focus-disconnect-safety.md"
     priority: must-have
@@ -220,7 +231,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-20"
+  - id: "2-22"
     name: "Story 005: GSM State Integration"
     file: "production/epics/input/story-005-gsm-state-integration.md"
     priority: must-have
@@ -230,7 +241,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-21"
+  - id: "2-23"
     name: "Story 006: Debounce Edge Cases"
     file: "production/epics/input/story-006-debounce-edge-cases.md"
     priority: must-have
@@ -240,7 +251,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-22"
+  - id: "2-24"
     name: "Story 007: Device Detection"
     file: "production/epics/input/story-007-device-detection.md"
     priority: must-have
@@ -251,7 +262,7 @@ stories:
     completed: ""
 
   # Asset Manager
-  - id: "2-23"
+  - id: "2-25"
     name: "Story 001: Init Two-Scene (replace playground)"
     file: "production/epics/asset-manager/story-001-init-two-scene.md"
     priority: must-have
@@ -261,7 +272,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-24"
+  - id: "2-26"
     name: "Story 002: Load Cache"
     file: "production/epics/asset-manager/story-002-load-cache.md"
     priority: must-have
@@ -271,7 +282,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-25"
+  - id: "2-27"
     name: "Story 003: Loading Events"
     file: "production/epics/asset-manager/story-003-loading-events.md"
     priority: must-have
@@ -281,7 +292,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-26"
+  - id: "2-28"
     name: "Story 004: Unload/Dispose Edge Cases"
     file: "production/epics/asset-manager/story-004-unload-dispose-edge-cases.md"
     priority: must-have
@@ -291,7 +302,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-27"
+  - id: "2-29"
     name: "Story 005a: Preload Concurrency"
     file: "production/epics/asset-manager/story-005a-preload-concurrency.md"
     priority: must-have
@@ -301,7 +312,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-28"
+  - id: "2-30"
     name: "Story 005b: GSM Orchestration"
     file: "production/epics/asset-manager/story-005b-gsm-orchestration.md"
     priority: must-have
@@ -312,7 +323,7 @@ stories:
     completed: ""
 
   # Physics (needs Input complete)
-  - id: "2-29"
+  - id: "2-31"
     name: "Story 001: Physics Core Skeleton"
     file: "production/epics/physics-handling/story-001-physics-core-skeleton.md"
     priority: must-have
@@ -322,7 +333,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-30"
+  - id: "2-32"
     name: "Story 002: Arcade Grip Model"
     file: "production/epics/physics-handling/story-002-arcade-grip-model.md"
     priority: must-have
@@ -332,7 +343,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-31"
+  - id: "2-33"
     name: "Story 003: Engine/Gears/Drag/Braking"
     file: "production/epics/physics-handling/story-003-engine-gears-drag-braking.md"
     priority: must-have
@@ -342,7 +353,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-32"
+  - id: "2-34"
     name: "Story 004: Surface Handling (Offtrack/Kerbs)"
     file: "production/epics/physics-handling/story-004-surface-handling-offtrack-kerbs.md"
     priority: must-have
@@ -352,7 +363,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-33"
+  - id: "2-35"
     name: "Story 005: Lock/Pit/External Inputs/Events"
     file: "production/epics/physics-handling/story-005-lock-pit-external-inputs-events.md"
     priority: must-have
@@ -363,7 +374,7 @@ stories:
     completed: ""
 
   # Camera (needs Physics)
-  - id: "2-34"
+  - id: "2-36"
     name: "Story 001: Camera Foundation"
     file: "production/epics/camera/story-001-camera-foundation.md"
     priority: must-have
@@ -373,7 +384,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-35"
+  - id: "2-37"
     name: "Story 002: GSM Camera Lifecycle"
     file: "production/epics/camera/story-002-gsm-camera-lifecycle.md"
     priority: must-have
@@ -383,7 +394,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-36"
+  - id: "2-38"
     name: "Story 003: Cockpit Camera"
     file: "production/epics/camera/story-003-cockpit-camera.md"
     priority: must-have
@@ -393,7 +404,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-37"
+  - id: "2-39"
     name: "Story 004: Chase Camera Occlusion"
     file: "production/epics/camera/story-004-chase-camera-occlusion.md"
     priority: must-have
@@ -403,7 +414,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-38"
+  - id: "2-40"
     name: "Story 005: Cockpit/Chase Toggle"
     file: "production/epics/camera/story-005-cockpit-chase-toggle.md"
     priority: must-have
@@ -413,7 +424,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-39"
+  - id: "2-41"
     name: "Story 006: Speed FOV Shift"
     file: "production/epics/camera/story-006-speed-fov-shift.md"
     priority: must-have
@@ -423,7 +434,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-40"
+  - id: "2-42"
     name: "Story 007: Camera Shake System"
     file: "production/epics/camera/story-007-camera-shake-system.md"
     priority: must-have
@@ -433,7 +444,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-41"
+  - id: "2-43"
     name: "Story 008: Drone Camera Orbit"
     file: "production/epics/camera/story-008-drone-camera-orbit.md"
     priority: must-have
@@ -443,7 +454,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-42"
+  - id: "2-44"
     name: "Story 009: Head Bob + Lateral Lean"
     file: "production/epics/camera/story-009-head-bob-lateral-lean.md"
     priority: must-have
@@ -453,7 +464,7 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "2-43"
+  - id: "2-45"
     name: "Story 010: Camera Config HMR"
     file: "production/epics/camera/story-010-camera-config-hmr.md"
     priority: must-have

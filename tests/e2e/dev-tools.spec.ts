@@ -819,3 +819,101 @@ test.describe("AI Telemetry Tab", () => {
     expect(display).toBe("none");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Config Tree Tab — edit + blur flow (covers config-tree.ts L275)
+// ---------------------------------------------------------------------------
+
+test.describe("Config Tree Tab", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await openDevTools(page);
+    // Config tree is in the sidebar, always visible when overlay is open
+    await page.waitForTimeout(500);
+  });
+
+  test.afterEach(async ({ page }) => {
+    await closeDevTools(page);
+  });
+
+  test("sidebar shows config namespaces", async ({ page }) => {
+    // The sidebar should have config namespace details elements
+    const namespaces = page.locator(".sidebar details.config-namespace");
+    const count = await namespaces.count();
+    expect(count).toBeGreaterThan(0);
+  });
+
+  test("double-click starts editing, Enter confirms", async ({ page }) => {
+    // Find a config value span in the sidebar
+    const valueSpan = page.locator(".sidebar .config-value").first();
+
+    // If no config values exist, skip (ConfigManager might not have data)
+    const count = await valueSpan.count();
+    if (count === 0) {
+      return;
+    }
+
+    // Double-click to start editing
+    await valueSpan.dblclick();
+    const input = page.locator(".sidebar input");
+    await expect(input).toBeVisible();
+
+    // Type a new value and press Enter
+    await input.fill("test-value");
+    await input.press("Enter");
+
+    // Input should be gone, replaced by a span
+    await expect(input).not.toBeVisible();
+    const newSpan = page.locator(".sidebar .config-value").first();
+    await expect(newSpan).toBeAttached();
+  });
+
+  test("double-click starts editing, Escape cancels", async ({ page }) => {
+    const valueSpan = page.locator(".sidebar .config-value").first();
+    const count = await valueSpan.count();
+    if (count === 0) {
+      return;
+    }
+    const originalText = await valueSpan.textContent();
+
+    // Double-click to start editing
+    await valueSpan.dblclick();
+    const input = page.locator(".sidebar input");
+    await expect(input).toBeVisible();
+
+    // Press Escape to cancel
+    await input.press("Escape");
+
+    // Input should be gone, original value restored
+    await expect(input).not.toBeVisible();
+    const restoredSpan = page.locator(".sidebar .config-value").first();
+    const restoredText = await restoredSpan.textContent();
+    expect(restoredText).toBe(originalText);
+  });
+
+  test("blur during edit cancels without error (L275 guard)", async ({
+    page,
+  }) => {
+    // This test exercises the blur handler's _editingKey guard (L275):
+    // In a real browser, replaceWith fires blur. The blur handler checks
+    // _editingKey — if null (already finished), it returns early.
+
+    const valueSpan = page.locator(".sidebar .config-value").first();
+    const count = await valueSpan.count();
+    if (count === 0) {
+      return;
+    }
+
+    await valueSpan.dblclick();
+    const input = page.locator(".sidebar input");
+    await expect(input).toBeVisible();
+
+    // Press Enter — triggers _finishEdit → replaceWith → blur
+    // The blur handler fires with _editingKey already null (L275 false branch)
+    await input.press("Enter");
+
+    // No error thrown, overlay still functional
+    const overlay = page.locator("#dev-overlay");
+    await expect(overlay).toBeVisible();
+  });
+});

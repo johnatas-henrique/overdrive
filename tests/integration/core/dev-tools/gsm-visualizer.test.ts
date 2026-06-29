@@ -16,7 +16,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EventBus } from "../../../../src/foundation/event-bus";
+import { EventBus } from "@/foundation/event-bus/event-bus";
 import { TRANSITIONS } from "../../../../src/foundation/gsm/TransitionTable";
 import type { State } from "../../../../src/foundation/gsm/types";
 

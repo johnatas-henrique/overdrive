@@ -23,10 +23,10 @@
  * @see Control Manifest D6 — Read-only on all systems (with DEV-guarded exception)
  */
 
-import type { Subscription } from "../../foundation/event-bus";
-import type { GameStateMachine } from "../../foundation/gsm/GameStateMachine";
-import { TRANSITIONS } from "../../foundation/gsm/TransitionTable";
-import type { State } from "../../foundation/gsm/types";
+import type { Subscription } from "@/foundation/event-bus/types";
+import type { GameStateMachine } from "@/foundation/gsm/GameStateMachine";
+import { TRANSITIONS } from "@/foundation/gsm/TransitionTable";
+import type { State } from "@/foundation/gsm/types";
 import type { IReadOnlyEventBus } from "./types";
 
 /**

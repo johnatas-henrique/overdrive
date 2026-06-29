@@ -189,6 +189,11 @@
 - Location: `src/core/dev-tools/sim-snapshot-panel.ts`
 - Pattern: Read-only observer (reads from `SimulationSnapshot.getRegisteredSystems()`/`getHashes()`), Take/Restore buttons call public API as deliberate debug actions (Control Manifest D6 exception)
 
+**AiTelemetryPanel:**
+- Purpose: AI Telemetry tab panel — displays per-car telemetry data (speed, lap position, active AI behaviour node) from a reader function wrapping physics/AI driver calls
+- Location: `src/core/dev-tools/ai-telemetry-panel.ts`
+- Pattern: Read-only observer (receives a reader function, never emits Event Bus events), internal tick counter for sample-rate throttling (default N=10), DOM re-render on sample only, Control Manifest D6 compliant
+
 **ConfigTreePanel:**
 - Purpose: Config sidebar panel — renders a tree view of all ConfigManager namespaces with in-place editing via double-click
 - Location: `src/core/dev-tools/config-tree.ts`

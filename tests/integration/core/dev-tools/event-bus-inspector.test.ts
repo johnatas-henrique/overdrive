@@ -18,8 +18,8 @@
 
 import { Observable } from "@babylonjs/core/Misc/observable";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EventBus } from "@/foundation/event-bus/event-bus";
 import { EventBusInspector } from "../../../../src/core/dev-tools/event-bus-inspector";
-import { EventBus } from "../../../../src/foundation/event-bus";
 
 // ---------------------------------------------------------------------------
 // Mock Babylon.js dependencies for DevTools integration tests

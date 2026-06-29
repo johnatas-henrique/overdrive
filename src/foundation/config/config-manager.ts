@@ -133,37 +133,8 @@ export class ConfigManager {
       throw new ConfigError("ConfigManager not initialized");
     }
 
-    const parts = key.split(".");
-    const namespace = parts[0];
-    const rest = parts.slice(1);
-
-    // Ensure resolved cache is built for this namespace
-    if (!this._resolved.has(namespace)) {
-      const rawExists = this._store.has(namespace);
-      if (!rawExists) {
-        this._recordAccess(key, "production");
-        throw new ConfigError(
-          `Key not found: ${key}. Possible init ordering issue — namespace not yet registered: ${namespace}`
-        );
-      }
-      this._buildResolved(namespace);
-    }
-
-    const root = this._resolved.get(namespace);
-    // _buildResolved() now throws on invalid/non-serializable config,
-    // so root is guaranteed to exist after the cache-building block above.
-
-    // Traverse remaining path segments from the namespace root
-    const value = rest.reduce<unknown>(
-      (acc, part) => {
-        if (!acc || typeof acc !== "object") {
-          this._recordAccess(key, "production");
-          throw new ConfigError(`Key not found: ${key}`);
-        }
-        return (acc as Record<string, unknown>)[part];
-      },
-      root as Record<string, unknown>
-    );
+    const { rest, root } = this._ensureNamespace(key);
+    const value = this._traversePath(root, rest);
 
     if (value === undefined) {
       this._recordAccess(key, "production");
@@ -393,6 +364,61 @@ export class ConfigManager {
   }
 
   /**
+   * Ensure a dot-path key's namespace is resolved and return the root + segments.
+   *
+   * Extracted from `get()` and `setRuntime()` to eliminate duplicate namespace
+   * resolution logic (AC-16).
+   *
+   * @param key - Dot-path key (e.g. "teams.macklen.motor")
+   * @returns The namespace name, remaining segments, and resolved config root
+   * @throws {ConfigError} If the key is empty or the namespace is not registered
+   */
+  private _ensureNamespace(key: string): {
+    namespace: string;
+    rest: string[];
+    root: Record<string, unknown>;
+  } {
+    const parts = key.split(".");
+    const namespace = parts[0];
+    const rest = parts.slice(1);
+
+    if (namespace === "") {
+      throw new ConfigError(`Key not found: ${key}`);
+    }
+
+    // Ensure resolved cache is built for this namespace
+    if (!this._resolved.has(namespace)) {
+      const rawExists = this._store.has(namespace);
+      if (!rawExists) {
+        this._recordAccess(key, "production");
+        throw new ConfigError(
+          `Key not found: ${key}. Possible init ordering issue — namespace not yet registered: ${namespace}`
+        );
+      }
+      this._buildResolved(namespace);
+    }
+
+    const root = this._resolved.get(namespace) as Record<string, unknown>;
+    return { namespace, rest, root };
+  }
+
+  /**
+   * Traverse a path of segments from a root object, returning the leaf value.
+   *
+   * Returns `undefined` if any segment is missing or the intermediate value
+   * is not an object. Used by `get()` for type-safe config lookups (AC-16).
+   */
+  private _traversePath(
+    root: Record<string, unknown>,
+    segments: string[]
+  ): unknown {
+    return segments.reduce<unknown>((acc, part) => {
+      if (!acc || typeof acc !== "object") return undefined;
+      return (acc as Record<string, unknown>)[part];
+    }, root);
+  }
+
+  /**
    * Record a single access in the ring buffer.
    *
    * Pushes `{ key, caller, timestamp }` into `_accessLog`. When the buffer
@@ -442,25 +468,7 @@ export class ConfigManager {
       return undefined;
     }
 
-    const parts = key.split(".");
-    const namespace = parts[0];
-    const rest = parts.slice(1);
-
-    if (namespace === "") {
-      throw new ConfigError(`Key not found: ${key}`);
-    }
-
-    // Ensure resolved cache is built for this namespace
-    if (!this._resolved.has(namespace)) {
-      const rawExists = this._store.has(namespace);
-      if (!rawExists) {
-        this._recordAccess(key, "production");
-        throw new ConfigError(`Key not found: ${key}`);
-      }
-      this._buildResolved(namespace);
-    }
-
-    const root = this._resolved.get(namespace) as Record<string, unknown>;
+    const { rest, root } = this._ensureNamespace(key);
 
     // Navigate to the parent of the leaf value
     let current: unknown = root;

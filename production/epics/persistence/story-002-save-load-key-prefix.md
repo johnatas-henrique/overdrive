@@ -133,7 +133,7 @@ _Written by qa-lead at story creation. The developer implements against these â€
 
 ## QA Test Cases
 
-**Test file**: `tests/integration/persistence.test.ts`
+**Test file**: `tests/unit/foundation/persistence/persistence.test.ts`
 
 ### AC-1: save + load round-trip
 - `save('settings', { audio: 0.8 })`
@@ -159,7 +159,7 @@ _Written by qa-lead at story creation. The developer implements against these â€
 
 ## Test Evidence
 
-Test evidence: `tests/unit/persistence.test.ts` â€” verify all acceptance criteria pass.
+Test evidence: `tests/unit/foundation/persistence/persistence.test.ts` â€” verify all acceptance criteria pass.
 
 ## Dependencies
 

@@ -5,6 +5,13 @@
  * Paused, PostRace. Transitions are validated against a static table
  * and invalid transitions throw `GameStateError`.
  *
+ * This file is ~540 lines because it bundles state graph validation,
+ * transition orchestration, event emission, history tracking, and
+ * DEV-only debug-sidecar features in a single class.
+ * A Future refactor could split transition validation into the
+ * TransitionTable and event emission into a hook system
+ * (low priority — internal cohesion is high).
+ *
  * Features:
  * - O(1) transition lookup via `Record<State, State[]>` (array scan on ≤2 elements)
  * - Invalid transitions throw `GameStateError` (no silent ignores)
@@ -106,16 +113,14 @@ export class GameStateMachine {
   /**
    * Get the current state of the machine.
    *
-   * **@internal** — Game systems must NOT poll this. They should
-   * subscribe to `gsm.state.entered` / `gsm.state.exited` via the
-   * Event Bus (ADR-0024 Decision 6). This accessor exists solely for
-   * test assertions and debug tooling.
+   * Public for test assertions and debug tooling only. Game systems must
+   * NOT poll this — they should subscribe to `gsm.state.entered` /
+   * `gsm.state.exited` via the Event Bus (ADR-0024 Decision 6).
    *
    * @returns The current state, or `undefined` if `init()` has not been called
    *
    * @see ADR-0024 — Decision 6: No public `getCurrent()`
    */
-  /** @internal */
   getCurrentState(): State | undefined {
     return this._currentState;
   }
@@ -246,6 +251,11 @@ export class GameStateMachine {
 
     const allowed = TRANSITIONS[this._currentState];
     if (!allowed?.includes(target)) {
+      this._emitTransitionError(
+        this._currentState,
+        target,
+        "Invalid transition"
+      );
       throw new GameStateError(this._currentState, target);
     }
 
@@ -253,54 +263,7 @@ export class GameStateMachine {
     const targetDef = this._stateDefinitions.get(target);
     const previousState = this._currentState;
 
-    this._busy = true;
-
-    try {
-      // Call source onExit — errors propagate to caller
-      if (sourceDef?.onExit) {
-        await sourceDef.onExit();
-      }
-
-      // Guard: disposed during onExit — skip onEnter, skip events
-      if (this._disposed) {
-        return;
-      }
-
-      // Call target onEnter — errors trigger rollback
-      try {
-        if (targetDef?.onEnter) {
-          await targetDef.onEnter();
-        }
-
-        // Guard: disposed during onEnter — skip state change, skip events
-        if (this._disposed) {
-          return;
-        }
-
-        // Transition complete — update state
-        this._currentState = target;
-
-        // Record successful transition in ring buffer (debug tooling)
-        this._recordTransition(previousState, target);
-
-        // Emit Event Bus events (exited before entered, both resilient to failure)
-        this._warnIfEbMissing();
-        this._emitExited(previousState);
-        this._emitEntered(previousState, target);
-      } catch (error) {
-        // Guard: disposed — no rollback events
-        if (this._disposed) {
-          return;
-        }
-        // Rollback: stay in previous state
-        console.warn("[GSM] onEnter failed for", target, error);
-        // Re-emit gsm.state.entered for previous state (restored)
-        this._warnIfEbMissing();
-        this._emitEntered(previousState, previousState);
-      }
-    } finally {
-      this._busy = false;
-    }
+    await this._executeTransition(target, sourceDef, targetDef, previousState);
   }
 
   /**
@@ -427,15 +390,32 @@ export class GameStateMachine {
       return;
     }
 
-    const allowed = TRANSITIONS[this._currentState as State];
+    const currentState = this._currentState as State;
+    const allowed = TRANSITIONS[currentState];
     if (!allowed?.includes(target)) {
-      throw new GameStateError(this._currentState as State, target);
+      throw new GameStateError(currentState, target);
     }
 
-    const sourceDef = this._stateDefinitions.get(this._currentState as State);
+    const sourceDef = this._stateDefinitions.get(currentState);
     const targetDef = this._stateDefinitions.get(target);
-    const previousState = this._currentState as State;
+    const previousState = currentState;
 
+    await this._executeTransition(target, sourceDef, targetDef, previousState);
+  }
+
+  /**
+   * Shared transition execution: runs lifecycle hooks, updates state,
+   * records history, and emits Event Bus events.
+   *
+   * Extracted from `transition()` and `_doTransition()` to eliminate
+   * ~40 lines of duplicate hook/emission logic (DRY).
+   */
+  private async _executeTransition(
+    target: State,
+    sourceDef: StateDefinition | undefined,
+    targetDef: StateDefinition | undefined,
+    previousState: State
+  ): Promise<void> {
     this._busy = true;
 
     try {
@@ -445,9 +425,7 @@ export class GameStateMachine {
       }
 
       // Guard: disposed during onExit — skip onEnter, skip events
-      if (this._disposed) {
-        return;
-      }
+      if (this._disposed) return;
 
       // Call target onEnter — errors trigger rollback
       try {
@@ -456,9 +434,7 @@ export class GameStateMachine {
         }
 
         // Guard: disposed during onEnter — skip state change, skip events
-        if (this._disposed) {
-          return;
-        }
+        if (this._disposed) return;
 
         // Transition complete — update state
         this._currentState = target;
@@ -472,17 +448,39 @@ export class GameStateMachine {
         this._emitEntered(previousState, target);
       } catch (error) {
         // Guard: disposed — no rollback events
-        if (this._disposed) {
-          return;
-        }
+        if (this._disposed) return;
+
+        // Emit transition error event via Event Bus
+        const reason = error instanceof Error ? error.message : "Unknown error";
+        this._emitTransitionError(previousState, target, reason);
+
         // Rollback: stay in previous state
         console.warn("[GSM] onEnter failed for", target, error);
-        // Re-emit gsm.state.entered for previous state (restored)
         this._warnIfEbMissing();
         this._emitEntered(previousState, previousState);
       }
     } finally {
       this._busy = false;
+    }
+  }
+
+  /**
+   * Emit a `gsm.transition.error` event via the Event Bus.
+   *
+   * Called from two distinct scenarios:
+   * 1. **Validation failure** (before `throw` in `transition()`) — the
+   *    state has NOT changed; `getCurrentState()` returns the source state.
+   * 2. **onEnter failure** (during rollback in `_executeTransition()`) —
+   *    the state has been reverted to `previousState`.
+   *
+   * Errors during emission are caught — they never crash the GSM.
+   */
+  private _emitTransitionError(from: State, to: State, reason: string): void {
+    if (!this._eventBus) return;
+    try {
+      this._eventBus.emit("gsm.transition.error", { from, to, reason });
+    } catch {
+      // Event emission must not crash the GSM
     }
   }
 
