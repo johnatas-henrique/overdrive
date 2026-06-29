@@ -1,14 +1,17 @@
 /**
  * Unit tests: AssetManager
  *
- * Tests the AssetManager state machine, scene switching, and error handling
- * using mocked Engine / Scene objects. These tests verify internal logic
- * (routing, state transitions, error paths) without real Babylon.js objects.
+ * Comprehensive tests for the AssetManager state machine, scene switching,
+ * asset loading, caching, event emission, and lifecycle management.
+ * Uses mocked Engine / Scene objects — no real Babylon.js runtime.
  *
  * @see TR-AM-001 — AssetContainers cache (Map<string, AssetContainer>)
  * @see TR-AM-002 — Two-scene references owned by Asset Manager
  * @see TR-AM-003 — setActiveScene() controls which scene renders
  * @see TR-AM-004 — Both scenes coexist in engine.scenes[]
+ * @see TR-AM-005 — unloadAll removes containers from scene (cache intact)
+ * @see TR-AM-006 — dispose disposes containers, clears cache, transitions state
+ * @see TR-AM-007 — disposeContainer per-asset removal
  * @see ADR-0003 — Two-Scene Architecture & Asset Lifecycle
  */
 
@@ -31,22 +34,34 @@ vi.mock("@babylonjs/core/Loading/sceneLoader", () => ({
 function createFakeScene(name: string): any {
   return {
     name,
-    // Minimal Babylon.js Scene surface — enough for AssetManager to work with
-    _engine: null,
+    dispose: vi.fn(),
     isDisposed: false,
+    _engine: null,
   };
 }
 
-/** Create a fake AssetContainer with a spy on addAllToScene. */
+/** Create a fake AssetContainer with spies on lifecycle methods. */
 function createFakeContainer(): any {
   return {
     addAllToScene: vi.fn(),
     removeAllFromScene: vi.fn(),
+    dispose: vi.fn(),
     meshes: [],
     transformNodes: [],
-    dispose: vi.fn(),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Fixtures
+// ---------------------------------------------------------------------------
+
+const testManifest: TrackManifest = {
+  glb: { rootUrl: "assets/tracks/spa/", filename: "spa.glb" },
+};
+
+const testManifest2: TrackManifest = {
+  glb: { rootUrl: "assets/tracks/nurb/", filename: "nurb.glb" },
+};
 
 // ---------------------------------------------------------------------------
 // Suite
@@ -61,6 +76,7 @@ describe("AssetManager", () => {
     assetManager = new AssetManager();
     menuScene = createFakeScene("menuScene");
     raceScene = createFakeScene("raceScene");
+    vi.clearAllMocks();
   });
 
   // ── init() ────────────────────────────────────────────────────
@@ -69,13 +85,9 @@ describe("AssetManager", () => {
     it("should create empty cache, store scenes, and transition to Ready", () => {
       assetManager.init(menuScene, raceScene);
 
-      // Cache is empty after init
       expect(assetManager.cacheSize).toBe(0);
-
-      // After init, getActiveScene() should return menuScene (default)
       expect(assetManager.getActiveScene()).toBe(menuScene);
 
-      // Switching to race works
       assetManager.setActiveScene("race");
       expect(assetManager.getActiveScene()).toBe(raceScene);
     });
@@ -84,7 +96,6 @@ describe("AssetManager", () => {
       assetManager.init(menuScene, raceScene);
       const activeAfterFirst = assetManager.getActiveScene();
 
-      // Second init should not change state
       expect(() => assetManager.init(menuScene, raceScene)).not.toThrow();
       expect(assetManager.getActiveScene()).toBe(activeAfterFirst);
     });
@@ -96,7 +107,6 @@ describe("AssetManager", () => {
     it("should route to menuScene when called with 'menu'", () => {
       assetManager.init(menuScene, raceScene);
 
-      // Start with race, then switch back to menu
       assetManager.setActiveScene("race");
       assetManager.setActiveScene("menu");
 
@@ -149,8 +159,6 @@ describe("AssetManager", () => {
       assetManager._addAllToScene(container);
 
       expect(container.addAllToScene).toHaveBeenCalledTimes(1);
-      // NOTE: AssetContainer.addAllToScene() takes NO parameters
-      // (Babylon.js 9.12.0 API). The container is scene-bound at load time.
       expect(container.addAllToScene).toHaveBeenCalledWith();
     });
 
@@ -158,12 +166,10 @@ describe("AssetManager", () => {
       assetManager.init(menuScene, raceScene);
       const container = createFakeContainer();
 
-      // Switch to race
       assetManager.setActiveScene("race");
       assetManager._addAllToScene(container);
       expect(container.addAllToScene).toHaveBeenCalledTimes(1);
 
-      // Switch to menu — addAllToScene still called with no args
       assetManager.setActiveScene("menu");
       assetManager._addAllToScene(container);
       expect(container.addAllToScene).toHaveBeenCalledTimes(2);
@@ -197,10 +203,6 @@ describe("AssetManager", () => {
   // ── registerManifest() ────────────────────────────────────────
 
   describe("registerManifest()", () => {
-    const testManifest: TrackManifest = {
-      glb: { rootUrl: "assets/tracks/spa/", filename: "spa.glb" },
-    };
-
     it("should store manifest accessible via internal state (AC-2a)", () => {
       assetManager.init(menuScene, raceScene);
       assetManager.registerManifest("spa", testManifest);
@@ -236,36 +238,38 @@ describe("AssetManager", () => {
 
     it("should overwrite silently on duplicate ID (AC-2c)", () => {
       assetManager.init(menuScene, raceScene);
-      const manifest2: TrackManifest = {
-        glb: { rootUrl: "assets/tracks/nurb/", filename: "nurb.glb" },
-      };
 
-      // First registration
       assetManager.registerManifest("spa", testManifest);
-      // Overwrite silently (no error)
       expect(() =>
-        assetManager.registerManifest("spa", manifest2)
+        assetManager.registerManifest("spa", testManifest2)
       ).not.toThrow();
 
       const manifests = (assetManager as any)._manifests as Map<
         string,
         TrackManifest
       >;
-      expect(manifests.get("spa")).toEqual(manifest2);
+      expect(manifests.get("spa")).toEqual(testManifest2);
+    });
+
+    it("should allow two different IDs (AC-9c)", () => {
+      assetManager.init(menuScene, raceScene);
+
+      assetManager.registerManifest("spa", testManifest);
+      assetManager.registerManifest("nurb", testManifest2);
+
+      const manifests = (assetManager as any)._manifests as Map<
+        string,
+        TrackManifest
+      >;
+      expect(manifests.size).toBe(2);
+      expect(manifests.get("spa")).toEqual(testManifest);
+      expect(manifests.get("nurb")).toEqual(testManifest2);
     });
   });
 
   // ── load() ────────────────────────────────────────────────────
 
   describe("load()", () => {
-    const testManifest: TrackManifest = {
-      glb: { rootUrl: "assets/tracks/spa/", filename: "spa.glb" },
-    };
-
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
-
     it("should call LoadAssetContainerAsync, cache container, add to activeScene (AC-3a)", async () => {
       assetManager.init(menuScene, raceScene);
       assetManager.registerManifest("spa", testManifest);
@@ -275,30 +279,20 @@ describe("AssetManager", () => {
 
       const result = await assetManager.load("spa");
 
-      // LoadAssetContainerAsync called with correct args
       expect(LoadAssetContainerAsync).toHaveBeenCalledTimes(1);
       expect(LoadAssetContainerAsync).toHaveBeenCalledWith(
         "spa.glb",
         raceScene,
         { rootUrl: "assets/tracks/spa/" }
       );
-
-      // removeAllFromScene called after load
       expect(container.removeAllFromScene).toHaveBeenCalledTimes(1);
-
-      // Container cached
       expect(assetManager.cacheSize).toBe(1);
-
-      // addAllToScene called (via _addAllToScene)
       expect(container.addAllToScene).toHaveBeenCalledTimes(1);
       expect(container.addAllToScene).toHaveBeenCalledWith();
-
-      // Returns the container
       expect(result).toBe(container);
     });
 
     it("should throw AssetError before init (AC-3b)", async () => {
-      // No registerManifest needed — lifecycle guard fires before look-up
       await expect(assetManager.load("spa")).rejects.toThrow(AssetError);
       await expect(assetManager.load("spa")).rejects.toThrow("Not initialized");
     });
@@ -320,14 +314,12 @@ describe("AssetManager", () => {
       const container = createFakeContainer();
       vi.mocked(LoadAssetContainerAsync).mockResolvedValue(container);
 
-      // First load
       await assetManager.load("spa");
       expect(LoadAssetContainerAsync).toHaveBeenCalledTimes(1);
 
-      // Second load — cache hit
       const result = await assetManager.load("spa");
-      expect(LoadAssetContainerAsync).toHaveBeenCalledTimes(1); // Still 1
-      expect(container.addAllToScene).toHaveBeenCalledTimes(2); // re-added to scene
+      expect(LoadAssetContainerAsync).toHaveBeenCalledTimes(1);
+      expect(container.addAllToScene).toHaveBeenCalledTimes(2);
       expect(result).toBe(container);
     });
 
@@ -338,13 +330,11 @@ describe("AssetManager", () => {
       const container = createFakeContainer();
       vi.mocked(LoadAssetContainerAsync).mockResolvedValue(container);
 
-      // First load (awaits real async)
       await assetManager.load("spa");
 
-      // Second load — should resolve without calling loader again
       const result = await assetManager.load("spa");
-      expect(LoadAssetContainerAsync).toHaveBeenCalledTimes(1); // Still 1 — no new I/O
-      expect(result).toBe(container); // Same cached reference
+      expect(LoadAssetContainerAsync).toHaveBeenCalledTimes(1);
+      expect(result).toBe(container);
     });
 
     it("should throw AssetError for unregistered ID (edge)", async () => {
@@ -367,21 +357,13 @@ describe("AssetManager", () => {
       );
 
       await expect(assetManager.load("spa")).rejects.toThrow("Network error");
-      expect(assetManager.cacheSize).toBe(0); // No partial state cached
+      expect(assetManager.cacheSize).toBe(0);
     });
   });
 
   // ── get() ─────────────────────────────────────────────────────
 
   describe("get()", () => {
-    const testManifest: TrackManifest = {
-      glb: { rootUrl: "assets/tracks/spa/", filename: "spa.glb" },
-    };
-
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
-
     it("should return node from cached transformNodes (AC-5a)", async () => {
       assetManager.init(menuScene, raceScene);
       assetManager.registerManifest("spa", testManifest);
@@ -416,7 +398,6 @@ describe("AssetManager", () => {
       assetManager.init(menuScene, raceScene);
       assetManager.registerManifest("spa", testManifest);
 
-      // Node with mismatched id/name — search by name triggers || branch
       const node = { name: "track_root", id: "auto_generated_id" };
       const container = createFakeContainer();
       container.transformNodes = [node];
@@ -432,7 +413,6 @@ describe("AssetManager", () => {
       assetManager.init(menuScene, raceScene);
       assetManager.registerManifest("spa", testManifest);
 
-      // Mesh with mismatched id/name — exercises name branch in mesh search
       const mesh = { name: "barrier_a", id: "mesh_042" };
       const container = createFakeContainer();
       container.meshes = [mesh];
@@ -463,15 +443,19 @@ describe("AssetManager", () => {
       const result = assetManager.get("anything");
       expect(result).toBeUndefined();
     });
+
+    it("should throw AssetError on get() after dispose (AC-8c)", () => {
+      assetManager.init(menuScene, raceScene);
+      assetManager.dispose();
+
+      expect(() => assetManager.get("spa")).toThrow(AssetError);
+      expect(() => assetManager.get("spa")).toThrow("Already disposed");
+    });
   });
 
   // ── Event Bus integration ────────────────────────────────────
 
   describe("Event Bus integration", () => {
-    const testManifest: TrackManifest = {
-      glb: { rootUrl: "assets/tracks/spa/", filename: "spa.glb" },
-    };
-
     /** Create a mock IEventBus with spied emit(). */
     function createMockBus(): IEventBus {
       return {
@@ -483,10 +467,6 @@ describe("AssetManager", () => {
         dispose: vi.fn(),
       };
     }
-
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
 
     it("should emit asset.load.start when load begins (AC-10a)", async () => {
       const bus = createMockBus();
@@ -500,7 +480,6 @@ describe("AssetManager", () => {
 
       await am.load("spa");
 
-      // start must be the first emission
       expect(bus.emit).toHaveBeenNthCalledWith(1, "asset.load.start", {
         ids: ["spa"],
       });
@@ -518,7 +497,6 @@ describe("AssetManager", () => {
 
       await am.load("spa");
 
-      // order: start → progress → complete + all the non-event calls
       const emitCalls = vi.mocked(bus.emit).mock.calls;
       const eventCalls = emitCalls.filter(([event]) =>
         (event as string).startsWith("asset.load")
@@ -540,13 +518,9 @@ describe("AssetManager", () => {
         createFakeContainer()
       );
 
-      // First load — populate cache
       await am.load("spa");
-
-      // Reset the spy to isolate second-load emissions
       vi.mocked(bus.emit).mockClear();
 
-      // Second load — cache hit
       const container = await am.load("spa");
 
       const emitCalls = vi.mocked(bus.emit).mock.calls;
@@ -566,14 +540,12 @@ describe("AssetManager", () => {
       await expect(am.load("unknown")).rejects.toThrow(AssetError);
 
       const emitCalls = vi.mocked(bus.emit).mock.calls;
-      // Should see start then error, but NO progress or complete
       const eventCalls = emitCalls.map(([event]) => event as string);
       expect(eventCalls).toContain("asset.load.start");
       expect(eventCalls).toContain("asset.error");
       expect(eventCalls).not.toContain("asset.load.progress");
       expect(eventCalls).not.toContain("asset.load.complete");
 
-      // Verify asset.error payload shape
       const errorCall = emitCalls.find(([e]) => e === "asset.error");
       expect(errorCall).toBeDefined();
       const payload = errorCall?.[1] as { assetId: string; error: Error };
@@ -600,7 +572,6 @@ describe("AssetManager", () => {
       expect(eventCalls).not.toContain("asset.load.progress");
       expect(eventCalls).not.toContain("asset.load.complete");
 
-      // Verify asset.error payload shape
       const errorCall = emitCalls.find(([e]) => e === "asset.error");
       expect(errorCall).toBeDefined();
       const payload = errorCall?.[1] as { assetId: string; error: Error };
@@ -615,7 +586,6 @@ describe("AssetManager", () => {
       am.init(menuScene, raceScene);
       am.registerManifest("spa", testManifest);
 
-      // Reject with a string (non-Error) to exercise instanceof fallback
       vi.mocked(LoadAssetContainerAsync).mockRejectedValue("string error");
 
       await expect(am.load("spa")).rejects.toBe("string error");
@@ -630,7 +600,6 @@ describe("AssetManager", () => {
     });
 
     it("should NOT emit any events when no EventBus is provided (no-bus path)", async () => {
-      // AM without bus (default constructor)
       const am = new AssetManager();
       am.init(menuScene, raceScene);
       am.registerManifest("spa", testManifest);
@@ -641,7 +610,6 @@ describe("AssetManager", () => {
 
       const result = await am.load("spa");
       expect(result).toBeDefined();
-      // No crash — just no emissions
     });
 
     it("should emit asset.load.start before cache check (AC-6a)", async () => {
@@ -654,14 +622,11 @@ describe("AssetManager", () => {
         createFakeContainer()
       );
 
-      // First load — cache miss
       await am.load("spa");
       vi.mocked(bus.emit).mockClear();
 
-      // Second load — cache hit, but start still fires
       await am.load("spa");
 
-      // start fires even for cache hit
       expect(bus.emit).toHaveBeenCalledWith("asset.load.start", {
         ids: ["spa"],
       });
@@ -679,6 +644,230 @@ describe("AssetManager", () => {
         ([event]) => event === "asset.load.complete"
       );
       expect(completeCalls).toHaveLength(0);
+    });
+  });
+
+  // ── unloadAll() ──────────────────────────────────────────────
+
+  describe("unloadAll()", () => {
+    it("should call removeAllFromScene on each container (AC-7a)", async () => {
+      assetManager.init(menuScene, raceScene);
+      assetManager.registerManifest("spa", testManifest);
+      assetManager.registerManifest("nurb", testManifest2);
+
+      const container1 = createFakeContainer();
+      const container2 = createFakeContainer();
+      vi.mocked(LoadAssetContainerAsync)
+        .mockResolvedValueOnce(container1)
+        .mockResolvedValueOnce(container2);
+
+      await assetManager.load("spa");
+      await assetManager.load("nurb");
+
+      container1.removeAllFromScene.mockClear();
+      container2.removeAllFromScene.mockClear();
+
+      assetManager.unloadAll();
+
+      expect(container1.removeAllFromScene).toHaveBeenCalledTimes(1);
+      expect(container2.removeAllFromScene).toHaveBeenCalledTimes(1);
+      expect(assetManager.cacheSize).toBe(2);
+    });
+
+    it("should allow re-adding containers via load() after unloadAll (AC-7b)", async () => {
+      assetManager.init(menuScene, raceScene);
+      assetManager.registerManifest("spa", testManifest);
+
+      const container = createFakeContainer();
+      vi.mocked(LoadAssetContainerAsync).mockResolvedValue(container);
+
+      await assetManager.load("spa");
+      expect(LoadAssetContainerAsync).toHaveBeenCalledTimes(1);
+
+      assetManager.unloadAll();
+
+      container.addAllToScene.mockClear();
+
+      const result = await assetManager.load("spa");
+
+      expect(LoadAssetContainerAsync).toHaveBeenCalledTimes(1);
+      expect(container.addAllToScene).toHaveBeenCalledTimes(1);
+      expect(result).toBe(container);
+    });
+
+    it("should be idempotent — second call is safe no-op (AC-7c)", () => {
+      assetManager.init(menuScene, raceScene);
+
+      expect(() => assetManager.unloadAll()).not.toThrow();
+      expect(() => assetManager.unloadAll()).not.toThrow();
+    });
+
+    it("should be safe no-op after dispose", () => {
+      assetManager.init(menuScene, raceScene);
+      assetManager.dispose();
+
+      expect(() => assetManager.unloadAll()).not.toThrow();
+    });
+
+    it("should throw AssetError when called before init()", () => {
+      expect(() => assetManager.unloadAll()).toThrow(AssetError);
+      expect(() => assetManager.unloadAll()).toThrow("Not initialized");
+    });
+  });
+
+  // ── dispose() ────────────────────────────────────────────────
+
+  describe("dispose()", () => {
+    it("should call dispose on each container, clear cache, set state (AC-8a)", async () => {
+      assetManager.init(menuScene, raceScene);
+      assetManager.registerManifest("spa", testManifest);
+      assetManager.registerManifest("nurb", testManifest2);
+
+      const container1 = createFakeContainer();
+      const container2 = createFakeContainer();
+      vi.mocked(LoadAssetContainerAsync)
+        .mockResolvedValueOnce(container1)
+        .mockResolvedValueOnce(container2);
+
+      await assetManager.load("spa");
+      await assetManager.load("nurb");
+
+      expect(assetManager.cacheSize).toBe(2);
+
+      assetManager.dispose();
+
+      expect(container1.dispose).toHaveBeenCalledTimes(1);
+      expect(container2.dispose).toHaveBeenCalledTimes(1);
+      expect(assetManager.cacheSize).toBe(0);
+    });
+
+    it("should NOT dispose scenes (AC-8b)", () => {
+      assetManager.init(menuScene, raceScene);
+      assetManager.dispose();
+
+      expect(menuScene.dispose).not.toHaveBeenCalled();
+      expect(raceScene.dispose).not.toHaveBeenCalled();
+    });
+
+    it("should throw AssetError on load() after dispose (AC-8c)", async () => {
+      assetManager.init(menuScene, raceScene);
+      assetManager.dispose();
+
+      await expect(assetManager.load("spa")).rejects.toThrow(AssetError);
+      await expect(assetManager.load("spa")).rejects.toThrow(
+        "Already disposed"
+      );
+    });
+
+    it("should throw AssetError when called before init()", () => {
+      expect(() => assetManager.dispose()).toThrow(AssetError);
+      expect(() => assetManager.dispose()).toThrow("Not initialized");
+    });
+
+    it("should be idempotent — second call is safe no-op", () => {
+      assetManager.init(menuScene, raceScene);
+      assetManager.dispose();
+
+      expect(() => assetManager.dispose()).not.toThrow();
+      expect(assetManager.cacheSize).toBe(0);
+    });
+  });
+
+  // ── disposeContainer() ───────────────────────────────────────
+
+  describe("disposeContainer()", () => {
+    it("should dispose and remove a single container from cache (AC-NEW-1)", async () => {
+      assetManager.init(menuScene, raceScene);
+      assetManager.registerManifest("spa", testManifest);
+      assetManager.registerManifest("nurb", testManifest2);
+
+      const container1 = createFakeContainer();
+      const container2 = createFakeContainer();
+      vi.mocked(LoadAssetContainerAsync)
+        .mockResolvedValueOnce(container1)
+        .mockResolvedValueOnce(container2);
+
+      await assetManager.load("spa");
+      await assetManager.load("nurb");
+      expect(assetManager.cacheSize).toBe(2);
+
+      assetManager.disposeContainer("spa");
+
+      expect(container1.dispose).toHaveBeenCalledTimes(1);
+      expect(assetManager.cacheSize).toBe(1);
+      expect(container2.dispose).not.toHaveBeenCalled();
+    });
+
+    it("should be safe no-op for missing ID (AC-NEW-1)", () => {
+      assetManager.init(menuScene, raceScene);
+
+      expect(() => assetManager.disposeContainer("nonexistent")).not.toThrow();
+    });
+
+    it("should leave other containers unaffected (AC-NEW-1 variant)", async () => {
+      assetManager.init(menuScene, raceScene);
+      assetManager.registerManifest("spa", testManifest);
+      assetManager.registerManifest("nurb", testManifest2);
+
+      const container1 = createFakeContainer();
+      const container2 = createFakeContainer();
+      vi.mocked(LoadAssetContainerAsync)
+        .mockResolvedValueOnce(container1)
+        .mockResolvedValueOnce(container2);
+
+      await assetManager.load("spa");
+      await assetManager.load("nurb");
+
+      assetManager.disposeContainer("spa");
+
+      expect(assetManager.cacheSize).toBe(1);
+      expect(container2.dispose).not.toHaveBeenCalled();
+
+      const result = await assetManager.load("nurb");
+      expect(result).toBe(container2);
+    });
+
+    it("should throw AssetError when called before init()", () => {
+      expect(() => assetManager.disposeContainer("spa")).toThrow(AssetError);
+      expect(() => assetManager.disposeContainer("spa")).toThrow(
+        "Not initialized"
+      );
+    });
+
+    it("should throw AssetError when called after dispose", () => {
+      assetManager.init(menuScene, raceScene);
+      assetManager.dispose();
+
+      expect(() => assetManager.disposeContainer("spa")).toThrow(AssetError);
+      expect(() => assetManager.disposeContainer("spa")).toThrow(
+        "Already disposed"
+      );
+    });
+  });
+
+  // ── Combined lifecycle sequence ─────────────────────────────
+
+  describe("lifecycle sequence", () => {
+    it("should survive init → register → load → unloadAll → dispose sequence", async () => {
+      assetManager.init(menuScene, raceScene);
+      assetManager.registerManifest("spa", testManifest);
+
+      const container = createFakeContainer();
+      vi.mocked(LoadAssetContainerAsync).mockResolvedValue(container);
+
+      await assetManager.load("spa");
+      expect(assetManager.cacheSize).toBe(1);
+
+      assetManager.unloadAll();
+      expect(assetManager.cacheSize).toBe(1);
+
+      assetManager.dispose();
+      expect(assetManager.cacheSize).toBe(0);
+
+      await expect(assetManager.load("spa")).rejects.toThrow(
+        "Already disposed"
+      );
+      await expect(assetManager.load("spa")).rejects.toThrow(AssetError);
     });
   });
 });
