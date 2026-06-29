@@ -7,7 +7,7 @@ import { Scene } from "@babylonjs/core/scene";
 import "@babylonjs/core/Physics/joinedPhysicsEngineComponent";
 import "@babylonjs/core/Materials/Textures/cubeTexture";
 import "@babylonjs/core/Materials/Textures/Loaders/envTextureLoader";
-import { AssetManager } from "./asset-manager";
+import { AssetManager } from "./asset-manager/asset-manager";
 import { templateConfig } from "./config/template-config";
 
 class App {
