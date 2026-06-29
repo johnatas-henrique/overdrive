@@ -344,12 +344,8 @@ export class ConfigTreePanel {
 
     // Remove the blur listener before detaching the input from DOM
     // biome-ignore lint/suspicious/noExplicitAny: expando property for blur handler
-    const blurHandler = (input as any)._editBlurHandler as
-      | (() => void)
-      | undefined;
-    if (blurHandler) {
-      input.removeEventListener("blur", blurHandler);
-    }
+    const blurHandler = (input as any)._editBlurHandler as () => void;
+    input.removeEventListener("blur", blurHandler);
 
     // Clear the guard BEFORE replaceWith: if replaceWith triggers blur
     // on the input, the blur fallback handler checks _editingKey and

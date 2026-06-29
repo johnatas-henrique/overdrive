@@ -353,7 +353,7 @@ export class Persistence {
         this._writeQueue.push({ key, json });
       } catch (error) {
         console.warn(
-          `[Persistence] Failed to serialize key "${key}" — ${error instanceof Error ? error.message : "unknown error"}`
+          `[Persistence] Failed to serialize key "${key}" — ${(error as Error).message}`
         );
       }
       return;
@@ -647,18 +647,12 @@ export class Persistence {
    * ```
    */
   private static _compareVersions(a: string, b: string): number {
-    const partsA = Persistence._parseVersion(a);
-    const partsB = Persistence._parseVersion(b);
-    const maxLen = Math.max(partsA.length, partsB.length);
+    const [aMaj, aMin, aPat] = Persistence._parseVersion(a);
+    const [bMaj, bMin, bPat] = Persistence._parseVersion(b);
 
-    for (let i = 0; i < maxLen; i++) {
-      const pa = partsA[i] ?? 0;
-      const pb = partsB[i] ?? 0;
-      if (pa < pb) return -1;
-      if (pa > pb) return 1;
-    }
-
-    return 0;
+    if (aMaj !== bMaj) return aMaj - bMaj;
+    if (aMin !== bMin) return aMin - bMin;
+    return aPat - bPat;
   }
 
   /**
