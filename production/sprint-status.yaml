@@ -14,7 +14,7 @@ goal: "Core A — Carro na Tela (Telemetry → Dev Tools → Tech Debt → Input
 start: "2026-06-27"
 end: "2026-07-10"
 generated: "2026-06-26"
-updated: "2026-06-28"
+updated: "2026-06-29"
 
 stories:
   - id: "2-1"
@@ -296,11 +296,11 @@ stories:
     name: "Story 004: Unload/Dispose Edge Cases"
     file: "production/epics/asset-manager/story-004-unload-dispose-edge-cases.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
+    completed: "2026-06-29"
     blocker: ""
-    completed: ""
 
   - id: "2-29"
     name: "Story 005a: Preload Concurrency"

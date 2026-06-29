@@ -68,3 +68,4 @@
 | 🔴     | 2026-06-29 | SP2/asset-manager/ST2/LP    | _addAllToScene() public despite @internal tag — should be private or documented why public (test access) | asset-manager.ts | S | |
 | 🔴     | 2026-06-29 | SP2/asset-manager/ST2/LP    | No concurrent load guard — two load("id") calls in flight cause double I/O and first container leak | asset-manager.ts | M | |
 | 🔴     | 2026-06-29 | SP2/asset-manager/ST2       | Story Test Evidence section has stale file path — says story-002-load-cache_test.ts, actual is asset-manager-lifecycle.test.ts | story-002-load-cache.md | S | |
+| 🔴     | 2026-06-29 | SP2/asset-manager/ST4       | AC-NEW-2 deferred — animation group re-clone on re-instantiation needs integration test in Story 005b (Entity/Car Lifecycle) | asset-manager.test.ts | M | |
