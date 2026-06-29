@@ -38,6 +38,8 @@ export type EventMap = {
   "gsm.state.entered": { from: string; to: string };
   /** Fired when the Game State Machine exits a state. */
   "gsm.state.exited": { from: string };
+  /** Fired when a GSM transition fails (invalid transition or onEnter error). */
+  "gsm.transition.error": { from: string; to: string; reason: string };
   /** A car entity has been spawned into the scene. */
   "entity.spawned": { carId: string };
   /** A car entity has been removed from the scene. */

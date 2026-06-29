@@ -2,8 +2,11 @@
  * Persistence — Storage abstraction with state machine.
  *
  * Wraps localStorage with an async-first interface, versioned payloads,
- * and degraded mode support. This file implements the state machine
- * and init probe; save/load/delete are stubs filled in by Story 002.
+ * and degraded mode support. This file is ~800 lines because it bundles
+ * the full state machine, init probe, save/load/delete, migration chain,
+ * retry queue, and persistence helpers in a single module.
+ * A Future refactor could split into state-machine.ts, queue.ts,
+ * migration.ts, and io.ts (low priority — internal cohesion is high).
  *
  * ## State Machine
  *
@@ -112,6 +115,11 @@ const PROBE_KEY = "__overdrive_probe__";
 const PROBE_VALUE = "1";
 
 /**
+ * Maximum entries in the degraded-mode write queue before FIFO eviction.
+ */
+const MAX_WRITE_QUEUE = 50;
+
+/**
  * Persistence — Async-first storage abstraction.
  *
  * @example
@@ -143,13 +151,18 @@ export class Persistence {
   /**
    * In-memory write queue used during Degraded mode.
    *
-   * When storage is unavailable, `save()` writes are queued here instead of
-   * being sent to localStorage. On successful `retry()`, the queue is flushed
+   * When storage is unavailable, `save()` writes are queued here as
+   * pre-serialized JSON strings (including PersistedEntry wrapper with
+   * version and timestamp). On successful `retry()`, the queue is flushed
    * to storage. Maximum 50 entries with FIFO eviction.
+   *
+   * Pre-serializing at queue time ensures deterministic retry:
+   * timestamp and JSON key order are frozen when the entry is queued,
+   * not regenerated on retry (AC-14).
    *
    * @see F31 — Persistence: degraded mode
    */
-  private _writeQueue: Array<{ key: string; data: unknown }> = [];
+  private _writeQueue: Array<{ key: string; json: string }> = [];
 
   /**
    * Whether the storage backend is considered recoverable.
@@ -332,28 +345,22 @@ export class Persistence {
     }
 
     if (this._state === PersistenceState.Degraded) {
-      if (this._writeQueue.length >= 50) {
+      if (this._writeQueue.length >= MAX_WRITE_QUEUE) {
         this._writeQueue.shift();
       }
-      this._writeQueue.push({ key, data });
+      try {
+        const json = this._serializeEntry(key, data);
+        this._writeQueue.push({ key, json });
+      } catch (error) {
+        console.warn(
+          `[Persistence] Failed to serialize key "${key}" — ${error instanceof Error ? error.message : "unknown error"}`
+        );
+      }
       return;
     }
 
     // Ready state
-    const entry: PersistedEntry = {
-      version: this._currentVersion,
-      data,
-      timestamp: Date.now(),
-    };
-
-    let json: string;
-    try {
-      json = JSON.stringify(entry);
-    } catch (error) {
-      throw new PersistenceError(
-        `Failed to serialize key "${key}": ${error instanceof Error ? error.message : "Unknown serialization error"}`
-      );
-    }
+    const json = this._serializeEntry(key, data);
 
     try {
       localStorage.setItem(this._prefix + key, json);
@@ -368,10 +375,10 @@ export class Persistence {
       if (this._lastError === "SecurityError") {
         this._recoverable = false;
       }
-      // Queue the serialized data for retry so it is not lost when
+      // Queue the already-serialized JSON for retry so it is not lost when
       // storage becomes available again. Queue is empty on first
       // failure (state just transitioned to Degraded), so no eviction needed.
-      this._writeQueue.push({ key, data });
+      this._writeQueue.push({ key, json });
     }
   }
 
@@ -440,16 +447,12 @@ export class Persistence {
       return null;
     }
 
-    if (
-      parsed !== null &&
-      typeof parsed === "object" &&
-      "data" in parsed &&
-      "version" in parsed
-    ) {
+    if (Persistence._isPersistedEntry(parsed)) {
       const entry = parsed as PersistedEntry;
 
-      // Run migrations if the stored version differs from current
-      if (entry.version !== this._currentVersion) {
+      // Run migrations only when stored version < current version.
+      // Downgrades (stored > current) return data as-is (F-008).
+      if (Persistence._entryNeedsMigration(entry, this._currentVersion)) {
         const migratedData = this._runMigrations(
           entry.version,
           entry.data,
@@ -580,8 +583,15 @@ export class Persistence {
     }
 
     // Walk the chain from storedVersion to currentVersion
+    const MAX_MIGRATION_STEPS = 100;
     let cursor = storedVersion;
+    let steps = 0;
     while (cursor !== currentVersion) {
+      if (++steps > MAX_MIGRATION_STEPS) {
+        throw new MigrationError(
+          `Migration chain exceeds ${MAX_MIGRATION_STEPS} steps — possible cycle`
+        );
+      }
       const migration = this._migrationRegistry.get(cursor);
 
       if (!migration) {
@@ -611,8 +621,12 @@ export class Persistence {
    * Persistence._parseVersion("0.10.0"); // [0, 10, 0]
    * ```
    */
-  private static _parseVersion(v: string): number[] {
-    return v.split(".").map(Number);
+  private static _parseVersion(version: string): [number, number, number] {
+    const parts = version.split(".");
+    if (parts.length !== 3 || parts.some((p) => p === "" || !/^\d+$/.test(p))) {
+      throw new MigrationError(`Invalid version format: "${version}"`);
+    }
+    return parts.map(Number) as [number, number, number];
   }
 
   /**
@@ -658,6 +672,37 @@ export class Persistence {
    * @param currentVersion - The target version as a fallback
    * @returns The implied next version string
    */
+  /**
+   * Check if a parsed value looks like a PersistedEntry (has data and version).
+   *
+   * Extracted from `load()` to reduce method length (AC-15).
+   */
+  private static _isPersistedEntry(parsed: unknown): boolean {
+    return (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      "data" in parsed &&
+      "version" in parsed
+    );
+  }
+
+  /**
+   * Check whether a persisted entry needs migration.
+   *
+   * Only returns true when stored version < current version.
+   * Downgrades (stored > current) return false — data is returned as-is.
+   * Equal versions return false — no migration needed.
+   *
+   * Extracted from `load()` to reduce method length (AC-15).
+   */
+  private static _entryNeedsMigration(
+    entry: PersistedEntry,
+    currentVersion: string
+  ): boolean {
+    if (entry.version === currentVersion) return false;
+    return Persistence._compareVersions(entry.version, currentVersion) < 0;
+  }
+
   private _findImpliedNext(cursor: string, currentVersion: string): string {
     let impliedNext = currentVersion;
 
@@ -671,6 +716,30 @@ export class Persistence {
     }
 
     return impliedNext;
+  }
+
+  /**
+   * Serialize key+data into a JSON string wrapped in PersistedEntry.
+   *
+   * Used by the degraded-mode write queue to pre-determine the serialized
+   * form (including timestamp) so retry can write it directly without
+   * re-serializing (AC-14).
+   *
+   * @throws {PersistenceError} If JSON.stringify fails
+   */
+  private _serializeEntry(key: string, data: unknown): string {
+    const entry: PersistedEntry = {
+      version: this._currentVersion,
+      data,
+      timestamp: Date.now(),
+    };
+    try {
+      return JSON.stringify(entry);
+    } catch (error) {
+      throw new PersistenceError(
+        `Failed to serialize key "${key}": ${error instanceof Error ? error.message : "Unknown serialization error"}`
+      );
+    }
   }
 
   /**
@@ -718,24 +787,8 @@ export class Persistence {
     const pending = [...this._writeQueue];
 
     for (const entry of pending) {
-      const entryData: PersistedEntry = {
-        version: this._currentVersion,
-        data: entry.data,
-        timestamp: Date.now(),
-      };
-
-      let json: string;
       try {
-        json = JSON.stringify(entryData);
-      } catch (error) {
-        console.warn(
-          `[Persistence] Failed to serialize key "${entry.key}" during retry flush: ${error instanceof Error ? error.message : "Unknown serialization error"}`
-        );
-        continue;
-      }
-
-      try {
-        localStorage.setItem(this._prefix + entry.key, json);
+        localStorage.setItem(this._prefix + entry.key, entry.json);
       } catch (error) {
         this._lastError = error instanceof Error ? error.name : "UnknownError";
         if (this._lastError === "SecurityError") {
