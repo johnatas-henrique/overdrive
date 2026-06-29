@@ -22,13 +22,21 @@ overdrive/
 │   ├── styles/             # CSS custom properties and design tokens
 │   └── app.ts              # Main entry point
 ├── tests/                  # Automated test suites
-│   ├── unit/               # Unit tests for foundation systems
+│   ├── unit/               # Unit tests for all systems
 │   │   ├── core/            # Tests mirroring src/core/
 │   │   │   └── dev-tools/   # Dev tools overlay, keybinds, and utility tests
-│   │   └── dev-infra/       # Telemetry recorder tests
+│   │   ├── dev-infra/       # Telemetry recorder tests
+│   │   └── foundation/      # Foundation system tests (mirrors src/foundation/)
+│   │       ├── config/       # ConfigManager and HMR tests
+│   │       ├── determinism/  # Determinism pipeline tests
+│   │       ├── event-bus/    # EventBus tests
+│   │       ├── gsm/          # GameStateMachine tests
+│   │       ├── persistence/  # Persistence tests
+│   │       └── simulation-snapshot/ # Snapshot tests
 │   ├── integration/        # Integration tests
-│   │   ├── dev-infra/      # Telemetry lifecycle tests
-│   │   └── dev-tools/      # Dev tools panel integration tests
+│   │   ├── core/            # Tests mirroring src/core/
+│   │   │   └── dev-tools/   # Dev tools panel integration tests
+│   │   └── dev-infra/      # Telemetry lifecycle tests
 │   ├── e2e/                # Playwright browser E2E tests
 │   ├── evidence/           # Test evidence artifacts
 │   └── smoke/              # Smoke tests
@@ -126,9 +134,14 @@ overdrive/
 - Key files: `variables.css`
 
 **`tests/unit/`:**
-- Purpose: Unit tests for all foundation systems
-- Contains: Test files for ConfigManager, EventBus, GSM, HMR, Persistence, Determinism, Snapshot
-- Key files: `config-manager.test.ts`, `event-bus.test.ts`, `gsm.test.ts`, `hmr.test.ts`, `persistence.test.ts`, `determinism.test.ts`, `snapshot.test.ts`
+- Purpose: Unit tests for all systems (mirrors `src/` directory structure)
+- Contains: Test files for foundation systems, dev-infra, and core/dev-tools
+- Key files: See subdirectories below
+
+**`tests/unit/foundation/`:**
+- Purpose: Unit tests for foundation systems (mirrors `src/foundation/` structure)
+- Contains: ConfigManager, EventBus, GSM, Persistence, Determinism, SimulationSnapshot tests in per-system subdirectories
+- Key files: `config/config-manager.test.ts`, `config/hmr.test.ts`, `event-bus/event-bus.test.ts`, `gsm/gsm.test.ts`, `persistence/persistence.test.ts`, `determinism/determinism.test.ts`, `simulation-snapshot/snapshot.test.ts`
 
 **`tests/unit/dev-infra/`:**
 - Purpose: Unit tests for TelemetryRecorder
@@ -145,7 +158,7 @@ overdrive/
 - Contains: End-to-end telemetry recording through event bus subscriptions
 - Key files: `telemetry-lifecycle.test.ts`
 
-**`tests/integration/dev-tools/`:**
+**`tests/integration/core/dev-tools/`:**
 - Purpose: Integration tests for Dev Tools panels (Event Bus Inspector, Config Tree, GSM Visualizer, Sim Snapshot Panel, AI Telemetry Panel)
 - Contains: Panel rendering, refresh behavior, and interaction tests
 - Key files: `event-bus-inspector.test.ts`, `config-tree.test.ts`, `gsm-visualizer.test.ts`, `sim-snapshot-panel.test.ts`, `ai-telemetry-panel.test.ts`
@@ -189,6 +202,7 @@ overdrive/
 **Dev Tools:** `src/core/dev-tools/config-tree.ts`: Config namespace tree with in-place editing
 **Dev Tools:** `src/core/dev-tools/gsm-visualizer.ts`: GSM History tab panel (state transitions, manual buttons)
 **Dev Tools:** `src/core/dev-tools/sim-snapshot-panel.ts`: Sim Snapshot tab panel (systems, hashes, Take/Restore)
+**Dev Tools:** `src/core/dev-tools/ai-telemetry-panel.ts`: AI Telemetry tab panel (per-car telemetry, sample-rate throttling)
 **Dev Infra:** `src/dev-infra/telemetry-recorder.ts`: Telemetry data model, sampling, and JSON export
 **Shared Utilities:** `src/shared/assert-defined.ts`: Assertion function for non-null narrowing
 **Type Definitions:** `src/foundation/event-bus/types.ts`: EventMap and interface definitions
@@ -196,11 +210,12 @@ overdrive/
 **Stylesheets:** `src/css/main.css`: Application styles
 **Stylesheets:** `src/core/dev-tools/dev-tools.css`: Dev Tools overlay styles (tree-shaken in prod)
 **Stylesheets:** `src/styles/variables.css`: CSS custom properties and design tokens
-**Tests:** `tests/unit/`: Unit tests for all foundation systems
+**Tests:** `tests/unit/`: Unit tests for all systems (mirrors `src/` structure)
+**Tests:** `tests/unit/foundation/`: Foundation system unit tests (per-system subdirectories)
 **Tests:** `tests/unit/dev-infra/`: Unit tests for TelemetryRecorder
 **Tests:** `tests/unit/core/dev-tools/`: Unit tests for Dev Tools overlay, keybinds, and shared utilities
+**Tests:** `tests/integration/core/dev-tools/`: Integration tests for Dev Tools panels
 **Tests:** `tests/integration/dev-infra/`: Integration tests for TelemetryRecorder lifecycle
-**Tests:** `tests/integration/dev-tools/`: Integration tests for Dev Tools panels
 **Tests:** `tests/e2e/`: Playwright E2E tests for Dev Tools overlay
 **Documentation:** `docs/architecture/`: Architecture Decision Records
 
@@ -215,16 +230,16 @@ overdrive/
 
 **New foundation system:** `src/foundation/[system-name]/` — follow existing pattern with index.ts barrel export
 **New config namespace:** `src/config/[namespace].ts` — use `wireConfigHmr()` for HMR support
-**New dev tools panel:** `src/core/dev-tools/` — implement `IDevTools.registerDataSource()` behind `import.meta.env.DEV`, or create a new tab panel class (follow `EventBusInspector`, `GsmVisualizer`, `SimSnapshotPanel` patterns)
+**New dev tools panel:** `src/core/dev-tools/` — implement `IDevTools.registerDataSource()` behind `import.meta.env.DEV`, or create a new tab panel class (follow `EventBusInspector`, `GsmVisualizer`, `SimSnapshotPanel`, `AiTelemetryPanel` patterns)
 **New dev infra module:** `src/dev-infra/[module-name].ts` — tree-shaken in production, import dynamically behind `import.meta.env.DEV`
 **New event types:** Add to `EventMap` in `src/foundation/event-bus/types.ts`
 **New game state:** Add to `State` type in `src/foundation/gsm/types.ts` and update `TransitionTable.ts`
 **New pipeline slot:** Register via `FixedUpdatePipeline.register(systemId, update)` in `src/foundation/determinism/fixed-update-pipeline.ts`
 **New snapshot system:** Implement `ISnapshotable` interface and register with `SimulationSnapshot.register()`
-**New test suite:** `tests/unit/[system-name].test.ts` — co-located with source but separate directory
+**New test suite:** `tests/unit/foundation/[system-name]/[feature].test.ts` — mirrors `src/foundation/` structure, per-system subdirectories
 **New dev-infra test:** `tests/unit/dev-infra/[module-name].test.ts` — for TelemetryRecorder and similar modules
 **New dev-tools test:** `tests/unit/core/dev-tools/[feature].test.ts` — for overlay, keybinds, compile guard, shared utilities
-**New dev-tools integration test:** `tests/integration/dev-tools/[panel-name].test.ts` — for panel rendering, refresh, and interaction
+**New dev-tools integration test:** `tests/integration/core/dev-tools/[panel-name].test.ts` — for panel rendering, refresh, and interaction
 **New E2E test:** `tests/e2e/[feature].spec.ts` — Playwright browser tests for DOM state and CSS verification
 **New ADR:** `docs/architecture/adr-[number]-[title].md` — follow existing ADR format
 **New epic:** `production/epics/[epic-name]/` — with sprint planning and status tracking
