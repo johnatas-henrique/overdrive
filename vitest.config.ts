@@ -17,7 +17,7 @@ export default defineConfig({
       provider: "v8",
       include: ["src/**/*.ts"],
       exclude: [
-        "src/**/index.ts",
+        "src/**/index.ts", // Barrel files: re-export only, zero executable code (AC-32)
         "src/foundation/event-bus/types.ts",
         "src/foundation/gsm/types.ts",
         "src/foundation/simulation-snapshot/types.ts",

@@ -2364,6 +2364,62 @@ describe("DeterminismGuard AC-5: guard lifecycle tied to pipeline", () => {
 });
 
 // ---------------------------------------------------------------------------
+// DeterminismGuard — QA: Edge cases .call(null) and .bind(performance)()
+// ---------------------------------------------------------------------------
+
+describe("DeterminismGuard QA: .call(null) and .bind(performance)() edge cases", () => {
+  useGlobalRestore();
+
+  it("Math.random guard throws when called via .call(null)", () => {
+    const guard = new DeterminismGuard();
+    guard.install();
+    expect(() => Math.random.call(null)).toThrow(DeterminismError);
+    expect(() => Math.random.call(null)).toThrow(
+      "Math.random forbidden during fixed update"
+    );
+    guard.uninstall();
+  });
+
+  it("Date.now guard throws when called via .call(null)", () => {
+    const guard = new DeterminismGuard();
+    guard.install();
+    expect(() => Date.now.call(null)).toThrow(DeterminismError);
+    guard.uninstall();
+  });
+
+  it("performance.now guard throws when called via .call(null)", () => {
+    const guard = new DeterminismGuard();
+    guard.install();
+    expect(() => performance.now.call(null)).toThrow(DeterminismError);
+    guard.uninstall();
+  });
+
+  it("Math.random guard throws when called via .bind(performance)()", () => {
+    const guard = new DeterminismGuard();
+    guard.install();
+    expect(() => Math.random.bind(performance)()).toThrow(DeterminismError);
+    expect(() => Math.random.bind(performance)()).toThrow(
+      "Math.random forbidden during fixed update"
+    );
+    guard.uninstall();
+  });
+
+  it("Date.now guard throws when called via .bind(performance)()", () => {
+    const guard = new DeterminismGuard();
+    guard.install();
+    expect(() => Date.now.bind(performance)()).toThrow(DeterminismError);
+    guard.uninstall();
+  });
+
+  it("performance.now guard throws when called via .bind(performance)()", () => {
+    const guard = new DeterminismGuard();
+    guard.install();
+    expect(() => performance.now.bind(performance)()).toThrow(DeterminismError);
+    guard.uninstall();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // DeterminismGuard — AC-6: Production mode — no guard installed
 //
 // NOTE: In production builds, Vite replaces `import.meta.env.DEV` with

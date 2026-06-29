@@ -60,8 +60,9 @@ class PlaygroundSnapshotSystem implements ISnapshotable {
     this._state = JSON.parse(JSON.stringify(state));
   }
 
-  hash(): string {
-    return fnv1a(JSON.stringify(this._state));
+  hash(state?: Record<string, unknown>): string {
+    const data = state ?? this._state;
+    return fnv1a(JSON.stringify(data));
   }
 }
 
