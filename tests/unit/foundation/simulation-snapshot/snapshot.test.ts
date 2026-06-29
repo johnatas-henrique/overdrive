@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fnv1a } from "@/foundation/simulation-snapshot/fnv1a";
 import {
   computeSnapshotHash,
   type FullGameSnapshot,
-  fnv1a,
-  type ISnapshotable,
-  SimulationSnapshot,
-  SnapshotError,
   sha256,
-} from "../../../../src/foundation/simulation-snapshot";
+} from "@/foundation/simulation-snapshot/sha256";
+import { SimulationSnapshot } from "@/foundation/simulation-snapshot/simulation-snapshot";
+import { SnapshotError } from "@/foundation/simulation-snapshot/snapshot-error";
+import type { ISnapshotable } from "@/foundation/simulation-snapshot/types";
 
 // ---------------------------------------------------------------------------
 // Crypto polyfill — ensure crypto.subtle is available in Node.js test env

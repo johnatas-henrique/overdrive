@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MigrationError,
-  Persistence,
   PersistenceError,
+} from "@/foundation/persistence/errors";
+import {
+  Persistence,
   PersistenceState,
-} from "../../../../src/foundation/persistence";
+} from "@/foundation/persistence/persistence";
 
 // ---------------------------------------------------------------------------
 // localStorage mock
