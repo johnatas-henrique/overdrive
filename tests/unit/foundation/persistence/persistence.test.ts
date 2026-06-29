@@ -2870,3 +2870,53 @@ describe("Queue entry format (B4)", () => {
     expect(typeof parsed.timestamp).toBe("number");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Coverage: MAX_MIGRATION_STEPS cycle guard (L591) and _parseVersion (L627)
+// ---------------------------------------------------------------------------
+
+describe("Coverage: migration cycle guard", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockStore.clear();
+  });
+
+  it("should throw MigrationError when migration chain exceeds MAX_MIGRATION_STEPS", async () => {
+    const storage = createWorkingStorage();
+    // Use version "3.0.0" so stored "1.0.0" triggers migration
+    const p = new Persistence({ storage, namespace: "test", version: "3.0.0" });
+    await p.init();
+
+    // Create a circular migration: 1.0.0 → 2.0.0 → 1.0.0 (never reaches 3.0.0)
+    p.registerMigration("1.0.0", "2.0.0", async () => {});
+    p.registerMigration("2.0.0", "1.0.0", async () => {});
+
+    // Call _runMigrations directly to test the cycle guard
+    expect(() => p._runMigrations("1.0.0", { v: 1 }, "3.0.0")).toThrow(
+      MigrationError
+    );
+  });
+});
+
+describe("Coverage: _parseVersion invalid format", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockStore.clear();
+  });
+
+  it("should throw MigrationError for invalid version format", () => {
+    expect(() => Persistence._parseVersion("invalid")).toThrow(MigrationError);
+  });
+
+  it("should throw MigrationError for version with non-numeric parts", () => {
+    expect(() => Persistence._parseVersion("1.abc.0")).toThrow(MigrationError);
+  });
+
+  it("should throw MigrationError for version with empty parts", () => {
+    expect(() => Persistence._parseVersion("1..0")).toThrow(MigrationError);
+  });
+
+  it("should throw MigrationError for version with too few parts", () => {
+    expect(() => Persistence._parseVersion("1.0")).toThrow(MigrationError);
+  });
+});

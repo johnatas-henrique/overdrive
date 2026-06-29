@@ -2089,3 +2089,141 @@ describe("_resetDevToolsForTesting (B7)", () => {
     cleanDOM();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Coverage: initDevTools() with optional parameters (L92, L97, L102)
+// ---------------------------------------------------------------------------
+
+describe("Coverage: initDevTools() with optional parameters", () => {
+  afterEach(() => {
+    _resetDevToolsForTesting();
+    cleanDOM();
+  });
+
+  it("should call setGsm when gsm parameter is provided", async () => {
+    cleanDOM();
+    vi.stubEnv("DEV", true);
+    const mocks = createMocks();
+    const fakeBus = {
+      on: vi.fn(() => ({ unsubscribe: vi.fn() })),
+      off: vi.fn(),
+      emit: vi.fn(),
+      getSubscriptions: vi.fn(() => new Map()),
+    };
+    const fakeGsm = {
+      getHistory: () => [],
+      transition: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await initDevTools(
+      mocks.engine as never,
+      mocks.scene as never,
+      fakeBus as never,
+      fakeGsm as never
+    );
+
+    const dt = getDevTools();
+    expect(dt).toBeDefined();
+    // Toggle to initialize overlay and create tabs
+    dt.toggle();
+    // GSM History tab should be created
+    const gsmTab = document.querySelector("button[data-tab-id='gsm-history']");
+    expect(gsmTab).not.toBeNull();
+
+    dt.dispose();
+  });
+
+  it("should call setSimulationSnapshot when simulationSnapshot parameter is provided", async () => {
+    cleanDOM();
+    vi.stubEnv("DEV", true);
+    const mocks = createMocks();
+    const fakeSnapshot = {
+      takeSnapshot: vi.fn(),
+      restoreSnapshot: vi.fn(),
+      getRegisteredSystems: vi.fn(() => []),
+      getHashes: vi.fn(() => new Map()),
+    };
+
+    await initDevTools(
+      mocks.engine as never,
+      mocks.scene as never,
+      undefined,
+      undefined,
+      fakeSnapshot as never
+    );
+
+    const dt = getDevTools();
+    expect(dt).toBeDefined();
+    // Toggle to initialize overlay and create tabs
+    dt.toggle();
+    // Sim Snapshot tab should be created
+    const ssnTab = document.querySelector("button[data-tab-id='sim-snapshot']");
+    expect(ssnTab).not.toBeNull();
+
+    dt.dispose();
+  });
+
+  it("should call setAiTelemetry when aiTelemetry parameter is provided", async () => {
+    cleanDOM();
+    vi.stubEnv("DEV", true);
+    const mocks = createMocks();
+    const fakeReader = () => [
+      {
+        carId: "p1",
+        speed: 100,
+        position: { lap: 3, trackProgress: 0.5, overall: 1 },
+        behavior: "cruise",
+      },
+    ];
+
+    await initDevTools(
+      mocks.engine as never,
+      mocks.scene as never,
+      undefined,
+      undefined,
+      undefined,
+      fakeReader
+    );
+
+    const dt = getDevTools();
+    expect(dt).toBeDefined();
+    // Toggle to initialize overlay and create tabs
+    dt.toggle();
+    // AI Telemetry tab should be created
+    const aitTab = document.querySelector("button[data-tab-id='ai-telemetry']");
+    expect(aitTab).not.toBeNull();
+
+    dt.dispose();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Coverage: _resetDevToolsForTesting DEV=false guard (L136)
+// ---------------------------------------------------------------------------
+
+describe("Coverage: _resetDevToolsForTesting with DEV=false", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    _resetDevToolsForTesting();
+    cleanDOM();
+  });
+
+  it("should not dispose instance when DEV=false", async () => {
+    cleanDOM();
+    vi.stubEnv("DEV", true);
+    const mocks = createMocks();
+
+    // Initialize with DEV=true
+    await initDevTools(mocks.engine as never, mocks.scene as never);
+    const dt = getDevTools();
+    expect(dt).toBeDefined();
+
+    // Stub DEV=false and call _resetDevToolsForTesting
+    vi.stubEnv("DEV", false);
+    _resetDevToolsForTesting();
+
+    // Instance should still be accessible (early return, no dispose)
+    const stillThere = getDevTools();
+    expect(stillThere).toBe(dt);
+  });
+});
