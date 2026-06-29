@@ -105,6 +105,7 @@ describe("Dev Tools singleton (index.ts)", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     cleanDOM();
   });
 
@@ -147,8 +148,6 @@ describe("Dev Tools singleton (index.ts)", () => {
 
       await initProd(mocks.engine as never, mocks.scene as never);
       expect(() => getProd()).toThrow("DevTools not initialized");
-
-      vi.unstubAllEnvs();
     });
   });
 

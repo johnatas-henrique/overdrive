@@ -62,6 +62,7 @@ let initDevTools: typeof import("@/core/dev-tools").initDevTools;
 let getDevTools: typeof import("@/core/dev-tools").getDevTools;
 let _resetDevToolsForTesting: typeof import("@/core/dev-tools")._resetDevToolsForTesting;
 let initKeybinds: typeof import("@/core/dev-tools/keybinds").initKeybinds;
+let handleKeyDown: typeof import("@/core/dev-tools/keybinds").handleKeyDown;
 
 beforeAll(async () => {
   vi.stubEnv("DEV", true);
@@ -71,6 +72,7 @@ beforeAll(async () => {
   _resetDevToolsForTesting = mod._resetDevToolsForTesting;
   const keybinds = await import("@/core/dev-tools/keybinds");
   initKeybinds = keybinds.initKeybinds;
+  handleKeyDown = keybinds.handleKeyDown;
 });
 
 // ---------------------------------------------------------------------------
@@ -421,15 +423,83 @@ describe("AC-2c: DEV=false production build", () => {
 // ─── Coverage gap: input focus skip ───
 
 describe("Coverage gap — input focus skip", () => {
-  it("should verify guard condition for INPUT/TEXTAREA/contenteditable targets", () => {
-    const inputTarget = document.createElement("input");
-    const textareaTarget = document.createElement("textarea");
-    const divTarget = document.createElement("div");
+  beforeEach(async () => {
+    cleanDOM();
+    resetMockReload();
+    _resetDevToolsForTesting();
+    const mocks = createMocks();
+    await initDevTools(mocks.engine as never, mocks.scene as never);
+  });
 
-    expect(inputTarget.tagName === "INPUT").toBe(true);
-    expect(textareaTarget.tagName === "TEXTAREA").toBe(true);
-    expect(
-      divTarget.tagName === "INPUT" || divTarget.tagName === "TEXTAREA"
-    ).toBe(false);
+  afterEach(() => {
+    vi.restoreAllMocks();
+    cleanDOM();
+  });
+
+  it("should NOT toggle overlay when typing toggle key in INPUT element", () => {
+    const dt = getDevTools();
+    expect(dt.isVisible()).toBe(false);
+
+    // Create a mock event with INPUT target
+    const input = document.createElement("input");
+    const event = {
+      key: DEV_TOOLS_KEYS.toggle,
+      target: input,
+      preventDefault: vi.fn(),
+    } as unknown as KeyboardEvent;
+
+    handleKeyDown(event);
+
+    // Overlay should NOT have toggled — input focus blocks keybind
+    expect(dt.isVisible()).toBe(false);
+  });
+
+  it("should NOT toggle overlay when typing toggle key in TEXTAREA element", () => {
+    const dt = getDevTools();
+    expect(dt.isVisible()).toBe(false);
+
+    const textarea = document.createElement("textarea");
+    const event = {
+      key: DEV_TOOLS_KEYS.toggle,
+      target: textarea,
+      preventDefault: vi.fn(),
+    } as unknown as KeyboardEvent;
+
+    handleKeyDown(event);
+
+    expect(dt.isVisible()).toBe(false);
+  });
+
+  it("should NOT toggle overlay when typing toggle key in contentEditable div", () => {
+    const dt = getDevTools();
+    expect(dt.isVisible()).toBe(false);
+
+    const div = document.createElement("div");
+    div.contentEditable = "true";
+    const event = {
+      key: DEV_TOOLS_KEYS.toggle,
+      target: div,
+      preventDefault: vi.fn(),
+    } as unknown as KeyboardEvent;
+
+    handleKeyDown(event);
+
+    expect(dt.isVisible()).toBe(false);
+  });
+
+  it("should still toggle overlay when pressing key outside input elements", () => {
+    const dt = getDevTools();
+    expect(dt.isVisible()).toBe(false);
+
+    // No target element — simulate key on document body
+    const event = {
+      key: DEV_TOOLS_KEYS.toggle,
+      target: document.body,
+      preventDefault: vi.fn(),
+    } as unknown as KeyboardEvent;
+
+    handleKeyDown(event);
+
+    expect(dt.isVisible()).toBe(true);
   });
 });

@@ -579,13 +579,11 @@ describe("Edge cases", () => {
     devTools.dispose(); // tears down DOM and state
     expect(document.getElementById("dev-overlay")).toBeNull();
 
-    // Toggle again — should re-create DOM from scratch
+    // Toggle again — disposed instance should NOT re-create DOM (DT-012)
     devTools.toggle();
     const overlay = document.getElementById("dev-overlay");
-    expect(overlay).not.toBeNull();
-    expect(overlay?.style.display).toBe("flex");
+    expect(overlay).toBeNull();
 
-    devTools.dispose();
     cleanDOM();
   });
 
