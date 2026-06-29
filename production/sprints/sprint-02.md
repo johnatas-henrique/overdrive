@@ -22,55 +22,56 @@ Deliver the complete Core A layer — dev infrastructure, telemetry, input, asse
 > **Note**: Sprint 1 achieved ~9× AI acceleration (142h estimated → ~16h actual).
 > Expected actual time: ~34h total.
 
-## Execution Order (Linear — Solo Dev)
+## Execution Order (Parallel — 2 Agent Sessions)
 
 ```
-1.  Tech Debt Cleanup (4 CRITICALs + WARNings)
-2.  Telemetry 001: Data Model
-3.  Telemetry 002: Sampling Loop
-4.  Telemetry 003: Console Summary
-5.  Telemetry 004: JSON Export
-6.  Telemetry 005: Race Lifecycle
-7.  Telemetry 006: Noop Behavior
-8.  Dev Tools 001: Compile Guard
-9.  Dev Tools 003: HTML Overlay ← provides IDevTools interface
-10. Dev Tools 002: Input Keybinds ← depends on IDevTools.toggle()
-11. Dev Tools 004: Config Tree
-12. Dev Tools 005: Event Bus Inspector
-13. Dev Tools 006: GSM Visualizer
-14. Dev Tools 007: Sim Snapshot Panel
-15. Dev Tools 008: AI Telemetry Tab  ← uses Telemetry data model
-16. Dev Tools 009: CSS Refactor
-17. Tech Debt Full Cleanup (48 items)
-18. Input 001: Interface Types
-19. Input 002: Dead Zone Formula
-20. Input 003: Player Input Polling
-21. Input 004: Focus/Disconnect Safety
-22. Input 005: GSM State Integration
-23. Input 006: Debounce Edge Cases
-24. Input 007: Device Detection
-25. Asset Manager 001: Init Two-Scene (replace playground)
-26. Asset Manager 002: Load Cache
-27. Asset Manager 003: Loading Events
-28. Asset Manager 004: Unload/Dispose Edge Cases
-29. Asset Manager 005a: Preload Concurrency
-30. Asset Manager 005b: GSM Orchestration
-31. Physics 001: Core Skeleton
-32. Physics 002: Arcade Grip Model
-33. Physics 003: Engine/Gears/Drag/Braking
-34. Physics 004: Surface Handling (Offtrack/Kerbs)
-35. Physics 005: Lock/Pit/External Inputs/Events
-36. Camera 001: Foundation
-37. Camera 002: GSM Camera Lifecycle
-38. Camera 003: Cockpit Camera
-39. Camera 004: Chase Camera Occlusion
-40. Camera 005: Cockpit/Chase Toggle
-41. Camera 006: Speed FOV Shift
-42. Camera 007: Camera Shake System
-43. Camera 008: Drone Camera Orbit
-44. Camera 009: Head Bob + Lateral Lean
-45. Camera 010: Camera Config HMR
+COMPLETED (17/45):
+  1.  Tech Debt Cleanup (4 CRITICALs + WARNings)          ✅
+  2-7.  Telemetry 001-006                                  ✅
+  8-16. Dev Tools 001-009                                  ✅
+  17. Tech Debt Full Cleanup (48 items)                    ✅
+
+REMAINING (28/45) — Parallel Execution:
+
+  Session A (Linear)              │ Session B (Linear)
+  ─────────────────────────────── │ ──────────────────────────────
+  18. Input 001: Interface Types  │ 25. Asset Manager 001: Init
+  19. Input 002: Dead Zone        │ 26. Asset Manager 002: Cache
+  20. Input 003: Polling          │ 27. Asset Manager 003: Events
+  21. Input 004: Focus Safety     │ 28. Asset Manager 004: Unload
+  22. Input 005: GSM Integration  │ 29. Asset Manager 005a: Preload
+  23. Input 006: Debounce         │ 30. Asset Manager 005b: GSM
+  24. Input 007: Device Detection │
+  ─────────────────────────────── │ (Session B done — 6 stories)
+  31. Physics 001: Core Skeleton  │
+  32. Physics 002: Grip Model     │
+  33. Physics 003: Engine/Gears   │
+  34. Physics 004: Surface        │
+  35. Physics 005: Lock/Pit       │
+  ─────────────────────────────── │
+  36. Camera 001: Foundation      │
+  37. Camera 002: GSM Lifecycle   │
+  38. Camera 003: Cockpit         │
+  39. Camera 004: Occlusion       │
+  40. Camera 005: Toggle          │
+  41. Camera 006: FOV Shift       │
+  42. Camera 007: Shake           │
+  43. Camera 008: Drone           │
+  44. Camera 009: Head Bob        │
+  45. Camera 010: Config HMR      │
 ```
+
+**Parallel rules:**
+- Two git worktrees: one per session (isolated working directories)
+- Session A branch: `feat/input` → merged to `main` after completion
+- Session B branch: `feat/asset-manager` → merged to `main` after completion
+- Each worktree runs its own dev server (different ports)
+- Shared files (Foundation, config, types) are read-only during Phase 5
+- Each session runs full OCGS workflow: /dev-story → /code-review → /story-done
+- Sprint status updated by whichever session finishes the story first
+- Merge order: Asset Manager first (smaller, fewer conflicts), then Input
+
+**Parallel strategy**: Input (Session A) and Asset Manager (Session B) run in separate git worktrees on dedicated branches (`feat/input` and `feat/asset-manager`). Complete isolation — no merge conflicts. After completion, branches merge to `main`. Physics and Camera run linearly in Session A after Input completes. Session B finishes early with Asset Manager.
 
 **Story completion rule**: each story must achieve **100% coverage on all 4 metrics** (stmts/branches/functions/lines) before advancing to the next. No exceptions.
 
@@ -136,18 +137,20 @@ Deliver the complete Core A layer — dev infrastructure, telemetry, input, asse
 
 ### Execution Phases
 
-Sequential execution — one story at a time:
+Parallel execution — 2 agent sessions:
 
-| Phase | Stories                         | Est.  |
-| ----- | ------------------------------- | ----- |
-| 1     | #1 (Tech Debt)                  | 25h   |
-| 2     | #2-7 (Telemetry 001-006)        | 26h   |
-| 3     | #8-16 (Dev Tools 001-009)       | 48h   |
-| 4     | #17 (Tech Debt Full Cleanup)    | 40h   |
-| 5     | #18-24 (Input)                  | 32h   |
-| 6     | #25-30 (Asset Manager)          | 48h   |
-| 7     | #31-35 (Physics)                | 58h   |
-| 8     | #36-45 (Camera)                 | 69h   |
+| Phase | Session A                   | Session B              | Est.  |
+| ----- | --------------------------- | ---------------------- | ----- |
+| 1     | #1 (Tech Debt)              | —                      | 25h   |
+| 2     | #2-7 (Telemetry 001-006)    | —                      | 26h   |
+| 3     | #8-16 (Dev Tools 001-009)   | —                      | 48h   |
+| 4     | #17 (Tech Debt Full Cleanup)| —                      | 40h   |
+| 5     | #18-24 (Input 001-007)      | #25-30 (Asset Manager) | 32h   |
+| 6     | #31-35 (Physics 001-005)    | *(done)*               | 58h   |
+| 7     | #36-45 (Camera 001-010)     | *(done)*               | 69h   |
+
+> **Phase 5 parallelism**: Input and Asset Manager run simultaneously.
+> No file overlap (`src/input/` vs `src/asset-manager/`).
 
 ## Carryover from Previous Sprint
 
