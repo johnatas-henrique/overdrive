@@ -5,9 +5,9 @@ import { SceneInstrumentation } from "@babylonjs/core/Instrumentation/sceneInstr
 import type { Observer } from "@babylonjs/core/Misc/observable";
 import type { Scene } from "@babylonjs/core/scene";
 import { getConfigManager } from "@/foundation/config/config-manager";
-import type { IEventBus } from "../../foundation/event-bus";
-import type { GameStateMachine } from "../../foundation/gsm/GameStateMachine";
-import type { SimulationSnapshot } from "../../foundation/simulation-snapshot";
+import type { IEventBus } from "@/foundation/event-bus/types";
+import type { GameStateMachine } from "@/foundation/gsm/GameStateMachine";
+import type { SimulationSnapshot } from "@/foundation/simulation-snapshot/simulation-snapshot";
 import { defined } from "../../shared/assert-defined";
 import { AiTelemetryPanel } from "./ai-telemetry-panel";
 import { ConfigTreePanel } from "./config-tree";

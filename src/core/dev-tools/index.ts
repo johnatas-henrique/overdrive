@@ -66,9 +66,9 @@ let _initializing = false;
 export async function initDevTools(
   engine: import("@babylonjs/core/Engines/abstractEngine").AbstractEngine,
   scene: import("@babylonjs/core/scene").Scene,
-  eventBus?: import("../../foundation/event-bus").IEventBus,
-  gsm?: import("../../foundation/gsm/GameStateMachine").GameStateMachine,
-  simulationSnapshot?: import("../../foundation/simulation-snapshot").SimulationSnapshot,
+  eventBus?: import("@/foundation/event-bus/types").IEventBus,
+  gsm?: import("@/foundation/gsm/GameStateMachine").GameStateMachine,
+  simulationSnapshot?: import("@/foundation/simulation-snapshot/simulation-snapshot").SimulationSnapshot,
   aiTelemetry?: () => AiTelemetryCarData[]
 ): Promise<void> {
   if (!import.meta.env.DEV) return;

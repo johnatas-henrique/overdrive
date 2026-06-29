@@ -24,7 +24,7 @@
  * @see Control Manifest D-F3 — Never emit events on the Event Bus
  */
 
-import type { Subscription } from "../../foundation/event-bus";
+import type { Subscription } from "@/foundation/event-bus/types";
 import type { IReadOnlyEventBus } from "./types";
 
 /**
