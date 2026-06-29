@@ -1,5 +1,51 @@
 # Changelog
 
+## [0.4.0](https://github.com/johnatas-henrique/overdrive/compare/overdrive-v0.3.0...overdrive-v0.4.0) (2026-06-29)
+
+
+### Features
+
+* **dev-tools:** add _resetdevtoolsfortesting singleton reset ([e3400f5](https://github.com/johnatas-henrique/overdrive/commit/e3400f5a67cbbb71c9f8a3e90132f22a7575351f))
+* **dev-tools:** add AiTelemetryPanel implementation ([f235593](https://github.com/johnatas-henrique/overdrive/commit/f235593928893e885ec58c2b77204d5d1101ccfa))
+* **dev-tools:** add GSM Visualizer panel ([28e437f](https://github.com/johnatas-henrique/overdrive/commit/28e437f5a1df0bfd399dad0e5f48f34f190e1663))
+* **dev-tools:** config tree panel, setRuntime, and DevTools integration ([bd61abf](https://github.com/johnatas-henrique/overdrive/commit/bd61abf095893bb2c2f08f9312be24ecfafffefc))
+* **dev-tools:** css variables and stylesheet ([8bb018a](https://github.com/johnatas-henrique/overdrive/commit/8bb018aedb34f5cbcd78d0ac62e803fafc44b1c9))
+* **dev-tools:** event bus inspector with tab system and app wiring ([d623009](https://github.com/johnatas-henrique/overdrive/commit/d6230094eeabf46da555d5d6f788493eb0ac3286))
+* **dev-tools:** implement Dev Compile Guard with import.meta.env.DEV ([daf8084](https://github.com/johnatas-henrique/overdrive/commit/daf808420dd136cba33c20fd8521e31bac7f31b5))
+* **dev-tools:** integrate GSM Visualizer into overlay ([ceaa562](https://github.com/johnatas-henrique/overdrive/commit/ceaa5621a2d259f515c378bb69cdee76e2a267d6))
+* **dev-tools:** keybinds, showNotification, singleton wiring ([9dc28ad](https://github.com/johnatas-henrique/overdrive/commit/9dc28add5bbe3daec8b9a501f6301a35b1cf5585))
+* **dev-tools:** replace inline styles with CSS classes ([6dd6453](https://github.com/johnatas-henrique/overdrive/commit/6dd6453fe610851aa2a8224eba78ccbc213db55f))
+* **dev-tools:** singleton proxy with DEV guard ([e4f3028](https://github.com/johnatas-henrique/overdrive/commit/e4f30287a9bf4061a8146a5288e87074f133b8f2))
+* **dev-tools:** types, config, and core overlay implementation ([15bce5b](https://github.com/johnatas-henrique/overdrive/commit/15bce5b22ffbe16bd124b0cf7f3d8d5ffcce7809))
+* **event-bus:** add getSubscriptions() and wildcard subscription support ([c0f62fa](https://github.com/johnatas-henrique/overdrive/commit/c0f62fab89cd6ba50c4837929737a00d6b6a55d5))
+* **event-bus:** add race.started event + off(event) overload ([6a680f6](https://github.com/johnatas-henrique/overdrive/commit/6a680f67ea7813bed98ffbabd9975c4a50c8e6f2))
+* **foundation:** add SimulationSnapshot API + assertDefined utility ([3545db4](https://github.com/johnatas-henrique/overdrive/commit/3545db4512c94e675b76992aaf501c247c165061))
+* **playground:** add AI telemetry mock data ([bb66e93](https://github.com/johnatas-henrique/overdrive/commit/bb66e933f735182f32e50c5a59d8ffc2e5e5fd95))
+* **sprint-02:** tech debt cleanup, telemetry recorder, and dev tools ([7cf3d88](https://github.com/johnatas-henrique/overdrive/commit/7cf3d884b49be91e3d183e1441218c9796fdab6b))
+* **telemetry:** add console summary log with isRecording gate ([d7caa45](https://github.com/johnatas-henrique/overdrive/commit/d7caa4544ccf2f0ad9ccafb7de969eb499e97663))
+* **telemetry:** add init() with Event Bus lifecycle subscriptions ([4847054](https://github.com/johnatas-henrique/overdrive/commit/48470541b1fe6d35a0ecb672da0a30f290fc1fae))
+* **telemetry:** add JSON export with window.__telemetry surface ([50fac98](https://github.com/johnatas-henrique/overdrive/commit/50fac98fb283b781444d7ba650dd6324b81a3ca5))
+* **telemetry:** add sampling loop and CarEntityRef ([becd047](https://github.com/johnatas-henrique/overdrive/commit/becd0471169f3566eaf6333b8c0b6a929ac807f8))
+* **telemetry:** data model and storage ([7ae1194](https://github.com/johnatas-henrique/overdrive/commit/7ae119436348279034142ae5a413e5ee823287c7))
+
+
+### Bug Fixes
+
+* **app:** d-013 move eventbus before createmainscene ([224290a](https://github.com/johnatas-henrique/overdrive/commit/224290ac9f1c778541b4e64eba97dc079f846843))
+* dead code removal for coverage improvement ([52c0bab](https://github.com/johnatas-henrique/overdrive/commit/52c0bab88666b9e69dda53caab2bbe95729c60ef))
+* **dev-infra:** t-001 subscription refs and t-002 validation ([bc0e7d9](https://github.com/johnatas-henrique/overdrive/commit/bc0e7d945a747b3d206b09ab9bb000e6a39bf7ff))
+* **dev-tools:** add singleton reset function for test optimization ([72ab759](https://github.com/johnatas-henrique/overdrive/commit/72ab759d60b04ba48b84775a3994d84067967caf))
+* **dev-tools:** css fixes, gsm visualizer coverage, and playground wiring ([e6f36ee](https://github.com/johnatas-henrique/overdrive/commit/e6f36ee81ec2932f2aaf9cc52ee55460ab211929))
+* **dev-tools:** keybind header and pointer-events CSS ([0b336ce](https://github.com/johnatas-henrique/overdrive/commit/0b336ce38b343644276814d6c9b48b282f20b87d))
+* **dev-tools:** pr [#15](https://github.com/johnatas-henrique/overdrive/issues/15) review — overlay, inspector, visualizer fixes ([1c14464](https://github.com/johnatas-henrique/overdrive/commit/1c144642cb77e880ad5f57a61966c8d3d0e26c42))
+* **dev-tools:** pr [#15](https://github.com/johnatas-henrique/overdrive/issues/15) review — snapshot, types, css fixes ([ba34260](https://github.com/johnatas-henrique/overdrive/commit/ba342605e53ff29ea5383c591d07cc65e1e30f8b))
+* **dev-tools:** pr [#15](https://github.com/johnatas-henrique/overdrive/issues/15) review fixes and css tab switching bug ([f9611c1](https://github.com/johnatas-henrique/overdrive/commit/f9611c12cc6435585157b0cc738e31fbdf787ea5))
+* **foundation:** pr [#15](https://github.com/johnatas-henrique/overdrive/issues/15) review — persistence and config fixes ([fe16a5f](https://github.com/johnatas-henrique/overdrive/commit/fe16a5ff298ccafd2d60fa5084eef8daf2ee0dba))
+* **foundation:** pr [#15](https://github.com/johnatas-henrique/overdrive/issues/15) review fixes ([d0ca92c](https://github.com/johnatas-henrique/overdrive/commit/d0ca92c095e282ecc9e601237b85dc6fe8911944))
+* **foundation:** resolve 4 CRITICALs + 5 WARNINGs across Foundation systems ([77a2527](https://github.com/johnatas-henrique/overdrive/commit/77a2527f42c3adc227e0169947f876022e699f8c))
+* **telemetry:** recorder updates and event-bus test cleanup ([4529925](https://github.com/johnatas-henrique/overdrive/commit/4529925fd356aa0c4524aa93eb61c7d1dc63481b))
+* **test:** suppress stderr in null canvas container test ([7f498cd](https://github.com/johnatas-henrique/overdrive/commit/7f498cd69d039da31bfb09f771335cf2bf6e0fc1))
+
 ## [0.3.0](https://github.com/johnatas-henrique/overdrive/compare/overdrive-v0.2.0...overdrive-v0.3.0) (2026-06-26)
 
 
