@@ -234,6 +234,70 @@ export class AssetManager {
     this._manifests.set(id, manifest);
   }
 
+  // ── Lifecycle & Cleanup ─────────────────────────────────────
+
+  /**
+   * Remove all cached containers from the active scene.
+   *
+   * Calls `container.removeAllFromScene()` on every cached AssetContainer.
+   * Containers remain in the cache and can be re-added via `load()`.
+   * Used during PostRace→Menu transition.
+   *
+   * Idempotent — calling twice is a safe no-op. Calling after `dispose()`
+   * is also a safe no-op.
+   *
+   * @throws {AssetError} If called before `init()`
+   */
+  unloadAll(): void {
+    if (this._state === "disposed") return;
+    this._assertInitialized();
+    for (const container of this._cache.values()) {
+      container.removeAllFromScene();
+    }
+  }
+
+  /**
+   * Dispose all cached containers and clear the cache.
+   *
+   * Calls `container.dispose()` on every cached AssetContainer, then clears
+   * the cache map. Transitions state to `Disposed`. Used at application quit.
+   *
+   * Does NOT dispose `menuScene` or `raceScene` — scene ownership is outside
+   * AssetManager (Control Manifest C1).
+   *
+   * Idempotent — calling twice is a safe no-op.
+   *
+   * @throws {AssetError} If called before `init()`
+   */
+  dispose(): void {
+    if (this._state === "disposed") return;
+    this._assertInitialized();
+    for (const container of this._cache.values()) {
+      container.dispose();
+    }
+    this._cache.clear();
+    this._state = "disposed";
+  }
+
+  /**
+   * Dispose a single cached container and remove it from the cache.
+   *
+   * Calls `container.dispose()` and removes the entry. Other containers
+   * are unaffected. Missing ID is a safe no-op.
+   *
+   * @param id - Asset identifier to dispose
+   *
+   * @throws {AssetError} If called before `init()`
+   */
+  disposeContainer(id: string): void {
+    this._assertNotDisposed();
+    this._assertInitialized();
+    const container = this._cache.get(id);
+    if (!container) return; // Safe no-op for missing ID
+    container.dispose();
+    this._cache.delete(id);
+  }
+
   // ── Asset Loading ────────────────────────────────────────────
 
   /**
@@ -325,6 +389,7 @@ export class AssetManager {
    * `undefined` if no match is found.
    *
    * Safe to call before `init()` — returns `undefined` with no error.
+   * Throws after `dispose()`.
    *
    * @param id - The node's `id` or `name` property to search for
    * @returns The matching Node, or `undefined`
@@ -336,6 +401,7 @@ export class AssetManager {
    * ```
    */
   get<T extends Node = Node>(id: string): T | undefined {
+    this._assertNotDisposed();
     for (const container of this._cache.values()) {
       // Search meshes (by id or name — Babylon.js convention)
       const mesh = container.meshes.find((n) => n.id === id || n.name === id) as
