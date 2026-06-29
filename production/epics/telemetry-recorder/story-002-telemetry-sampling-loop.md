@@ -33,7 +33,7 @@ _(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh 
 _From GDD `design/gdd/telemetry-recorder.md`, scoped to this story:_
 
 - [ ] **AC-1**: `tick()` called 9 times with 1 car appends exactly 3 samples (every 3rd call: tick 0, 3, 6)
-- [ ] **AC-2**: Each sample's fields match the CarEntity state at the moment of sampling — speed, rpm, throttle, brake, steer, gear, lateralG, fuel, tireCondition, splinePos, aiState
+- [ ] **AC-2**: Each sample's fields match the CarEntity state at the moment of sampling — speed, rpm, throttle, brake, steer, gear, lateralG, fuel, tireCondition, splinePos, aiState, plus tick number (`tickCount`) and timestamp (`Date.now()` at capture time)
 - [ ] **AC-3**: `tick()` with empty `cars` array produces no error and no samples
 - [ ] **AC-4**: New car appearing mid-session (late joiner) starts receiving samples on the next sample tick — no gap or crash
 - [ ] **AC-5**: `tick()` does nothing when `import.meta.env.DEV` is false (early return guard)
@@ -70,6 +70,8 @@ tick(dt: number, cars: CarEntity[], tickCount: number): void {
 | `car.runtime.tireCondition` | tireCondition | Tire Wear         |
 | `car.runtime.splinePos`     | splinePos     | Race Management   |
 | `car.aiDriver?.state ?? -1` | aiState       | AI Driver         |
+| `tickCount`                 | tick          | Pipeline          |
+| `Date.now()`                | t             | Runtime           |
 
 **CarEntity interface reference:** See ADR-0005 (CarEntity identity-only) and the per-system ADRs listed in ADR-0022 Dependencies.
 

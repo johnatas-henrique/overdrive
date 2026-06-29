@@ -10,17 +10,34 @@ allowed-tools: Read, Glob, Grep, Bash, Task, aft_search, aft_outline
 
 Read ALL comments from the PR using `gh api`. Do not skip any findings.
 
+**Fetch both review comments AND conversation comments:**
+
 ```bash
-gh api repos/{owner}/{repo}/pulls/{pr_number}/comments --paginate | jq -r '.[] | "\(.user.login) | \(.path):\(.line // .start_line) | \(.body[0:300])"'
+# Review comments (on code)
+gh api repos/{owner}/{repo}/pulls/{pr_number}/comments --paginate > /tmp/pr-comments.json
+
+# Conversation comments (on PR description)
+gh api repos/{owner}/{repo}/issues/{pr_number}/comments --paginate > /tmp/pr-conversation.json
 ```
 
-Count total comments and unique file:line locations. Report both numbers.
+Count total comments (review + conversation) and unique file:line locations. Report both numbers.
 
 ---
 
 ## Phase 2: Create Per-Epic Review Documents
 
 For each epic in the PR, create `production/epics/{epic-name}/PR-{pr_number}-REVIEW.md`.
+
+**Epic assignment rules:**
+- Source files under `src/{epic-name}/` → that epic
+- Test files under `tests/` → the epic of the source file they test
+- Cross-cutting files (app.ts, playground, config, CI, docs) that don't belong to any epic → **Tech Debt epic**
+- All findings must be in exactly one epic document
+
+**ALL findings must be included.** Do NOT deduplicate by removing entries. If finding #50 is the same issue as #14:
+- Include BOTH #14 and #50 as separate findings
+- In #50's description, add: `**Duplicate of**: #14 — same issue reported by {reviewer}`
+- Both get their own decision row in the Decision Table
 
 **Structure:**
 ```markdown
@@ -29,7 +46,8 @@ For each epic in the PR, create `production/epics/{epic-name}/PR-{pr_number}-REV
 **PR**: [#{pr_number} {title}]({url})
 **Review Date**: {date}
 **Reviewers**: {list of reviewers}
-**Total Comments**: {total} ({n} in this epic scope)
+**Total Comments in PR**: {total}
+**Comments in this Epic**: {n}
 
 ---
 
@@ -43,6 +61,7 @@ For each epic in the PR, create `production/epics/{epic-name}/PR-{pr_number}-REV
 | **Severity** | {emoji} {level} |
 | **Reviewer** | {reviewer} |
 | **Category** | {Code|Test|Documentation|Config} |
+| **Duplicate of** | {ID or empty} |
 
 **Finding**: {description}
 
@@ -54,15 +73,16 @@ For each epic in the PR, create `production/epics/{epic-name}/PR-{pr_number}-REV
 
 ## Decision Table
 
-| ID | Decision | Rationale |
-|----|----------|-----------|
-| {ID} | {FIX|SKIP|DISCUSS} | {rationale} |
+| ID | File | Decision | Rationale |
+|----|------|----------|-----------|
+| {ID} | {path} | {FIX|SKIP|DISCUSS} | {rationale} |
 ```
 
 **Rules:**
 - ALL findings must have a decision (FIX/SKIP/DISCUSS)
-- Duplicate findings are consolidated but kept in the list
+- Duplicate findings are NOT consolidated — each stays as a separate entry with a cross-reference
 - Each finding has 3 opinions: Engineer, QA, Orchestrator
+- The "Comments in this Epic" count = number of original PR comments whose files fall within this epic's scope
 
 ---
 
@@ -103,9 +123,22 @@ Update QA Analysis Summary.
 
 Create `production/qa/PR-{pr_number}-REVIEW-DECISIONS.md` with ALL findings from ALL epics.
 
+**Ordering**: Findings MUST be in sequential order by ID (DT-001, DT-002, DT-003, ...). Do NOT sort by severity within the document.
+
+**Duplicates**: If finding DT-012 is a duplicate of DT-007, do NOT create a separate entry for DT-012. Instead, note it in DT-007's title:
+```markdown
+### DT-007: Concurrent init serialization (duplicates: DT-012, DT-015, DT-037)
+```
+This keeps the document scannable — one entry per unique issue.
+
+**Pre-fill decisions**: When 2 out of 3 opinions (Engineer, QA, Orchestrator) agree, pre-fill the decision checkbox with `[X]`. The user changes only the disagreements. Example:
+- Engineer: FIX, QA: FIX, Orchestrator: FIX → `[X]` FIX `[ ]` SKIP `[ ]` DISCUSS
+- Engineer: SKIP, QA: FIX, Orchestrator: SKIP → `[ ]` FIX `[X]` SKIP `[ ]` DISCUSS
+- Engineer: FIX, QA: SKIP, Orchestrator: DISCUSS → `[ ]` FIX `[ ]` SKIP `[X]` DISCUSS
+
 **Structure per finding:**
 ```markdown
-### {ID}: {Title}
+### {ID}: {Title} (duplicates: {IDs or empty})
 
 | Field | Value |
 |-------|-------|
@@ -115,7 +148,7 @@ Create `production/qa/PR-{pr_number}-REVIEW-DECISIONS.md` with ALL findings from
 | **QA** | {analysis} |
 | **Orchestrator** | {synthesis} |
 
-**Decision**: `[ ]` FIX `[ ]` SKIP `[ ]` DISCUSS
+**Decision**: `[X]` FIX `[ ]` SKIP `[ ]` DISCUSS
 ```
 
 **Summary table at top:**
@@ -142,7 +175,15 @@ For each DISCUSS:
 
 ## Phase 6: Respond to PR Comments
 
-Respond to EACH comment individually on GitHub. Format varies by decision:
+Respond to comments that have NOT been responded to yet. Skip comments that already have replies.
+
+**Steps:**
+1. Fetch all PR comments: `gh api repos/{owner}/{repo}/pulls/{pr_number}/comments --paginate`
+2. For each comment, check if it already has replies ( replies exist if `in_reply_to_id` matches another comment ID)
+3. Only respond to comments with NO existing replies
+4. Post reply using `gh api repos/{owner}/{repo}/pulls/comments/{comment_id}/replies -f body="..."`
+
+**Response format:**
 
 **FIX:**
 ```
@@ -155,15 +196,7 @@ Respond to EACH comment individually on GitHub. Format varies by decision:
 ⏭️ SKIP — {rationale}
 ```
 
-**DISCUSS:**
-```
-💬 DISCUSS — {question for reviewer}
-```
-
-Use `gh api` to post replies:
-```bash
-gh api repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies -f body="..."
-```
+**Rate limiting:** If you get 422 errors, stop and report progress. Do not retry automatically.
 
 ---
 
@@ -219,7 +252,7 @@ For deferred findings, add to `docs/tech-debt-register.md`:
 ## Quality Gates
 
 Before completing:
-- [ ] All 79+ comments responded to
+- [ ] All PR comments responded to (count from Phase 1)
 - [ ] All DISCUSS items resolved
 - [ ] All FIX items implemented
 - [ ] Tests pass

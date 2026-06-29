@@ -92,7 +92,7 @@ Deliver the complete Core A layer — dev infrastructure, telemetry, input, asse
 | 12 | Dev Tools 005: Event Bus Inspector           | 6h    | #10        |
 | 13 | Dev Tools 006: GSM Visualizer                | 5h    | #10        |
 | 14 | Dev Tools 007: Sim Snapshot Panel            | 6h    | #10        |
-| 15 | Dev Tools 008: AI Telemetry Tab              | 5h    | #14, #2    |
+| 15 | Dev Tools 008: AI Telemetry Tab              | 5h    | #10, #2    |
 | 16 | Input 001: Interface Types                   | 2h    | —          |
 | 17 | Input 002: Dead Zone Formula                 | 3h    | #16        |
 | 18 | Input 003: Player Input Polling              | 10h   | #17        |

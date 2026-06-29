@@ -158,7 +158,6 @@ stories:
     owner: ""
     estimate_days: 1
     blocker: ""
-    completed: ""
 
   - id: "2-15"
     name: "Story 008: AI Telemetry Tab"

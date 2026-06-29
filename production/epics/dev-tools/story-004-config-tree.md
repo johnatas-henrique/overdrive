@@ -44,15 +44,13 @@ _Derived from ADR-0009 Implementation Guidelines:_
 
 **Prerequisite — `ConfigManager.setRuntime()` (Foundation layer)**:
 
-This story requires a `setRuntime(key: string, value: unknown)` method on ConfigManager that does not yet exist. It must be added before the in-place editing feature can work. The method should:
+This story requires a `setRuntime(key: string, value: unknown)` method on ConfigManager. The method was implemented as part of this story. It:
 
-- Accept a dot-path key (e.g., `"teams.macklen.motor"`) and a value
-- Navigate to the correct location in the resolved config cache
-- Set the value and return the old value (for notification: `"3 → 4"`)
-- Be guarded by `import.meta.env.DEV` — this is a dev-only mutation API
-- NOT bypass Config Manager's internal state (write to `_resolved` directly, not to `_store`)
-
-Implementation of this method should be done as part of this story since it's tightly coupled to the in-place editing feature. Add tests for `setRuntime()` in `tests/unit/config-manager.test.ts`.
+- Accepts a dot-path key (e.g., `"teams.macklen.motor"`) and a value
+- Navigates to the correct location in the resolved config cache
+- Sets the value and returns the old value (for notification: `"3 → 4"`)
+- Is guarded by `import.meta.env.DEV` — this is a dev-only mutation API
+- Does NOT bypass Config Manager's internal state (writes to `_resolved` directly, not to `_store`)
 
 1. **Data source registration**:
 
@@ -146,7 +144,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 **Deviations**:
 - ADVISORY: `captureRenderTime` not enabled (ADR shows it, implementation omits) — low priority
 - ADVISORY: `_initConfigDataSource` registers reader that's never consumed — placeholder for future stories
-- ADVISORY: All inline styles instead of CSS classes — refactor when Story 005+ adds more panels
+- ADVISORY: Additional panel styling refinements deferred to later polish pass
 **Test Evidence**: Integration test at `tests/integration/dev-tools/config-tree.test.ts` (28 tests)
 **Code Review**: APPROVED WITH SUGGESTIONS (LP) — 5 findings, all low/informational
 **Coverage**: config-tree.ts 100%/100%/100%/100%, dev-tools.ts 97.93%/94.44%/94.44%/99.24%

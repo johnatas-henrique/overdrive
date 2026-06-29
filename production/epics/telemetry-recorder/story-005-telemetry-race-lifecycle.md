@@ -139,9 +139,9 @@ _Handled by neighbouring stories — do not implement here:_
 **Story Type**: Integration
 **Required evidence**:
 
-- Integration: `tests/integration/dev-infra/telemetry-lifecycle_test.ts` or documented playtest
+- Integration: `tests/integration/dev-infra/telemetry-lifecycle.test.ts` (12 tests passing)
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 12 tests passing
 
 ---
 

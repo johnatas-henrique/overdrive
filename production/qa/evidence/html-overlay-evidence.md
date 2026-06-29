@@ -46,4 +46,4 @@
 | Role | Name | Date | Approved |
 |------|------|------|----------|
 | Developer | Johnatas | 2026-06-27 | ✅ |
-| QA Lead | | 2026-06-27 | ✅ |
+| QA Lead | Johnatas | 2026-06-27 | ✅ |

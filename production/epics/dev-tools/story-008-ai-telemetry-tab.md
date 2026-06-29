@@ -2,7 +2,7 @@
 
 > **Epic**: Dev Tools
 > **Status**: Complete
-> **Last Updated**: 2026-06-27
+> **Last Updated**: 2026-06-28
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
@@ -106,9 +106,9 @@ _Written by qa-lead at story creation. The developer implements against these â€
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/dev-tools/ai-telemetry-tab_test.ts` or documented playtest
+**Required evidence**: `tests/integration/dev-tools/ai-telemetry-panel.test.ts` or documented playtest
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created â€” 32 tests passing
 
 ---
 
