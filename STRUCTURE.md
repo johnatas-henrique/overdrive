@@ -23,8 +23,9 @@ overdrive/
 │   └── app.ts              # Main entry point
 ├── tests/                  # Automated test suites
 │   ├── unit/               # Unit tests for foundation systems
-│   │   ├── dev-infra/      # Telemetry recorder tests
-│   │   └── dev-tools/      # Dev tools overlay, keybinds, and utility tests
+│   │   ├── core/            # Tests mirroring src/core/
+│   │   │   └── dev-tools/   # Dev tools overlay, keybinds, and utility tests
+│   │   └── dev-infra/       # Telemetry recorder tests
 │   ├── integration/        # Integration tests
 │   │   ├── dev-infra/      # Telemetry lifecycle tests
 │   │   └── dev-tools/      # Dev tools panel integration tests
@@ -70,7 +71,7 @@ overdrive/
 **`src/foundation/gsm/`:**
 - Purpose: Flat FSM with lifecycle hooks, transition throttling, and state history
 - Contains: GameStateMachine, TransitionTable, State types, StateDefinition
-- Key files: `GameStateMachine.ts`, `TransitionTable.ts`, `State.ts`, `StateDefinition.ts`, `GameStateError.ts`, `index.ts`
+- Key files: `GameStateMachine.ts`, `TransitionTable.ts`, `types.ts`, `GameStateError.ts`, `index.ts`
 
 **`src/foundation/determinism/`:**
 - Purpose: Deterministic RNG, fixed timestep pipeline, and dev-mode guards
@@ -89,8 +90,8 @@ overdrive/
 
 **`src/core/dev-tools/`:**
 - Purpose: Debug overlay, keybinds, data panel registration, and tabbed debug panels for development
-- Contains: DevTools overlay class, IDevTools interface, keyboard keybinds, singleton proxy, Event Bus Inspector, Config Tree Panel, GSM Visualizer, Sim Snapshot Panel
-- Key files: `dev-tools.ts`, `index.ts`, `keybinds.ts`, `types.ts`, `event-bus-inspector.ts`, `config-tree.ts`, `gsm-visualizer.ts`, `sim-snapshot-panel.ts`
+- Contains: DevTools overlay class, IDevTools interface, keyboard keybinds, singleton proxy, Event Bus Inspector, Config Tree Panel, GSM Visualizer, Sim Snapshot Panel, AI Telemetry Panel
+- Key files: `dev-tools.ts`, `index.ts`, `keybinds.ts`, `types.ts`, `event-bus-inspector.ts`, `config-tree.ts`, `gsm-visualizer.ts`, `sim-snapshot-panel.ts`, `ai-telemetry-panel.ts`
 - Note: Tree-shaken in production via `import.meta.env.DEV`
 
 **`src/dev-infra/`:**
@@ -134,7 +135,7 @@ overdrive/
 - Contains: Data model, sampling loop, console summary, JSON export, noop behavior tests
 - Key files: `telemetry-data-model.test.ts`, `telemetry-sampling.test.ts`, `telemetry-console-summary.test.ts`, `telemetry-json-export.test.ts`, `telemetry-noop.test.ts`
 
-**`tests/unit/dev-tools/`:**
+**`tests/unit/core/dev-tools/`:**
 - Purpose: Unit tests for Dev Tools overlay, keybinds, compile guard, and shared utilities
 - Contains: Overlay toggle, singleton proxy, keybind handling, DEV guard verification, assert-defined tests
 - Key files: `dev-tools.test.ts`, `dev-tools-singleton.test.ts`, `dev-compile-guard.test.ts`, `input-keybinds.test.ts`, `assert-defined.test.ts`
@@ -145,9 +146,9 @@ overdrive/
 - Key files: `telemetry-lifecycle.test.ts`
 
 **`tests/integration/dev-tools/`:**
-- Purpose: Integration tests for Dev Tools panels (Event Bus Inspector, Config Tree, GSM Visualizer, Sim Snapshot Panel)
+- Purpose: Integration tests for Dev Tools panels (Event Bus Inspector, Config Tree, GSM Visualizer, Sim Snapshot Panel, AI Telemetry Panel)
 - Contains: Panel rendering, refresh behavior, and interaction tests
-- Key files: `event-bus-inspector.test.ts`, `config-tree.test.ts`, `gsm-visualizer.test.ts`, `sim-snapshot-panel.test.ts`
+- Key files: `event-bus-inspector.test.ts`, `config-tree.test.ts`, `gsm-visualizer.test.ts`, `sim-snapshot-panel.test.ts`, `ai-telemetry-panel.test.ts`
 
 **`tests/e2e/`:**
 - Purpose: Browser-based E2E tests using Playwright
@@ -197,7 +198,7 @@ overdrive/
 **Stylesheets:** `src/styles/variables.css`: CSS custom properties and design tokens
 **Tests:** `tests/unit/`: Unit tests for all foundation systems
 **Tests:** `tests/unit/dev-infra/`: Unit tests for TelemetryRecorder
-**Tests:** `tests/unit/dev-tools/`: Unit tests for Dev Tools overlay, keybinds, and shared utilities
+**Tests:** `tests/unit/core/dev-tools/`: Unit tests for Dev Tools overlay, keybinds, and shared utilities
 **Tests:** `tests/integration/dev-infra/`: Integration tests for TelemetryRecorder lifecycle
 **Tests:** `tests/integration/dev-tools/`: Integration tests for Dev Tools panels
 **Tests:** `tests/e2e/`: Playwright E2E tests for Dev Tools overlay
@@ -217,12 +218,12 @@ overdrive/
 **New dev tools panel:** `src/core/dev-tools/` — implement `IDevTools.registerDataSource()` behind `import.meta.env.DEV`, or create a new tab panel class (follow `EventBusInspector`, `GsmVisualizer`, `SimSnapshotPanel` patterns)
 **New dev infra module:** `src/dev-infra/[module-name].ts` — tree-shaken in production, import dynamically behind `import.meta.env.DEV`
 **New event types:** Add to `EventMap` in `src/foundation/event-bus/types.ts`
-**New game state:** Add to `State` type in `src/foundation/gsm/State.ts` and update `TransitionTable.ts`
+**New game state:** Add to `State` type in `src/foundation/gsm/types.ts` and update `TransitionTable.ts`
 **New pipeline slot:** Register via `FixedUpdatePipeline.register(systemId, update)` in `src/foundation/determinism/fixed-update-pipeline.ts`
 **New snapshot system:** Implement `ISnapshotable` interface and register with `SimulationSnapshot.register()`
 **New test suite:** `tests/unit/[system-name].test.ts` — co-located with source but separate directory
 **New dev-infra test:** `tests/unit/dev-infra/[module-name].test.ts` — for TelemetryRecorder and similar modules
-**New dev-tools test:** `tests/unit/dev-tools/[feature].test.ts` — for overlay, keybinds, compile guard, shared utilities
+**New dev-tools test:** `tests/unit/core/dev-tools/[feature].test.ts` — for overlay, keybinds, compile guard, shared utilities
 **New dev-tools integration test:** `tests/integration/dev-tools/[panel-name].test.ts` — for panel rendering, refresh, and interaction
 **New E2E test:** `tests/e2e/[feature].spec.ts` — Playwright browser tests for DOM state and CSS verification
 **New ADR:** `docs/architecture/adr-[number]-[title].md` — follow existing ADR format

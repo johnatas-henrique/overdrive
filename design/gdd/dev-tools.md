@@ -8,7 +8,7 @@
 
 ## Overview
 
-Dev Tools is a set of developer-only utilities active only in development builds (`import.meta.env.DEV` guard). It contains four features: a Debug Overlay (HTML — toggle key, default: backtick) showing FPS, physics step time, draw calls, and system registry; an AI Telemetry Visualizer showing real-time traces of every AI car; a Parameter Hot-Reload indicator showing config changes as they happen via Vite HMR; and a State Inspector showing the Config Manager value tree and SimulationSnapshot per-system hashes. All code inside `if (import.meta.env.DEV)` blocks is tree-shaken from production builds — zero bytes shipped to players.
+Dev Tools is a set of developer-only utilities active only in development builds (`import.meta.env.DEV` guard). It contains four features: a Debug Overlay (HTML — toggle key to show/hide) showing FPS, physics step time, draw calls, and system registry; an AI Telemetry Visualizer showing real-time traces of every AI car; a Parameter Hot-Reload indicator showing config changes as they happen via Vite HMR; and a State Inspector showing the Config Manager value tree and SimulationSnapshot per-system hashes. All code inside `if (import.meta.env.DEV)` blocks is tree-shaken from production builds — zero bytes shipped to players.
 
 > **Keybinds are configurable via `devTools.keys.*` in the Data & Config Manager.**
 
@@ -16,7 +16,7 @@ Dev Tools is a set of developer-only utilities active only in development builds
 
 _For infrastructure systems, the "player" is the developer using this API._
 
-The developer presses the toggle key (default: backtick). An overlay appears on top of the game — FPS counter in the corner, a collapsible tree of all registered config values, a table of AI car states (speed, position, current behavior), and the last 20 GSM transitions. They press the reload key (default: 1) and the overlay disappears. They edit `teams.ts` in their editor, save, and the overlay flashes "config reloaded — macklen.motor: 3 → 4". The game never paused. No restart. No guesswork.
+The developer presses the toggle key. An overlay appears on top of the game — FPS counter in the corner, a collapsible tree of all registered config values, a table of AI car states (speed, position, current behavior), and the last 20 GSM transitions. They press the reload key and the overlay disappears. They edit `teams.ts` in their editor, save, and the overlay flashes "config reloaded — macklen.motor: 3 → 4". The game never paused. No restart. No guesswork.
 
 ## Detailed Design
 
@@ -24,7 +24,7 @@ The developer presses the toggle key (default: backtick). An overlay appears on 
 
 **1. Compile-time only.** All Dev Tools code is guarded by `if (import.meta.env.DEV)`. Vite evaluates this at compile time: `true` in dev, `false` in production. The minifier eliminates dead code. No runtime toggle, no leak to release builds.
 
-**2. The toggle key (default: backtick) to show/hide overlay, the reload key (default: 1) to force-reload config.** The overlay is off by default on game start. The toggle key shows/hides it. The reload key triggers a manual config re-scan for when HMR doesn't fire (e.g. config edited outside the editor).
+**2. The toggle key to show/hide overlay, the reload key to force-reload config.** The overlay is off by default on game start. The toggle key shows/hides it. The reload key triggers a manual config re-scan for when HMR doesn't fire (e.g. config edited outside the editor).
 
 **3. HTML overlay positioned absolutely over the canvas.** The game canvas is wrapped in a container div. The overlay is a sibling div with `position: absolute; pointer-events: none;` — it never intercepts game input. When the overlay is visible, key bindings for dev tools take priority over game input (toggle/reload keys are consumed and not forwarded to the game).
 
@@ -40,7 +40,7 @@ The developer presses the toggle key (default: backtick). An overlay appears on 
 
 | State                   | Description                                                                                  |
 | ----------------------- | -------------------------------------------------------------------------------------------- |
-| **Inactive**            | No overlay. Toggle key (default: backtick) is captured to activate. Game receives all other input. |
+| **Inactive**            | No overlay. Toggle key is captured to activate. Game receives all other input.                |
 | **Overlay Visible**     | Debug overlay displayed. Toggle key hides it. Game is still running at full frame rate.      |
 | **Overlay + Inspector** | Same as above, with the state inspector panel open to a specific system.                     |
 
@@ -100,11 +100,11 @@ Styled with CSS variables matching the game palette (Track Black background, Sig
 ## Acceptance Criteria
 
 1. `import.meta.env.DEV` is `true` in `vite dev` and `false` in `vite build` — verified by build output.
-2. The toggle key (default: backtick) toggles overlay visibility — visible when pressed, hidden when pressed again.
+2. The toggle key toggles overlay visibility — visible when pressed, hidden when pressed again.
 3. Config tree shows all namespaces registered in Config Manager with current values.
 4. AI Telemetry tab shows per-car speed, position, and active behavior node.
 5. GSM History tab shows the last 20 state transitions with timestamps.
-6. The reload key (default: 1) triggers a config re-scan and displays "config reloaded" with the changed value.
+6. The reload key triggers a config re-scan and displays "config reloaded" with the changed value.
 7. `pointer-events: none` — clicking on the overlay does not interact with the game canvas.
 8. Production bundle does not contain Dev Tools code — verified by bundle analysis.
 9. Overlay handles 100+ config keys without performance degradation or scroll issues.

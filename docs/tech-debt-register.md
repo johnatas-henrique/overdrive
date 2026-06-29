@@ -52,8 +52,15 @@
 | ✅     | 2026-06-27 | SP2/dev-tools/ST2/LP        | Config defaults mismatch: DEV_TOOLS_KEYS uses `1`/`2`/`3` but story ACs reference backtick/`1`/`2` — config is runtime source of truth, story ACs are stale | src/config/dev-tools-config.ts | S | SP2/dev-tools/ST6 |
 | 🔴     | 2026-06-27 | SP2/dev-tools/ST4           | `_initConfigDataSource` registers reader that's never consumed — placeholder for future stories (Event Bus Inspector, GSM History) | dev-tools.ts | S | |
 | ✅     | 2026-06-27 | SP2/dev-tools/ST4           | All inline styles instead of CSS classes — refactor when Story 005+ adds more panels | config-tree.ts, dev-tools.ts | M | SP2/dev-tools/ST9 |
-| 🔴     | 2026-06-27 | SP2/dev-tools/ST6/LP        | IReadOnlyEventBus duplicated in gsm-visualizer.ts and event-bus-inspector.ts — extract to shared types.ts | gsm-visualizer.ts, event-bus-inspector.ts | S | |
+| 🔴     | 2026-06-27 | SP2/dev-tools/ST6/LP        | IReadOnlyEventBus duplicated in gsm-visualizer.ts and event-bus-inspector.ts — extract to shared types.ts | gsm-visualizer.ts, event-bus-inspector.ts | S | SP2/PR15-review |
 | 🔴     | 2026-06-27 | SP2/dev-tools/ST6/LP        | CSS gsm-history-row uses rgba(255,255,255,0.02) instead of CSS variable — inconsistent with rest of stylesheet | dev-tools.css | S | |
 | 🔴     | 2026-06-28 | SP2/dev-tools/ST8/LP        | Hardcoded player ID "player-1" in ai-telemetry-panel.ts — should be configurable for future multiplayer | ai-telemetry-panel.ts | S | |
 | 🔴     | 2026-06-28 | SP2/dev-tools/ST8/LP        | No integration test for DevTools.setAiTelemetry() tab creation flow | dev-tools.ts | S | |
 | 🔴     | 2026-06-28 | PR#15/X-012                 | Barrel files (index.ts) excluded from coverage — consider removing barrel files and using @/ imports directly | src/foundation/*/index.ts | M | |
+| 🔴     | 2026-06-28 | PR#15/TD-002                | Playwright port 5177 vs Vite default 5173 — E2E tests fail in CI | playwright.config.ts | S | SP2/PR15-review |
+| 🔴     | 2026-06-28 | PR#15/TD-004                | GSM not connected to shared EventBus — visualizer never receives events | app.ts, main-scene.ts | M | SP2/PR15-review |
+| 🔴     | 2026-06-28 | PR#15/TD-006                | Duplicate `completed` key in sprint-status.yaml — story 2-14 appears incomplete | sprint-status.yaml | S | SP2/PR15-review |
+| 🔴     | 2026-06-28 | PR#15/TD-021                | initDevTools() called without await — unhandled rejection | app.ts | S | SP2/PR15-review |
+| 🔴     | 2026-06-28 | PR#15/DT-012                | Disposed DevTools can be re-toggled but metrics never update | dev-tools.ts | M | SP2/PR15-review |
+| 🔴     | 2026-06-28 | PR#15/DT-034                | DEV env lost after first test in integration suite | sim-snapshot-panel.test.ts | S | SP2/PR15-review |
+| 🔴     | 2026-06-28 | PR#15/DT-052                | _resetDevToolsForTesting doesn't dispose old instance — DOM/listeners leak | index.ts | S | SP2/PR15-review |

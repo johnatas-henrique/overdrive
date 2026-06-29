@@ -48,7 +48,7 @@
 **Dev Tools Layer:**
 - Purpose: Debug overlay, keybinds, data panel registration, and tabbed debug panels for development
 - Location: `src/core/dev-tools/`
-- Contains: DevTools overlay class, IDevTools interface, keyboard keybinds, singleton proxy, Event Bus Inspector, Config Tree Panel, GSM Visualizer, Sim Snapshot Panel
+- Contains: DevTools overlay class, IDevTools interface, keyboard keybinds, singleton proxy, Event Bus Inspector, Config Tree Panel, GSM Visualizer, Sim Snapshot Panel, AI Telemetry Panel
 - Depends on: Babylon.js (SceneInstrumentation), Foundation layer (ConfigManager, EventBus, GSM, SimulationSnapshot)
 - Used by: Development workflow only (tree-shaken in production via `import.meta.env.DEV`)
 
@@ -167,12 +167,12 @@
 **DevTools:**
 - Purpose: HTML overlay positioned over the canvas showing FPS, frame time, draw calls, mesh count, physics time, custom data panels, and tabbed debug panels (Event Log, GSM History, Sim Snapshot)
 - Location: `src/core/dev-tools/dev-tools.ts`, `src/core/dev-tools/index.ts`
-- Pattern: Singleton proxy with lazy DOM creation, `engine.onEndFrameObservable` metric refresh, `registerDataSource()` for extensible panels, tab system with three panels (Event Log, GSM History, Sim Snapshot), config tree sidebar with in-place editing via `ConfigManager.setRuntime()`, tree-shaken in production via `import.meta.env.DEV`
+- Pattern: Singleton proxy with lazy DOM creation, `engine.onEndFrameObservable` metric refresh, `registerDataSource()` for extensible panels, tab system with four panels (Event Log, GSM History, Sim Snapshot, AI Telemetry), config tree sidebar with in-place editing via `ConfigManager.setRuntime()`, tree-shaken in production via `import.meta.env.DEV`
 
 **IDevTools:**
 - Purpose: Public interface for the Dev Tools singleton — consumed by keybinds, data panels, and debug panel injection
 - Location: `src/core/dev-tools/types.ts`
-- Pattern: Type-only interface (zero runtime cost), methods: `toggle()`, `isVisible()`, `setMinimised()`, `registerDataSource()`, `setEventBus()`, `setGsm()`, `setSimulationSnapshot()`, `refreshConfigTree()`, `showNotification()`, `dispose()`
+- Pattern: Type-only interface (zero runtime cost), methods: `toggle()`, `isVisible()`, `setMinimised()`, `update()`, `registerDataSource()`, `setEventBus()`, `setGsm()`, `setSimulationSnapshot()`, `refreshConfigTree()`, `showNotification()`, `dispose()`
 
 **EventBusInspector:**
 - Purpose: Event Log tab panel — captures all events via wildcard subscription, maintains a 100-entry ring buffer, renders event history with filter support and live subscription list
