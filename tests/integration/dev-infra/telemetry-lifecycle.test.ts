@@ -10,12 +10,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EventBus } from "@/foundation/event-bus/event-bus";
 import type {
   CarEntityRef,
   TelemetrySample,
 } from "../../../src/dev-infra/telemetry-recorder";
 import { TelemetryRecorder } from "../../../src/dev-infra/telemetry-recorder";
-import { EventBus } from "../../../src/foundation/event-bus";
 
 // ---------------------------------------------------------------------------
 // Helpers
