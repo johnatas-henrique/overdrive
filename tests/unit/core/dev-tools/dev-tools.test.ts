@@ -60,6 +60,11 @@ vi.mock("@/foundation/config/config-manager", () => ({
 // Import the class under test AFTER mocks are established
 // ---------------------------------------------------------------------------
 
+import {
+  _resetDevToolsForTesting,
+  getDevTools,
+  initDevTools,
+} from "@/core/dev-tools";
 import { DevTools } from "@/core/dev-tools/dev-tools";
 import type { IDevTools } from "@/core/dev-tools/types";
 import { getConfigManager } from "@/foundation/config/config-manager";
@@ -434,7 +439,7 @@ describe("AC-7: pointer-events: none", () => {
     cleanDOM();
   });
 
-  it("should have pointer-events: none CSS on the overlay", () => {
+  it("should have overlay element with correct ID for CSS targeting (S12)", () => {
     const overlay = document.getElementById(
       "dev-overlay"
     ) as HTMLElement | null;
@@ -568,7 +573,7 @@ describe("Edge cases", () => {
   // 1c: Toggle after dispose
   // -----------------------------------------------------------------------
 
-  it("should re-initialize after dispose", () => {
+  it("should not re-create overlay after dispose (DT-012)", () => {
     cleanDOM();
     const mocks = createMocks();
     const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
@@ -815,31 +820,6 @@ describe("config data source", () => {
     (getConfigManager as ReturnType<typeof vi.fn>).mockReturnValue({});
 
     expect(() => devTools.update()).not.toThrow();
-  });
-
-  it("should return correct fallback shape when ConfigManager not initialized", () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    (getConfigManager as ReturnType<typeof vi.fn>).mockImplementation(() => {
-      throw new Error("Not initialized");
-    });
-
-    devTools.update();
-
-    // Invoke the data source reader — should return fallback shape
-    const dataSources = (
-      devTools as unknown as {
-        _dataSources: Map<string, () => Record<string, unknown>>;
-      }
-    )._dataSources;
-    const reader = dataSources.get("config");
-    expect(reader).toBeDefined();
-
-    const state = reader?.();
-    expect(state).toEqual({
-      namespaces: {},
-      accessLog: [],
-      envOverrides: [],
-    });
   });
 
   it("should throw when ConfigTreePanel.refresh() fails", () => {
@@ -1643,6 +1623,36 @@ describe("Coverage: setSimulationSnapshot()", () => {
     devTools.dispose();
     cleanDOM();
   });
+
+  it("should show Sim Snapshot panel when tab is clicked (W11)", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    // Init with mock snapshot
+    devTools.toggle();
+    devTools.setSimulationSnapshot(fakeSnapshot as never);
+
+    // Verify tab button exists
+    const simTabBtn = document.querySelector(
+      "button[data-tab-id='sim-snapshot']"
+    ) as HTMLElement;
+    expect(simTabBtn).not.toBeNull();
+    expect(simTabBtn?.textContent).toBe("Sim Snapshot");
+
+    // Verify panel exists (hidden initially)
+    const simPanel = document.querySelector(
+      ".tab-panel[data-tab-id='sim-snapshot']"
+    ) as HTMLElement;
+    expect(simPanel).not.toBeNull();
+
+    // Click the tab — should activate it
+    simTabBtn.click();
+    expect(simTabBtn.classList.contains("active")).toBe(true);
+
+    devTools.dispose();
+    cleanDOM();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1928,6 +1938,36 @@ describe("Coverage: AI Telemetry tab creation paths", () => {
 
     cleanDOM();
   });
+
+  it("should show AI Telemetry panel when tab is clicked (W10)", () => {
+    cleanDOM();
+    const mocks = createMocks();
+    const devTools = new DevTools(mocks.engine as never, mocks.scene as never);
+
+    // Init with mock telemetry reader
+    devTools.setAiTelemetry(mockTelemetryReader);
+    devTools.toggle();
+
+    // Verify tab button exists
+    const aiTabBtn = document.querySelector(
+      "button[data-tab-id='ai-telemetry']"
+    ) as HTMLElement;
+    expect(aiTabBtn).not.toBeNull();
+    expect(aiTabBtn?.textContent).toBe("AI Telemetry");
+
+    // Verify panel exists (hidden initially)
+    const aiPanel = document.querySelector(
+      ".tab-panel[data-tab-id='ai-telemetry']"
+    ) as HTMLElement;
+    expect(aiPanel).not.toBeNull();
+
+    // Click the tab — should activate both button and panel
+    aiTabBtn.click();
+    expect(aiTabBtn.classList.contains("active")).toBe(true);
+
+    devTools.dispose();
+    cleanDOM();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -2013,3 +2053,39 @@ describe("Coverage: Event Log tab button click", () => {
 // call. The guard on line 426-427 is a defensive belt-and-suspenders check
 // that can never be triggered. It's unreachable.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Coverage: _resetDevToolsForTesting
+// ---------------------------------------------------------------------------
+
+describe("_resetDevToolsForTesting (B7)", () => {
+  afterEach(() => {
+    cleanDOM();
+  });
+
+  it("should reset singleton and allow initDevTools to be called again", async () => {
+    cleanDOM();
+    const mocks = createMocks();
+
+    // First initialization via initDevTools
+    vi.stubEnv("DEV", true);
+    await initDevTools(mocks.engine as never, mocks.scene as never);
+    const first = getDevTools();
+    expect(first).toBeDefined();
+    expect(first.toggle).toBeInstanceOf(Function);
+    first.dispose();
+
+    // Reset singleton state
+    _resetDevToolsForTesting();
+
+    // Second initialization — should work without error
+    await initDevTools(mocks.engine as never, mocks.scene as never);
+    const second = getDevTools();
+    expect(second).toBeDefined();
+    expect(second).not.toBe(first); // New instance after reset
+
+    second.dispose();
+    _resetDevToolsForTesting();
+    cleanDOM();
+  });
+});

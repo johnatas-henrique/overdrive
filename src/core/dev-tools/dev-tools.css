@@ -14,6 +14,11 @@
 
 @import "../../styles/variables.css";
 
+/* ── Dev Tools CSS variables (AC-22) ────────────────────────────── */
+:root {
+  --dt-row-stripe: rgba(255, 255, 255, 0.02);
+}
+
 /* ════════════════════════════════════════════════════════════════════
    Overlay Container
    ════════════════════════════════════════════════════════════════════ */
@@ -461,7 +466,7 @@
 }
 
 .gsm-history-row:nth-child(even) {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--dt-row-stripe);
 }
 
 .gsm-history-ts {
@@ -552,7 +557,7 @@
 }
 
 .ssn-system-row:nth-child(even) {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--dt-row-stripe);
 }
 
 .ssn-system-id {
@@ -721,4 +726,64 @@
 .ait-empty {
   color: var(--dt-text-dim);
   padding: 8px;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Responsive Breakpoints (AC-22, AC-23)
+   ════════════════════════════════════════════════════════════════════ */
+
+/** Narrow viewport: collapse sidebar and tighten metrics layout. */
+@media (max-width: 800px) {
+  #dev-overlay {
+    font-size: var(--dt-font-size-xs);
+  }
+
+  .dev-middle {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    max-height: 120px;
+    border-right: none;
+    border-bottom: 1px solid var(--dt-text-muted);
+  }
+
+  .top-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+    height: auto;
+    min-height: 20px;
+  }
+
+  .tab {
+    padding: 4px 8px;
+    font-size: var(--dt-font-size-xs);
+  }
+
+  .ssn-controls-row {
+    flex-wrap: wrap;
+  }
+}
+
+/** Very narrow viewport: hidden sidebar, accessible via toggle. */
+@media (max-width: 480px) {
+  .sidebar {
+    display: none;
+  }
+
+  .top-bar {
+    gap: 4px;
+    padding: 4px 4px;
+  }
+
+  .tab {
+    padding: 4px 4px;
+    font-size: 10px;
+  }
+
+  .inspector-filter {
+    flex-direction: column;
+    gap: 2px;
+  }
 }
