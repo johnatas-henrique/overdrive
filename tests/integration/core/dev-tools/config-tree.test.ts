@@ -13,8 +13,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ConfigManager } from "@/foundation/config/config-manager";
 import { ConfigTreePanel } from "../../../../src/core/dev-tools/config-tree";
-import { ConfigManager } from "../../../../src/foundation/config";
 
 // ---------------------------------------------------------------------------
 // Helpers

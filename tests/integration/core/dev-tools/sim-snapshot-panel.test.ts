@@ -16,11 +16,9 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  fnv1a,
-  SimulationSnapshot,
-} from "../../../../src/foundation/simulation-snapshot";
-import type { ISnapshotable } from "../../../../src/foundation/simulation-snapshot/types";
+import { fnv1a } from "@/foundation/simulation-snapshot/fnv1a";
+import { SimulationSnapshot } from "@/foundation/simulation-snapshot/simulation-snapshot";
+import type { ISnapshotable } from "@/foundation/simulation-snapshot/types";
 
 // Import after mocks
 let SimSnapshotPanel: typeof import("../../../../src/core/dev-tools/sim-snapshot-panel").SimSnapshotPanel;
