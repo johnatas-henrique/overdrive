@@ -63,7 +63,7 @@ export async function computeSnapshotHash(
 ): Promise<string> {
   const sortedIds = Object.keys(snapshot.systems).sort();
   const concatenated = sortedIds
-    .map((id) => JSON.stringify(snapshot.systems[id].state))
-    .join("");
+    .map((id) => `${id}:${JSON.stringify(snapshot.systems[id].state)}`)
+    .join("\n");
   return sha256(concatenated);
 }

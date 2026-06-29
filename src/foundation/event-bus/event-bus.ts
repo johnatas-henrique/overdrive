@@ -11,7 +11,7 @@
  * @see ADR-0001 — Event Bus Architecture
  */
 
-import { EventBusError } from "./errors";
+import { EMIT_DEPTH_EXCEEDED, EventBusError } from "./errors";
 import type {
   EventBusConfig,
   EventMap,
@@ -168,7 +168,7 @@ export class EventBus implements IEventBus {
       // Placed before handler iteration so the error propagates up the
       // call stack and is NOT caught by handler error isolation.
       if (this._emitDepth > this._maxEmitDepth) {
-        throw new EventBusError("Max emit depth exceeded");
+        throw new EventBusError("Max emit depth exceeded", EMIT_DEPTH_EXCEEDED);
       }
 
       // Snapshot iteration: subscribe/unsubscribe during dispatch is safe
@@ -178,11 +178,13 @@ export class EventBus implements IEventBus {
           try {
             handler(payload);
           } catch (error) {
-            // Re-throw depth errors — they must abort the entire dispatch chain,
-            // not be caught by handler error isolation.
+            // Re-throw critical structural errors (circular emit) — these indicate
+            // a bug in event bus usage and must propagate to the caller.
+            // Handler-level errors (code 0) are caught and logged — they don't
+            // affect other handlers (ADR-0001 invariant #3).
             if (
               error instanceof EventBusError &&
-              error.message === "Max emit depth exceeded"
+              error.code === EMIT_DEPTH_EXCEEDED
             ) {
               throw error;
             }
@@ -202,9 +204,13 @@ export class EventBus implements IEventBus {
           try {
             handler(detail);
           } catch (error) {
+            // Re-throw critical structural errors (circular emit) — these indicate
+            // a bug in event bus usage and must propagate to the caller.
+            // Handler-level errors (code 0) are caught and logged — they don't
+            // affect other handlers (ADR-0001 invariant #3).
             if (
               error instanceof EventBusError &&
-              error.message === "Max emit depth exceeded"
+              error.code === EMIT_DEPTH_EXCEEDED
             ) {
               throw error;
             }
