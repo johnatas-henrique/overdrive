@@ -180,12 +180,6 @@ export class SimSnapshotPanel {
     systemsHeader.textContent = "Registered Systems";
     systemsSection.appendChild(systemsHeader);
 
-    this._systemsListEl = document.createElement("div");
-    this._systemsListEl.className = `${CSS_PREFIX}-systems-list`;
-    systemsSection.appendChild(this._systemsListEl);
-
-    container.appendChild(systemsSection);
-
     // ── Controls section (DEV-guarded) ───────────────────────────────
     const controlsSection = document.createElement("div");
     controlsSection.className = `${CSS_PREFIX}-controls`;
@@ -220,7 +214,13 @@ export class SimSnapshotPanel {
     this._restoreResultEl.className = `${CSS_PREFIX}-restore-result`;
     controlsSection.appendChild(this._restoreResultEl);
 
-    container.appendChild(controlsSection);
+    systemsSection.appendChild(controlsSection);
+
+    this._systemsListEl = document.createElement("div");
+    this._systemsListEl.className = `${CSS_PREFIX}-systems-list`;
+    systemsSection.appendChild(this._systemsListEl);
+
+    container.appendChild(systemsSection);
 
     // Initial render
     this._renderSystems();

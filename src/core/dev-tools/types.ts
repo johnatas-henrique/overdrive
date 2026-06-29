@@ -15,6 +15,20 @@ import type { IEventBus } from "../../foundation/event-bus";
 import type { GameStateMachine } from "../../foundation/gsm/GameStateMachine";
 import type { ISimulationSnapshot } from "../../foundation/simulation-snapshot";
 
+/**
+ * Read-only subset of IEventBus that exposes only observation methods.
+ *
+ * Used by Dev Tools panels to enforce the "never emit" constraint
+ * at the type level.
+ *
+ * @see Control Manifest D6 — Read-only on all systems
+ * @see Control Manifest D-F3 — Never emit events on the Event Bus
+ */
+export type IReadOnlyEventBus = Pick<
+  IEventBus,
+  "on" | "off" | "getSubscriptions"
+>;
+
 export interface IDevTools {
   /**
    * Inject the Event Bus for the Event Log tab panel.
