@@ -76,8 +76,9 @@ class TestSnapshotSystem implements ISnapshotable {
     this.state = JSON.parse(JSON.stringify(state));
   }
 
-  hash(): string {
-    return fnv1a(JSON.stringify(this.serialize()));
+  hash(state?: Record<string, unknown>): string {
+    const data = state ?? this.serialize();
+    return fnv1a(JSON.stringify(data));
   }
 }
 
@@ -126,7 +127,7 @@ describe("AC-1: ISnapshotable interface", () => {
     expect(result).toBeUndefined();
   });
 
-  it("should type hash() as () => string", () => {
+  it("should type hash() as (state?: Record<string, unknown>) => string", () => {
     const system: ISnapshotable = new TestSnapshotSystem("test");
     const hash: string = system.hash();
     expect(typeof hash).toBe("string");
@@ -1088,7 +1089,7 @@ describe("AC-10: dispose() calls final serialize() on registered systems", () =>
     expect(sysB.serializeCallCount).toBeGreaterThanOrEqual(1);
   });
 
-  it("should call serialize() on systems after takeSnapshot calls", () => {
+  it("should call serialize() once per takeSnapshot (single-serialize)", () => {
     const ss = new SimulationSnapshot();
     ss.init();
 
@@ -1097,13 +1098,29 @@ describe("AC-10: dispose() calls final serialize() on registered systems", () =>
     ss.register(sys);
     sys.serializeCallCount = 0;
 
-    // Call takeSnapshot — this calls serialize() (via serialize() + hash())
+    // Call takeSnapshot — serialize() is called only once; hash() uses the
+    // already-serialized state (AC-4: single-serialize optimization)
     ss.takeSnapshot(0);
-    expect(sys.serializeCallCount).toBe(2); // once from serialize(), once from hash()
+    expect(sys.serializeCallCount).toBe(1);
 
     ss.dispose();
     // dispose() called serialize() once more
-    expect(sys.serializeCallCount).toBe(3);
+    expect(sys.serializeCallCount).toBe(2);
+  });
+
+  it("should call serialize() exactly once per system per takeSnapshot via spy (S5)", () => {
+    const ss = new SimulationSnapshot();
+    ss.init();
+
+    const sys = new TestSnapshotSystem("s5-test", { v: 1 });
+    const spy = vi.spyOn(sys, "serialize");
+    ss.register(sys);
+    spy.mockClear(); // Clear calls from init/register
+
+    ss.takeSnapshot(0);
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    ss.dispose();
   });
 
   it("should not throw when disposing with zero registered systems", () => {
@@ -1277,8 +1294,13 @@ describe("AC-3: computeSnapshotHash sorts by systemId", () => {
 
     // Manually compute expected hash from alphabetically sorted state
     const expectedConcat =
+      "a:" +
       JSON.stringify({ v: 1 }) +
+      "\n" +
+      "m:" +
       JSON.stringify({ v: 2 }) +
+      "\n" +
+      "z:" +
       JSON.stringify({ v: 3 });
     const expectedHash = await sha256(expectedConcat);
 
@@ -1296,7 +1318,7 @@ describe("AC-3: computeSnapshotHash sorts by systemId", () => {
       snapshotHash: "",
     };
 
-    const expectedHash = await sha256(JSON.stringify({ data: 42 }));
+    const expectedHash = await sha256(`solo:${JSON.stringify({ data: 42 })}`);
     expect(await computeSnapshotHash(snapshot)).toBe(expectedHash);
   });
 
@@ -1310,6 +1332,44 @@ describe("AC-3: computeSnapshotHash sorts by systemId", () => {
 
     // Empty systems → empty concatenated string → sha256("")
     expect(await computeSnapshotHash(snapshot)).toBe(SHA256_EMPTY);
+  });
+
+  it("should use delimiters preventing hash collision (B1)", async () => {
+    // Without proper `:` and `\n` delimiters, concatenating system ID + JSON state
+    // could produce ambiguous boundaries. The `id:JSONSTATE\n` format prevents this.
+    //
+    // Snapshot A has two systems {a: {x:1}, b: {y:2}}.
+    // Snapshot B has one system whose ID embeds the output of A's first entry:
+    //   A: `a{"x":1}b{"y":2}`   (naive concat without delimiters)
+    //   B: `a{"x":1}b{"y":2}`   (same naive concat — collision!)
+    //
+    // With proper delimiters:
+    //   A: `a:{"x":1}\nb:{"y":2}`
+    //   B: `a{"x":1}b:{"y":2}`
+    // These are distinct → different hashes.
+    const snapshotA: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        a: { state: { x: 1 }, hash: "h1" },
+        b: { state: { y: 2 }, hash: "h2" },
+      },
+      snapshotHash: "",
+    };
+
+    const snapshotB: FullGameSnapshot = {
+      tick: 0,
+      timestamp: 1000,
+      systems: {
+        'a{"x":1}b': { state: { y: 2 }, hash: "h3" },
+      },
+      snapshotHash: "",
+    };
+
+    const hashA = await computeSnapshotHash(snapshotA);
+    const hashB = await computeSnapshotHash(snapshotB);
+
+    expect(hashA).not.toBe(hashB);
   });
 });
 
@@ -2413,7 +2473,7 @@ describe("C-2: dispose() clears registry even when serialize() throws", () => {
       // no-op
     }
 
-    hash(): string {
+    hash(_state?: Record<string, unknown>): string {
       return "a430d84680aabd0b";
     }
   }
@@ -2452,7 +2512,7 @@ describe("C-2: dispose() clears registry even when serialize() throws", () => {
         throw "string error";
       }
       deserialize(): void {}
-      hash(): string {
+      hash(_state?: Record<string, unknown>): string {
         return "a430d84680aabd0b";
       }
     }

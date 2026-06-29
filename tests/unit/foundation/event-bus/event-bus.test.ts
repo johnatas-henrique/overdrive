@@ -6,6 +6,7 @@ import type {
   RaceResults,
 } from "../../../../src/foundation/event-bus";
 import { EventBus, EventBusError } from "../../../../src/foundation/event-bus";
+import { EMIT_DEPTH_EXCEEDED } from "../../../../src/foundation/event-bus/errors";
 
 // ---------------------------------------------------------------------------
 // EventMap type correctness
@@ -1147,6 +1148,23 @@ describe("EventBus edge cases", () => {
       expect(() => bus.emit("a", { carId: "test" })).toThrow(
         "Max emit depth exceeded"
       );
+    });
+
+    it("should use EMIT_DEPTH_EXCEEDED error code (B2)", () => {
+      const bus = new EventBus();
+      bus.init();
+
+      bus.on("a", () => bus.emit("b", { carId: "test" }));
+      bus.on("b", () => bus.emit("a", { carId: "test" }));
+
+      try {
+        bus.emit("a", { carId: "test" });
+        expect.fail("Should have thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(EventBusError);
+        const error = e as EventBusError & { code: number };
+        expect(error.code).toBe(EMIT_DEPTH_EXCEEDED);
+      }
     });
   });
 

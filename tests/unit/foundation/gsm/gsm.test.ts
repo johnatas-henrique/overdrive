@@ -911,7 +911,12 @@ describe("Lifecycle AC-5: Rollback re-emits gsm.state.entered", () => {
     ]);
     gsm.init();
     await gsm.transition("Menu");
-    expect(bus.emit).toHaveBeenCalledTimes(1);
+    expect(bus.emit).toHaveBeenCalledTimes(2);
+    expect(bus.emit).toHaveBeenCalledWith("gsm.transition.error", {
+      from: "Loading",
+      to: "Menu",
+      reason: "fail",
+    });
     expect(bus.emit).toHaveBeenCalledWith("gsm.state.entered", {
       from: "Loading",
       to: "Loading",
@@ -948,7 +953,12 @@ describe("Lifecycle AC-5: Rollback re-emits gsm.state.entered", () => {
     ]);
     gsm.init();
     await gsm.transition("Menu");
-    expect(bus.emit).toHaveBeenCalledTimes(1);
+    expect(bus.emit).toHaveBeenCalledTimes(2);
+    expect(bus.emit).toHaveBeenCalledWith("gsm.transition.error", {
+      from: "Loading",
+      to: "Menu",
+      reason: "sync",
+    });
     expect(bus.emit).toHaveBeenCalledWith("gsm.state.entered", {
       from: "Loading",
       to: "Loading",
@@ -983,11 +993,14 @@ describe("Lifecycle AC-5: Rollback re-emits gsm.state.entered", () => {
     await gsm.transition("Menu");
     await gsm.transition("Menu");
 
-    // Each rollback emits exactly one gsm.state.entered
-    expect(bus.emit).toHaveBeenCalledTimes(3);
+    // Each rollback emits one gsm.transition.error + one gsm.state.entered = 6
+    expect(bus.emit).toHaveBeenCalledTimes(6);
     expect(bus.emit.mock.calls).toEqual([
+      ["gsm.transition.error", { from: "Loading", to: "Menu", reason: "fail" }],
       ["gsm.state.entered", { from: "Loading", to: "Loading" }],
+      ["gsm.transition.error", { from: "Loading", to: "Menu", reason: "fail" }],
       ["gsm.state.entered", { from: "Loading", to: "Loading" }],
+      ["gsm.transition.error", { from: "Loading", to: "Menu", reason: "fail" }],
       ["gsm.state.entered", { from: "Loading", to: "Loading" }],
     ]);
   });
@@ -1759,7 +1772,7 @@ describe("Event Bus AC-2: gsm.state.entered emitted", () => {
     });
   });
 
-  it("should NOT emit gsm.state.entered on invalid transition (no state change)", async () => {
+  it("should emit gsm.transition.error on invalid transition (no state change)", async () => {
     const bus = createMockBus();
     const gsm = new GameStateMachine(bus);
     gsm.init();
@@ -1768,7 +1781,12 @@ describe("Event Bus AC-2: gsm.state.entered emitted", () => {
     } catch {
       // Expected
     }
-    expect(bus.emit).not.toHaveBeenCalled();
+    expect(bus.emit).toHaveBeenCalledTimes(1);
+    expect(bus.emit).toHaveBeenCalledWith("gsm.transition.error", {
+      from: "Loading",
+      to: "Racing",
+      reason: "Invalid transition",
+    });
   });
 });
 
@@ -2970,7 +2988,8 @@ describe("Dispose Safety AC-2: mid-transition dispose", () => {
 
     // Actually, let's just verify no unhandled rejection and onEnter not called
     // The transition promise will eventually be garbage collected
-    await new Promise((r) => setTimeout(r, 10));
+    // Yield to microtask queue — avoids setTimeout timing dependency (AC-31)
+    await Promise.resolve();
 
     expect(onEnterSpy).not.toHaveBeenCalled();
     expect(onExitSpy).toHaveBeenCalledTimes(2);
