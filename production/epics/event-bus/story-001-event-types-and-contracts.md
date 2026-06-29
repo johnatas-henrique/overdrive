@@ -156,5 +156,5 @@ Test evidence: `tests/unit/event-bus.test.ts` — verify all acceptance criteria
 **Completed**: 2026-06-24
 **Criteria**: 4/4 passing
 **Deviations**: None
-**Test Evidence**: Unit test at `tests/unit/event-bus.test.ts` — 58/58 tests, tsc clean
+**Test Evidence**: Unit test at `tests/unit/event-bus.test.ts` — 58/58 tests at completion; full file now has ~289 tests covering all event-bus stories
 **Code Review**: Complete (LP-CODE-REVIEW: APPROVED)
