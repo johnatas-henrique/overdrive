@@ -5,15 +5,22 @@
  *   for gamepad — polled each tick and merged into single InputState.
  * GDD Requirement: TR-INP-004 — Gamepad analog overrides keyboard binary for
  *   steer/throttle/brake when both active; keyboard digital always active.
+ * GDD Requirement: TR-INP-005 — Focus loss zeros all outputs immediately;
+ *   focus return resumes live hardware state (no replay).
+ * GDD Requirement: TR-INP-009 — Gamepad disconnect → activeGamepad set to null;
+ *   getState() returns zeroed axes; keyboard remains active.
  *
  * Governing ADR: ADR-0006 (Input Abstraction)
  *   - Decision: Input owns DSM (keyboard) + GamepadManager (gamepad). Every tick
  *     getState() polls both and merges into InputState.
  *   - Polling detail: keyboard → binary steer, throttle, brake; gamepad → analog
  *     override; dead zone applies; pulse edges for digital.
+ *   - Focus Loss Handling: dual detection (blur + visibilitychange) via AbortController.
+ *   - Gamepad State Management: onGamepadDisconnectedObservable zeros activeGamepad;
+ *     disconnected browserGamepad check hardens timing window.
  * Control Manifest:
  *   C12 — Polling per tick (getState reads current hardware state)
- *   C14 — Tab blur zeros all outputs (hidden flag check)
+ *   C14 — Tab blur zeros all outputs (hidden flag check → InputState.ZERO)
  *   C15 — getState reads player input only
  *   C-F6 — Never branch Physics on player vs AI input
  *   C-F9 — Never read Input on scene.onBeforeRenderObservable
@@ -25,7 +32,8 @@
  *   matching the gamepad RShoulder = gearUp, LShoulder = gearDown semantics.
  *
  * Zero-allocation: Reuses a single InputState instance across ticks,
- *   mutated in place and returned by reference.
+ *   mutated in place and returned by reference. Hidden/blur path returns
+ *   InputState.ZERO singleton directly (no mutation, zero allocation).
  */
 
 import { DeviceType as BabylonDeviceType } from "@babylonjs/core/DeviceInput/InputDevices/deviceEnums";
@@ -102,6 +110,10 @@ export class PlayerInput implements IInput {
   private _gamepadManager: GamepadManager | null = null;
   private _activeGamepad: Gamepad | null = null;
   private _hidden = false;
+
+  /** AbortController for tab blur/focus event listener lifecycle management. */
+  private _blurController: AbortController | null = null;
+
   private _transitionBlocking = false;
   private _deadZoneThreshold = DEFAULT_DEAD_ZONE;
   private _lastActiveDevice: DeviceType = "keyboard";
@@ -160,6 +172,7 @@ export class PlayerInput implements IInput {
     this._gamepadManager = new GamepadManager();
 
     // Wire gamepad connect/disconnect observables
+    // GamepadManager.dispose() handles cleanup of these subscriptions
     this._gamepadManager.onGamepadConnectedObservable.add((gp: Gamepad) => {
       this._activeGamepad = gp;
       this._lastActiveDevice = "gamepad";
@@ -170,6 +183,34 @@ export class PlayerInput implements IInput {
       this._activeGamepad = null;
       // keyboard remains active — no device changed event since keyboard is still usable
     });
+
+    // Tab blur / focus detection (Story 004 — Focus/Disconnect Safety)
+    // Dual detection: blur covers OS-level focus loss (alt-tab), visibilitychange
+    // covers tab switch without OS focus change (multi-monitor).
+    this._blurController = new AbortController();
+    const { signal } = this._blurController;
+
+    window.addEventListener(
+      "blur",
+      () => {
+        this._hidden = true;
+      },
+      { signal }
+    );
+    window.addEventListener(
+      "focus",
+      () => {
+        this._hidden = false;
+      },
+      { signal }
+    );
+    document.addEventListener(
+      "visibilitychange",
+      () => {
+        this._hidden = document.hidden;
+      },
+      { signal }
+    );
 
     // NOTE: Config integration for input.deadZone is deferred until the Data &
     // Config Manager (Story DCM) is available. For now the default 0.15 applies.
@@ -183,6 +224,8 @@ export class PlayerInput implements IInput {
     this._gamepadManager?.dispose();
     this._gamepadManager = null;
     this._activeGamepad = null;
+    this._blurController?.abort();
+    this._blurController = null;
     this.onDeviceChanged.clear();
     this._fullReset();
   }
@@ -195,10 +238,9 @@ export class PlayerInput implements IInput {
       return InputState.ZERO;
     }
 
-    // 1. Tab blur / hidden → return all-zeros (no stuck keys on focus loss)
+    // 1. Tab blur / hidden → return InputState.ZERO immediately
     if (this._hidden) {
-      this._resetOutputState();
-      return this._currentState;
+      return InputState.ZERO;
     }
 
     // Reset per-tick accumulators
@@ -239,6 +281,8 @@ export class PlayerInput implements IInput {
   /**
    * Returns the last active device type.
    * Used by Story 007 for onDeviceChanged observable detection.
+   *
+   * @returns The device type that most recently produced input — "keyboard" or "gamepad".
    */
   getLastActiveDevice(): DeviceType {
     return this._lastActiveDevice;
@@ -247,6 +291,8 @@ export class PlayerInput implements IInput {
   /**
    * Set whether the window/tab is hidden (tab blur detection).
    * Called by Story 004 (Focus/Disconnect) when blur/focus/visibility fires.
+   *
+   * @param hidden - `true` when the tab loses focus; `false` when focus returns.
    */
   setHidden(hidden: boolean): void {
     this._hidden = hidden;
@@ -255,6 +301,8 @@ export class PlayerInput implements IInput {
   /**
    * Set whether GSM transition is active (input blocking).
    * Called by Story 005 (GSM State Integration) when transition starts/ends.
+   *
+   * @param blocking - `true` to zero all outputs during transition; `false` to resume normal polling.
    */
   setTransitionBlocking(blocking: boolean): void {
     this._transitionBlocking = blocking;
@@ -262,6 +310,8 @@ export class PlayerInput implements IInput {
 
   /**
    * Override the dead zone threshold (for config integration).
+   *
+   * @param threshold - Dead zone threshold in range [0, 1). Values below this are clamped to 0.
    */
   setDeadZoneThreshold(threshold: number): void {
     this._deadZoneThreshold = threshold;
@@ -321,12 +371,14 @@ export class PlayerInput implements IInput {
     const kbSource = dsm.getDeviceSource(BabylonDeviceType.Keyboard);
     if (!kbSource) return;
 
-    // Helper: returns true if the given keycode is currently pressed (value === 1)
     const isPressed = (code: number): boolean => kbSource.getInput(code) === 1;
 
-    // --- Binary analog equivalents ---
+    this._readKeyboardAnalog(isPressed);
+    this._readKeyboardDigital(isPressed);
+  }
 
-    // WASD → steer (-1/0/+1)
+  /** Read binary WASD → steer/throttle/brake and track keyboard activity. */
+  private _readKeyboardAnalog(isPressed: (code: number) => boolean): void {
     const aPressed = isPressed(KEY_A);
     const dPressed = isPressed(KEY_D);
     if (aPressed && !dPressed) {
@@ -334,9 +386,7 @@ export class PlayerInput implements IInput {
     } else if (dPressed && !aPressed) {
       this._currentState.steer = 1;
     }
-    // else both/neither → 0 (already reset)
 
-    // W/S → binary throttle/brake (0 or 1)
     if (isPressed(KEY_W)) {
       this._currentState.throttle = 1;
     }
@@ -344,8 +394,13 @@ export class PlayerInput implements IInput {
       this._currentState.brake = 1;
     }
 
-    // --- Raw digital state (accumulated for edge detection) ---
+    if (aPressed || dPressed || isPressed(KEY_W) || isPressed(KEY_S)) {
+      this._lastActiveDevice = "keyboard";
+    }
+  }
 
+  /** Read digital keys → raw state for edge detection. */
+  private _readKeyboardDigital(isPressed: (code: number) => boolean): void {
     this._rawDigital.gearUp = this._rawDigital.gearUp || isPressed(KEY_Q);
     this._rawDigital.gearDown = this._rawDigital.gearDown || isPressed(KEY_E);
     this._rawDigital.confirm = this._rawDigital.confirm || isPressed(KEY_SPACE);
@@ -358,11 +413,6 @@ export class PlayerInput implements IInput {
     this._rawDigital.navUp = this._rawDigital.navUp || isPressed(KEY_ARROW_UP);
     this._rawDigital.navDown =
       this._rawDigital.navDown || isPressed(KEY_ARROW_DOWN);
-
-    // Track device activity
-    if (aPressed || dPressed || isPressed(KEY_W) || isPressed(KEY_S)) {
-      this._lastActiveDevice = "keyboard";
-    }
   }
 
   // -- Gamepad reading ------------------------------------------------------
@@ -390,22 +440,31 @@ export class PlayerInput implements IInput {
     const gp = this._activeGamepad;
     if (!gp) return;
 
-    // Access the browser Gamepad API object via Babylon's wrapper.
-    // This is a public property on the Babylon Gamepad class.
     const browserGamepad = (
       gp as unknown as { browserGamepad: globalThis.Gamepad }
     ).browserGamepad;
     if (!browserGamepad) return;
 
+    if (!browserGamepad.connected) {
+      this._activeGamepad = null;
+      return;
+    }
+
     const axes = browserGamepad.axes;
     const buttons = browserGamepad.buttons;
-
     if (!axes || !buttons) return;
 
-    // --- Analog axes (override keyboard binary) ---
+    const steerRaw = this._readGamepadAnalog(axes, buttons);
+    this._readGamepadDigital(buttons);
+    this._updateGamepadDeviceActivity(steerRaw, buttons);
+  }
 
+  /** Read analog axes (steer/throttle/brake), overriding keyboard binary. */
+  private _readGamepadAnalog(
+    axes: readonly number[],
+    buttons: readonly GamepadButton[]
+  ): number {
     const steerRaw = axes[GP_AXIS_LEFT_STICK_X] ?? 0;
-    // Dead zone is applied later in getState() for all analog values
     if (steerRaw !== 0) {
       this._currentState.steer = steerRaw;
     }
@@ -420,8 +479,11 @@ export class PlayerInput implements IInput {
       this._currentState.brake = brakeRaw;
     }
 
-    // --- Digital buttons (OR'd with keyboard) ---
+    return steerRaw;
+  }
 
+  /** Read digital buttons → raw state for edge detection (OR'd with keyboard). */
+  private _readGamepadDigital(buttons: readonly GamepadButton[]): void {
     const isPressed = (idx: number): boolean => buttons[idx]?.pressed ?? false;
 
     this._rawDigital.gearUp =
@@ -439,8 +501,18 @@ export class PlayerInput implements IInput {
       this._rawDigital.navUp || isPressed(GP_BUTTON_DPAD_UP);
     this._rawDigital.navDown =
       this._rawDigital.navDown || isPressed(GP_BUTTON_DPAD_DOWN);
+  }
 
-    // Detect any gamepad activity for device-switch tracking
+  /** Detect any gamepad activity for device-switch tracking. */
+  private _updateGamepadDeviceActivity(
+    steerRaw: number,
+    buttons: readonly GamepadButton[]
+  ): void {
+    const isPressed = (idx: number): boolean => buttons[idx]?.pressed ?? false;
+
+    const throttleRaw = buttons[GP_BUTTON_R_TRIGGER]?.value ?? 0;
+    const brakeRaw = buttons[GP_BUTTON_L_TRIGGER]?.value ?? 0;
+
     const hasAnalogInput =
       Math.abs(steerRaw) > 0.1 || throttleRaw > 0.1 || brakeRaw > 0.1;
     const hasDigitalInput =
