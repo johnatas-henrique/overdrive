@@ -92,6 +92,8 @@ export type EventMap = {
   "asset.load.progress": { id: string; loaded: number; total: number };
   /** An asset load has completed successfully. */
   "asset.load.complete": { id: string };
+  /** All assets in a preload batch have completed successfully. */
+  "asset.load.allComplete": { ids: string[] };
 };
 
 /**

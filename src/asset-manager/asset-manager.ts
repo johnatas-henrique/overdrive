@@ -301,31 +301,21 @@ export class AssetManager {
   // ── Asset Loading ────────────────────────────────────────────
 
   /**
-   * Load an asset by ID, caching the resulting AssetContainer.
+   * Internal: load an asset by ID and cache the container without adding to scene.
    *
-   * If the asset is already cached, returns the cached container
-   * synchronously (zero I/O). On first load, resolves the manifest,
-   * calls `LoadAssetContainerAsync`, unparents source meshes from
-   * the race scene, caches the container, and adds it to the active
-   * scene.
-   *
-   * Load errors propagate naturally via Promise rejection — errors
-   * are NOT caught-and-silenced.
+   * Used by both `load()` (which adds to scene) and `preload()` (which keeps
+   * containers invisible). Emits per-asset events (start, progress, complete,
+   * error) but does NOT call `_addAllToScene()`.
    *
    * @param id - Asset identifier previously registered via `registerManifest()`
-   * @returns The AssetContainer containing the loaded meshes and nodes
+   * @returns The cached AssetContainer
    *
-   * @throws {AssetError} If called before `init()`
-   * @throws {AssetError} If called after `dispose()`
+   * @throws {AssetError} If called before `init()` or after `dispose()`
    * @throws {AssetError} If `id` was not registered via `registerManifest()`
    *
-   * @example
-   * ```typescript
-   * const container = await am.load("spa");
-   * container.instantiateModelsToScene();
-   * ```
+   * @internal
    */
-  async load(id: string): Promise<AssetContainer> {
+  private async _loadToCache(id: string): Promise<AssetContainer> {
     this._assertNotDisposed();
     this._assertInitialized();
 
@@ -337,7 +327,6 @@ export class AssetManager {
       const container = this._cache.get(id)!;
       this._emit("asset.load.progress", { id, loaded: 1, total: 1 });
       this._emit("asset.load.complete", { id });
-      this._addAllToScene(container);
       return container;
     }
 
@@ -375,8 +364,119 @@ export class AssetManager {
     this._emit("asset.load.complete", { id });
     container.removeAllFromScene();
     this._cache.set(id, container);
+    return container;
+  }
+
+  /**
+   * Load an asset by ID, caching the resulting AssetContainer.
+   *
+   * If the asset is already cached, returns the cached container
+   * synchronously (zero I/O). On first load, resolves the manifest,
+   * calls `LoadAssetContainerAsync`, unparents source meshes from
+   * the race scene, caches the container, and adds it to the active
+   * scene.
+   *
+   * Load errors propagate naturally via Promise rejection — errors
+   * are NOT caught-and-silenced.
+   *
+   * @param id - Asset identifier previously registered via `registerManifest()`
+   * @returns The AssetContainer containing the loaded meshes and nodes
+   *
+   * @throws {AssetError} If called before `init()`
+   * @throws {AssetError} If called after `dispose()`
+   * @throws {AssetError} If `id` was not registered via `registerManifest()`
+   *
+   * @example
+   * ```typescript
+   * const container = await am.load("spa");
+   * container.instantiateModelsToScene();
+   * ```
+   */
+  async load(id: string): Promise<AssetContainer> {
+    this._assertNotDisposed();
+    this._assertInitialized();
+
+    const container = await this._loadToCache(id);
     this._addAllToScene(container);
     return container;
+  }
+
+  // ── Preloading ──────────────────────────────────────────────
+
+  /**
+   * Preload multiple assets concurrently.
+   *
+   * Calls `load()` for each uncached asset ID in parallel via `Promise.allSettled`.
+   * Cached IDs are filtered out immediately — no I/O, no duplicate events.
+   * All loads are attempted even if some fail (failures do not cancel pending loads).
+   *
+   * Events emitted:
+   * - `asset.load.start` — once with all requested uncached IDs before any
+   *   individual loads begin
+   * - `asset.load.progress` — per-asset (via individual `load()` calls)
+   * - `asset.load.complete` — per-asset (via individual `load()` calls)
+   * - `asset.error` — per failed asset
+   * - `asset.load.allComplete` — when the entire batch finishes successfully
+   *
+   * @param ids - Asset IDs to preload (previously registered via `registerManifest()`)
+   * @returns Promise that resolves when all loads complete
+   *
+   * @throws {AssetError} If called before `init()`
+   * @throws {AssetError} If called after `dispose()`
+   * @throws {Error} If any individual asset load fails (first error propagated)
+   *
+   * @example
+   * ```typescript
+   * await am.preload(["spa", "monza", "silverstone"]);
+   * // All three tracks are now cached and ready
+   * ```
+   */
+  async preload(ids: string[]): Promise<void> {
+    this._assertNotDisposed();
+    this._assertInitialized();
+
+    // Empty batch — resolve immediately
+    if (ids.length === 0) return;
+
+    // Filter out already-cached IDs (no I/O, no duplicate events)
+    const uncachedIds = ids.filter((id) => !this._cache.has(id));
+
+    // All cached — resolve immediately
+    if (uncachedIds.length === 0) return;
+
+    // Emit batch-level start event before any individual loads
+    this._emit("asset.load.start", { ids: uncachedIds });
+
+    // Load all uncached assets concurrently. Using allSettled so that
+    // all loads complete even if some fail — no early bailout.
+    let firstError: Error | null = null;
+    const results = await Promise.allSettled(
+      uncachedIds.map(async (id) => {
+        try {
+          const container = await this._loadToCache(id);
+          return { id, container };
+        } catch (error) {
+          // Capture the first error for later rejection
+          if (!firstError) {
+            firstError =
+              error instanceof Error ? error : new Error(String(error));
+          }
+          // Re-throw so Promise.allSettled marks this as rejected
+          throw error;
+        }
+      })
+    );
+
+    // Propagate the first error if any loads failed
+    const failures = results.filter(
+      (r): r is PromiseRejectedResult => r.status === "rejected"
+    );
+    if (failures.length > 0) {
+      throw firstError;
+    }
+
+    // All succeeded — emit batch complete
+    this._emit("asset.load.allComplete", { ids: uncachedIds });
   }
 
   // ── Node Lookup ──────────────────────────────────────────────
