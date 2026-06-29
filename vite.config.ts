@@ -16,7 +16,4 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ["@babylonjs/havok"],
   },
-  server: {
-    port: 5174,
-  },
 });
