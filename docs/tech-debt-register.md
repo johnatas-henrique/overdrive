@@ -80,3 +80,4 @@
 | ✅     | 2026-06-30 | SP2/physics/ST5    | No input validation on `onFuelUpdate`/`onTireUpdate` — values not clamped to [0,1]. Added Math.max/min clamping. | physics-service.ts:545-556 | S | SP2/physics/tech-debt |
 | ✅     | 2026-06-30 | SP2/physics/ST5    | `onRaceGreenFlag` doesn't clear `_pendingFuelUpdates`/`_pendingTireUpdates`. Added .clear() calls. | physics-service.ts:531-538 | S | SP2/physics/tech-debt |
 | ✅     | 2026-06-30 | SP2/flaky-test     | getState_completes_within_0_01ms flaky — JIT warmup sensitivity. Added 500 warmup iterations. | debounce-edge-cases.test.ts | S | SP2/physics/tech-debt |
+| ✅     | 2026-06-30 | SP2/physics/ST2    | Phase1Stub dead code — Story 002 replaced it with ArcadeGripModel but stub and its tests were never removed. Removed file, updated determinism test to use ArcadeGripModel. | phase1-stub.ts, physics-service.test.ts | S | SP2/physics/tech-debt |
