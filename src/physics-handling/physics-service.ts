@@ -28,6 +28,7 @@ import "@babylonjs/core/Physics/joinedPhysicsEngineComponent";
 
 import type { IFixedUpdatePipeline } from "@/foundation/determinism/fixed-update-pipeline";
 import { InputState } from "@/foundation/determinism/types";
+import type { IEventBus, Subscription } from "@/foundation/event-bus/types";
 import { ArcadeGripModel } from "./arcade-grip-model";
 import type { CarPhysicsState } from "./car-physics-state";
 import type { CarTelemetry, IPhysics } from "./i-physics";
@@ -100,6 +101,12 @@ export class PhysicsService implements IPhysics {
   private _surfaceProvider: ((splinePosition: number) => SurfaceType) | null =
     null;
 
+  /** Event Bus reference for emitting edge-triggered events. Null until set. */
+  private _eventBus: IEventBus | null = null;
+
+  /** Active Event Bus subscriptions, cleaned up in dispose(). */
+  private readonly _subscriptions: Subscription[] = [];
+
   /** Pending fuelMult updates (applied next tick for 1-tick delay). */
   private readonly _pendingFuelUpdates: Map<string, number> = new Map();
 
@@ -140,15 +147,18 @@ export class PhysicsService implements IPhysics {
    * @param scene - Babylon.js Scene to enable physics on
    * @param trackSystem - Optional track system for ground tracking and spline queries
    * @param havokPlugin - Optional HavokPlugin instance (for testing injection)
+   * @param eventBus - Optional Event Bus for edge-triggered events
    */
   constructor(
     scene: Scene,
     trackSystem?: ITrackSystem,
-    havokPlugin?: HavokPlugin
+    havokPlugin?: HavokPlugin,
+    eventBus?: IEventBus
   ) {
     this._scene = scene;
     this._trackSystem = trackSystem ?? null;
     this._havokPlugin = havokPlugin ?? null;
+    this._eventBus = eventBus ?? null;
     this._phase1 = new ArcadeGripModel();
   }
 
@@ -198,6 +208,16 @@ export class PhysicsService implements IPhysics {
       /* no-op — pipeline controls stepping */
     };
 
+    // Subscribe to Event Bus events
+    // race.green.flag resets per-car edge-event guards for a fresh race session.
+    // fuelMult and tireCondition arrive via direct onFuelUpdate/onTireUpdate calls
+    // (per-frame data, not Event Bus — avoids Event Bus flooding per tick).
+    if (this._eventBus) {
+      this._subscriptions.push(
+        this._eventBus.on("race.green.flag", () => this.onRaceGreenFlag())
+      );
+    }
+
     this._initialized = true;
   }
 
@@ -233,6 +253,11 @@ export class PhysicsService implements IPhysics {
       SurfaceModifiers
     >;
     const config = this._config;
+
+    // ── Apply Pending External Updates (1-tick delay) ──────────────────
+    // Applied BEFORE Phase 1 so fuelMult/tireCondition take effect on the
+    // tick AFTER receipt (1-tick delay contract per AC-8 / C26 / C27).
+    this._applyPendingUpdates();
 
     // ── Phase 1: Arcade Model + Surface Handling (Story 004) ────────────
     // Compute target speed/yaw per car with surface-dependent grip and
@@ -326,8 +351,34 @@ export class PhysicsService implements IPhysics {
       state.speedKmh = state.targetSpeed * 3.6;
     }
 
+    // ── Pit Limiter (Story 005) ──────────────────────────────────────────
+    // Apply after Phase 1 target speed computation. For cars in pit mode,
+    // smoothly transition target speed toward pitSpeedLimit using a linear
+    // ramp over pitSpeedTransitionTime seconds.
+    //
+    // @see C25 — setPit() speed clamping with smooth deceleration
+    // @see AC-2 — Pit limiter linear ramp acceptance criteria
+    for (const state of this._carStates.values()) {
+      if (this._pitCars.has(state.carId)) {
+        const currentSpeed = state.speedKmh / 3.6;
+        state.targetSpeed = PhysicsService.applyPitLimiter(
+          state.targetSpeed,
+          currentSpeed,
+          config.pitSpeedLimit,
+          true,
+          config.pitSpeedTransitionTime,
+          dt,
+          state.pitEntrySpeed
+        );
+        state.speedKmh = state.targetSpeed * 3.6;
+      }
+    }
+
     // ── Phase 2: Havok Collision Step ──────────────────────────────────
     // Resolves all DYNAMIC×DYNAMIC and DYNAMIC×STATIC contacts.
+    // Contact callbacks fire during this call.
+    // Active bodies are rebuilt each tick from the car state map, sorted
+    // by carId for deterministic collision resolution order (AC-7).
     // Contact callbacks fire during this call.
     // Active bodies are rebuilt each tick from the car state map, sorted
     // by carId for deterministic collision resolution order (AC-7).
@@ -353,7 +404,7 @@ export class PhysicsService implements IPhysics {
       }
       const body = state.body;
 
-      if (state.locked || this._lockedCars.has(state.carId)) {
+      if (this._lockedCars.has(state.carId)) {
         body.setLinearVelocity(Vector3.Zero());
         body.setAngularVelocity(Vector3.Zero());
         continue;
@@ -375,8 +426,17 @@ export class PhysicsService implements IPhysics {
       body.setAngularVelocity(this._scratchAngVel);
     }
 
-    // ── Apply Pending External Updates (1-tick delay) ──────────────────
-    this._applyPendingUpdates();
+    // ── Edge-Triggered Events (Story 005) ───────────────────────────────
+    // Check and emit car.tire_blown, car.fuel_empty, car.stopped AFTER
+    // pending updates are applied so edge events consume the updated
+    // fuelMult/tireCondition values from 1-tick-delayed external inputs.
+    //
+    // @see C28 — car.stopped edge-triggered
+    // @see C40 — car.tire_blown one-shot
+    // @see AC-5, AC-6, AC-7 — Acceptance criteria
+    for (const state of this._carStates.values()) {
+      this._checkEdgeEvents(state, config);
+    }
 
     // ── Rebuild Telemetry Cache ────────────────────────────────────────
     this._rebuildTelemetry();
@@ -404,9 +464,20 @@ export class PhysicsService implements IPhysics {
    */
   setPit(carId: string, enabled: boolean): void {
     if (enabled) {
+      if (!this._pitCars.has(carId)) {
+        // Record entry speed for constant-rate linear deceleration (AC-2)
+        const state = this._carStates.get(carId);
+        if (state) {
+          state.pitEntrySpeed = state.speedKmh / 3.6;
+        }
+      }
       this._pitCars.add(carId);
     } else {
       this._pitCars.delete(carId);
+      const state = this._carStates.get(carId);
+      if (state) {
+        state.pitEntrySpeed = null;
+      }
     }
   }
 
@@ -473,6 +544,8 @@ export class PhysicsService implements IPhysics {
     // Reset per-car integration state that should not carry across races
     for (const state of this._carStates.values()) {
       state.wasAboveStopEpsilon = false;
+      state.tireBlownEmitted = false;
+      state.fuelEmptyEmitted = false;
     }
   }
 
@@ -538,9 +611,110 @@ export class PhysicsService implements IPhysics {
     this._pendingTireUpdates.clear();
     this._inputStates.clear();
     this._telemetry.clear();
+
+    // Unsubscribe from Event Bus
+    for (const sub of this._subscriptions) {
+      sub.unsubscribe();
+    }
+    this._subscriptions.length = 0;
+    this._eventBus = null;
   }
 
   // ─── Private Helpers ─────────────────────────────────────────────────
+
+  /**
+   * Apply pit lane speed limiter with linear ramp.
+   *
+   * When pit mode is active, this function smoothly transitions the car's
+   * target speed toward `pitSpeedLimit` using a constant-rate linear
+   * deceleration profile over `transitionTime` seconds.
+   *
+   * The deceleration rate is computed from `pitEntrySpeed` (the speed at pit
+   * mode entry), not the current speed. This produces a true linear ramp:
+   * constant deceleration per tick until pitSpeedLimit is reached.
+   *
+   * @param targetSpeed - Current arcade target speed (m/s)
+   * @param currentSpeed - Car's actual speed this tick (m/s)
+   * @param pitSpeedLimit - Maximum allowed speed in pit lane (m/s)
+   * @param isPitMode - True if pit limiter is active
+   * @param transitionTime - Time in seconds for the full speed→limit transition
+   * @param dt - Delta time in seconds
+   * @param pitEntrySpeed - Speed at pit mode entry (m/s), or null if not set
+   * @returns Clamped target speed (m/s)
+   *
+   * @see C25 — setPit() speed clamping with smooth deceleration
+   * @see AC-2 — Pit limiter linear ramp acceptance criteria
+   */
+  private static applyPitLimiter(
+    targetSpeed: number,
+    currentSpeed: number,
+    pitSpeedLimit: number,
+    isPitMode: boolean,
+    transitionTime: number,
+    dt: number,
+    pitEntrySpeed: number | null
+  ): number {
+    if (!isPitMode) {
+      return targetSpeed;
+    }
+
+    // Linear ramp toward pitSpeedLimit using constant deceleration rate
+    const speedDiff = currentSpeed - pitSpeedLimit;
+    if (Math.abs(speedDiff) < 0.1) {
+      return pitSpeedLimit; // near-zero → snap to limit
+    }
+
+    // Constant deceleration rate from entry speed to pitSpeedLimit
+    const entryDiff =
+      pitEntrySpeed !== null ? pitEntrySpeed - pitSpeedLimit : speedDiff;
+    const safeTransitionTime = Math.max(transitionTime, 0.001);
+    const maxStep = (Math.abs(entryDiff) / safeTransitionTime) * dt;
+    const clampedDiff =
+      Math.sign(speedDiff) * Math.min(Math.abs(speedDiff), maxStep);
+    return currentSpeed - clampedDiff;
+  }
+
+  /**
+   * Check and emit edge-triggered events for a car.
+   *
+   * Called after Phase 1 each tick. Emits:
+   * - `car.tire_blown` — one-shot when tireCondition → 0
+   * - `car.fuel_empty` — one-shot when fuelMult → 0
+   * - `car.stopped` — edge-triggered with hysteresis when speed drops below stopEpsilon
+   *
+   * @param state - Per-car physics state (mutated for guard flags)
+   * @param config - Physics configuration (for stopEpsilon)
+   *
+   * @see C28 — car.stopped edge-triggered
+   * @see C40 — car.tire_blown one-shot
+   * @see AC-5, AC-6, AC-7 — Acceptance criteria for edge events
+   */
+  private _checkEdgeEvents(
+    state: CarPhysicsState,
+    config: PhysicsConfig
+  ): void {
+    // tire_blown — one-shot guard (C40)
+    if (state.tireCondition <= 0 && !state.tireBlownEmitted) {
+      state.tireBlownEmitted = true;
+      this._eventBus?.emit("car.tire_blown", { carId: state.carId });
+    }
+
+    // fuel_empty — one-shot guard
+    if (state.fuelMult <= 0 && !state.fuelEmptyEmitted) {
+      state.fuelEmptyEmitted = true;
+      this._eventBus?.emit("car.fuel_empty", { carId: state.carId });
+    }
+
+    // car.stopped — edge-triggered with hysteresis (C28)
+    const speedMs = state.speedKmh / 3.6;
+    const isBelowEpsilon = speedMs < config.stopEpsilon;
+    if (isBelowEpsilon && state.wasAboveStopEpsilon) {
+      // Edge: was above, now below → emit once
+      this._eventBus?.emit("car.stopped", { carId: state.carId });
+    }
+    // Hysteresis: re-arm when speed rises above stopEpsilon + 50% margin
+    state.wasAboveStopEpsilon = speedMs > config.stopEpsilon * 1.5;
+  }
 
   /**
    * Get the forward direction for a car at its spline position.
@@ -561,7 +735,8 @@ export class PhysicsService implements IPhysics {
   /**
    * Apply pending fuel and tire updates (1-tick delay).
    *
-   * Called at the end of update() after Phase 3 completes.
+   * Called at the START of update() before Phase 1, so fuelMult/tireCondition
+   * take effect on the tick AFTER receipt (1-tick delay contract per AC-8 / C26 / C27).
    * Clears the pending maps after application.
    */
   private _applyPendingUpdates(): void {
