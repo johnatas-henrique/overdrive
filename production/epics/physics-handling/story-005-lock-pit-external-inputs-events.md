@@ -1,7 +1,8 @@
 # Story 005: Lock, Pit, External Inputs & Edge Events
 
 > **Epic**: Physics / Handling
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-30
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
@@ -277,3 +278,16 @@ _Written by qa-lead at story creation:_
 
 - Depends on: Stories 001-004 (all prior stories must be DONE — this story integrates all control interfaces)
 - Unlocks: Collision (car.stopped event), Fuel system (consumes throttle integral), Tire Wear (consumes lateral load), Race Management (grid lock, DNF from car.stopped)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-30
+**Criteria**: 8/8 passing (all ACs covered by 43 integration tests)
+**Deviations**:
+- ADVISORY: `_checkEdgeEvents` reads `speedKmh` (arcade model target), not actual body velocity. Defensible for arcade model — documented.
+- ADVISORY: No input validation on `onFuelUpdate`/`onTireUpdate` (values not clamped to [0,1]). Defense-in-depth.
+- ADVISORY: `onRaceGreenFlag` doesn't clear pending fuel/tire updates. Benign in practice.
+**Test Evidence**: Integration test at `tests/integration/physics-handling/lock-pit-events.test.ts` (43 tests)
+**Code Review**: Complete (LP-CODE-REVIEW: CONCERNS → all resolved)

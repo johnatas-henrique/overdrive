@@ -370,11 +370,11 @@ stories:
     name: "Story 005: Lock/Pit/External Inputs/Events"
     file: "production/epics/physics-handling/story-005-lock-pit-external-inputs-events.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 2
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   # Camera (needs Physics)
   - id: "2-36"
