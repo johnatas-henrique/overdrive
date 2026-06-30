@@ -137,13 +137,16 @@ export interface CarPhysicsState {
   /** Tire condition from Tire Wear system (0..1). Default 1.0. */
   tireCondition: number;
 
-  // ─── Control State ──────────────────────────────────────────────────
+  // ─── Pit Limiter State ────────────────────────────────────────────
 
-  /** True when car is locked (grid start / pit stop). */
-  locked: boolean;
-
-  /** True when car is in pit lane speed-limited mode. */
-  pitMode: boolean;
+  /**
+   * Speed at pit mode entry (m/s). Used to compute constant-rate linear
+   * deceleration toward pitSpeedLimit. Set when setPit(true) is called,
+   * cleared when setPit(false).
+   *
+   * @see AC-2 — Pit limiter linear ramp acceptance criteria
+   */
+  pitEntrySpeed: number | null;
 
   // ─── Edge-Event Guards ──────────────────────────────────────────────
 

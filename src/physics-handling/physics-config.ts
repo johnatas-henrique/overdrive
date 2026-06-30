@@ -65,6 +65,13 @@ export interface PhysicsConfig {
   /** Maximum speed in pit lane (m/s). */
   readonly pitSpeedLimit: number;
 
+  /**
+   * Time in seconds to transition from current speed to pitSpeedLimit.
+   * Used by the linear ramp in applyPitLimiter().
+   * Default: 2.0s — car decelerates smoothly from 250 km/h to 80 km/h.
+   */
+  readonly pitSpeedTransitionTime: number;
+
   // ─── Off-Track ─────────────────────────────────────────────────────
 
   /** Friction multiplier when off-track. */
