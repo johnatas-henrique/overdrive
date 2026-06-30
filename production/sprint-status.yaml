@@ -235,11 +235,11 @@ stories:
     name: "Story 005: GSM State Integration"
     file: "production/epics/input/story-005-gsm-state-integration.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-29"
 
   - id: "2-23"
     name: "Story 006: Debounce Edge Cases"
