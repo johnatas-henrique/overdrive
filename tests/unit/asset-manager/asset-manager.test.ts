@@ -149,42 +149,6 @@ describe("AssetManager", () => {
     });
   });
 
-  // ── _addAllToScene() ─────────────────────────────────────────
-
-  describe("_addAllToScene()", () => {
-    it("should call container.addAllToScene() with no arguments", () => {
-      assetManager.init(menuScene, raceScene);
-      const container = createFakeContainer();
-
-      assetManager._addAllToScene(container);
-
-      expect(container.addAllToScene).toHaveBeenCalledTimes(1);
-      expect(container.addAllToScene).toHaveBeenCalledWith();
-    });
-
-    it("should call addAllToScene regardless of which scene is active", () => {
-      assetManager.init(menuScene, raceScene);
-      const container = createFakeContainer();
-
-      assetManager.setActiveScene("race");
-      assetManager._addAllToScene(container);
-      expect(container.addAllToScene).toHaveBeenCalledTimes(1);
-
-      assetManager.setActiveScene("menu");
-      assetManager._addAllToScene(container);
-      expect(container.addAllToScene).toHaveBeenCalledTimes(2);
-    });
-
-    it("should throw AssetError when called before init()", () => {
-      const container = createFakeContainer();
-
-      expect(() => assetManager._addAllToScene(container)).toThrow(AssetError);
-      expect(() => assetManager._addAllToScene(container)).toThrow(
-        "Not initialized"
-      );
-    });
-  });
-
   // ── getActiveScene() ──────────────────────────────────────────
 
   describe("getActiveScene()", () => {

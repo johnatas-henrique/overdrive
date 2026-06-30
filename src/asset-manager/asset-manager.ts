@@ -98,6 +98,14 @@ export class AssetManager {
   /** Subscription to GSM state-entered events. Created in `init()`, cleared in `dispose()`. */
   private _gsmSubscription: Subscription | null = null;
 
+  /**
+   * In-flight load promises for concurrent load deduplication.
+   * When `_loadToCache(id)` is called while a load for the same `id` is already in
+   * progress, the existing promise is returned instead of starting a second load.
+   * Entries are removed in the `finally` block after the promise settles.
+   */
+  private _pendingLoads = new Map<string, Promise<AssetContainer>>();
+
   /** Current state machine state. */
   private _state: AssetState = "uninitialized";
 
@@ -158,6 +166,7 @@ export class AssetManager {
    * ```
    */
   setActiveScene(scene: SceneName): void {
+    this._assertNotDisposed();
     this._assertInitialized();
     if (scene === "menu") {
       this._activeScene = this._menuScene;
@@ -209,6 +218,9 @@ export class AssetManager {
    */
   setTrackId(trackId: string): void {
     this._assertInitialized();
+    if (!trackId?.trim()) {
+      throw new AssetError("Track ID must be a non-empty string");
+    }
     this._trackId = trackId;
   }
 
@@ -237,7 +249,7 @@ export class AssetManager {
    *
    * @internal
    */
-  _addAllToScene(container: AssetContainer): void {
+  private _addAllToScene(container: AssetContainer): void {
     this._assertInitialized();
     container.addAllToScene();
   }
@@ -365,6 +377,10 @@ export class AssetManager {
       return container;
     }
 
+    // TD3: Return existing promise if a concurrent load for the same ID is in flight
+    const pending = this._pendingLoads.get(id);
+    if (pending) return pending;
+
     // Cache miss — resolve manifest and load
     const manifest = this._manifests.get(id);
     if (!manifest) {
@@ -375,6 +391,32 @@ export class AssetManager {
       throw new AssetError(`Manifest not found for asset '${id}'`);
     }
 
+    // Register the load promise before any await so concurrent requests
+    // for the same ID can coalesce. Cleaned up in the finally block.
+    const loadPromise = this._loadAssetContainer(id, manifest);
+    this._pendingLoads.set(id, loadPromise);
+
+    try {
+      return await loadPromise;
+    } finally {
+      this._pendingLoads.delete(id);
+    }
+  }
+
+  /**
+   * Execute the actual Babylon.js `LoadAssetContainerAsync` for a cache-missed asset.
+   *
+   * Extracted from `_loadToCache` so the promise can be registered in `_pendingLoads`
+   * **before** the first `await`, enabling concurrent load deduplication.
+   *
+   * @param id - Asset identifier
+   * @param manifest - The resolved manifest for the asset
+   * @returns The loaded AssetContainer
+   */
+  private async _loadAssetContainer(
+    id: string,
+    manifest: TrackManifest
+  ): Promise<AssetContainer> {
     let container: AssetContainer;
     try {
       container = await LoadAssetContainerAsync(

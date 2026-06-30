@@ -134,47 +134,6 @@ describe("AssetManager lifecycle", () => {
     expect(am.getActiveScene()).toBe(raceScene);
   });
 
-  // ── _addAllToScene() with real-like containers ─────────────────
-
-  it("should delegate to container.addAllToScene()", () => {
-    engine = createEngine();
-    const menuScene = new Scene(engine);
-    createdScenes.push(menuScene);
-    const raceScene = new Scene(engine);
-    createdScenes.push(raceScene);
-
-    const am = new AssetManager();
-    am.init(menuScene, raceScene);
-
-    // Mock an AssetContainer — we use a spy to verify delegation
-    const container = {
-      addAllToScene: vi.fn(),
-      removeAllFromScene: vi.fn(),
-      dispose: vi.fn(),
-      meshes: [],
-    };
-
-    am._addAllToScene(container);
-    expect(container.addAllToScene).toHaveBeenCalledTimes(1);
-    // NOTE: addAllToScene() takes NO parameters in Babylon.js 9.12.0
-    expect(container.addAllToScene).toHaveBeenCalledWith();
-  });
-
-  it("should throw AssetError when _addAllToScene is called before init", () => {
-    engine = createEngine();
-    const am = new AssetManager();
-
-    const container = {
-      addAllToScene: vi.fn(),
-      removeAllFromScene: vi.fn(),
-      dispose: vi.fn(),
-      meshes: [],
-    };
-
-    expect(() => am._addAllToScene(container)).toThrow(AssetError);
-    expect(() => am._addAllToScene(container)).toThrow("Not initialized");
-  });
-
   // ── init() idempotency ────────────────────────────────────────
 
   it("should be idempotent — second init call is no-op", () => {
