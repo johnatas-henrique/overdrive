@@ -70,3 +70,4 @@
 | ✅     | 2026-06-29 | SP2/asset-manager/ST2       | Story Test Evidence section has stale file path — says story-002-load-cache_test.ts, actual is asset-manager-lifecycle.test.ts | story-002-load-cache.md | S | SP2/asset-manager/ST5 |
 | 🔴     | 2026-06-29 | SP2/asset-manager/ST4       | AC-NEW-2 deferred — animation group re-clone on re-instantiation needs integration test in Story 005b (Entity/Car Lifecycle) | asset-manager.test.ts | M | |
 | ✅     | 2026-06-29 | SP2/asset-manager/ST5       | currentTrackId setter has no validation — invalid ID surfaces late in load() as "Manifest not found" | asset-manager.ts | S | SP2/asset-manager/ST6 |
+| 🔴     | 2026-06-29 | PR#19/review                | Gravity vector hardcoded in app.ts — should be data-driven via templateConfig.physics.gravity (resolved in Physics/Handling epic) | app.ts | S | |
