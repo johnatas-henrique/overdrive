@@ -41,7 +41,7 @@ export type EventMap = {
   /** Fired when a GSM transition fails (invalid transition or onEnter error). */
   "gsm.transition.error": { from: string; to: string; reason: string };
   /** A car entity has been spawned into the scene. */
-  "entity.spawned": { carId: string };
+  "entity.spawned": { carId: string; teamId: string; gridIndex: number };
   /** A car entity has been removed from the scene. */
   "entity.despawned": { carId: string };
   /** Two cars have collided (or car with barrier). */
