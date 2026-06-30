@@ -731,9 +731,8 @@ export class ArcadeGripModel {
   /**
    * Compute Phase 1 values (target speed and yaw) for one car.
    *
-   * Matches the Phase1Stub interface for PhysicsService compatibility.
-   * Sets targetSpeed (placeholder until Story 003), targetYawRate, and
-   * telemetry fields (lateralG, tireSqueal, gripMultiplier).
+   * Sets targetSpeed, targetYawRate, and telemetry fields (lateralG,
+   * tireSqueal, gripMultiplier, accelG, engine stats).
    *
    * @param state - Per-car physics state (mutated in place)
    * @param input - InputState for this tick
