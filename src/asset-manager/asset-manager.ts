@@ -3,7 +3,12 @@ import { LoadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
 import type { Node } from "@babylonjs/core/node";
 import type { Scene } from "@babylonjs/core/scene";
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
-import type { EventMap, IEventBus } from "@/foundation/event-bus/types";
+import { CAR_MANIFEST_IDS } from "@/config/assets/cars";
+import type {
+  EventMap,
+  IEventBus,
+  Subscription,
+} from "@/foundation/event-bus/types";
 import { AssetError } from "./asset-error";
 import type { TrackManifest } from "./types";
 
@@ -87,6 +92,12 @@ export class AssetManager {
   /** Optional EventBus for emitting lifecycle events. */
   private readonly _eventBus?: IEventBus;
 
+  /** Currently selected track ID for PreRace preload. Set via `setTrackId()`. */
+  private _trackId: string | null = null;
+
+  /** Subscription to GSM state-entered events. Created in `init()`, cleared in `dispose()`. */
+  private _gsmSubscription: Subscription | null = null;
+
   /** Current state machine state. */
   private _state: AssetState = "uninitialized";
 
@@ -126,6 +137,7 @@ export class AssetManager {
     this._activeScene = menuScene;
     this._cache.clear(); // Ensure clean slate (cache populated by Story 002+)
     this._state = "ready";
+    this._subscribeToGsm();
   }
 
   /**
@@ -176,6 +188,28 @@ export class AssetManager {
   getActiveScene(): Scene {
     this._assertInitialized();
     return this._activeScene as Scene;
+  }
+
+  /**
+   * Set the currently selected track ID.
+   *
+   * Stored internally and used when the GSM enters the PreRace state to
+   * preload the track's AssetContainer. Must be called before the GSM
+   * transitions to PreRace.
+   *
+   * @param trackId - Asset manifest ID for the selected track (e.g. `'spa'`)
+   *
+   * @throws {AssetError} If called before `init()`
+   *
+   * @example
+   * ```typescript
+   * am.setTrackId("spa"); // User selected Spa-Francorchamps
+   * // When GSM enters PreRace, AssetManager preloads "spa" automatically
+   * ```
+   */
+  setTrackId(trackId: string): void {
+    this._assertInitialized();
+    this._trackId = trackId;
   }
 
   /**
@@ -272,6 +306,7 @@ export class AssetManager {
   dispose(): void {
     if (this._state === "disposed") return;
     this._assertInitialized();
+    this._unsubscribeFromGsm();
     for (const container of this._cache.values()) {
       container.dispose();
     }
@@ -552,5 +587,86 @@ export class AssetManager {
     payload: EventMap[T]
   ): void {
     this._eventBus?.emit(event, payload);
+  }
+
+  // ── GSM Integration ────────────────────────────────────────────
+
+  /**
+   * Subscribe to GSM state transitions via the Event Bus.
+   *
+   * Called at the end of `init()`. The handler reacts to state entries
+   * by preloading assets, switching scenes, or unloading race resources.
+   * Uses fire-and-forget pattern — errors from async preloads are
+   * caught silently (they are already emitted as `asset.error` events).
+   *
+   * Safe no-op when no EventBus is configured.
+   */
+  private _subscribeToGsm(): void {
+    if (!this._eventBus) return;
+    this._gsmSubscription = this._eventBus.on(
+      "gsm.state.entered",
+      (payload: EventMap["gsm.state.entered"]) => {
+        this._onGsmEvent(payload).catch(() => {
+          // Errors are emitted as 'asset.error' by preload/load —
+          // safe to suppress here to avoid unhandled rejections.
+        });
+      }
+    );
+  }
+
+  /**
+   * Unsubscribe from GSM state transitions.
+   *
+   * Called at the start of `dispose()`. Idempotent — safe to call
+   * multiple times or when no subscription exists.
+   */
+  private _unsubscribeFromGsm(): void {
+    this._gsmSubscription?.unsubscribe();
+    this._gsmSubscription = null;
+  }
+
+  /**
+   * React to a GSM state entry event.
+   *
+   * Dispatches the appropriate AssetManager action based on the
+   * state being entered:
+   *
+   * | State       | Action                                    |
+   * | ----------- | ----------------------------------------- |
+   * | `Menu`      | Switch active scene to menuScene          |
+   * | `PreRace`   | Preload the selected track (via trackId)  |
+   * | `Racing`    | Switch active scene to raceScene          |
+   * | `PostRace`  | Unload race assets, switch to menuScene   |
+   *
+   * @param payload - The event payload with `from` and `to` state names
+   */
+  private async _onGsmEvent(
+    payload: EventMap["gsm.state.entered"]
+  ): Promise<void> {
+    // AC-g1: Loading→Menu — preload all car manifests
+    if (payload.to === "Menu" && payload.from === "Loading") {
+      this.preload([...CAR_MANIFEST_IDS]).catch(() => {
+        /* error already emitted as 'asset.error' */
+      });
+      return;
+    }
+
+    // AC-g2: Menu→PreRace — switch to race scene, load track
+    if (payload.to === "PreRace" && payload.from === "Menu") {
+      this.setActiveScene("race");
+      if (this._trackId) {
+        this.load(this._trackId).catch(() => {
+          /* error already emitted as 'asset.error' */
+        });
+      }
+      return;
+    }
+
+    // AC-g3: PostRace→Menu — unload all, switch back to menu scene
+    if (payload.to === "Menu" && payload.from === "PostRace") {
+      this.unloadAll();
+      this.setActiveScene("menu");
+      return;
+    }
   }
 }
