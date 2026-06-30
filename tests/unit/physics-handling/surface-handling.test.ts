@@ -123,9 +123,9 @@ function createCarState(overrides?: Partial<CarPhysicsState>): CarPhysicsState {
     gripMultiplier: 1,
     fuelMult: 1,
     tireCondition: 1,
+    pitEntrySpeed: null,
     gradient: 0,
-    locked: false,
-    pitMode: false,
+
     tireBlownEmitted: false,
     fuelEmptyEmitted: false,
     wasAboveStopEpsilon: false,

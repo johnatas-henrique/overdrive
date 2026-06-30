@@ -58,7 +58,7 @@ function createTestConfig(overrides?: Partial<PhysicsConfig>): PhysicsConfig {
     pitSpeedLimit: 12,
     offTrackFriction: 0.4,
     offTrackGripFactor: 0.6,
-    offTrackMinSpeed: 5,
+    offTrackMinSpeedFraction: 5,
     kerbGripLoss: 0.5,
     speedModRefSpeed: 30, // m/s = 108 km/h
     speedModMinFactor: 0.8,
@@ -120,9 +120,9 @@ function createState(overrides?: Partial<CarPhysicsState>): CarPhysicsState {
     gripMultiplier: 1,
     fuelMult: 1,
     tireCondition: 1,
+    pitEntrySpeed: null,
     gradient: 0,
-    locked: false,
-    pitMode: false,
+
     tireBlownEmitted: false,
     fuelEmptyEmitted: false,
     wasAboveStopEpsilon: false,
