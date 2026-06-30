@@ -41,12 +41,12 @@ export interface PhysicsConfig {
 
   // ─── Lift-Off Oversteer ────────────────────────────────────────────
 
-  /** Rear grip multiplier during lift-off (e.g., 0.7 = 30% grip loss). */
-  readonly liftOffRearFactor: number;
   /** Minimum steering input magnitude to trigger lift-off oversteer. */
   readonly liftOffMinSteering: number;
   /** Throttle threshold below which lift-off oversteer activates. */
   readonly liftOffThrottleMax: number;
+  /** Brake threshold below which lift-off oversteer activates. */
+  readonly liftOffBrakeMax: number;
 
   // ─── Drag & Braking ────────────────────────────────────────────────
 
