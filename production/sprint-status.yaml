@@ -477,3 +477,13 @@ stories:
     estimate_days: 0.5
     blocker: ""
     completed: ""
+
+  - id: "2-46"
+    name: "Story 001: CarEntity Spawn & Lifecycle"
+    file: "production/epics/entity-car-lifecycle/story-001-spawn-lifecycle.md"
+    priority: must-have
+    status: done
+    owner: ""
+    estimate_days: 1
+    blocker: ""
+    completed: "2026-06-30"
