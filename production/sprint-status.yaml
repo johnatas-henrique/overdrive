@@ -462,9 +462,11 @@ stories:
     name: "Story 008: Drone Camera Orbit"
     file: "production/epics/camera/story-008-drone-camera-orbit.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1
+    blocker: ""
+    completed: "2026-06-30"
     blocker: ""
     completed: ""
 
