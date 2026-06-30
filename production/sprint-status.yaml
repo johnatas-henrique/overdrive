@@ -245,11 +245,11 @@ stories:
     name: "Story 006: Debounce Edge Cases"
     file: "production/epics/input/story-006-debounce-edge-cases.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-29"
 
   - id: "2-24"
     name: "Story 007: Device Detection"
