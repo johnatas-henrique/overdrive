@@ -519,12 +519,12 @@ export class PlayerInput implements IInput {
     if (pulse.pauseToggle) {
       if (this._gsmCurrentState === "Racing") {
         // Racing → Paused
-        this._gsm?.transition("Paused").catch((err: unknown) => {
+        this._gsm?.transition("Paused")?.catch((err: unknown) => {
           console.warn("[PlayerInput] Racing→Paused transition failed:", err);
         });
       } else if (this._gsmCurrentState === "Paused") {
         // Paused → Racing
-        this._gsm?.transition("Racing").catch((err: unknown) => {
+        this._gsm?.transition("Racing")?.catch((err: unknown) => {
           console.warn("[PlayerInput] Paused→Racing transition failed:", err);
         });
       }
@@ -536,7 +536,7 @@ export class PlayerInput implements IInput {
       switch (this._gsmCurrentState) {
         case "PreRace":
           // Skip grid cinematic, start race
-          this._gsm?.transition("Racing").catch((err: unknown) => {
+          this._gsm?.transition("Racing")?.catch((err: unknown) => {
             console.warn(
               "[PlayerInput] PreRace→Racing transition failed:",
               err
@@ -693,17 +693,17 @@ export class PlayerInput implements IInput {
     buttons: readonly GamepadButton[]
   ): number {
     const steerRaw = axes[GP_AXIS_LEFT_STICK_X] ?? 0;
-    if (steerRaw !== 0) {
+    if (Math.abs(steerRaw) > this._deadZoneThreshold) {
       this._currentState.steer = steerRaw;
     }
 
     const throttleRaw = buttons[GP_BUTTON_R_TRIGGER]?.value ?? 0;
-    if (throttleRaw > 0) {
+    if (throttleRaw > this._deadZoneThreshold) {
       this._currentState.throttle = throttleRaw;
     }
 
     const brakeRaw = buttons[GP_BUTTON_L_TRIGGER]?.value ?? 0;
-    if (brakeRaw > 0) {
+    if (brakeRaw > this._deadZoneThreshold) {
       this._currentState.brake = brakeRaw;
     }
 

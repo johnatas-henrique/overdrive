@@ -37,6 +37,8 @@ export function applyDeadZone(raw: number, threshold: number): number {
 
   // Above threshold → remap preserving sign.
   // Formula: sign(raw) × (|raw| - threshold) / (1 - threshold)
-  // Use `|| 0` to convert -0 to +0 (JS quirk: -1 * 0 = -0)
+  // Use `|| 0` to convert -0 to +0 (JS quirk: -1 * 0 = -0).
+  // Side effect: also coerces NaN to 0 (NaN || 0 === 0), so callers with
+  // non-finite inputs will silently receive 0 rather than a propagated NaN.
   return Math.sign(raw) * ((absRaw - t) / (1 - t)) || 0;
 }

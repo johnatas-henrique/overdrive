@@ -112,7 +112,7 @@ export namespace InputState {
    * - Tab blur zeroing (all outputs return to neutral)
    * - GSM transition blocking (prevent inputs crossing state boundaries)
    */
-  export const ZERO: InputState = {
+  export const ZERO: InputState = Object.freeze({
     steer: 0,
     throttle: 0,
     brake: 0,
@@ -123,7 +123,7 @@ export namespace InputState {
     cancel: false,
     navUp: false,
     navDown: false,
-  };
+  }) as InputState;
 }
 
 /**
@@ -186,7 +186,7 @@ export interface IInput {
    * Observable firing when the last active device changes.
    *
    * Payload is the new device type (`"keyboard"` or `"gamepad"`):
-   * - Fires once on keyboard → gamepad switch (when gamepad input is first detected)
+   * - Fires once immediately when a gamepad connects (connect event, not first button press)
    * - Fires once on gamepad → keyboard switch (when keyboard input is first detected
    *   after last gamepad input)
    *
