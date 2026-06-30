@@ -414,9 +414,11 @@ stories:
     name: "Story 004: Chase Camera Occlusion"
     file: "production/epics/camera/story-004-chase-camera-occlusion.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
+    blocker: ""
+    completed: "2026-06-30"
     blocker: ""
     completed: ""
 
