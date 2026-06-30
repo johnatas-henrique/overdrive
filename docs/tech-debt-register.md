@@ -64,10 +64,9 @@
 | ✅     | 2026-06-28 | PR#15/DT-012                | Disposed DevTools can be re-toggled but metrics never update | dev-tools.ts | M | SP2/tech-debt/ST2 |
 | ✅     | 2026-06-28 | PR#15/DT-034                | DEV env lost after first test in integration suite | sim-snapshot-panel.test.ts | S | SP2/tech-debt/ST2 |
 | ✅     | 2026-06-28 | PR#15/DT-052                | _resetDevToolsForTesting doesn't dispose old instance — DOM/listeners leak | index.ts | S | SP2/tech-debt/ST2 |
-| 🔴     | 2026-06-29 | SP2/asset-manager/ST2/LP    | setActiveScene() missing _assertNotDisposed() guard — throws "Not initialized" after dispose instead of "Already disposed" | asset-manager.ts | S | |
-| 🔴     | 2026-06-29 | SP2/asset-manager/ST2/LP    | _addAllToScene() public despite @internal tag — should be private or documented why public (test access) | asset-manager.ts | S | |
-| 🔴     | 2026-06-29 | SP2/asset-manager/ST2/LP    | No concurrent load guard — two load("id") calls in flight cause double I/O and first container leak | asset-manager.ts | M | |
+| ✅     | 2026-06-29 | SP2/asset-manager/ST2/LP    | setActiveScene() missing _assertNotDisposed() guard — throws "Not initialized" after dispose instead of "Already disposed" | asset-manager.ts | S | SP2/asset-manager/ST6 |
+| ✅     | 2026-06-29 | SP2/asset-manager/ST2/LP    | _addAllToScene() public despite @internal tag — should be private or documented why public (test access) | asset-manager.ts | S | SP2/asset-manager/ST6 |
+| ✅     | 2026-06-29 | SP2/asset-manager/ST2/LP    | No concurrent load guard — two load("id") calls in flight cause double I/O and first container leak | asset-manager.ts | M | SP2/asset-manager/ST6 |
 | ✅     | 2026-06-29 | SP2/asset-manager/ST2       | Story Test Evidence section has stale file path — says story-002-load-cache_test.ts, actual is asset-manager-lifecycle.test.ts | story-002-load-cache.md | S | SP2/asset-manager/ST5 |
 | 🔴     | 2026-06-29 | SP2/asset-manager/ST4       | AC-NEW-2 deferred — animation group re-clone on re-instantiation needs integration test in Story 005b (Entity/Car Lifecycle) | asset-manager.test.ts | M | |
-| 🔴     | 2026-06-29 | SP2/asset-manager/ST5       | currentTrackId setter has no validation — invalid ID surfaces late in load() as "Manifest not found" | asset-manager.ts | S | |
-| 🔴     | 2026-06-29 | SP2/asset-manager/ST5       | Fire-and-forget .catch(() => {}) silently swallows errors — no diagnostics for failed preloads/loads | asset-manager.ts | S | |
+| ✅     | 2026-06-29 | SP2/asset-manager/ST5       | currentTrackId setter has no validation — invalid ID surfaces late in load() as "Manifest not found" | asset-manager.ts | S | SP2/asset-manager/ST6 |
