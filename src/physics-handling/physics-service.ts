@@ -304,9 +304,10 @@ export class PhysicsService implements IPhysics {
         this._surfaceStates.set(state.carId, surfaceState);
       }
 
-      // Use level 1 top speed until per-car stat integration (matching
-      // corneringLevel = 1 default in ArcadeGripModel.compute()).
-      const topSpeedMs = this._config.topSpeedL1toL5[0];
+      // Use per-car topSpeedMs (initialized from config at car state creation).
+      // Will be replaced by per-car stats lookup when car stats integration
+      // lands (Story 005b+). @see TD-PHYS-001
+      const topSpeedMs = state.topSpeedMs;
 
       // ── Update Surface State ───────────────────────────────────────
       // Mutates carState: frictionMultiplier, minSurfaceSpeed,
@@ -547,6 +548,11 @@ export class PhysicsService implements IPhysics {
       state.tireBlownEmitted = false;
       state.fuelEmptyEmitted = false;
     }
+
+    // Clear pending external updates to prevent stale fuel/tire values
+    // from a previous race carrying into the new one (TD-PHYS-004).
+    this._pendingFuelUpdates.clear();
+    this._pendingTireUpdates.clear();
   }
 
   /**
@@ -555,7 +561,9 @@ export class PhysicsService implements IPhysics {
    * @inheritdoc
    */
   onFuelUpdate(carId: string, fuelMult: number): void {
-    this._pendingFuelUpdates.set(carId, fuelMult);
+    // Defense-in-depth: clamp to [0, 1] to prevent invalid values from
+    // propagating into the engine model (TD-PHYS-003).
+    this._pendingFuelUpdates.set(carId, Math.max(0, Math.min(1, fuelMult)));
   }
 
   /**
@@ -564,7 +572,12 @@ export class PhysicsService implements IPhysics {
    * @inheritdoc
    */
   onTireUpdate(carId: string, tireCondition: number): void {
-    this._pendingTireUpdates.set(carId, tireCondition);
+    // Defense-in-depth: clamp to [0, 1] to prevent invalid values from
+    // propagating into the grip model (TD-PHYS-003).
+    this._pendingTireUpdates.set(
+      carId,
+      Math.max(0, Math.min(1, tireCondition))
+    );
   }
 
   // ─── Pipeline Registration ───────────────────────────────────────────
@@ -706,6 +719,11 @@ export class PhysicsService implements IPhysics {
     }
 
     // car.stopped — edge-triggered with hysteresis (C28)
+    // Uses speedKmh (arcade model target) rather than raw body velocity.
+    // This is intentional: in the arcade model, speedKmh IS the car's
+    // effective speed after all Phase 1 computations (engine, drag, grip).
+    // Raw body velocity can diverge during collision resolution (Phase 2)
+    // and would produce false stopped/started events during contact pushes.
     const speedMs = state.speedKmh / 3.6;
     const isBelowEpsilon = speedMs < config.stopEpsilon;
     if (isBelowEpsilon && state.wasAboveStopEpsilon) {

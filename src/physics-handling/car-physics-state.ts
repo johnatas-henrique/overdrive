@@ -129,6 +129,17 @@ export interface CarPhysicsState {
   /** Track gradient at car's spline position (sin of slope angle). Positive = uphill. */
   gradient: number;
 
+  /**
+   * Car's top speed in m/s — used for off-track minimum speed floor.
+   *
+   * Initialized from PhysicsConfig.topSpeedL1toL5[defaultLevel] when the
+   * car state is created. Will be replaced by per-car stat lookup when
+   * car stats integration lands (Story 005b+).
+   *
+   * @see TD-PHYS-001 — per-car topSpeed integration
+   */
+  topSpeedMs: number;
+
   // ─── External Inputs (1-tick delay per ADR-0008) ──────────────────
 
   /** Fuel multiplier from Fuel system (0..1). Default 1.0. */
