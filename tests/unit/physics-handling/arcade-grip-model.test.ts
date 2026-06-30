@@ -47,6 +47,7 @@ const DEFAULT_LIFT_OFF: LiftOffConfig = {
 function createTestConfig(overrides?: Partial<PhysicsConfig>): PhysicsConfig {
   return {
     baseGrip: 0.95,
+    gravity: 9.81,
     steerClampSpeed: 25, // m/s = 90 km/h
     steerMinRatio: 0.4,
     liftOffMinSteering: 0.3,

@@ -63,6 +63,7 @@ const DEFAULT_ENGINE_STATE: EngineStateSnapshot = {
 function createTestConfig(overrides?: Partial<PhysicsConfig>): PhysicsConfig {
   return {
     baseGrip: 0.95,
+    gravity: 9.81,
     steerClampSpeed: 25,
     steerMinRatio: 0.4,
     liftOffMinSteering: 0.3,
@@ -194,6 +195,16 @@ describe("AC-1 — computeRpm: RPM from speed and gear", () => {
     const rpmNormal = ArcadeGripModel.computeRpm(20, 6, ratios, rpmMax, 10);
     const rpmOob = ArcadeGripModel.computeRpm(20, 10, ratios, rpmMax, 10);
     expect(rpmOob).toBe(rpmNormal);
+  });
+
+  it("test_shortGearRatios_fallbackToRatio1", () => {
+    // When gearRatios has fewer entries than gear index, ?? 1 fallback triggers
+    const shortRatios = [3.5, 2.5]; // only 2 gears
+    const rpm = ArcadeGripModel.computeRpm(20, 3, shortRatios, rpmMax, 10);
+    // gear 3 → idx=2, shortRatios[2] is undefined → ?? 1
+    // RPM = 20 × 1 × (10000 / (10 × 3.5))
+    const expected = 20 * 1 * (rpmMax / (10 * shortRatios[0]));
+    expect(rpm).toBeCloseTo(expected, 0);
   });
 
   it("test_deterministic_identicalInputs", () => {

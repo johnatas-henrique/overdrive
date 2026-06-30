@@ -24,6 +24,7 @@ import type { ITrackSystem } from "@/physics-handling/i-track-system";
 import { Phase1Stub } from "@/physics-handling/phase1-stub";
 import type { PhysicsConfig } from "@/physics-handling/physics-config";
 import { PhysicsService } from "@/physics-handling/physics-service";
+import { SurfaceType } from "@/physics-handling/surface-handler";
 
 // ─── Mock Babylon.js WASM module ──────────────────────────────────────────
 // @babylonjs/havok loads a WebAssembly binary. We mock the default export
@@ -41,6 +42,7 @@ vi.mock("@babylonjs/havok", () => ({
 
 const TEST_CONFIG: PhysicsConfig = {
   baseGrip: 0.95,
+  gravity: 9.81,
   steerClampSpeed: 25,
   steerMinRatio: 0.4,
   liftOffMinSteering: 0.3,
@@ -205,6 +207,17 @@ function setInput(
   inputs.set(carId, { ...InputState.ZERO, ...overrides });
 }
 
+/** Create a PhysicsService with surface provider pre-configured (Story 004). */
+function createPhysicsWithProvider(
+  scene: any,
+  trackSystem?: any,
+  havok?: any
+): PhysicsService {
+  const physics = new PhysicsService(scene, trackSystem, havok);
+  physics.setSurfaceProvider(() => SurfaceType.Tarmac);
+  return physics;
+}
+
 // ─── AC-1: Pipeline Ordering ──────────────────────────────────────────────
 
 describe("AC-1 — Pipeline ordering", () => {
@@ -245,7 +258,7 @@ describe("AC-1 — Pipeline ordering", () => {
     const pipeline = new FixedUpdatePipeline();
     const scene = createMockScene();
     const havok = createMockHavokPlugin();
-    const physics = new PhysicsService(scene, undefined, havok);
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
     await physics.init(TEST_CONFIG);
 
     pipeline.register("input", vi.fn(), 1);
@@ -304,7 +317,7 @@ describe("AC-2 — Havok executeStep called exactly once per tick", () => {
   beforeEach(() => {
     scene = createMockScene();
     havok = createMockHavokPlugin();
-    physics = new PhysicsService(scene, undefined, havok);
+    physics = createPhysicsWithProvider(scene, undefined, havok);
   });
 
   it("calls executeStep exactly once per update() call", async () => {
@@ -385,6 +398,20 @@ describe("AC-2 — Havok executeStep called exactly once per tick", () => {
     physics.update(FIXED_DT);
     expect(havok.executeStep).not.toHaveBeenCalled();
   });
+
+  it("throws when surface provider is not set", async () => {
+    // Create PhysicsService WITHOUT surface provider
+    const rawPhysics = new PhysicsService(scene, undefined, havok);
+    await rawPhysics.init(TEST_CONFIG);
+
+    // Add a car so the update loop reaches the provider check
+    const body = createMockBody();
+    addCarState(rawPhysics, "car_01", body);
+
+    expect(() => rawPhysics.update(FIXED_DT)).toThrow(
+      "[PhysicsService] Surface provider not set"
+    );
+  });
 });
 
 // ─── AC-3: State Lifecycle [DEFERRED] ────────────────────────────────────
@@ -393,7 +420,7 @@ describe("AC-3 — State lifecycle [DEFERRED — entity.spawned/despawned]", () 
   it("car state map is defined and accepts add/remove operations", () => {
     const scene = createMockScene();
     const havok = createMockHavokPlugin();
-    const physics = new PhysicsService(scene, undefined, havok);
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
 
     // Verify internal state map exists (reflection via interface contract)
     expect(physics).toBeDefined();
@@ -404,7 +431,7 @@ describe("AC-3 — State lifecycle [DEFERRED — entity.spawned/despawned]", () 
   it("getTelemetry returns undefined for unknown carId", async () => {
     const scene = createMockScene();
     const havok = createMockHavokPlugin();
-    const physics = new PhysicsService(scene, undefined, havok);
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
     await physics.init(TEST_CONFIG);
 
     expect(physics.getTelemetry("unknown_car")).toBeUndefined();
@@ -413,7 +440,7 @@ describe("AC-3 — State lifecycle [DEFERRED — entity.spawned/despawned]", () 
   it("getSplinePosition returns 0 for unknown carId", async () => {
     const scene = createMockScene();
     const havok = createMockHavokPlugin();
-    const physics = new PhysicsService(scene, undefined, havok);
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
     await physics.init(TEST_CONFIG);
 
     expect(physics.getSplinePosition("unknown_car")).toBe(0);
@@ -422,7 +449,7 @@ describe("AC-3 — State lifecycle [DEFERRED — entity.spawned/despawned]", () 
   it("state is available after adding and gets spline position correctly", async () => {
     const scene = createMockScene();
     const havok = createMockHavokPlugin();
-    const physics = new PhysicsService(scene, undefined, havok);
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
     await physics.init(TEST_CONFIG);
 
     const body = createMockBody();
@@ -464,7 +491,7 @@ describe("AC-4 — Phase 3 velocity override", () => {
   beforeEach(async () => {
     scene = createMockScene();
     havok = createMockHavokPlugin();
-    physics = new PhysicsService(scene, undefined, havok);
+    physics = createPhysicsWithProvider(scene, undefined, havok);
     await physics.init(TEST_CONFIG);
   });
 
@@ -574,7 +601,7 @@ describe("AC-5 — Ground tracking (Y follows spline elevation)", () => {
     // = (10 - 5) / (1/60) = 300
 
     const havok = createMockHavokPlugin();
-    const physics = new PhysicsService(scene, trackSystem, havok);
+    const physics = createPhysicsWithProvider(scene, trackSystem, havok);
     await physics.init(TEST_CONFIG);
 
     const body = createMockBody();
@@ -599,7 +626,7 @@ describe("AC-5 — Ground tracking (Y follows spline elevation)", () => {
     vi.mocked(trackSystem.getElevation).mockReturnValue(5.01);
 
     const havok = createMockHavokPlugin();
-    const physics = new PhysicsService(scene, trackSystem, havok);
+    const physics = createPhysicsWithProvider(scene, trackSystem, havok);
     await physics.init(TEST_CONFIG);
 
     const body = createMockBody();
@@ -623,7 +650,7 @@ describe("AC-5 — Ground tracking (Y follows spline elevation)", () => {
     vi.mocked(trackSystem.getElevation).mockReturnValue(5);
 
     const havok = createMockHavokPlugin();
-    const physics = new PhysicsService(scene, trackSystem, havok);
+    const physics = createPhysicsWithProvider(scene, trackSystem, havok);
     await physics.init(TEST_CONFIG);
 
     const body = createMockBody();
@@ -648,7 +675,7 @@ describe("AC-5 — Ground tracking (Y follows spline elevation)", () => {
     vi.mocked(trackSystem.getTangent).mockReturnValue(new Vector3(1, 0, 0));
 
     const havok = createMockHavokPlugin();
-    const physics = new PhysicsService(scene, trackSystem, havok);
+    const physics = createPhysicsWithProvider(scene, trackSystem, havok);
     await physics.init(TEST_CONFIG);
 
     const body = createMockBody();
@@ -669,7 +696,7 @@ describe("AC-5 — Ground tracking (Y follows spline elevation)", () => {
   it("uses Vector3.Forward fallback when no track system provided", async () => {
     const scene = createMockScene();
     const havok = createMockHavokPlugin();
-    const physics = new PhysicsService(scene, undefined, havok);
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
     await physics.init(TEST_CONFIG);
 
     const body = createMockBody();
@@ -699,7 +726,7 @@ describe("AC-5 — Ground tracking (Y follows spline elevation)", () => {
     vi.mocked(trackSystem.getElevation).mockReturnValue(10);
 
     const havok = createMockHavokPlugin();
-    const physics = new PhysicsService(scene, trackSystem, havok);
+    const physics = createPhysicsWithProvider(scene, trackSystem, havok);
     await physics.init(TEST_CONFIG);
 
     const body = createMockBody();
@@ -756,12 +783,12 @@ describe("AC-7 — Determinism", () => {
   it("produces identical velocity after 10 ticks with 2 cars", async () => {
     const scene = createMockScene();
     const havok = createMockHavokPlugin();
-    const physics1 = new PhysicsService(scene, undefined, havok);
+    const physics1 = createPhysicsWithProvider(scene, undefined, havok);
     await physics1.init(TEST_CONFIG);
 
     const scene2 = createMockScene();
     const havok2 = createMockHavokPlugin();
-    const physics2 = new PhysicsService(scene2, undefined, havok2);
+    const physics2 = createPhysicsWithProvider(scene2, undefined, havok2);
     await physics2.init(TEST_CONFIG);
 
     // Create identical 2-car setups
@@ -797,12 +824,12 @@ describe("AC-7 — Determinism", () => {
   it("produces identical telemetry after two ticks", async () => {
     const scene = createMockScene();
     const havok = createMockHavokPlugin();
-    const physics1 = new PhysicsService(scene, undefined, havok);
+    const physics1 = createPhysicsWithProvider(scene, undefined, havok);
     await physics1.init(TEST_CONFIG);
 
     const scene2 = createMockScene();
     const havok2 = createMockHavokPlugin();
-    const physics2 = new PhysicsService(scene2, undefined, havok2);
+    const physics2 = createPhysicsWithProvider(scene2, undefined, havok2);
     await physics2.init(TEST_CONFIG);
 
     const body1 = createMockBody();
@@ -876,7 +903,7 @@ describe("Control methods", () => {
   beforeEach(async () => {
     const scene = createMockScene();
     havok = createMockHavokPlugin();
-    physics = new PhysicsService(scene, undefined, havok);
+    physics = createPhysicsWithProvider(scene, undefined, havok);
     await physics.init(TEST_CONFIG);
 
     const body = createMockBody();
@@ -993,6 +1020,35 @@ describe("Control methods", () => {
       expect(havok.executeStep).not.toHaveBeenCalled();
     });
   });
+
+  describe("setSurfaceProvider()", () => {
+    it("clears stale surface state when provider is set to null", () => {
+      // Trigger lazy surface state creation via update
+      physics.update(FIXED_DT);
+      const surfaceStates = (physics as any)._surfaceStates as Map<string, any>;
+      expect(surfaceStates.size).toBeGreaterThan(0);
+
+      // Set provider to null — should clear surface states
+      physics.setSurfaceProvider(null);
+      expect(surfaceStates.size).toBe(0);
+    });
+  });
+
+  describe("telemetry cleanup", () => {
+    it("removes telemetry for cars that were removed between ticks", async () => {
+      // First tick — creates telemetry for car_01
+      physics.update(FIXED_DT);
+      expect(physics.getTelemetry("car_01")).toBeDefined();
+
+      // Remove car_01 from internal state
+      const carStates = (physics as any)._carStates as Map<string, any>;
+      carStates.delete("car_01");
+
+      // Second tick — telemetry for car_01 should be cleaned up
+      physics.update(FIXED_DT);
+      expect(physics.getTelemetry("car_01")).toBeUndefined();
+    });
+  });
 });
 
 // ─── Lifecycle ──────────────────────────────────────────────────────────
@@ -1001,7 +1057,7 @@ describe("Lifecycle", () => {
   it("init can be called multiple times (idempotent)", async () => {
     const scene = createMockScene();
     const havok = createMockHavokPlugin();
-    const physics = new PhysicsService(scene, undefined, havok);
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
 
     await physics.init(TEST_CONFIG);
     await physics.init(TEST_CONFIG);
@@ -1013,7 +1069,7 @@ describe("Lifecycle", () => {
   it("init dynamically imports Havok when no plugin injected via constructor", async () => {
     const scene = createMockScene();
     // No HavokPlugin injected — forces dynamic import path
-    const physics = new PhysicsService(scene, undefined);
+    const physics = createPhysicsWithProvider(scene, undefined);
 
     await physics.init(TEST_CONFIG);
 
@@ -1033,7 +1089,7 @@ describe("Edge Cases", () => {
     vi.mocked(trackSystem.getElevation).mockReturnValue(5.01);
 
     const havok = createMockHavokPlugin();
-    const physics = new PhysicsService(scene, trackSystem, havok);
+    const physics = createPhysicsWithProvider(scene, trackSystem, havok);
     await physics.init(TEST_CONFIG);
 
     const body = createMockBody();
@@ -1049,7 +1105,7 @@ describe("Edge Cases", () => {
   it("prevents duplicate body in activeBodies array", async () => {
     const scene = createMockScene();
     const havok = createMockHavokPlugin();
-    const physics = new PhysicsService(scene, undefined, havok);
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
     await physics.init(TEST_CONFIG);
 
     const body = createMockBody();
