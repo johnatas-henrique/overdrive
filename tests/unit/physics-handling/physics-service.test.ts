@@ -18,10 +18,10 @@ import { Vector3 } from "@babylonjs/core/Maths/math";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FixedUpdatePipeline } from "@/foundation/determinism/fixed-update-pipeline";
 import { InputState } from "@/foundation/determinism/types";
+import { ArcadeGripModel } from "@/physics-handling/arcade-grip-model";
 import type { CarPhysicsState } from "@/physics-handling/car-physics-state";
 import type { IPhysics } from "@/physics-handling/i-physics";
 import type { ITrackSystem } from "@/physics-handling/i-track-system";
-import { Phase1Stub } from "@/physics-handling/phase1-stub";
 import type { PhysicsConfig } from "@/physics-handling/physics-config";
 import { PhysicsService } from "@/physics-handling/physics-service";
 import { SurfaceType } from "@/physics-handling/surface-handler";
@@ -861,9 +861,9 @@ describe("AC-7 — Determinism", () => {
       targetSpeed: 0,
       targetYawRate: 0,
       splinePosition: 0,
-      speedKmh: 0,
+      speedKmh: 50,
       rpm: 0,
-      gear: 0,
+      gear: 1,
       lateralG: 0,
       accelG: 0,
       tireSqueal: 0,
@@ -884,10 +884,10 @@ describe("AC-7 — Determinism", () => {
     // Clone for second run
     const state2 = { ...state1 };
 
-    const stub = new Phase1Stub();
-    const input = { steer: 0, throttle: 0, brake: 1, gearDelta: 0 } as any;
-    stub.compute(state1, input, FIXED_DT);
-    stub.compute(state2, input, FIXED_DT);
+    const model = new ArcadeGripModel();
+    const input = { steer: 0, throttle: 0.5, brake: 0, gearDelta: 0 } as any;
+    model.compute(state1, input, FIXED_DT, TEST_CONFIG);
+    model.compute(state2, input, FIXED_DT, TEST_CONFIG);
 
     expect(state1.targetSpeed).toBe(state2.targetSpeed);
     expect(state1.targetYawRate).toBe(state2.targetYawRate);
