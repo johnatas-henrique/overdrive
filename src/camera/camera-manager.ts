@@ -271,32 +271,35 @@ export class CameraManager implements ICameraManager {
    * @param mode — Target CameraMode to activate
    */
   setActiveMode(mode: CameraMode): void {
-    this._currentMode = mode;
-
     switch (mode) {
       case CameraMode.Inactive:
+        this._currentMode = mode;
         this._scene.activeCamera = null;
         break;
       case CameraMode.Grid: {
         defined(this._gridCam, "CameraManager: gridCam not initialised");
         this._positionGridCamera();
         this._scene.activeCamera = this._gridCam;
+        this._currentMode = mode;
         break;
       }
       case CameraMode.Cockpit: {
         defined(this._cockpitCam, "CameraManager: cockpitCam not initialised");
         this._scene.activeCamera = this._cockpitCam;
+        this._currentMode = mode;
         break;
       }
       case CameraMode.Chase: {
         defined(this._chaseCam, "CameraManager: chaseCam not initialised");
         this._wireChaseCameraTarget();
         this._scene.activeCamera = this._chaseCam;
+        this._currentMode = mode;
         break;
       }
       case CameraMode.Drone: {
         defined(this._droneCam, "CameraManager: droneCam not initialised");
         this._scene.activeCamera = this._droneCam;
+        this._currentMode = mode;
         break;
       }
       // default: invalid mode — silently ignore (F6)
@@ -307,7 +310,7 @@ export class CameraManager implements ICameraManager {
    * Toggle between Cockpit and Chase modes.
    *
    * If currently in Cockpit, switches to Chase and vice versa.
-   * If neither is active, defaults to Cockpit.
+   * If neither is active, does nothing (no-op).
    *
    * @see Story 005 — Full toggle implementation with cameraToggle pulse
    * @see TR-CAM-002 — Instant toggle (no lerp)
@@ -322,11 +325,7 @@ export class CameraManager implements ICameraManager {
         this.setActiveMode(CameraMode.Cockpit);
         this._lastToggleChoice = CameraMode.Cockpit;
         break;
-      default:
-        // Neither active — default to Cockpit
-        this.setActiveMode(CameraMode.Cockpit);
-        this._lastToggleChoice = CameraMode.Cockpit;
-        break;
+      // default: other modes — no-op (Story 005)
     }
   }
 

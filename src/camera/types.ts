@@ -78,7 +78,7 @@ export interface ICameraManager {
   /**
    * Toggle between Cockpit and Chase camera modes.
    * Called on cameraToggle pulse from InputState (ADR-0006).
-   * If neither Cockpit nor Chase is active, activates Cockpit.
+   * If neither Cockpit nor Chase is active, does nothing (no-op).
    *
    * @see TR-CAM-002 — Instant toggle
    * @see Story 005 — Cockpit/Chase toggle
