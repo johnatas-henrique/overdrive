@@ -313,14 +313,21 @@ export class CameraManager implements ICameraManager {
    * @see TR-CAM-002 — Instant toggle (no lerp)
    */
   toggleCockpitChase(): void {
-    if (this._currentMode === CameraMode.Cockpit) {
-      this.setActiveMode(CameraMode.Chase);
-      this._lastToggleChoice = CameraMode.Chase;
-    } else if (this._currentMode === CameraMode.Chase) {
-      this.setActiveMode(CameraMode.Cockpit);
-      this._lastToggleChoice = CameraMode.Cockpit;
+    switch (this._currentMode) {
+      case CameraMode.Cockpit: // Cockpit -> Chase
+        this.setActiveMode(CameraMode.Chase);
+        this._lastToggleChoice = CameraMode.Chase;
+        break;
+      case CameraMode.Chase: // Chase -> Cockpit
+        this.setActiveMode(CameraMode.Cockpit);
+        this._lastToggleChoice = CameraMode.Cockpit;
+        break;
+      default:
+        // Neither active — default to Cockpit
+        this.setActiveMode(CameraMode.Cockpit);
+        this._lastToggleChoice = CameraMode.Cockpit;
+        break;
     }
-    // Neither Cockpit nor Chase (e.g. Grid, Drone, Inactive) — no-op (AC-16)
   }
 
   /**
