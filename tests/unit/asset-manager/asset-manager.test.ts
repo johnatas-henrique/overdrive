@@ -293,7 +293,7 @@ describe("AssetManager", () => {
 
       const result = await assetManager.load("spa");
       expect(LoadAssetContainerAsync).toHaveBeenCalledTimes(1);
-      expect(container.addAllToScene).toHaveBeenCalledTimes(2);
+      expect(container.addAllToScene).toHaveBeenCalledTimes(1); // already in-scene, skipped
       expect(result).toBe(container);
     });
 
@@ -557,8 +557,8 @@ describe("AssetManager", () => {
 
       const errorCall = emitCalls.find(([e]) => e === "asset.error");
       expect(errorCall).toBeDefined();
-      const payload = errorCall?.[1] as { assetId: string; error: Error };
-      expect(payload.assetId).toBe("unknown");
+      const payload = errorCall?.[1] as { id: string; error: Error };
+      expect(payload.id).toBe("unknown");
       expect(payload.error).toBeInstanceOf(AssetError);
     });
 
@@ -583,8 +583,8 @@ describe("AssetManager", () => {
 
       const errorCall = emitCalls.find(([e]) => e === "asset.error");
       expect(errorCall).toBeDefined();
-      const payload = errorCall?.[1] as { assetId: string; error: Error };
-      expect(payload.assetId).toBe("spa");
+      const payload = errorCall?.[1] as { id: string; error: Error };
+      expect(payload.id).toBe("spa");
       expect(payload.error).toBeInstanceOf(Error);
       expect(payload.error.message).toBe("Network failure");
     });
@@ -602,8 +602,8 @@ describe("AssetManager", () => {
       const emitCalls = vi.mocked(bus.emit).mock.calls;
       const errorCall = emitCalls.find(([e]) => e === "asset.error");
       expect(errorCall).toBeDefined();
-      const payload = errorCall?.[1] as { assetId: string; error: Error };
-      expect(payload.assetId).toBe("spa");
+      const payload = errorCall?.[1] as { id: string; error: Error };
+      expect(payload.id).toBe("spa");
       expect(payload.error).toBeInstanceOf(Error);
       expect(payload.error.message).toBe("string error");
     });

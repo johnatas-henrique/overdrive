@@ -207,10 +207,10 @@ describe("EventMap type correctness", () => {
 
   it("should accept valid payload for asset.error", () => {
     const payload: EventMap["asset.error"] = {
-      assetId: "car_ferrari_01",
+      id: "car_ferrari_01",
       error: new Error("File not found"),
     };
-    expect(payload.assetId).toBe("car_ferrari_01");
+    expect(payload.id).toBe("car_ferrari_01");
     expect(payload.error).toBeInstanceOf(Error);
     expect(payload.error.message).toBe("File not found");
   });

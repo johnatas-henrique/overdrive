@@ -313,7 +313,7 @@ describe("registerManifest + load lifecycle", () => {
     // Second load — cache hit, no I/O
     const result = await am.load("spa");
     expect(LoadAssetContainerAsync).toHaveBeenCalledTimes(1); // Still 1
-    expect(fakeContainer.addAllToScene).toHaveBeenCalledTimes(2); // re-added
+    expect(fakeContainer.addAllToScene).toHaveBeenCalledTimes(1); // already in-scene, skipped
     expect(result).toBe(fakeContainer);
   });
 
@@ -478,7 +478,7 @@ describe("Event emission lifecycle", () => {
 
     // Error event has the right shape
     expect(errors).toHaveLength(1);
-    expect(errors[0].assetId).toBe("spa");
+    expect(errors[0].id).toBe("spa");
     expect(errors[0].error.message).toBe("Connection lost");
 
     // start was emitted, but NOT progress or complete
@@ -504,7 +504,7 @@ describe("Event emission lifecycle", () => {
     await expect(am.load("nonexistent")).rejects.toThrow(AssetError);
 
     expect(errors).toHaveLength(1);
-    expect(errors[0].assetId).toBe("nonexistent");
+    expect(errors[0].id).toBe("nonexistent");
 
     expect(events).toEqual(["start"]);
   });

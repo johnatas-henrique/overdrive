@@ -190,7 +190,7 @@ describe("preload concurrency", () => {
 
     // asset.error should have been emitted for the failing asset
     expect(errorEvents).toHaveLength(1);
-    expect(errorEvents[0].assetId).toBe("b");
+    expect(errorEvents[0].id).toBe("b");
     expect(errorEvents[0].error.message).toBe("Network failure");
 
     // allComplete should NOT be emitted on partial failure
@@ -432,7 +432,7 @@ describe("preload concurrency", () => {
 
     // Both failures should emit asset.error
     expect(errorEvents).toHaveLength(2);
-    const errorIds = errorEvents.map((e) => e.assetId).sort();
+    const errorIds = errorEvents.map((e) => e.id).sort();
     expect(errorIds).toEqual(["a", "b"]);
 
     // Successful asset should still be cached
