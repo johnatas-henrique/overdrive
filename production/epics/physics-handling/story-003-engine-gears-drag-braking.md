@@ -1,7 +1,8 @@
 # Story 003: Engine, Gears, Drag, Braking
 
 > **Epic**: Physics / Handling
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-30
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -368,3 +369,15 @@ _Written by qa-lead at story creation:_
 
 - Depends on: Story 001 (CarPhysicsState, PhysicsConfig), Story 002 (targetYawRate — yaw behavior needs speed)
 - Unlocks: Stories 004, 005
+
+## Completion Notes
+
+**Completed**: 2026-06-30
+**Criteria**: 9/9 passing
+**Deviations**:
+- accelG computed in _computeTelemetry (was declared but never written)
+- gear1RedlineSpeed moved to PhysicsConfig (was hardcoded, C-F3 violation)
+- computeRpm returns idle RPM for forward gears at zero speed (was returning 0, blocking acceleration from standstill)
+**Test Evidence**: `tests/unit/physics-handling/engine-gears-drag-braking.test.ts` (91 tests)
+**Coverage**: 100% stmts, 98.03% branches, 100% funcs, 100% lines
+**Code Review**: Complete (QL-TEST-COVERAGE: ADEQUATE, LP-CODE-REVIEW: CONCERNS → fixed)

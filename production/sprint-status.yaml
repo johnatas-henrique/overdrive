@@ -350,11 +350,11 @@ stories:
     name: "Story 003: Engine/Gears/Drag/Braking"
     file: "production/epics/physics-handling/story-003-engine-gears-drag-braking.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   - id: "2-34"
     name: "Story 004: Surface Handling (Offtrack/Kerbs)"
