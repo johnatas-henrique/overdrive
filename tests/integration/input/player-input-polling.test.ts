@@ -453,6 +453,7 @@ describe("AC-6: pulse edge detection", () => {
 
   it("test_cancel_edge_detected", () => {
     const input = createPlayerInput();
+    input.setGsmCurrentState("Menu");
     pressKey(KEY_BACKSPACE);
     const [state1, state2] = tickTwice(input);
     expect(state1.cancel).toBe(true);
@@ -461,6 +462,7 @@ describe("AC-6: pulse edge detection", () => {
 
   it("test_nav_up_edge_detected", () => {
     const input = createPlayerInput();
+    input.setGsmCurrentState("Menu");
     pressKey(KEY_ARROW_UP);
     const [state1, state2] = tickTwice(input);
     expect(state1.navUp).toBe(true);
@@ -469,6 +471,7 @@ describe("AC-6: pulse edge detection", () => {
 
   it("test_nav_down_edge_detected", () => {
     const input = createPlayerInput();
+    input.setGsmCurrentState("Menu");
     pressKey(KEY_ARROW_DOWN);
     const [state1, state2] = tickTwice(input);
     expect(state1.navDown).toBe(true);
@@ -696,6 +699,7 @@ describe("Gamepad digital buttons", () => {
 
   it("test_gamepad_b_produces_cancel_pulse", () => {
     const input = createPlayerInput();
+    input.setGsmCurrentState("Menu");
     const bgp = connectGamepad();
     bgp.buttons[GP_B].pressed = true;
     const [state1, state2] = tickTwice(input);
@@ -732,6 +736,7 @@ describe("Gamepad digital buttons", () => {
 
   it("test_gamepad_dpad_up_produces_nav_up_pulse", () => {
     const input = createPlayerInput();
+    input.setGsmCurrentState("Menu");
     const bgp = connectGamepad();
     bgp.buttons[GP_DPAD_UP].pressed = true;
     const [state1, state2] = tickTwice(input);
@@ -741,6 +746,7 @@ describe("Gamepad digital buttons", () => {
 
   it("test_gamepad_dpad_down_produces_nav_down_pulse", () => {
     const input = createPlayerInput();
+    input.setGsmCurrentState("Menu");
     const bgp = connectGamepad();
     bgp.buttons[GP_DPAD_DOWN].pressed = true;
     const [state1, state2] = tickTwice(input);
