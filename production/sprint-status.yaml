@@ -317,9 +317,10 @@ stories:
     name: "Story 005b: GSM Orchestration"
     file: "production/epics/asset-manager/story-005b-gsm-orchestration.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1
+    completed: "2026-06-29"
     blocker: ""
     completed: ""
 
