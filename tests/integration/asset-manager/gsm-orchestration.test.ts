@@ -277,4 +277,18 @@ describe("AssetManager GSM orchestration", () => {
 
     await new Promise((r) => setTimeout(r, 10));
   });
+
+  // ── setTrackId input validation ──────────────────────────────
+
+  it("should throw AssetError when setTrackId is called with empty string", () => {
+    const fx = createFixture();
+    createdFixtures.push(fx);
+
+    expect(() => fx.am.setTrackId("")).toThrow(
+      "Track ID must be a non-empty string"
+    );
+    expect(() => fx.am.setTrackId("  ")).toThrow(
+      "Track ID must be a non-empty string"
+    );
+  });
 });

@@ -465,4 +465,31 @@ describe("preload concurrency", () => {
 
     teardownFixture({ engine, am, menuScene, raceScene });
   });
+
+  // ── Pending-load deduplication ──────────────────────────────
+
+  it("should deduplicate concurrent loads for the same ID", async () => {
+    const { engine, am, menuScene, raceScene } = createFixture();
+
+    am.registerManifest("a", makeManifest("a"));
+
+    let callCount = 0;
+    vi.mocked(LoadAssetContainerAsync).mockImplementation(async () => {
+      callCount++;
+      // Simulate slow load
+      await new Promise((r) => setTimeout(r, 50));
+      return fakeContainer();
+    });
+
+    // Fire two loads for the same ID concurrently
+    const p1 = am.load("a");
+    const p2 = am.load("a");
+
+    await Promise.all([p1, p2]);
+
+    // Only one actual load should have been made
+    expect(callCount).toBe(1);
+
+    teardownFixture({ engine, am, menuScene, raceScene });
+  });
 });
