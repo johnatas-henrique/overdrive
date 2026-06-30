@@ -121,6 +121,17 @@ export class CameraManager implements ICameraManager {
   private _occlusionActive = false;
 
   /**
+   * Player car speed in km/h, updated each tick by the entity system.
+   *
+   * Used by `_updateFOV()` to compute the speed-dependent FOV shift.
+   * Defaults to 0 (rest) and is updated via `setSpeedData()`.
+   *
+   * @see TR-CAM-003 — Speed-dependent FOV shift
+   * @see Story 006
+   */
+  private _speedKmh = 0;
+
+  /**
    * Shake transform node — sits between driver_eye and the cockpit camera.
    *
    * Created by `attachCockpitToCar()`. The cockpit camera is parented to
@@ -332,12 +343,15 @@ export class CameraManager implements ICameraManager {
   /**
    * Store current player speed for FOV shift calculation.
    *
-   * Stub for Story 006 — value is accepted but not yet consumed.
+   * Called each tick by the entity system with the player car's current
+   * speed. The stored value is consumed by `_updateFOV()` on every
+   * `update()` call to apply the speed-dependent FOV shift (Story 006).
    *
-   * @param _speedKmh — Player car speed in km/h
+   * @param speedKmh — Player car speed in km/h
+   * @see TR-CAM-003 — Speed-dependent FOV shift
    */
-  setSpeedData(_speedKmh: number): void {
-    // Story 006: FOV shift calculation
+  setSpeedData(speedKmh: number): void {
+    this._speedKmh = speedKmh;
   }
 
   /**
@@ -357,9 +371,10 @@ export class CameraManager implements ICameraManager {
    *
    * Chase occlusion raycast (Story 004) runs every tick when the active
    * mode is Chase and a player car mesh reference is available.
-   * Stories 006-009 incrementally add more update logic.
+   * Speed-dependent FOV shift (Story 006) runs every tick for Cockpit
+   * and Chase modes. Stories 007-009 incrementally add more update logic.
    *
-   * @param _dt — Delta time in seconds (fixed 1/60s), reserved for Stories 006-009
+   * @param _dt — Delta time in seconds (fixed 1/60s), reserved for Stories 007-009
    */
   update(_dt: number): void {
     // Chase camera occlusion raycast (Story 004 — AC-11a, AC-11b)
@@ -371,7 +386,8 @@ export class CameraManager implements ICameraManager {
       this._runOcclusionRaycast();
     }
 
-    // Stories 006-009: FOV shift, shake decay, head bob, lean
+    // Speed-dependent FOV shift (Story 006 — AC-3a, AC-3b, AC-3c)
+    this._updateFOV();
   }
 
   /**
@@ -425,6 +441,52 @@ export class CameraManager implements ICameraManager {
       // Clear — release occlusion. FollowCamera.lockedTarget is still set,
       // so the native spring snaps the camera back to configured distance.
       this._occlusionActive = false;
+    }
+  }
+
+  /**
+   * Per-tick speed-dependent FOV shift (Story 006).
+   *
+   * Computes `baseFOV + speedFactor × speed_kmh`, clamped to `[FOV_min, FOV_max]`
+   * for the active camera mode, and applies it directly to `scene.activeCamera.fov`
+   * in radians with zero smoothing/lerp delay (TR-CAM-003, C20).
+   *
+   * Only Cockpit and Chase modes have speed-dependent FOV. Grid and Drone use a
+   * fixed FOV and are left untouched (the active camera already has its configured
+   * FOV from camera creation / `setActiveMode()`).
+   *
+   * @see TR-CAM-003 — Speed-dependent FOV: baseFOV + speedFactor × speed_kmh
+   * @see C20 — FOV shift formula with clamping
+   * @see ADR-0007 — Linear FOV formula, no easing/smoothing
+   */
+  private _updateFOV(): void {
+    const mode = this._currentMode;
+    let baseFOV: number;
+    let fovMin: number;
+    let fovMax: number;
+
+    switch (mode) {
+      case CameraMode.Cockpit:
+        baseFOV = this._config.cockpit.fov;
+        fovMin = this._config.cockpit.fovMin;
+        fovMax = this._config.cockpit.fovMax;
+        break;
+      case CameraMode.Chase:
+        baseFOV = this._config.chase.fov;
+        fovMin = this._config.chase.fovMin;
+        fovMax = this._config.chase.fovMax;
+        break;
+      default:
+        // Grid and Drone use fixed FOV — no speed-dependent shift
+        return;
+    }
+
+    const fovDeg = baseFOV + this._config.speedFactor * this._speedKmh;
+    const fovClamped = Math.max(fovMin, Math.min(fovMax, fovDeg));
+
+    const activeCam = this._scene.activeCamera;
+    if (activeCam) {
+      activeCam.fov = fovClamped * (Math.PI / 180);
     }
   }
 
