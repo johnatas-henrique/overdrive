@@ -55,6 +55,81 @@ export interface LiftOffConfig {
   readonly brakeMax: number;
 }
 
+// ─── Engine Constants ───────────────────────────────────────────────────────
+
+/** Number of forward gears (1–6). */
+export const GEAR_COUNT = 6;
+
+/**
+ * Acceleration level to torque curve multiplier mapping.
+ * accelLevel 1 → 1.0, accelLevel 5 → 1.3
+ * @see ADR-0008 — Engine Power section
+ */
+export const ACCEL_MAP: readonly number[] = [1.0, 1.08, 1.16, 1.22, 1.3];
+
+// ─── Engine Sub-Interfaces ──────────────────────────────────────────────────
+
+/**
+ * Per-tick analog inputs consumed by the engine model.
+ */
+export interface EngineInputs {
+  /** Throttle input: 0 (none) to 1 (full). */
+  readonly throttle: number;
+  /** Brake input: 0 (none) to 1 (full). */
+  readonly brake: number;
+  /** Gear change delta: -1 (downshift), 0 (no change), +1 (upshift). */
+  readonly gearDelta: -1 | 0 | 1;
+}
+
+/**
+ * Mutable engine state snapshot for computeTargetSpeed.
+ * Fields are mutated during gear/RPM computations, then read back.
+ */
+export interface EngineStateSnapshot {
+  /** Current forward speed in m/s. */
+  speedMs: number;
+  /** Current gear (0 = neutral, 1–6 = forward, -1 = reverse). */
+  gear: number;
+  /** Current engine RPM. */
+  rpm: number;
+  /** Fuel multiplier (0..1) — scales power linearly. */
+  fuelMult: number;
+  /** Track gradient at car position (sin of slope angle, positive uphill). */
+  gradient: number;
+  /** Car mass in kg. */
+  mass: number;
+}
+
+/**
+ * Configuration sub-interface for the engine model.
+ */
+export interface EngineConfigSub {
+  /** 6 forward gear ratios (G1 through G6). */
+  readonly gearRatios: number[];
+  /** Maximum engine RPM. */
+  readonly rpmMax: number;
+  /** Acceleration level (1–5) for torque curve multiplier. */
+  readonly accelLevel: number;
+  /** Maximum power output multiplier. */
+  readonly powerCeiling: number;
+  /** Aerodynamic drag coefficient. */
+  readonly dragCoeff: number;
+  /** Maximum braking force. */
+  readonly maxBrakeForce: number;
+  /** Speed below which the car is considered stopped (m/s). */
+  readonly stopEpsilon: number;
+  /** RPM threshold for automatic upshift (fraction of rpmMax). */
+  readonly autoShiftRpmThreshold: number;
+  /** RPM ratio for downshift threshold (fraction of upshift threshold). */
+  readonly downshiftRpmRatio: number;
+  /** Maximum reverse speed (m/s). */
+  readonly reverseMaxSpeed: number;
+  /** Speed (m/s) at which 1st gear reaches rpmMax — determines RPM scaling. */
+  readonly gear1RedlineSpeed: number;
+  /** Car mass in kg. */
+  readonly mass: number;
+}
+
 // ─── ArcadeGripModel ────────────────────────────────────────────────────────
 
 /**
@@ -316,6 +391,341 @@ export class ArcadeGripModel {
     // This function documents the behavior; no additional enforcement needed.
   }
 
+  // ─── Engine Model (Story 003) ─────────────────────────────────────────────
+
+  /**
+   * Compute engine RPM from forward speed and current gear.
+   *
+   * Formula: RPM = (speedMs / gearRatio(gear)) × (rpmMax / refSpeed), where
+   * refSpeed is the speed at which rpmMax is reached in the lowest gear.
+   * For neutral (gear 0) or reverse (gear -1), returns idle RPM.
+   * For gear > GEAR_COUNT, uses the top gear ratio.
+   *
+   * @param speedMs - Current forward speed in m/s
+   * @param gear - Current gear (0 = neutral, 1–6 = forward)
+   * @param gearRatios - 6-element array of gear ratios (G1 = shortest)
+   * @param rpmMax - Maximum engine RPM
+   * @returns Computed RPM (clamped to 0..rpmMax × 1.05)
+   *
+   * @see TR-PHYSICS-010 — Engine model specification
+   */
+  static computeRpm(
+    speedMs: number,
+    gear: number,
+    gearRatios: number[],
+    rpmMax: number,
+    gear1RedlineSpeed: number
+  ): number {
+    // Neutral or reverse: return 40% of rpmMax (ticking idle)
+    if (gear < 1) {
+      return rpmMax * 0.4;
+    }
+
+    // Forward gear at zero speed: return idle RPM (car can accelerate from standstill)
+    if (speedMs === 0) {
+      return rpmMax * 0.4;
+    }
+
+    const idx = Math.min(gear, GEAR_COUNT) - 1;
+    const ratio = gearRatios[idx] ?? 1;
+
+    // RPM = speed × gearRatio × (rpmMax / (gear1RedlineSpeed × gear1Ratio))
+    // For a typical car: redline in 1st gear at ~10 m/s.
+    const RPM_PER_UNIT = gearRatios[0] * gear1RedlineSpeed;
+    const rpm = (speedMs * ratio * rpmMax) / RPM_PER_UNIT;
+
+    // Clamp with 5% over-rev buffer
+    return Math.max(0, Math.min(rpm, rpmMax * 1.05));
+  }
+
+  /**
+   * Compute engine torque from RPM and acceleration level.
+   *
+   * Torque follows a linear ramp from 0 at RPM=0 to
+   * rpmMax × ACCEL_MAP[accelLevel-1] at RPM=rpmMax.
+   *
+   * @param rpm - Current engine RPM
+   * @param accelLevel - Acceleration level (1–5)
+   * @param rpmMax - Maximum engine RPM
+   * @returns Torque value (arbitrary units, scaled by powerCeiling later)
+   */
+  static computeTorque(
+    rpm: number,
+    accelLevel: number,
+    rpmMax: number
+  ): number {
+    const clampedLevel = Math.max(1, Math.min(5, Math.round(accelLevel)));
+    const multiplier = ACCEL_MAP[clampedLevel - 1];
+    const t = rpm / Math.max(rpmMax, 1);
+    return t * multiplier;
+  }
+
+  /**
+   * Aerodynamic drag force opposing forward velocity.
+   *
+   * Formula: dragForce = -dragCoeff × speedMs² × sign(speedMs)
+   *
+   * Drag always opposes motion (direction of velocity).
+   *
+   * @param speedMs - Current forward speed in m/s
+   * @param dragCoeff - Aerodynamic drag coefficient
+   * @returns Drag force in the direction opposite to velocity (always ≤ 0)
+   */
+  static computeDragForce(speedMs: number, dragCoeff: number): number {
+    if (speedMs === 0) {
+      return 0;
+    }
+    return -dragCoeff * speedMs * speedMs * Math.sign(speedMs);
+  }
+
+  /**
+   * Braking force opposing forward velocity.
+   *
+   * Formula: brakeForce = brakeInput × maxBrakeForce
+   *
+   * @param brakeInput - Brake input (0 to 1)
+   * @param maxBrakeForce - Maximum braking force
+   * @returns Braking force magnitude (always ≥ 0)
+   */
+  static computeBrakeForce(brakeInput: number, maxBrakeForce: number): number {
+    return brakeInput * maxBrakeForce;
+  }
+
+  /**
+   * Gravity component along a slope (gradient force).
+   *
+   * Formula: gradientForce = -9.81 × mass × gradient
+   *   where gradient = sin(slopeAngle), positive uphill
+   *
+   * A positive gradient (uphill) produces a negative force (slows down).
+   * A negative gradient (downhill) produces a positive force (speeds up).
+   *
+   * @param gradient - Track gradient (sin of slope angle, positive uphill)
+   * @param mass - Car mass in kg
+   * @returns Gradient force in Newtons (positive = acceleration)
+   */
+  static computeGradientForce(gradient: number, mass: number): number {
+    if (gradient === 0) {
+      return 0;
+    }
+    return -9.81 * mass * gradient;
+  }
+
+  /**
+   * Manual gear shift with reverse gate protection.
+   *
+   * Rules:
+   * - gearDelta +1 upshifts (gear +1, capped at GEAR_COUNT)
+   * - gearDelta -1 downshifts (gear -1, capped at 1 for forward gears)
+   * - From reverse (-1): downshift from reverse needs near-zero speed or brake
+   * - From neutral (0): any input shifts to 1 (forward) or -1 (reverse)
+   *
+   * @param currentGear - Current gear (-1 = reverse, 0 = neutral, 1–6 = forward)
+   * @param delta - Gear change delta (-1, 0, or +1)
+   * @param brake - Current brake input (0..1)
+   * @param speedMs - Current speed in m/s
+   * @param config - Engine configuration (stopEpsilon, gearRatios)
+   * @returns New gear
+   */
+  static applyGearDelta(
+    currentGear: number,
+    delta: -1 | 0 | 1,
+    brake: number,
+    speedMs: number,
+    config: EngineConfigSub
+  ): number {
+    if (delta === 0) {
+      return currentGear;
+    }
+
+    // Reverse gate: to leave reverse, must be near stop or braking
+    if (currentGear === -1) {
+      return delta > 0 && (speedMs < config.stopEpsilon || brake > 0) ? 0 : -1;
+    }
+
+    // Neutral handling: delta +1 → first gear, delta -1 → reverse
+    if (currentGear === 0) {
+      return delta > 0 ? 1 : -1;
+    }
+
+    // Forward gears: apply delta with clamping
+    const newGear = currentGear + delta;
+    return Math.max(1, Math.min(GEAR_COUNT, newGear));
+  }
+
+  /**
+   * Automatic upshift/downshift based on RPM thresholds.
+   *
+   * Upshifts when RPM > rpmMax × threshold
+   * Downshifts when RPM < rpmMax × threshold × 0.5 (half-threshold hysteresis)
+   *
+   * @param rpm - Current engine RPM
+   * @param currentGear - Current gear (should be 1–6 for auto-shift)
+   * @param rpmMax - Maximum engine RPM
+   * @param threshold - Upshift threshold fraction of rpmMax (e.g. 0.8)
+   * @returns Gear after auto-shift
+   */
+  static autoShift(
+    rpm: number,
+    currentGear: number,
+    rpmMax: number,
+    threshold: number,
+    downshiftRatio: number = 0.5
+  ): number {
+    // Auto-shift only applies to forward gears
+    if (currentGear < 1 || currentGear >= GEAR_COUNT) {
+      return currentGear;
+    }
+
+    const upshiftThreshold = rpmMax * threshold;
+    const downshiftThreshold = upshiftThreshold * downshiftRatio;
+
+    if (rpm > upshiftThreshold) {
+      return currentGear + 1;
+    }
+    if (rpm < downshiftThreshold && currentGear > 1) {
+      return currentGear - 1;
+    }
+    return currentGear;
+  }
+
+  /**
+   * Compute coast deceleration (throttle = 0, brake = 0) from drag.
+   *
+   * Formula: coastDecel = (dragCoeff × speedMs²) / mass
+   *
+   * Used to model natural deceleration when no throttle or brake is applied.
+   * Only represents drag — does not include rolling resistance or drivetrain loss.
+   *
+   * @param speedMs - Current forward speed in m/s
+   * @param dragCoeff - Aerodynamic drag coefficient
+   * @param mass - Car mass in kg
+   * @returns Coast deceleration magnitude in m/s² (always ≥ 0)
+   */
+  static computeCoastDeceleration(
+    speedMs: number,
+    dragCoeff: number,
+    mass: number
+  ): number {
+    return (dragCoeff * speedMs * speedMs) / Math.max(mass, 1);
+  }
+
+  /**
+   * Full engine model: computes target speed from power, drag, brake, and gradient.
+   *
+   * Orchestrates the following steps:
+   * 1. Apply manual gear delta (gearDelta) with reverse gate protection
+   * 2. Compute RPM from speed and gear
+   * 3. If no manual gear delta, run auto-shift
+   * 4. Compute torque from RPM and accel level
+   * 5. Compute power = torque × throttle × fuelMult × powerCeiling
+   * 6. Compute net force: power + drag + gradient
+   * 7. If braking: replace net force with brake + drag
+   * 8. Integrate: newSpeed = max(0, speedMs + (netForce / mass) × dt)
+   *
+   * Mutates engineState.gear and engineState.rpm to reflect any shifts.
+   *
+   * @param engineState - Mutable engine state snapshot (speedMs, gear, rpm, etc.)
+   * @param inputs - Throttle, brake, and gear delta inputs
+   * @param dt - Delta time in seconds
+   * @param config - Engine configuration (gear ratios, RPM limits, etc.)
+   * @returns New target speed in m/s
+   *
+   * @see TR-PHYSICS-010 — Engine model specification
+   */
+  static computeTargetSpeed(
+    engineState: EngineStateSnapshot,
+    inputs: EngineInputs,
+    dt: number,
+    config: EngineConfigSub
+  ): number {
+    // Step 1: Apply manual gear delta
+    engineState.gear = ArcadeGripModel.applyGearDelta(
+      engineState.gear,
+      inputs.gearDelta,
+      inputs.brake,
+      engineState.speedMs,
+      config
+    );
+
+    // Step 2: Compute RPM from speed and gear
+    engineState.rpm = ArcadeGripModel.computeRpm(
+      engineState.speedMs,
+      engineState.gear,
+      config.gearRatios,
+      config.rpmMax,
+      config.gear1RedlineSpeed
+    );
+
+    // Step 3: Auto-shift if no manual gear delta
+    if (inputs.gearDelta === 0) {
+      engineState.gear = ArcadeGripModel.autoShift(
+        engineState.rpm,
+        engineState.gear,
+        config.rpmMax,
+        config.autoShiftRpmThreshold,
+        config.downshiftRpmRatio
+      );
+      engineState.rpm = ArcadeGripModel.computeRpm(
+        engineState.speedMs,
+        engineState.gear,
+        config.gearRatios,
+        config.rpmMax,
+        config.gear1RedlineSpeed
+      );
+    }
+
+    // Step 4: Compute torque and power
+    const torque = ArcadeGripModel.computeTorque(
+      engineState.rpm,
+      config.accelLevel,
+      config.rpmMax
+    );
+    let power =
+      torque * inputs.throttle * engineState.fuelMult * config.powerCeiling;
+
+    // Reverse gear: engine produces negative force (moves backward)
+    if (engineState.gear === -1) {
+      power = -power;
+    }
+
+    // Step 5 & 6: Build net force from power + drag + gradient
+    let netForce = power;
+
+    // Drag always opposes motion
+    netForce += ArcadeGripModel.computeDragForce(
+      engineState.speedMs,
+      config.dragCoeff
+    );
+
+    // Step 7: Brake override — braking replaces throttle power entirely
+    if (inputs.brake > 0) {
+      const drag = ArcadeGripModel.computeDragForce(
+        engineState.speedMs,
+        config.dragCoeff
+      );
+      netForce =
+        -ArcadeGripModel.computeBrakeForce(inputs.brake, config.maxBrakeForce) +
+        drag;
+    }
+
+    // Gradient force (gravity component along slope)
+    netForce += ArcadeGripModel.computeGradientForce(
+      engineState.gradient,
+      engineState.mass
+    );
+
+    // Step 8: Integrate — new speed = speed + (netForce / mass) × dt
+    // Allow negative speed for reverse gear, clamp to reverseMaxSpeed
+    const minSpeed = engineState.gear === -1 ? -config.reverseMaxSpeed : 0;
+    const newSpeedMs = Math.max(
+      minSpeed,
+      engineState.speedMs + (netForce / engineState.mass) * dt
+    );
+
+    return newSpeedMs;
+  }
+
   // ─── Instance Method ─────────────────────────────────────────────────────
 
   /**
@@ -337,6 +747,7 @@ export class ArcadeGripModel {
     config: PhysicsConfig
   ): void {
     const speedKmh = state.speedKmh || 0;
+    const oldSpeedMs = speedKmh / 3.6;
 
     // Cornering level defaults to 1 until per-car stat integration
     const corneringLevel = 1;
@@ -387,14 +798,56 @@ export class ArcadeGripModel {
       this._liftOffConfig
     );
 
+    // ── Engine Model (Story 003) ─────────────────────────────────────
+
+    // Build engine state snapshot for computeTargetSpeed
+    const engineState: EngineStateSnapshot = {
+      speedMs: speedKmh / 3.6,
+      gear: state.gear,
+      rpm: state.rpm,
+      fuelMult: state.fuelMult,
+      gradient: state.gradient,
+      mass: config.mass,
+    };
+
+    const engineInputs: EngineInputs = {
+      throttle: input.throttle,
+      brake: input.brake,
+      gearDelta: input.gearDelta,
+    };
+
+    const engineConfig: EngineConfigSub = {
+      gearRatios: config.gearRatios,
+      rpmMax: config.rpmMax,
+      accelLevel: config.accelLevel,
+      powerCeiling: config.powerCeiling,
+      dragCoeff: config.dragCoeff,
+      maxBrakeForce: config.maxBrakeForce,
+      stopEpsilon: config.stopEpsilon,
+      autoShiftRpmThreshold: config.autoShiftRpmThreshold,
+      downshiftRpmRatio: config.downshiftRpmRatio,
+      reverseMaxSpeed: config.reverseMaxSpeed,
+      gear1RedlineSpeed: config.gear1RedlineSpeed,
+      mass: config.mass,
+    };
+
+    const targetSpeed = ArcadeGripModel.computeTargetSpeed(
+      engineState,
+      engineInputs,
+      _dt,
+      engineConfig
+    );
+
+    state.targetSpeed = targetSpeed;
+    state.gear = engineState.gear;
+    state.rpm = engineState.rpm;
+
+    // Update speedKmh for the next tick
+    state.speedKmh = state.targetSpeed * 3.6;
+
     // ── Write State ──────────────────────────────────────────────────
 
-    // Placeholder targetSpeed until Story 003 (engine/gears/drag)
-    state.targetSpeed = 5;
     state.targetYawRate = yawRate;
-
-    // Update speedKmh for the next tick (from the placeholder target)
-    state.speedKmh = state.targetSpeed * 3.6;
 
     // ── Telemetry ────────────────────────────────────────────────────
 
@@ -404,7 +857,8 @@ export class ArcadeGripModel {
       yawRate,
       steeringLimit,
       gripMax,
-      config
+      config,
+      oldSpeedMs
     );
   }
 
@@ -412,7 +866,7 @@ export class ArcadeGripModel {
    * Compute telemetry fields for one car.
    *
    * Extracted from compute() for method length compliance.
-   * Sets lateralG, tireSqueal, gripMultiplier, rpm, gear.
+   * Sets lateralG, accelG, tireSqueal, gripMultiplier, rpm, gear.
    *
    * @param state - Per-car physics state (mutated in place)
    * @param input - InputState for this tick
@@ -420,6 +874,7 @@ export class ArcadeGripModel {
    * @param steeringLimit - Velocity-dependent steering limit
    * @param gripMax - Maximum lateral acceleration
    * @param config - Physics configuration
+   * @param oldSpeedMs - Previous tick speed in m/s (for accelG computation)
    */
   private _computeTelemetry(
     state: CarPhysicsState,
@@ -427,7 +882,8 @@ export class ArcadeGripModel {
     yawRate: number,
     steeringLimit: number,
     gripMax: number,
-    config: PhysicsConfig
+    config: PhysicsConfig,
+    oldSpeedMs: number
   ): void {
     const speedMs = state.speedKmh / 3.6;
 
@@ -439,8 +895,11 @@ export class ArcadeGripModel {
     );
     state.gripMultiplier = gripMax / Math.max(config.baseGrip, 0.01);
 
-    // RPM and gear remain placeholder until Story 003 (Engine/Gears)
-    state.rpm = 3000;
-    state.gear = 1;
+    // Longitudinal acceleration in G (positive = accelerating, negative = braking)
+    const accelMs2 = (speedMs - oldSpeedMs) * 60; // ×60 for dt=1/60s
+    state.accelG = accelMs2 / 9.81;
+
+    // RPM and gear are now set by the engine model in compute()
+    // _computeTelemetry reads state.rpm and state.gear post-computation.
   }
 }

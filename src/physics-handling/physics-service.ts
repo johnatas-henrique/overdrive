@@ -70,6 +70,16 @@ export class PhysicsService implements IPhysics {
   /** Pending tireCondition updates (applied next tick for 1-tick delay). */
   private readonly _pendingTireUpdates: Map<string, number> = new Map();
 
+  /**
+   * Per-car input states for Phase 1.
+   *
+   * Populated by the Input System (Story 005) via double-buffered InputBuffer.
+   * Until Story 005 integration, defaults to InputState.ZERO for all cars.
+   *
+   * @todo Story 005: wire this to InputBuffer.read() for each carId per tick.
+   */
+  private readonly _inputStates: Map<string, InputState> = new Map();
+
   /** Phase 1 arcade grip model. */
   private readonly _phase1: ArcadeGripModel;
 
@@ -78,6 +88,9 @@ export class PhysicsService implements IPhysics {
 
   /** Scratch Vector3 for angular velocity (reused per tick to avoid allocation). */
   private readonly _scratchAngVel = new Vector3(0, 0, 0);
+
+  /** Scratch Vector3 for world position (reused per tick to avoid allocation). */
+  private readonly _scratchWorldPos = new Vector3(0, 0, 0);
 
   /** Last tick's telemetry cache — rebuilt each update(). */
   private readonly _telemetry: Map<string, CarTelemetry> = new Map();
@@ -177,8 +190,13 @@ export class PhysicsService implements IPhysics {
     // Compute target speed/yaw per car.
     // Locked cars still receive Phase 1 updates (for telemetry/visuals),
     // but Phase 3 zeros their velocity (per ADR-0008).
+    //
+    // Inputs are read from _inputStates (populated by Story 005 InputBuffer).
+    // Cars without a registered input state receive InputState.ZERO (no-input
+    // default). See TR-PHYSICS-010 — Engine model integration.
     for (const state of this._carStates.values()) {
-      this._phase1.compute(state, InputState.ZERO, dt, this._config);
+      const input = this._inputStates.get(state.carId) ?? InputState.ZERO;
+      this._phase1.compute(state, input, dt, this._config);
     }
 
     // ── Phase 2: Havok Collision Step ──────────────────────────────────
@@ -219,7 +237,8 @@ export class PhysicsService implements IPhysics {
       // (ADR-0008 Ground Tracking section)
       if (this._trackSystem) {
         const splineY = this._trackSystem.getElevation(state.splinePosition);
-        this._scratchVel.y = (splineY - body.getObjectCenterWorld().y) / dt;
+        body.getObjectCenterWorldToRef(this._scratchWorldPos);
+        this._scratchVel.y = (splineY - this._scratchWorldPos.y) / dt;
       }
 
       body.setLinearVelocity(this._scratchVel);
@@ -354,6 +373,7 @@ export class PhysicsService implements IPhysics {
     this._pitCars.clear();
     this._pendingFuelUpdates.clear();
     this._pendingTireUpdates.clear();
+    this._inputStates.clear();
     this._telemetry.clear();
   }
 
