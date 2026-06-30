@@ -737,14 +737,22 @@ export class ArcadeGripModel {
    *
    * @param state - Per-car physics state (mutated in place)
    * @param input - InputState for this tick
-   * @param _dt - Delta time in seconds (unused in Phase 1 model)
+   * @param dt - Delta time in seconds (used for accelG and engine model)
    * @param config - Physics configuration (all tuning values)
+   * @param surfaceGripOverride - Surface grip multiplier (1.0 = tarmac,
+   *        0.3 = grass/gravel, default 1.0). Applied multiplicatively to gripMax.
+   * @param frictionMultiplier - Surface friction multiplier (1.0 = tarmac,
+   *        6.0 = grass/gravel, default 1.0). Scales dragCoeff in engine model.
+   *
+   * @see STORY-004 — Surface handling grip/friction integration
    */
   compute(
     state: CarPhysicsState,
     input: InputState,
-    _dt: number,
-    config: PhysicsConfig
+    dt: number,
+    config: PhysicsConfig,
+    surfaceGripOverride: number = 1.0,
+    frictionMultiplier: number = 1.0
   ): void {
     const speedKmh = state.speedKmh || 0;
     const oldSpeedMs = speedKmh / 3.6;
@@ -756,7 +764,7 @@ export class ArcadeGripModel {
     const steerClampSpeedKmh = config.steerClampSpeed * 3.6;
     const speedModRefSpeedKmh = config.speedModRefSpeed * 3.6;
 
-    // Update cached config sub-interfaces (avoids per-tick allocation)
+    // Cache config sub-interfaces for static method consumption
     this._gripConfig = {
       speedModRefSpeedKmh,
       speedModMinFactor: config.speedModMinFactor,
@@ -778,6 +786,11 @@ export class ArcadeGripModel {
       this._gripConfig
     );
 
+    // Apply surface grip override (Story 004)
+    // Off-track (grass/gravel) reduces effective grip via offTrackGripFactor.
+    // Kerbs apply kerbGripLoss via the surface handler's gripOverride.
+    const effectiveGripMax = gripMax * surfaceGripOverride;
+
     // Compute steering limit
     const steerMax = 1.0; // Normalised input range
     const steeringLimit = ArcadeGripModel.computeSteeringLimit(
@@ -788,10 +801,12 @@ export class ArcadeGripModel {
     );
 
     // Compute yaw rate with grip envelope and lift-off oversteer
+    // Uses effectiveGripMax (surface-modified) for physics-accurate
+    // understeer clamping on off-track surfaces and kerbs (Story 004)
     const yawRate = ArcadeGripModel.computeYawRate(
       input.steer,
       steeringLimit,
-      gripMax,
+      effectiveGripMax,
       speedKmh,
       input.throttle,
       input.brake,
@@ -821,7 +836,9 @@ export class ArcadeGripModel {
       rpmMax: config.rpmMax,
       accelLevel: config.accelLevel,
       powerCeiling: config.powerCeiling,
-      dragCoeff: config.dragCoeff,
+      // Friction multiplier scales drag for off-track surfaces (Story 004).
+      // On grass/gravel with offTrackFriction=6, drag is 6× stronger.
+      dragCoeff: config.dragCoeff * frictionMultiplier,
       maxBrakeForce: config.maxBrakeForce,
       stopEpsilon: config.stopEpsilon,
       autoShiftRpmThreshold: config.autoShiftRpmThreshold,
@@ -834,7 +851,7 @@ export class ArcadeGripModel {
     const targetSpeed = ArcadeGripModel.computeTargetSpeed(
       engineState,
       engineInputs,
-      _dt,
+      dt,
       engineConfig
     );
 
@@ -850,15 +867,17 @@ export class ArcadeGripModel {
     state.targetYawRate = yawRate;
 
     // ── Telemetry ────────────────────────────────────────────────────
-
+    // Uses effectiveGripMax (surface-modified) so telemetry reflects
+    // reduced grip on off-track surfaces and kerbs (Story 004)
     this._computeTelemetry(
       state,
       input,
       yawRate,
       steeringLimit,
-      gripMax,
+      effectiveGripMax,
       config,
-      oldSpeedMs
+      oldSpeedMs,
+      dt
     );
   }
 
@@ -875,6 +894,7 @@ export class ArcadeGripModel {
    * @param gripMax - Maximum lateral acceleration
    * @param config - Physics configuration
    * @param oldSpeedMs - Previous tick speed in m/s (for accelG computation)
+   * @param dt - Delta time in seconds (for accelG computation)
    */
   private _computeTelemetry(
     state: CarPhysicsState,
@@ -883,7 +903,8 @@ export class ArcadeGripModel {
     steeringLimit: number,
     gripMax: number,
     config: PhysicsConfig,
-    oldSpeedMs: number
+    oldSpeedMs: number,
+    dt: number
   ): void {
     const speedMs = state.speedKmh / 3.6;
 
@@ -896,7 +917,7 @@ export class ArcadeGripModel {
     state.gripMultiplier = gripMax / Math.max(config.baseGrip, 0.01);
 
     // Longitudinal acceleration in G (positive = accelerating, negative = braking)
-    const accelMs2 = (speedMs - oldSpeedMs) * 60; // ×60 for dt=1/60s
+    const accelMs2 = (speedMs - oldSpeedMs) / dt;
     state.accelG = accelMs2 / 9.81;
 
     // RPM and gear are now set by the engine model in compute()

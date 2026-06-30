@@ -37,6 +37,8 @@ import type { PhysicsBody } from "@babylonjs/core/Physics/v2/physicsBody";
  *   tireSqueal: 0,
  *   kerbHit: false,
  *   offTrack: false,
+ *   frictionMultiplier: 1,
+ *   minSurfaceSpeed: 0,
  *   gripMultiplier: 1,
  *   fuelMult: 1,
  *   tireCondition: 1,
@@ -98,6 +100,26 @@ export interface CarPhysicsState {
 
   /** True if car is fully off the track surface. */
   offTrack: boolean;
+
+  /**
+   * Friction multiplier from surface (1.0 = tarmac, >1 = off-track).
+   * Applied to dragCoeff in the engine model to increase drag on
+   * off-track surfaces (grass/gravel).
+   *
+   * @see STORY-004 — AC-2: Off-track 6× friction
+   */
+  frictionMultiplier: number;
+
+  /**
+   * Minimum speed floor for current surface in m/s.
+   * 0 = no floor (tarmac/kerb). >0 = car cannot slow below this on
+   * off-track surfaces (grass/gravel).
+   *
+   * Formula: minSurfaceSpeed = topSpeed × minSpeedFraction
+   *
+   * @see STORY-004 — AC-3: Off-track minimum speed
+   */
+  minSurfaceSpeed: number;
 
   /** Current effective grip multiplier (gripMax / baseGrip). */
   gripMultiplier: number;

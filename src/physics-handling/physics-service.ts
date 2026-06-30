@@ -33,6 +33,14 @@ import type { CarPhysicsState } from "./car-physics-state";
 import type { CarTelemetry, IPhysics } from "./i-physics";
 import type { ITrackSystem } from "./i-track-system";
 import type { PhysicsConfig } from "./physics-config";
+import {
+  buildSurfaceModifiers,
+  type CarSurfaceState,
+  enforceMinSurfaceSpeed,
+  type SurfaceModifiers,
+  SurfaceType,
+  updateSurfaceState,
+} from "./surface-handler";
 
 /**
  * PhysicsService implements the Arcade Dynamic vehicle model.
@@ -58,11 +66,39 @@ export class PhysicsService implements IPhysics {
   /** Active PhysicsBody array passed to havokPlugin.executeStep(). */
   private readonly _activeBodies: PhysicsBody[] = [];
 
+  /** Reusable sorted car states array (avoids per-tick allocation). */
+  private readonly _sortedStates: CarPhysicsState[] = [];
+
   /** Set of carIds whose Phase 3 velocity is zeroed (grid/pit lock). */
   private readonly _lockedCars: Set<string> = new Set();
 
   /** Set of carIds currently in pit lane speed-limited mode. */
   private readonly _pitCars: Set<string> = new Set();
+
+  /**
+   * Per-car surface state for surface handling (Story 004).
+   * Populated lazily in update() — created on first tick a car is processed.
+   */
+  private readonly _surfaceStates: Map<string, CarSurfaceState> = new Map();
+
+  /**
+   * Pre-built surface modifier lookup table, built from PhysicsConfig at init time.
+   * Null until init() completes. Used by updateSurfaceState() each tick.
+   *
+   * @see CONCERN-2 — build once, not per tick
+   */
+  private _surfaceModifiers: Record<SurfaceType, SurfaceModifiers> | null =
+    null;
+
+  /**
+   * Surface provider callback — injected by the track system to convert
+   * a spline position to a SurfaceType.
+   *
+   * Follows CONCERN-6: callback/closure pattern to avoid modifying ITrackSystem.
+   * Must be set before the first update tick — throws if null at update time.
+   */
+  private _surfaceProvider: ((splinePosition: number) => SurfaceType) | null =
+    null;
 
   /** Pending fuelMult updates (applied next tick for 1-tick delay). */
   private readonly _pendingFuelUpdates: Map<string, number> = new Map();
@@ -136,6 +172,11 @@ export class PhysicsService implements IPhysics {
     }
     this._config = config;
 
+    // Build surface modifier lookup table from config (Story 004).
+    // Cached once — zero per-tick allocation.
+    // @see CONCERN-2 — physics specialist review: build once at init
+    this._surfaceModifiers = buildSurfaceModifiers(this._config);
+
     if (!this._havokPlugin) {
       // Dynamic import avoids WASM load in environments that don't support it
       // (e.g., unit tests with mock HavokPlugin injection)
@@ -146,7 +187,7 @@ export class PhysicsService implements IPhysics {
 
     // enablePhysics is required for PhysicsBody/PhysicsAggregate constructors
     // (ADR-0002 F17, ADR-0008 init flow)
-    const gravity = new Vector3(0, -9.81, 0);
+    const gravity = new Vector3(0, -config.gravity, 0);
     this._scene.enablePhysics(gravity, this._havokPlugin);
 
     // Suppress auto-step — our pipeline calls executeStep exclusively
@@ -185,18 +226,104 @@ export class PhysicsService implements IPhysics {
       return;
     }
     const havokPlugin = this._havokPlugin;
+    // _surfaceModifiers is always set when _initialized is true (built in init()).
+    // The null guard on _initialized above ensures this is safe.
+    const surfaceModifiers = this._surfaceModifiers as Record<
+      SurfaceType,
+      SurfaceModifiers
+    >;
+    const config = this._config;
 
-    // ── Phase 1: Arcade Model ──────────────────────────────────────────
-    // Compute target speed/yaw per car.
+    // ── Phase 1: Arcade Model + Surface Handling (Story 004) ────────────
+    // Compute target speed/yaw per car with surface-dependent grip and
+    // friction modifiers.
+    //
+    // Surface handling (Story 004) runs BEFORE ArcadeGripModel.compute():
+    // 1. Query surface type from track spline via provider callback
+    // 2. Update per-car surface state (kerb timer, grip override, telemetry)
+    // 3. Pass gripOverride and frictionMultiplier to compute()
+    //
     // Locked cars still receive Phase 1 updates (for telemetry/visuals),
     // but Phase 3 zeros their velocity (per ADR-0008).
     //
     // Inputs are read from _inputStates (populated by Story 005 InputBuffer).
     // Cars without a registered input state receive InputState.ZERO (no-input
     // default). See TR-PHYSICS-010 — Engine model integration.
+    //
+    // @see STORY-004 — Surface handling integration
+    // @see AC-1/AC-2 — Surface grip/friction applied via compute() params
+    // @see CONCERN-6 — SurfaceProvider callback pattern (no ITrackSystem change)
     for (const state of this._carStates.values()) {
       const input = this._inputStates.get(state.carId) ?? InputState.ZERO;
-      this._phase1.compute(state, input, dt, this._config);
+
+      // ── Surface Type Query ─────────────────────────────────────────
+      // Provider must be set before the first update tick.
+      // See CONCERN-6 — callback pattern, no ITrackSystem change.
+      if (!this._surfaceProvider) {
+        throw new Error(
+          "[PhysicsService] Surface provider not set. Call setSurfaceProvider() before the first update tick."
+        );
+      }
+      const surfaceType = this._surfaceProvider(state.splinePosition);
+
+      // ── Lazy Surface State Init ────────────────────────────────────
+      // Create on first tick a car is processed.
+      let surfaceState = this._surfaceStates.get(state.carId);
+      if (!surfaceState) {
+        surfaceState = {
+          currentSurface: SurfaceType.Tarmac,
+          gripOverride: 1.0,
+          kerbTimer: 0,
+          wasOnKerb: false,
+        };
+        this._surfaceStates.set(state.carId, surfaceState);
+      }
+
+      // Use level 1 top speed until per-car stat integration (matching
+      // corneringLevel = 1 default in ArcadeGripModel.compute()).
+      const topSpeedMs = this._config.topSpeedL1toL5[0];
+
+      // ── Update Surface State ───────────────────────────────────────
+      // Mutates carState: frictionMultiplier, minSurfaceSpeed,
+      //                   kerbHit, offTrack (telemetry flags)
+      // Mutates surfaceState: currentSurface, gripOverride, kerbTimer
+      updateSurfaceState(
+        state,
+        surfaceState,
+        surfaceType,
+        surfaceModifiers,
+        config.kerbGripLoss,
+        topSpeedMs
+      );
+
+      // ── Phase 1 Arcade Model ───────────────────────────────────────
+      // Pass surface grip override and friction multiplier (Story 004).
+      // gripOverride: 1.0 (tarmac) / 0.3 (grass) / 0.8 (kerb, timer active)
+      // frictionMultiplier: 1.0 (tarmac) / 6.0 (grass, via config)
+      this._phase1.compute(
+        state,
+        input,
+        dt,
+        this._config,
+        surfaceState.gripOverride,
+        state.frictionMultiplier
+      );
+    }
+
+    // ── Enforce Minimum Surface Speed (Story 004) ──────────────────────
+    // After Phase 1 compute, clamp target speed to surface minimum floor.
+    // Only off-track surfaces (grass/gravel) have minSurfaceSpeed > 0.
+    // Tarmac/kerb have minSurfaceSpeed = 0 (no clamp).
+    // See AC-3: car never slowed below topSpeed × offTrackMinSpeed on grass.
+    for (const state of this._carStates.values()) {
+      state.targetSpeed = enforceMinSurfaceSpeed(
+        state.targetSpeed,
+        state.minSurfaceSpeed
+      );
+      // Update speedKmh to match clamped target speed (compute() already
+      // set speedKmh = targetSpeed × 3.6, but targetSpeed may have been
+      // clamped upward).
+      state.speedKmh = state.targetSpeed * 3.6;
     }
 
     // ── Phase 2: Havok Collision Step ──────────────────────────────────
@@ -205,10 +332,12 @@ export class PhysicsService implements IPhysics {
     // Active bodies are rebuilt each tick from the car state map, sorted
     // by carId for deterministic collision resolution order (AC-7).
     this._activeBodies.length = 0;
-    const sortedStates = [...this._carStates.values()].sort((a, b) =>
-      a.carId.localeCompare(b.carId)
-    );
-    for (const state of sortedStates) {
+    this._sortedStates.length = 0;
+    for (const state of this._carStates.values()) {
+      this._sortedStates.push(state);
+    }
+    this._sortedStates.sort((a, b) => a.carId.localeCompare(b.carId));
+    for (const state of this._sortedStates) {
       if (state.body) {
         this._activeBodies.push(state.body);
       }
@@ -278,6 +407,38 @@ export class PhysicsService implements IPhysics {
       this._pitCars.add(carId);
     } else {
       this._pitCars.delete(carId);
+    }
+  }
+
+  /**
+   * Set the surface provider callback.
+   *
+   * The provider converts a car's spline position to a SurfaceType
+   * by querying the track spline's per-segment gripSurface metadata (C59).
+   *
+   * This uses a callback/closure pattern (CONCERN-6) to avoid adding
+   * surface query methods to the ITrackSystem interface.
+   *
+   * @param provider - Function that maps splinePosition (0..trackLength)
+   *                   to SurfaceType. Must be set before the first update tick.
+   *
+   * @example
+   * ```typescript
+   * physics.setSurfaceProvider((pos) => trackSystem.getSurfaceAt(pos));
+   * ```
+   *
+   * @see STORY-004 — Surface handling integration
+   * @see C59 — Track spline carries per-segment gripSurface metadata
+   */
+  setSurfaceProvider(
+    provider: ((splinePosition: number) => SurfaceType) | null
+  ): void {
+    this._surfaceProvider = provider;
+    // Clear stale per-car surface state when provider changes.
+    // Kerb timers and wasOnKerb flags are tied to the previous provider's
+    // surface decisions and must restart fresh with the new provider.
+    if (provider === null) {
+      this._surfaceStates.clear();
     }
   }
 
@@ -369,8 +530,10 @@ export class PhysicsService implements IPhysics {
     this._havokPlugin?.dispose();
     this._carStates.clear();
     this._activeBodies.length = 0;
+    this._sortedStates.length = 0;
     this._lockedCars.clear();
     this._pitCars.clear();
+    this._surfaceStates.clear();
     this._pendingFuelUpdates.clear();
     this._pendingTireUpdates.clear();
     this._inputStates.clear();
@@ -423,15 +586,19 @@ export class PhysicsService implements IPhysics {
    * Rebuild the telemetry cache from current car state.
    *
    * Called at the end of each update() after all phases complete.
-   *
-   * TODO: Clearing and repopulating all telemetry objects every 60Hz tick
-   * creates ~480 object allocations/second. Consider lazy-update on
-   * getTelemetry() call or write-mutable struct for post-Story-005 optimization.
+   * Uses write-into-existing pattern: reuses CarTelemetry objects when
+   * available, creates new ones only for newly added cars.
    */
   private _rebuildTelemetry(): void {
-    this._telemetry.clear();
     for (const [carId, state] of this._carStates) {
-      this._telemetry.set(carId, {
+      let telemetry = this._telemetry.get(carId);
+      if (!telemetry) {
+        telemetry = {} as CarTelemetry;
+        this._telemetry.set(carId, telemetry);
+      }
+      // Write via Object.assign to bypass readonly interface properties
+      // (internal mutation — consumers see readonly via CarTelemetry type)
+      Object.assign(telemetry, {
         speedKmh: state.speedKmh,
         rpm: state.rpm,
         gear: state.gear as 0 | 1 | 2 | 3 | 4 | 5 | 6,
@@ -441,6 +608,12 @@ export class PhysicsService implements IPhysics {
         kerbHit: state.kerbHit,
         offTrack: state.offTrack,
       });
+    }
+    // Remove telemetry for cars that were removed
+    for (const carId of this._telemetry.keys()) {
+      if (!this._carStates.has(carId)) {
+        this._telemetry.delete(carId);
+      }
     }
   }
 }

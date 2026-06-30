@@ -32,6 +32,11 @@ export interface PhysicsConfig {
   /** Base grip coefficient — primary feel knob. */
   readonly baseGrip: number;
 
+  // ─── Physics Constants ─────────────────────────────────────────────
+
+  /** Gravity acceleration in m/s² (positive = downward). */
+  readonly gravity: number;
+
   // ─── Steering ──────────────────────────────────────────────────────
 
   /** Speed (m/s) at which steering is fully clamped to steerMinRatio. */
@@ -66,8 +71,8 @@ export interface PhysicsConfig {
   readonly offTrackFriction: number;
   /** Grip multiplier when off-track (0..1). */
   readonly offTrackGripFactor: number;
-  /** Minimum speed maintained when off-track (m/s). */
-  readonly offTrackMinSpeed: number;
+  /** Minimum speed fraction of topSpeed when off-track (0..1, e.g. 0.3 = 30%). */
+  readonly offTrackMinSpeedFraction: number;
 
   // ─── Kerb ──────────────────────────────────────────────────────────
 
