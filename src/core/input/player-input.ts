@@ -178,6 +178,20 @@ export class PlayerInput implements IInput {
     gearDown: false,
   };
 
+  /**
+   * Timestamp of the last camera toggle pulse (from performance.now()).
+   * Used for debounce gating: rapid presses within the debounce window
+   * produce a single toggle (GDD TR-INP-007).
+   * Initialized to -Infinity to guarantee first press always passes debounce gate.
+   */
+  private _lastCameraToggleTime = -Infinity;
+
+  /**
+   * Camera toggle debounce window in milliseconds.
+   * Configurable via input.cameraDebounce (default 200ms).
+   */
+  private _cameraDebounce = 200;
+
   /** Previous tick's raw digital state — used for pulse edge detection. */
   private _prevDigital: DigitalRawState = {
     confirm: false,
@@ -332,6 +346,11 @@ export class PlayerInput implements IInput {
     // 6. Pulse edge detection for digital fields
     this._detectEdges();
 
+    // 6.5 Camera toggle debounce — gates cameraToggle through debounce timer
+    //     GDD TR-INP-007: single pulse per press, press-and-hold does not cycle.
+    //     performance.now() is permitted here — outside pipeline slot, no determinism requirement.
+    this._applyCameraDebounce();
+
     // 7. Process pulse-based cross-system routing (pauseToggle, confirm)
     this._processPulse();
 
@@ -402,6 +421,18 @@ export class PlayerInput implements IInput {
     this._deadZoneThreshold = threshold;
   }
 
+  /**
+   * Override the camera toggle debounce window (for config integration).
+   *
+   * GDD TR-INP-007: Camera toggle debounced at input.cameraDebounce ms.
+   *   Single pulse per press — press-and-hold does not cycle.
+   *
+   * @param ms - Debounce window in milliseconds. 0 disables debounce (every press fires).
+   */
+  setCameraDebounce(ms: number): void {
+    this._cameraDebounce = ms;
+  }
+
   // -- Private helpers ------------------------------------------------------
 
   /** Reset the mutable output state to neutral/zero/false. */
@@ -437,6 +468,7 @@ export class PlayerInput implements IInput {
     this._prevDigital = { ...this._rawDigital };
     this._lastActiveDevice = "keyboard";
     this._gsmCurrentState = "Loading";
+    this._lastCameraToggleTime = -Infinity;
   }
 
   /** Unsubscribe all GSM Event Bus subscriptions (used by dispose and re-init guard). */
@@ -537,9 +569,13 @@ export class PlayerInput implements IInput {
   private _readKeyboardAnalog(isPressed: (code: number) => boolean): void {
     const aPressed = isPressed(KEY_A);
     const dPressed = isPressed(KEY_D);
-    if (aPressed && !dPressed) {
+
+    // Opposing digital steering: A+D simultaneously → net zero (GDD edge case)
+    if (aPressed && dPressed) {
+      this._currentState.steer = 0;
+    } else if (aPressed) {
       this._currentState.steer = -1;
-    } else if (dPressed && !aPressed) {
+    } else if (dPressed) {
       this._currentState.steer = 1;
     }
 
@@ -683,6 +719,35 @@ export class PlayerInput implements IInput {
 
     if (hasAnalogInput || hasDigitalInput) {
       this._lastActiveDevice = "gamepad";
+    }
+  }
+
+  // -- Camera toggle debounce ------------------------------------------------
+
+  /**
+   * Gate cameraToggle through debounce timer.
+   *
+   * GDD TR-INP-007: Camera toggle debounced at input.cameraDebounce ms.
+   *   Single pulse per press — press-and-hold does not cycle.
+   *
+   * Called after _detectEdges() in getState(). If the edge-detected
+   * cameraToggle pulse is within the debounce window, it is suppressed.
+   * If the window has elapsed, the pulse passes through and the timer
+   * is reset to prevent further pulses until the window expires again.
+   *
+   * Uses performance.now() — permitted because this is outside the pipeline
+   * slot's deterministic simulation path. No determinism requirement for UI timing.
+   */
+  private _applyCameraDebounce(): void {
+    if (!this._currentState.cameraToggle) return;
+
+    const now = performance.now();
+    if (now - this._lastCameraToggleTime >= this._cameraDebounce) {
+      // Window elapsed — allow toggle, reset timer
+      this._lastCameraToggleTime = now;
+    } else {
+      // Within debounce window — suppress
+      this._currentState.cameraToggle = false;
     }
   }
 
