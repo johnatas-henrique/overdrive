@@ -87,6 +87,13 @@ function createTestConfig(overrides?: Partial<PhysicsConfig>): PhysicsConfig {
       number,
       number,
     ],
+    gearRatios: [3.5, 2.5, 1.8, 1.3, 1.0, 0.8],
+    accelLevel: 1,
+    powerCeiling: 1,
+    downshiftRpmRatio: 0.5,
+    reverseMaxSpeed: 20,
+    gear1RedlineSpeed: 10,
+    mass: 800,
     ...overrides,
   };
 }
@@ -112,6 +119,7 @@ function createState(overrides?: Partial<CarPhysicsState>): CarPhysicsState {
     gripMultiplier: 1,
     fuelMult: 1,
     tireCondition: 1,
+    gradient: 0,
     locked: false,
     pitMode: false,
     tireBlownEmitted: false,
@@ -830,14 +838,15 @@ describe("Telemetry functions", () => {
 // ─── compute() Integration Tests ────────────────────────────────────────────
 
 describe("ArcadeGripModel.compute() — integration", () => {
-  it("test_compute_setsTargetSpeedToFive", () => {
+  it("test_compute_zeroInput_targetSpeedZero", () => {
     const model = new ArcadeGripModel();
     const state = createState();
     const config = createTestConfig();
 
     model.compute(state, InputState.ZERO, 1 / 60, config);
 
-    expect(state.targetSpeed).toBe(5);
+    // With throttle=0, the engine model yields targetSpeed=0 (no power)
+    expect(state.targetSpeed).toBe(0);
   });
 
   it("test_compute_withZeroInput_setsZeroYawRate", () => {
@@ -861,8 +870,10 @@ describe("ArcadeGripModel.compute() — integration", () => {
     expect(state.lateralG).toBeTypeOf("number");
     expect(state.tireSqueal).toBeTypeOf("number");
     expect(state.gripMultiplier).toBeGreaterThan(0);
-    expect(state.rpm).toBe(3000);
-    expect(state.gear).toBe(1);
+    // With pre-set speed=100 km/h and gear=0 (neutral):
+    // rpm = rpmMax * 0.4 = 4000 (idle in neutral)
+    expect(state.rpm).toBe(4000);
+    expect(state.gear).toBe(0);
   });
 
   it("test_compute_setsSpeedKmh_fromTargetSpeed", () => {
@@ -872,8 +883,8 @@ describe("ArcadeGripModel.compute() — integration", () => {
 
     model.compute(state, InputState.ZERO, 1 / 60, config);
 
-    // targetSpeed = 5 m/s → speedKmh = 18 km/h
-    expect(state.speedKmh).toBe(18);
+    // With throttle=0: targetSpeed = 0 m/s → speedKmh = 0 km/h
+    expect(state.speedKmh).toBe(0);
   });
 
   it("test_compute_deterministic_identicalOutput", () => {
@@ -918,6 +929,54 @@ describe("ArcadeGripModel.compute() — integration", () => {
     model.compute(state, input, 1 / 60, config);
 
     expect(state.targetYawRate).toBeLessThan(0);
+  });
+
+  it("test_compute_withThrottle_producesPositiveTargetSpeed", () => {
+    const model = new ArcadeGripModel();
+    const state = createState({ speedKmh: 50, gear: 1, rpm: 5000 });
+    const config = createTestConfig();
+    const input: InputState = { ...InputState.ZERO, throttle: 0.8 };
+
+    model.compute(state, input, 1 / 60, config);
+
+    // With throttle > 0, engine produces power → targetSpeed should be positive
+    expect(state.targetSpeed).toBeGreaterThan(0);
+  });
+
+  it("test_compute_withBrake_reducesTargetSpeed", () => {
+    const model = new ArcadeGripModel();
+    const state = createState({ speedKmh: 100, gear: 3, rpm: 6000 });
+    const config = createTestConfig();
+    const inputBraking: InputState = { ...InputState.ZERO, brake: 1.0 };
+
+    model.compute(state, inputBraking, 1 / 60, config);
+
+    // With full brake, targetSpeed should be less than initial speed
+    expect(state.targetSpeed).toBeLessThan(100 / 3.6);
+  });
+
+  it("test_compute_withGearDelta_changesGear", () => {
+    const model = new ArcadeGripModel();
+    const state = createState({ speedKmh: 50, gear: 2, rpm: 5000 });
+    const config = createTestConfig();
+    const inputUpshift: InputState = { ...InputState.ZERO, gearDelta: 1 };
+
+    model.compute(state, inputUpshift, 1 / 60, config);
+
+    // With gearDelta=+1, gear should increment (if not at max)
+    expect(state.gear).toBe(3);
+  });
+
+  it("test_compute_reverseGear_allowsNegativeSpeed", () => {
+    const model = new ArcadeGripModel();
+    const state = createState({ speedKmh: 0, gear: -1, rpm: 4000 });
+    const config = createTestConfig();
+    const input: InputState = { ...InputState.ZERO, throttle: 0.5 };
+
+    model.compute(state, input, 1 / 60, config);
+
+    // With reverse gear and throttle, targetSpeed should be negative
+    expect(state.targetSpeed).toBeLessThan(0);
   });
 });
 
