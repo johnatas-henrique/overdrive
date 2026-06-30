@@ -99,6 +99,16 @@ describe("AssetManager", () => {
       expect(() => assetManager.init(menuScene, raceScene)).not.toThrow();
       expect(assetManager.getActiveScene()).toBe(activeAfterFirst);
     });
+
+    it("should throw 'Already disposed' when init() is called after dispose() (G4)", () => {
+      assetManager.init(menuScene, raceScene);
+      assetManager.dispose();
+
+      expect(() => assetManager.init(menuScene, raceScene)).toThrow(AssetError);
+      expect(() => assetManager.init(menuScene, raceScene)).toThrow(
+        "Already disposed"
+      );
+    });
   });
 
   // ── setActiveScene() ──────────────────────────────────────────
@@ -321,6 +331,41 @@ describe("AssetManager", () => {
       );
 
       await expect(assetManager.load("spa")).rejects.toThrow("Network error");
+      expect(assetManager.cacheSize).toBe(0);
+    });
+
+    it("should dispose loaded container and reject when disposed during async load (CR13)", async () => {
+      assetManager.init(menuScene, raceScene);
+      assetManager.registerManifest("spa", testManifest);
+
+      // Create a deferred promise to control load timing
+      let resolveLoad: (value: any) => void;
+      const loadPromise = new Promise<any>((resolve) => {
+        resolveLoad = resolve;
+      });
+      vi.mocked(LoadAssetContainerAsync).mockReturnValue(loadPromise);
+
+      // Start load (won't resolve yet)
+      const loadCall = assetManager.load("spa");
+
+      // Dispose before load completes
+      assetManager.dispose();
+
+      // Now resolve the load
+      const fakeContainer = {
+        dispose: vi.fn(),
+        removeAllFromScene: vi.fn(),
+        meshes: [],
+        transformNodes: [],
+      };
+      resolveLoad?.(fakeContainer);
+
+      // Load should reject
+      await expect(loadCall).rejects.toThrow(
+        "AssetManager disposed during load"
+      );
+      // Container should be disposed (not added to cache)
+      expect(fakeContainer.dispose).toHaveBeenCalled();
       expect(assetManager.cacheSize).toBe(0);
     });
   });
@@ -832,6 +877,71 @@ describe("AssetManager", () => {
         "Already disposed"
       );
       await expect(assetManager.load("spa")).rejects.toThrow(AssetError);
+    });
+  });
+
+  // ── Dispose guard: all public methods after dispose() ──────
+
+  describe("after dispose", () => {
+    let am: AssetManager;
+    let menuScene: any;
+    let raceScene: any;
+
+    beforeEach(() => {
+      am = new AssetManager();
+      menuScene = createFakeScene("menuScene");
+      raceScene = createFakeScene("raceScene");
+      vi.clearAllMocks();
+      am.init(menuScene, raceScene);
+      am.dispose();
+    });
+
+    it("setActiveScene() throws", () => {
+      expect(() => am.setActiveScene("race")).toThrow(AssetError);
+      expect(() => am.setActiveScene("race")).toThrow("Already disposed");
+    });
+
+    it("getActiveScene() throws", () => {
+      expect(() => am.getActiveScene()).toThrow(AssetError);
+      expect(() => am.getActiveScene()).toThrow("Already disposed");
+    });
+
+    it("setTrackId() throws", () => {
+      expect(() => am.setTrackId("spa")).toThrow(AssetError);
+      expect(() => am.setTrackId("spa")).toThrow("Already disposed");
+    });
+
+    it("registerManifest() throws", () => {
+      expect(() =>
+        am.registerManifest("spa", {
+          glb: { rootUrl: "/", filename: "spa.glb" },
+        })
+      ).toThrow(AssetError);
+      expect(() =>
+        am.registerManifest("spa", {
+          glb: { rootUrl: "/", filename: "spa.glb" },
+        })
+      ).toThrow("Already disposed");
+    });
+
+    it("disposeContainer() throws", () => {
+      expect(() => am.disposeContainer("spa")).toThrow(AssetError);
+      expect(() => am.disposeContainer("spa")).toThrow("Already disposed");
+    });
+
+    it("get() throws", () => {
+      expect(() => am.get("anything")).toThrow(AssetError);
+      expect(() => am.get("anything")).toThrow("Already disposed");
+    });
+
+    it("load() throws", async () => {
+      await expect(am.load("spa")).rejects.toThrow(AssetError);
+      await expect(am.load("spa")).rejects.toThrow("Already disposed");
+    });
+
+    it("preload() throws", async () => {
+      await expect(am.preload(["spa"])).rejects.toThrow(AssetError);
+      await expect(am.preload(["spa"])).rejects.toThrow("Already disposed");
     });
   });
 });

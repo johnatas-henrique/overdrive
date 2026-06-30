@@ -21,6 +21,8 @@
  * @see ADR-0003 — Two-Scene Architecture & Asset Lifecycle
  */
 
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { NullEngine } from "@babylonjs/core/Engines/nullEngine";
 import { LoadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
 import { Scene } from "@babylonjs/core/scene";
@@ -195,23 +197,40 @@ describe("AssetManager lifecycle", () => {
 // Playground removal verification (non-runtime)
 // ---------------------------------------------------------------------------
 
+/**
+ * Scan a directory recursively for files matching a content pattern.
+ *
+ * Uses Node.js filesystem APIs instead of shelling out to grep, making
+ * this portable across platforms and immune to non-standard import forms.
+ *
+ * @param dir - Root directory to scan
+ * @param pattern - RegExp to test against each file's content
+ * @returns Paths of files whose content matches the pattern
+ */
+function findFilesWithContent(dir: string, pattern: RegExp): string[] {
+  const results: string[] = [];
+  for (const entry of readdirSync(dir, { recursive: true })) {
+    if (typeof entry !== "string") continue;
+    const fullPath = join(dir, entry);
+    if (!entry.endsWith(".ts") && !entry.endsWith(".tsx")) continue;
+    const content = readFileSync(fullPath, "utf-8");
+    if (pattern.test(content)) results.push(fullPath);
+  }
+  return results;
+}
+
 describe("Playground removal", () => {
-  it("should have no imports from src/playground/ in src/", async () => {
-    const { execSync } = await import("node:child_process");
-    const result = execSync(
-      "grep -r 'from.*\\.\\./playground\\|from.*/playground' src/ 2>/dev/null || true",
-      { encoding: "utf-8" }
+  it("should have no imports from src/playground/ in src/", () => {
+    const matches = findFilesWithContent(
+      "src",
+      /from.*['"].*playground|import.*['"].*playground/
     );
-    expect(result.trim()).toBe("");
+    expect(matches).toEqual([]);
   });
 
-  it("should have no CreateMainScene imports in src/", async () => {
-    const { execSync } = await import("node:child_process");
-    const result = execSync(
-      "grep -r 'CreateMainScene' src/ 2>/dev/null || true",
-      { encoding: "utf-8" }
-    );
-    expect(result.trim()).toBe("");
+  it("should have no CreateMainScene references in src/", () => {
+    const matches = findFilesWithContent("src", /CreateMainScene/);
+    expect(matches).toEqual([]);
   });
 });
 

@@ -50,6 +50,27 @@ function fakeContainer(): any {
 }
 
 // ---------------------------------------------------------------------------
+// Settle helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Wait for fire-and-forget async handlers to settle.
+ *
+ * The GSM event handlers in `_onGsmEvent` are fire-and-forget — errors are
+ * caught internally via `.catch()`, so there's no promise to await from the
+ * emit side. We use a short timeout to yield control back to the event loop,
+ * allowing any scheduled microtasks/macrotasks to flush before assertions.
+ *
+ * This is inherently timing-dependent, but in practice 10ms is well within
+ * the margin of any async operation in these tests (mocked I/O completes in
+ * the current microtask tick, never on timers). The timeout is a pragmatic
+ * "yield and wait" rather than a real delay.
+ */
+async function settleAsyncHandlers(): Promise<void> {
+  await new Promise((r) => setTimeout(r, 10));
+}
+
+// ---------------------------------------------------------------------------
 // Fixture
 // ---------------------------------------------------------------------------
 
@@ -239,7 +260,7 @@ describe("AssetManager GSM orchestration", () => {
     }).not.toThrow();
 
     // Wait for async handler to settle
-    await new Promise((r) => setTimeout(r, 10));
+    await settleAsyncHandlers();
   });
 
   it("should silently catch load errors during Menu→PreRace (fire-and-forget)", async () => {
@@ -257,7 +278,7 @@ describe("AssetManager GSM orchestration", () => {
     }).not.toThrow();
 
     // Wait for async handler to settle
-    await new Promise((r) => setTimeout(r, 10));
+    await settleAsyncHandlers();
   });
 
   it("should silently catch sync errors from _onGsmEvent via outer catch", async () => {
@@ -275,7 +296,7 @@ describe("AssetManager GSM orchestration", () => {
       fx.bus.emit("gsm.state.entered", { from: "Menu", to: "PreRace" });
     }).not.toThrow();
 
-    await new Promise((r) => setTimeout(r, 10));
+    await settleAsyncHandlers();
   });
 
   // ── setTrackId input validation ──────────────────────────────

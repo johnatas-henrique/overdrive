@@ -21,7 +21,7 @@
 import { NullEngine } from "@babylonjs/core/Engines/nullEngine";
 import { LoadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
 import { Scene } from "@babylonjs/core/scene";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AssetError } from "@/asset-manager/asset-error";
 import { AssetManager } from "@/asset-manager/asset-manager";
 import type { TrackManifest } from "@/asset-manager/types";
@@ -95,6 +95,16 @@ function teardownFixture(fixture: Fixture): void {
   fixture.engine.dispose();
 }
 
+/** Track created fixtures for afterEach cleanup (avoids leaked state on assertion failure). */
+const createdFixtures: Fixture[] = [];
+
+afterEach(() => {
+  for (const fx of createdFixtures) {
+    teardownFixture(fx);
+  }
+  createdFixtures.length = 0;
+});
+
 // ---------------------------------------------------------------------------
 // Preload Concurrency (Story 005a)
 // ---------------------------------------------------------------------------
@@ -103,7 +113,9 @@ describe("preload concurrency", () => {
   // ── AC-p1: concurrent load per uncached ID ────────────────────
 
   it("should call load for each uncached ID concurrently (AC-p1)", async () => {
-    const { engine, am, menuScene, raceScene } = createFixture();
+    const fx = createFixture();
+    createdFixtures.push(fx);
+    const { am } = fx;
 
     am.registerManifest("spa", makeManifest("spa"));
     am.registerManifest("monza", makeManifest("monza"));
@@ -118,14 +130,14 @@ describe("preload concurrency", () => {
     expect(LoadAssetContainerAsync).toHaveBeenCalledTimes(3);
     // All three should now be in the cache
     expect(am.cacheSize).toBe(3);
-
-    teardownFixture({ engine, am, menuScene, raceScene });
   });
 
   // ── AC-p2: resolves when all complete ─────────────────────────
 
   it("should resolve Promise<void> when all loads complete (AC-p2)", async () => {
-    const { engine, am, menuScene, raceScene } = createFixture();
+    const fx = createFixture();
+    createdFixtures.push(fx);
+    const { am } = fx;
 
     am.registerManifest("a", makeManifest("a"));
     am.registerManifest("b", makeManifest("b"));
@@ -138,14 +150,14 @@ describe("preload concurrency", () => {
 
     await expect(result).resolves.toBeUndefined();
     expect(am.cacheSize).toBe(2);
-
-    teardownFixture({ engine, am, menuScene, raceScene });
   });
 
   // ── AC-p3: partial failure handling ───────────────────────────
 
   it("should continue other loads on failure, emit error, reject promise (AC-p3)", async () => {
-    const { engine, am, menuScene, raceScene } = createFixture();
+    const fx = createFixture();
+    createdFixtures.push(fx);
+    const { menuScene, raceScene } = fx;
     const bus = new EventBus();
     bus.init();
     const amWithBus = new AssetManager(bus);
@@ -186,8 +198,6 @@ describe("preload concurrency", () => {
 
     // Successful assets should still be cached (cacheSize checks _cache.size)
     expect(amWithBus.cacheSize).toBe(2);
-
-    teardownFixture({ engine, am, menuScene, raceScene });
   });
 
   // ── AC-p4: allComplete emitted on success ─────────────────────
@@ -195,7 +205,9 @@ describe("preload concurrency", () => {
   it("should emit asset.load.allComplete on full batch success (AC-p4)", async () => {
     const bus = new EventBus();
     bus.init();
-    const { engine, am, menuScene, raceScene } = createFixture(bus);
+    const fx = createFixture(bus);
+    createdFixtures.push(fx);
+    const { am } = fx;
 
     am.registerManifest("x", makeManifest("x"));
     am.registerManifest("y", makeManifest("y"));
@@ -222,8 +234,6 @@ describe("preload concurrency", () => {
     expect(allCompletePayload).toEqual({ ids: ["x", "y"] });
     // All assets should be cached
     expect(am.cacheSize).toBe(2);
-
-    teardownFixture({ engine, am, menuScene, raceScene });
   });
 
   // ── AC-p5: cached IDs skipped ─────────────────────────────────
@@ -231,7 +241,9 @@ describe("preload concurrency", () => {
   it("should skip already-cached IDs without additional I/O (AC-p5)", async () => {
     const bus = new EventBus();
     bus.init();
-    const { engine, am, menuScene, raceScene } = createFixture(bus);
+    const fx = createFixture(bus);
+    createdFixtures.push(fx);
+    const { am } = fx;
 
     am.registerManifest("cached", makeManifest("cached"));
     am.registerManifest("fresh", makeManifest("fresh"));
@@ -267,8 +279,6 @@ describe("preload concurrency", () => {
 
     // Cache should now have both
     expect(am.cacheSize).toBe(2);
-
-    teardownFixture({ engine, am, menuScene, raceScene });
   });
 
   // ── AC-p6: empty array resolves immediately ──────────────────
@@ -276,7 +286,9 @@ describe("preload concurrency", () => {
   it("should resolve immediately when passed an empty array (AC-p6)", async () => {
     const bus = new EventBus();
     bus.init();
-    const { engine, am, menuScene, raceScene } = createFixture(bus);
+    const fx = createFixture(bus);
+    createdFixtures.push(fx);
+    const { am } = fx;
 
     const events: string[] = [];
     bus.on("asset.load.start", () => events.push("start"));
@@ -286,12 +298,12 @@ describe("preload concurrency", () => {
 
     // No events
     expect(events).toEqual([]);
-
-    teardownFixture({ engine, am, menuScene, raceScene });
   });
 
   it("should resolve immediately when all requested IDs are cached (AC-p6 variant)", async () => {
-    const { engine, am, menuScene, raceScene } = createFixture();
+    const fx = createFixture();
+    createdFixtures.push(fx);
+    const { am } = fx;
 
     am.registerManifest("spa", makeManifest("spa"));
 
@@ -301,13 +313,17 @@ describe("preload concurrency", () => {
     // Pre-populate cache
     await am.load("spa");
 
+    // Capture I/O call count before cached-only preload — must not increase
+    const callsBefore = vi.mocked(LoadAssetContainerAsync).mock.calls.length;
+
     // Now preload with only cached IDs
     await am.preload(["spa"]);
 
-    // Should NOT trigger any additional I/O — cache.size should remain 1
+    // Should NOT trigger any additional I/O
+    expect(vi.mocked(LoadAssetContainerAsync).mock.calls.length).toBe(
+      callsBefore
+    );
     expect(am.cacheSize).toBe(1);
-
-    teardownFixture({ engine, am, menuScene, raceScene });
   });
 
   // ── AC-p7: lifecycle guards ──────────────────────────────────
@@ -333,21 +349,23 @@ describe("preload concurrency", () => {
   });
 
   it("should throw AssetError when called after dispose (AC-p7)", async () => {
-    const { engine, am, menuScene, raceScene } = createFixture();
+    const fx = createFixture();
+    createdFixtures.push(fx);
+    const { am } = fx;
 
     am.dispose();
 
     // After dispose — should throw
     await expect(am.preload(["spa"])).rejects.toThrow(AssetError);
     await expect(am.preload(["spa"])).rejects.toThrow("Already disposed");
-
-    teardownFixture({ engine, am, menuScene, raceScene });
   });
 
   // ── Concurrency proof (F3 from code review) ────────────────
 
   it("should start all loads before any complete (concurrency proof)", async () => {
-    const { engine, am, menuScene, raceScene } = createFixture();
+    const fx = createFixture();
+    createdFixtures.push(fx);
+    const { am } = fx;
 
     am.registerManifest("a", makeManifest("a"));
     am.registerManifest("b", makeManifest("b"));
@@ -371,10 +389,10 @@ describe("preload concurrency", () => {
 
     const promise = am.preload(["a", "b", "c"]);
 
-    // Let microtasks settle so all loads start
-    await new Promise((r) => setTimeout(r, 10));
-
-    // All three should have started
+    // All three mock calls happen synchronously before preload's first await
+    // (see _loadAssetContainer → LoadAssetContainerAsync mock), so by the
+    // time preload returns its promise all loads have already started.
+    // No microtask settling needed. (CR25)
     expect(started).toHaveLength(3);
     // None should have completed yet
     expect(completed).toHaveLength(0);
@@ -384,8 +402,6 @@ describe("preload concurrency", () => {
     await promise;
 
     expect(completed).toHaveLength(3);
-
-    teardownFixture({ engine, am, menuScene, raceScene });
   });
 
   // ── Multi-failure (F3 from code review) ────────────────────
@@ -393,7 +409,9 @@ describe("preload concurrency", () => {
   it("should emit asset.error for each failing asset and reject with first error (multi-failure)", async () => {
     const bus = new EventBus();
     bus.init();
-    const { engine, am, menuScene, raceScene } = createFixture(bus);
+    const fx = createFixture(bus);
+    createdFixtures.push(fx);
+    const { am } = fx;
 
     am.registerManifest("a", makeManifest("a"));
     am.registerManifest("b", makeManifest("b"));
@@ -419,14 +437,14 @@ describe("preload concurrency", () => {
 
     // Successful asset should still be cached
     expect(am.cacheSize).toBe(1);
-
-    teardownFixture({ engine, am, menuScene, raceScene });
   });
 
   // ── Non-Error throw coverage (line 462) ────────────────────
 
   it("should wrap non-Error throws into Error instances", async () => {
-    const { engine, am, menuScene, raceScene } = createFixture();
+    const fx = createFixture();
+    createdFixtures.push(fx);
+    const { am } = fx;
 
     am.registerManifest("a", makeManifest("a"));
 
@@ -434,8 +452,6 @@ describe("preload concurrency", () => {
     vi.mocked(LoadAssetContainerAsync).mockRejectedValue("raw string error");
 
     await expect(am.preload(["a"])).rejects.toThrow("raw string error");
-
-    teardownFixture({ engine, am, menuScene, raceScene });
   });
 
   // ── Batch event payload (AC-p5) ───────────────────────────
@@ -443,7 +459,9 @@ describe("preload concurrency", () => {
   it("should emit batch start with only uncached IDs in payload", async () => {
     const bus = new EventBus();
     bus.init();
-    const { engine, am, menuScene, raceScene } = createFixture(bus);
+    const fx = createFixture(bus);
+    createdFixtures.push(fx);
+    const { am } = fx;
 
     am.registerManifest("cached", makeManifest("cached"));
     am.registerManifest("fresh", makeManifest("fresh"));
@@ -462,14 +480,14 @@ describe("preload concurrency", () => {
 
     // Batch start should only include uncached IDs
     expect(startPayload?.ids).toEqual(["fresh"]);
-
-    teardownFixture({ engine, am, menuScene, raceScene });
   });
 
   // ── Pending-load deduplication ──────────────────────────────
 
   it("should deduplicate concurrent loads for the same ID", async () => {
-    const { engine, am, menuScene, raceScene } = createFixture();
+    const fx = createFixture();
+    createdFixtures.push(fx);
+    const { am } = fx;
 
     am.registerManifest("a", makeManifest("a"));
 
@@ -489,7 +507,5 @@ describe("preload concurrency", () => {
 
     // Only one actual load should have been made
     expect(callCount).toBe(1);
-
-    teardownFixture({ engine, am, menuScene, raceScene });
   });
 });
