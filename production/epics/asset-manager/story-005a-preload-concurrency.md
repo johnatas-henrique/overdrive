@@ -31,13 +31,13 @@ _(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh 
 
 _From GDD `design/gdd/asset-manager.md`, scoped to this story:_
 
-- [ ] AC-p1: `preload(['spa', 'monza'])` calls `LoadAssetContainerAsync` for each uncached ID. All started concurrently (no sequential await).
-- [ ] AC-p2: `preload()` returns a single `Promise<void>` that resolves when ALL loads complete.
-- [ ] AC-p3: If one preload asset fails, `'asset.error'` is emitted for that ID. Other assets continue loading. The overall Promise rejects.
-- [ ] AC-p4: `'asset.load.allComplete'` is emitted with `{ ids: ['spa', 'monza'] }` when the entire batch finishes successfully.
-- [ ] AC-p5: Preloading an already-cached ID skips that ID immediately (no I/O, no duplicate events).
-- [ ] AC-p6: `preload([])` with an empty array resolves immediately — no events emitted, no async overhead.
-- [ ] AC-p7: `preload()` before `init()` throws `AssetError('Not initialized')`. `preload()` after `dispose()` throws `AssetError('Already disposed')`.
+- [x] AC-p1: `preload(['spa', 'monza'])` calls `LoadAssetContainerAsync` for each uncached ID. All started concurrently (no sequential await).
+- [x] AC-p2: `preload()` returns a single `Promise<void>` that resolves when ALL loads complete.
+- [x] AC-p3: If one preload asset fails, `'asset.error'` is emitted for that ID. Other assets continue loading. The overall Promise rejects.
+- [x] AC-p4: `'asset.load.allComplete'` is emitted with `{ ids: ['spa', 'monza'] }` when the entire batch finishes successfully.
+- [x] AC-p5: Preloading an already-cached ID skips that ID immediately (no I/O, no duplicate events).
+- [x] AC-p6: `preload([])` with an empty array resolves immediately — no events emitted, no async overhead.
+- [x] AC-p7: `preload()` before `init()` throws `AssetError('Not initialized')`. `preload()` after `dispose()` throws `AssetError('Already disposed')`.
 
 ---
 
@@ -119,5 +119,4 @@ _Written by qa-lead at story creation. The developer implements against these �
 **Deviations**: None
 **Test Evidence**: 13 integration tests at `tests/integration/asset-manager/preload-concurrency.test.ts`
 **Code Review**: Complete — APPROVED with fixes applied
-**Tech Debt Resolved**: 1 item (stale test path in story-002)
-**Noted**: No pending-load dedup map for concurrent same-ID loads (outside story scope)
+**Tech Debt Resolved**: 2 items (stale test path in story-002, pending-load dedup via _pendingLoads Map)

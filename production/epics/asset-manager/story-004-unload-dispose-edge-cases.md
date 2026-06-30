@@ -30,17 +30,17 @@ _(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh 
 
 _From GDD `design/gdd/asset-manager.md`, scoped to this story:_
 
-- [ ] AC-7a: `unloadAll()` calls `container.removeAllFromScene()` on every cached container. Containers remain in the cache.
-- [ ] AC-7b: After `unloadAll()`, `load()` still works — containers are cached and can be re-added.
-- [ ] AC-7c: `unloadAll()` is idempotent — calling it twice is a safe no-op (second call removes already-removed containers).
-- [ ] AC-8a: `dispose()` calls `container.dispose()` on every cached container, clears the cache, and transitions state to `Disposed`.
-- [ ] AC-8b: `dispose()` does NOT dispose `menuScene` or `raceScene` (scene ownership is outside AssetManager).
-- [ ] AC-8c: After `dispose()`, calling `load()` or `get()` throws `AssetError('Already disposed')`.
-- [ ] AC-9a: `registerManifest(id, manifestData)` stores the manifest under a string key.
-- [ ] AC-9b: Calling `registerManifest('spa', ...)` a second time (same ID) silently overwrites the previous manifest (consistent with Story 002 AC-2c).
-- [ ] AC-9c: Registering two different IDs (`'spa'`, `'monza'`) — both succeed.
-- [ ] AC-9d: `registerManifest()` before `init()` throws `AssetError('Not initialized')`.
-- [ ] AC-NEW-1: `disposeContainer('spa')` removes the container from cache and calls `container.dispose()`. Other containers unaffected. Missing ID is a safe no-op.
+- [x] AC-7a: `unloadAll()` calls `container.removeAllFromScene()` on every cached container. Containers remain in the cache.
+- [x] AC-7b: After `unloadAll()`, `load()` still works — containers are cached and can be re-added.
+- [x] AC-7c: `unloadAll()` is idempotent — calling it twice is a safe no-op (second call removes already-removed containers).
+- [x] AC-8a: `dispose()` calls `container.dispose()` on every cached container, clears the cache, and transitions state to `Disposed`.
+- [x] AC-8b: `dispose()` does NOT dispose `menuScene` or `raceScene` (scene ownership is outside AssetManager).
+- [x] AC-8c: After `dispose()`, calling `load()` or `get()` throws `AssetError('Already disposed')`.
+- [x] AC-9a: `registerManifest(id, manifestData)` stores the manifest under a string key.
+- [x] AC-9b: Calling `registerManifest('spa', ...)` a second time (same ID) silently overwrites the previous manifest (consistent with Story 002 AC-2c).
+- [x] AC-9c: Registering two different IDs (`'spa'`, `'monza'`) — both succeed.
+- [x] AC-9d: `registerManifest()` before `init()` throws `AssetError('Not initialized')`.
+- [x] AC-NEW-1: `disposeContainer('spa')` removes the container from cache and calls `container.dispose()`. Other containers unaffected. Missing ID is a safe no-op.
 - [ ] AC-NEW-2: When re-instantiating from cache (Race Again), animation groups are re-created via `instantiateModelsToScene()` — no stale `AnimationGroup` references survive.
 
 ---
@@ -123,7 +123,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 **Story Type**: Logic
 **Required evidence**: `tests/unit/asset-manager/asset-manager.test.ts`
-**Status**: [x] Created — 22 tests, all passing
+**Status**: [x] Created — Story tests: 56 passing
 
 ---
 
@@ -139,5 +139,5 @@ _Written by qa-lead at story creation. The developer implements against these �
 **Completed**: 2026-06-29
 **Criteria**: 11/12 passing (AC-NEW-2 deferred — integration concern for Story 005b)
 **Deviations**: None
-**Test Evidence**: `tests/unit/asset-manager/asset-manager.test.ts` — 56 tests, 1432/1432 full suite
+**Test Evidence**: `tests/unit/asset-manager/asset-manager.test.ts` — 56 tests passing | Full suite: 1453/1453
 **Code Review**: APPROVED via /code-review, fixes applied (get() guard, disposeContainer error consistency)

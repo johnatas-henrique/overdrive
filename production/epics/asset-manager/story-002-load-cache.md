@@ -31,16 +31,16 @@ _(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh 
 
 _From GDD `design/gdd/asset-manager.md`, scoped to this story:_
 
-- [ ] AC-2a: `registerManifest('spa', { glb: { rootUrl: 'assets/tracks/spa/', filename: 'spa.glb' } })` stores the manifest in an internal `Map<string, Manifest>` keyed by `'spa'`.
-- [ ] AC-2b: `registerManifest()` before `init()` throws `AssetError('Not initialized')`.
-- [ ] AC-2c: Calling `registerManifest('spa', ...)` twice overwrites the previous manifest silently (no error).
-- [ ] AC-3a: After `registerManifest('spa', spaTrackManifest)` and `await load('spa')`: (a) `LoadAssetContainerAsync` is called once with the manifest's `rootUrl`/`filename`, (b) the returned `AssetContainer` is stored in the cache under key `'spa'`, (c) `container.addAllToScene(activeScene)` is called.
-- [ ] AC-3b: `load()` before `init()` throws `AssetError('Not initialized')`.
-- [ ] AC-3c: `load()` after `dispose()` throws `AssetError('Already disposed')`.
-- [ ] AC-4a: After a successful first `load('spa')`, calling `load('spa')` again — `LoadAssetContainerAsync` is NOT called (spy on the loader).
-- [ ] AC-4b: The second `load('spa')` returns synchronously (cached container re-added, zero asynchronous I/O).
-- [ ] AC-5a: After `load('spa')` completes, `get('spa_root')` returns the root `TransformNode` of the loaded mesh group.
-- [ ] AC-5b: `get('nonexistent')` returns `undefined`.
+- [x] AC-2a: `registerManifest('spa', { glb: { rootUrl: 'assets/tracks/spa/', filename: 'spa.glb' } })` stores the manifest in an internal `Map<string, Manifest>` keyed by `'spa'`.
+- [x] AC-2b: `registerManifest()` before `init()` throws `AssetError('Not initialized')`.
+- [x] AC-2c: Calling `registerManifest('spa', ...)` twice overwrites the previous manifest silently (no error).
+- [x] AC-3a: After `registerManifest('spa', spaTrackManifest)` and `await load('spa')`: (a) `LoadAssetContainerAsync` is called once with the manifest's `rootUrl`/`filename`, (b) the returned `AssetContainer` is stored in the cache under key `'spa'`, (c) `container.addAllToScene(activeScene)` is called.
+- [x] AC-3b: `load()` before `init()` throws `AssetError('Not initialized')`.
+- [x] AC-3c: `load()` after `dispose()` throws `AssetError('Already disposed')`.
+- [x] AC-4a: After a successful first `load('spa')`, calling `load('spa')` again — `LoadAssetContainerAsync` is NOT called (spy on the loader).
+- [x] AC-4b: The second `load('spa')` returns synchronously (cached container re-added, zero asynchronous I/O).
+- [x] AC-5a: After `load('spa')` completes, `get('spa_root')` returns the root `TransformNode` of the loaded mesh group.
+- [x] AC-5b: `get('nonexistent')` returns `undefined`.
 
 ---
 
@@ -57,6 +57,7 @@ _Derived from ADR-0003 Implementation Guidelines:_
    container.removeAllFromScene(); // unparent source meshes from raceScene
    this._cache.set(id, container);
    ```
+
 2. **Cache hit** — Check `this._cache.has(id)` before calling `LoadAssetContainerAsync`. On hit: call `container.addAllToScene(this.activeScene)` and return.
 3. **registerManifest pattern** — Stores path mappings for deferred loading:
    ```typescript
@@ -65,6 +66,7 @@ _Derived from ADR-0003 Implementation Guidelines:_
      this._manifests.set(id, manifest);
    }
    ```
+
    The manifest type (`TrackManifest`) defines `glb: { rootUrl: string; filename: string }` — consumed by `load()` to build the URL for `LoadAssetContainerAsync`.
 4. **get() implementation** — Iterates the cached container's meshes to find root `TransformNode(s)`. Returns the first match or `undefined`.
 5. **Scene binding** — Race assets are loaded against `raceScene` (from Story 001's init). The scene exists and is bound to the engine even when not rendering.
