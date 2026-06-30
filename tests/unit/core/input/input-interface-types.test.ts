@@ -206,6 +206,14 @@ describe("InputState.ZERO constant", () => {
     expect(a).toBe(b);
   });
 
+  it("test_zero_is_frozen", () => {
+    // Object.freeze() prevents accidental mutation of the shared singleton
+    expect(Object.isFrozen(InputState.ZERO)).toBe(true);
+    expect(() => {
+      (InputState.ZERO as { steer: number }).steer = 0.5;
+    }).toThrow();
+  });
+
   it("test_zero_fields_are_all_at_minimum", () => {
     const zero = InputState.ZERO;
 
