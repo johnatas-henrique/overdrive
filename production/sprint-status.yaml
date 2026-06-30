@@ -329,7 +329,8 @@ stories:
     name: "Story 001: Physics Core Skeleton"
     file: "production/epics/physics-handling/story-001-physics-core-skeleton.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
+    completed: 2026-06-30
     owner: ""
     estimate_days: 3
     blocker: ""

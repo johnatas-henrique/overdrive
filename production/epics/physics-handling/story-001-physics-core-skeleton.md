@@ -1,7 +1,8 @@
 # Story 001: Physics Core Skeleton
 
 > **Epic**: Physics / Handling
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-30
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
@@ -290,3 +291,14 @@ _Written by qa-lead at story creation. The developer implements against these â€
 
 - Depends on: Foundation pipeline (ADR-0002), Entity/Car Lifecycle (ADR-0005), Track System (spline data access), ConfigManager (physics.\* namespace)
 - Unlocks: Stories 002â€“005
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-30
+**Criteria**: 7/7 passing (AC-3, AC-6 deferred to ADR-0005 entity lifecycle)
+**Deviations**: None
+**Test Evidence**: `tests/unit/physics-handling/physics-core-skeleton.test.ts` (43 tests)
+**Code Review**: Complete (0 BLOCKING, 0 WARNING after fixes)
+**Tech Debt Resolved**: 0 items (1 new item introduced: gravity hardcoding)
