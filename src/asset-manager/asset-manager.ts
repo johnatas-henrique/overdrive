@@ -137,6 +137,7 @@ export class AssetManager {
    * ```
    */
   init(menuScene: Scene, raceScene: Scene): void {
+    this._assertNotDisposed();
     if (this._state === "ready") {
       return; // Idempotent: second call is no-op
     }
@@ -195,6 +196,7 @@ export class AssetManager {
    * ```
    */
   getActiveScene(): Scene {
+    this._assertNotDisposed();
     this._assertInitialized();
     return this._activeScene as Scene;
   }
@@ -217,6 +219,7 @@ export class AssetManager {
    * ```
    */
   setTrackId(trackId: string): void {
+    this._assertNotDisposed();
     this._assertInitialized();
     if (!trackId?.trim()) {
       throw new AssetError("Track ID must be a non-empty string");
@@ -319,11 +322,13 @@ export class AssetManager {
     if (this._state === "disposed") return;
     this._assertInitialized();
     this._unsubscribeFromGsm();
+    // Set disposed state BEFORE clearing cache so any in-flight async loads
+    // that complete after this point detect disposal and bail out.
+    this._state = "disposed";
     for (const container of this._cache.values()) {
       container.dispose();
     }
     this._cache.clear();
-    this._state = "disposed";
   }
 
   /**
@@ -365,8 +370,6 @@ export class AssetManager {
   private async _loadToCache(id: string): Promise<AssetContainer> {
     this._assertNotDisposed();
     this._assertInitialized();
-
-    this._emit("asset.load.start", { ids: [id] });
 
     // Cache hit — zero I/O
     if (this._cache.has(id)) {
@@ -432,6 +435,14 @@ export class AssetManager {
       throw error;
     }
 
+    // CR13: If AssetManager was disposed during the async load, dispose the
+    // newly loaded container and bail out — do not repopulate _cache or emit
+    // lifecycle events after disposal.
+    if (this._state !== "ready") {
+      container.dispose();
+      throw new AssetError("AssetManager disposed during load");
+    }
+
     // TODO: Detect texture load failures via scene.onTextureLoadingErrorObservable.
     // Babylon.js logs a warning and shows checkerboard for missing textures —
     // not a rejection. Emit 'asset.error' with the texture ID when detected.
@@ -472,6 +483,9 @@ export class AssetManager {
   async load(id: string): Promise<AssetContainer> {
     this._assertNotDisposed();
     this._assertInitialized();
+
+    // Emit per-asset start for the load() path (preload() emits its own batch start)
+    this._emit("asset.load.start", { ids: [id] });
 
     const container = await this._loadToCache(id);
     this._addAllToScene(container);

@@ -11,11 +11,14 @@ import { AssetManager } from "./asset-manager/asset-manager";
 import { templateConfig } from "./config/template-config";
 
 class App {
+  /** Babylon.js engine — WebGPU-first with WebGL2 fallback. */
   public engine!: Engine | WebGPUEngine;
+  /** Persistent menu scene. Always exists; renders when active. Managed by AssetManager. */
   public menuScene!: Scene;
+  /** Persistent race scene. Always exists; renders when active. Managed by AssetManager. */
   public raceScene!: Scene;
   private readonly canvas: HTMLCanvasElement;
-  private readonly assetManager = new AssetManager();
+  private assetManager!: AssetManager;
 
   constructor() {
     this.canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
@@ -48,6 +51,9 @@ class App {
     const { EventBus } = await import("@/foundation/event-bus/event-bus");
     const eventBus = new EventBus();
     eventBus.init();
+
+    // Construct AssetManager with EventBus for lifecycle events and GSM orchestration
+    this.assetManager = new AssetManager(eventBus);
 
     // ADR-0003: AssetManager.init() stores both scene references,
     // creates the empty cache, and transitions to Ready state.
