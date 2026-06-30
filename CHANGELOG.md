@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.5.0](https://github.com/johnatas-henrique/overdrive/compare/overdrive-v0.4.1...overdrive-v0.5.0) (2026-06-30)
+
+
+### Features
+
+* **asset-manager:** add AssetManager with two-scene architecture (TR-AM-001–004) ([8001681](https://github.com/johnatas-henrique/overdrive/commit/80016817b4ba48b040a08517162666dc7ec44377))
+* **asset-manager:** add car manifest IDs config for preload pipeline ([2d02435](https://github.com/johnatas-henrique/overdrive/commit/2d02435f3a502f2044be6ec3a0a8d9cdced9f0c7))
+* **asset-manager:** add GSM orchestration with lifecycle handlers ([fa1daa0](https://github.com/johnatas-henrique/overdrive/commit/fa1daa0a58b9cc6e03326485964151848c70c9c8))
+* **asset-manager:** add lifecycle methods (unloadAll, dispose, disposeContainer) ([6518530](https://github.com/johnatas-henrique/overdrive/commit/6518530b21d8cbf7edfdafc86e34afe360812672))
+* **asset-manager:** add loading events to EventMap and AssetManager ([295ec0a](https://github.com/johnatas-henrique/overdrive/commit/295ec0a26fc108b591b677281a883fa26f32a504))
+* **asset-manager:** add preload with concurrent loading and _loadToCache refactor ([09651ed](https://github.com/johnatas-henrique/overdrive/commit/09651ed1bc5feeec1327506cacbde7331885f29c))
+* **asset-manager:** complete Asset Manager epic — 6 stories, 28 commits ([92aece8](https://github.com/johnatas-henrique/overdrive/commit/92aece8e891c3fff3334d70c8e3162c735e78749))
+* **asset-manager:** implement load/cache with registerManifest, load, and get ([a3e2c80](https://github.com/johnatas-henrique/overdrive/commit/a3e2c809ce2a0303769cf1076636b23d6fe89c8e))
+* **input:** complete Input system — 7 stories, 22 files, 6247 lines ([f0bac70](https://github.com/johnatas-henrique/overdrive/commit/f0bac7089820061d8b7e21775cc62a5b2f27d2a2))
+* **input:** dead zone formula (TR-INP-003) ([bdc3c5a](https://github.com/johnatas-henrique/overdrive/commit/bdc3c5a3b0e5eace35eff7ad03e7ed806b32d898))
+* **input:** debounce + digital edge cases (TR-INP-007) ([95d7cbf](https://github.com/johnatas-henrique/overdrive/commit/95d7cbf97b707029d2de5f7d6668952456ee0833))
+* **input:** device detection + onDeviceChanged observable (TR-INP-008) ([a3bdf25](https://github.com/johnatas-henrique/overdrive/commit/a3bdf252b910461b29db72dc848234bf40c81e53))
+* **input:** gsm state integration + pulse routing (TR-INP-006) ([3f9be3a](https://github.com/johnatas-henrique/overdrive/commit/3f9be3a26ec2d3a94b6b6a094f482eae07061d02))
+* **input:** iinput interface + inputstate type definitions (TR-INP-001) ([9038ac3](https://github.com/johnatas-henrique/overdrive/commit/9038ac35996868b553fc85ff98e364250a013279))
+* **input:** player input keyboard + gamepad polling (TR-INP-002, TR-INP-004) ([561575b](https://github.com/johnatas-henrique/overdrive/commit/561575b6d978534283f2ac819c86537301e4176b))
+* **input:** tab blur safety + gamepad disconnect handling (TR-INP-005, TR-INP-009) ([af3e9a9](https://github.com/johnatas-henrique/overdrive/commit/af3e9a93edad06a61d71fe63d0fe28d38b81f919))
+
+
+### Bug Fixes
+
+* **asset-manager:** resolve review findings G1-G4, CR13 ([e144bd3](https://github.com/johnatas-henrique/overdrive/commit/e144bd32e80337e989dc0768d2a3a837fcf050e0))
+* **asset-manager:** resolve TD1/TD2/TD3/TD5 and remove _addAllToScene tests ([295973d](https://github.com/johnatas-henrique/overdrive/commit/295973dc457454a19b6e001ae61da2937f7fa140))
+* **asset-manager:** unify EventMap payload, clear pending loads, prevent scene duplication ([c685fcd](https://github.com/johnatas-henrique/overdrive/commit/c685fcddc25888821ebc76473e5620dd26301159))
+* **input:** pr review fixes — optional chain, drift overwrite, jsdoc ([f3cc823](https://github.com/johnatas-henrique/overdrive/commit/f3cc823754fcce45cb7856a6d063f0500b8fec80))
+
 ## [0.4.1](https://github.com/johnatas-henrique/overdrive/compare/overdrive-v0.4.0...overdrive-v0.4.1) (2026-06-29)
 
 
