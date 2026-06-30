@@ -1,11 +1,12 @@
 # Story 002: GSM-Driven Camera Lifecycle
 
 > **Epic**: Camera
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 8h
+> **Last Updated**: 2026-06-30
 
 ## Context
 
@@ -18,6 +19,8 @@
 **ADR Decision Summary**: Camera subscribes to `gsm.state.entered` and `gsm.state.exited` via Event Bus. Transitions between camera modes based on the incoming GSM state. Never calls `gsm.transition()` — purely reactive.
 
 **Engine**: Babylon.js 9.12.0 | **Risk**: LOW
+
+**Performance**: No performance impact expected — camera switching is a single `scene.activeCamera` property assignment.
 
 **Control Manifest Rules (this layer)**:
 
@@ -174,9 +177,9 @@ _Written by qa-lead at story creation:_
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/camera/gsm-camera-lifecycle_test.ts`
+**Required evidence**: `tests/integration/camera/gsm-camera-lifecycle.test.ts`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Complete — 21 tests passing
 
 ---
 
@@ -184,3 +187,11 @@ _Written by qa-lead at story creation:_
 
 - Depends on: Story 001 (needs CameraManager + camera instances), GSM (Foundation layer — Event Bus events)
 - Unlocks: Story 008 (drone lifecycle)
+
+## Completion Notes
+
+**Completed**: 2026-06-30
+**Criteria**: 5/5 passing (all auto-verified)
+**Deviations**: None
+**Test Evidence**: Integration test at `tests/integration/camera/gsm-camera-lifecycle.test.ts` (21 tests)
+**Code Review**: Complete — CRITICAL fix applied (FollowCamera.lockedTarget), test gaps closed
