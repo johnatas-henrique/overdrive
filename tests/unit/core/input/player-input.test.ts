@@ -541,7 +541,14 @@ describe("AC-3 edge case: gamepad overrides keyboard steering", () => {
 describe("Performance: getState() within F-G3 budget", () => {
   it("getState_completes_within_0_01ms", () => {
     const input = createPlayerInput();
+    const warmup = 500;
     const iterations = 1000;
+
+    // JIT warmup — discard first 500 calls to let V8 stabilise
+    for (let i = 0; i < warmup; i++) {
+      input.getState();
+    }
+
     const start = performance.now();
     for (let i = 0; i < iterations; i++) {
       input.getState();

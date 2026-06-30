@@ -187,6 +187,7 @@ function addCarState(
     tireCondition: 1,
     pitEntrySpeed: null,
     gradient: 0,
+    topSpeedMs: TEST_CONFIG.topSpeedL1toL5[0],
 
     tireBlownEmitted: false,
     fuelEmptyEmitted: false,
@@ -873,6 +874,7 @@ describe("AC-7 — Determinism", () => {
       tireCondition: 1,
       pitEntrySpeed: null,
       gradient: 0,
+      topSpeedMs: TEST_CONFIG.topSpeedL1toL5[0],
 
       tireBlownEmitted: false,
       fuelEmptyEmitted: false,
