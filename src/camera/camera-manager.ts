@@ -157,6 +157,33 @@ export class CameraManager implements ICameraManager {
    */
   private _shakeNode: TransformNode | null = null;
 
+  // ── Drone skip state (Story 008) ───────────────────────────────────
+
+  /**
+   * Monotonically increasing clock, accumulated in `update(dt)`.
+   *
+   * Used as a high-resolution time base for drone skip delay comparison.
+   * Starts at 0 and grows with each `update()` call by `dt`.
+   */
+  private _totalElapsed = 0;
+
+  /**
+   * Value of `_totalElapsed` when the drone camera was last activated.
+   *
+   * The skip delay is computed as `_totalElapsed - _droneStartTime`.
+   * Reset each time `setActiveMode(Drone)` is called.
+   */
+  private _droneStartTime = 0;
+
+  /**
+   * Whether the drone skip delay has elapsed.
+   *
+   * Set to `true` in `update()` when `_totalElapsed - _droneStartTime`
+   * exceeds `config.drone.skipDelay`. Once true, `trySkipDrone()` will
+   * switch to Inactive mode. Reset on each Drone activation.
+   */
+  private _droneSkippable = false;
+
   /**
    * @param scene    — The Babylon.js Scene to create cameras in.
    * @param eventBus — Optional EventBus for GSM lifecycle subscription.
@@ -323,8 +350,11 @@ export class CameraManager implements ICameraManager {
       }
       case CameraMode.Drone: {
         defined(this._droneCam, "CameraManager: droneCam not initialised");
+        this._wireDroneCameraTarget();
         this._scene.activeCamera = this._droneCam;
         this._currentMode = mode;
+        this._droneStartTime = this._totalElapsed;
+        this._droneSkippable = false;
         break;
       }
       // default: invalid mode — silently ignore (F6)
@@ -408,17 +438,43 @@ export class CameraManager implements ICameraManager {
   }
 
   /**
-   * Per-tick update. Runs shake decay, FOV shift, and chase occlusion.
+   * Attempt to skip the drone camera sequence.
+   *
+   * Called by the input system on confirm action during Drone mode.
+   * If the skip delay has elapsed since drone activation, switches to
+   * Inactive mode. If called before the delay or in any mode other
+   * than Drone, this is a no-op.
+   *
+   * Does NOT initiate GSM transitions (C-F7) — only switches the
+   * camera to Inactive. The GSM handles Menu transitions separately.
+   *
+   * @see TR-CAM-010 — Drone camera auto-orbit
+   * @see Story 008 — AC-10 (skip on confirm after delay)
+   */
+  trySkipDrone(): void {
+    if (this._currentMode !== CameraMode.Drone) return;
+    if (!this._droneSkippable) return;
+
+    this.setActiveMode(CameraMode.Inactive);
+  }
+
+  /**
+   * Per-tick update. Runs shake decay, FOV shift, chase occlusion,
+   * and drone auto-orbit.
    *
    * Chase occlusion raycast (Story 004) runs every tick when the active
    * mode is Chase and a player car mesh reference is available.
    * Speed-dependent FOV shift (Story 006) runs every tick for Cockpit
    * and Chase modes. Shake decay (Story 007) runs every tick regardless
    * of active mode (shake affects the cockpit camera's offset).
+   * Drone auto-orbit (Story 008) runs every tick in Drone mode.
    *
    * @param dt — Delta time in seconds (fixed 1/60s)
    */
   update(dt: number): void {
+    // Accumulate total elapsed time (Story 008 — skip delay timing)
+    this._totalElapsed += dt;
+
     // Shake decay and offset application (Story 007 — AC-4, AC-5, AC-6)
     this._updateShake(dt);
 
@@ -433,6 +489,26 @@ export class CameraManager implements ICameraManager {
 
     // Speed-dependent FOV shift (Story 006 — AC-3a, AC-3b, AC-3c)
     this._updateFOV();
+
+    // Drone auto-orbit + skip delay (Story 008 — AC-9, AC-10, AC-17)
+    if (this._currentMode === CameraMode.Drone && this._droneCam) {
+      // Track player car position every tick (handles coasting post-race)
+      if (this._playerCarMesh) {
+        this._droneCam.target = this._playerCarMesh.absolutePosition;
+      }
+
+      // Increment alpha at configured speed (degrees/s → radians)
+      this._droneCam.alpha += ((this._config.drone.speed * Math.PI) / 180) * dt;
+
+      // Check if skip delay has elapsed since drone activation
+      if (
+        !this._droneSkippable &&
+        this._totalElapsed - this._droneStartTime >=
+          this._config.drone.skipDelay
+      ) {
+        this._droneSkippable = true;
+      }
+    }
   }
 
   /**
@@ -632,6 +708,8 @@ export class CameraManager implements ICameraManager {
     this._playerCarMesh = null;
     this._occlusionActive = false;
     this._activeShakes = [];
+    this._totalElapsed = 0;
+    this._droneSkippable = false;
   }
 
   // ------------------------------------------------------------------
@@ -737,6 +815,32 @@ export class CameraManager implements ICameraManager {
       this._chaseCam.lockedTarget = carMesh;
       this._playerCarMesh = carMesh;
     }
+  }
+
+  /**
+   * Wire the ArcRotateCamera target to the player car mesh.
+   *
+   * Uses the ChaseCameraReader to acquire the car mesh reference
+   * (same dependency inversion pattern as `_wireChaseCameraTarget`).
+   * Called each time Drone camera is activated so the orbit target
+   * follows the car — even if the car is still coasting (AC-17).
+   *
+   * The drone target position is updated per-frame in `update()`;
+   * this method just acquires the mesh reference for that update.
+   */
+  private _wireDroneCameraTarget(): void {
+    // Acquire car mesh from the reader if available
+    if (this._chaseReader) {
+      const mesh = this._chaseReader.getPlayerCarMesh();
+      if (mesh) {
+        // biome-ignore lint/suspicious/noExplicitAny: mesh is AbstractMesh at runtime
+        this._playerCarMesh = mesh as any;
+        return;
+      }
+    }
+
+    // Fallback to existing ref (may be null if never acquired)
+    // The update() loop safely handles null by skipping target assignment.
   }
 
   /**

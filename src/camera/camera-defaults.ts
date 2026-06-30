@@ -46,7 +46,7 @@ export function createDefaultCameraConfig(): CameraConfig {
     drone: {
       distance: 8,
       speed: 15,
-      skipDelay: 500,
+      skipDelay: 0.5,
       fov: 75,
     },
 

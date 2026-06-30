@@ -48,7 +48,7 @@ export enum CameraMode {
 /**
  * CameraManager contract — the only public API external systems interact with.
  *
- * All 7 methods are required. The CameraManager is constructed with a Scene
+ * All 8 methods are required. The CameraManager is constructed with a Scene
  * reference, then `init()` creates cameras and stores the player car ID.
  * After init, `setActiveMode()` activates one camera per frame via
  * `scene.activeCamera`. `update(dt)` runs per-tick (FOV shift, shake, etc.)
@@ -105,8 +105,21 @@ export interface ICameraManager {
   addShake(type: ShakeType, intensity: number): void;
 
   /**
+   * Attempt to skip the drone camera sequence.
+   *
+   * Called by the input system on confirm action (during Drone mode only).
+   * If `drone.skipDelay` has elapsed since drone activation, switches to
+   * Inactive mode. Otherwise, the call is silently ignored (no-op).
+   *
+   * @see TR-CAM-010 — Drone camera auto-orbit (skippable after delay)
+   * @see Story 008 — AC-10 (skip on confirm after delay)
+   */
+  trySkipDrone(): void;
+
+  /**
    * Per-tick update called from the game loop.
-   * Drives FOV shift, shake decay, and chase occlusion raycast.
+   * Drives FOV shift, shake decay, chase occlusion raycast,
+   * and drone auto-orbit.
    *
    * @param dt — Delta time in seconds (fixed 1/60s)
    */
@@ -171,7 +184,7 @@ export interface CameraConfig {
     distance: number;
     /** Orbit angular speed in degrees per second. */
     speed: number;
-    /** Milliseconds before player can skip the drone sequence. */
+    /** Seconds before player can skip the drone sequence. */
     skipDelay: number;
     /** FOV in degrees. */
     fov: number;
