@@ -1,7 +1,8 @@
 # Story 001: IInput Interface + InputState Type Definitions
 
 > **Epic**: Input
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-29
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -106,7 +107,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 **Story Type**: Logic
 **Required evidence**:
 
-- Tests: `tests/unit/input/input-interface-types.test.ts` — must exist and pass
+- Tests: `tests/unit/core/input/input-interface-types.test.ts` — must exist and pass
 - Type-level tests (compile-time assertions) + runtime constant verification
 
 **Status**: [ ] Not yet created
@@ -117,3 +118,13 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 - Depends on: None
 - Unlocks: Stories 002, 003, 004, 005, 006, 007
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-29
+**Criteria**: 5/5 passing
+**Deviations**: ADVISORY — DSM import path corrected from `DeviceInput/deviceSourceManager` to `DeviceInput/InputDevices/deviceSourceManager` (Babylon.js 9.x restructuring). Logged as tech debt.
+**Test Evidence**: Logic: test file at `tests/unit/input/input-interface-types.test.ts` (13 tests, all passing)
+**Code Review**: Complete — APPROVED (babylonjs-specialist + qa-tester + lead-programmer all APPROVE/ADEQUATE)

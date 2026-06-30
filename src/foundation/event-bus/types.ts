@@ -94,6 +94,12 @@ export type EventMap = {
   "asset.load.complete": { id: string };
   /** All assets in a preload batch have completed successfully. */
   "asset.load.allComplete": { ids: string[] };
+  /** Player confirmed to depart from pit stop. */
+  "input.pit.depart": Record<string, never>;
+  /** Player confirmed on post-race results screen. */
+  "input.confirm.postRace": Record<string, never>;
+  /** Player confirmed on menu screen. */
+  "input.confirm.menu": Record<string, never>;
 };
 
 /**

@@ -1,7 +1,8 @@
 # Story 006: Debounced Inputs + Digital Edge Cases
 
 > **Epic**: Input
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-29
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -170,3 +171,11 @@ _Written by qa-lead at story creation. The developer implements against these â€
 
 - Depends on: Story 003 (PlayerInput pulse detection; this story adds refinement to the raw pulse output)
 - Unlocks: None
+
+## Completion Notes
+
+**Completed**: 2026-06-29
+**Criteria**: 5/5 passing
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/core/input/debounce-edge-cases.test.ts` (27 tests)
+**Code Review**: Complete â€” APPROVED (babylonjs-specialist + qa-tester), APPROVED (lead-programmer)

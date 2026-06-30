@@ -1,7 +1,8 @@
 # Story 004: Tab Blur Safety + Gamepad Disconnect Handling
 
 > **Epic**: Input
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-29
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
@@ -169,3 +170,11 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 - Depends on: Story 003 (PlayerInput class to add blur/disconnect handlers to)
 - Unlocks: None
+
+## Completion Notes
+
+**Completed**: 2026-06-29
+**Criteria**: 6/6 passing (all auto-verified by tests)
+**Deviations**: OUT OF SCOPE — player-input-polling.test.ts modified for branch coverage (logged as tech debt SP2/input/ST4). REFACTOR — _readKeyboard() and _readGamepad() split into sub-methods to resolve LP-CODE-REVIEW concerns (method length/complexity).
+**Test Evidence**: Integration: test file at `tests/integration/input/focus-disconnect-safety.test.ts` (26 tests, all passing)
+**Code Review**: COMPLETE — LP-CODE-REVIEW APPROVE (after refactor), QL-TEST-COVERAGE ADEQUATE

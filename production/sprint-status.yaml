@@ -195,71 +195,71 @@ stories:
     name: "Story 001: Input Interface Types"
     file: "production/epics/input/story-001-input-interface-types.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-06-29"
 
   - id: "2-19"
     name: "Story 002: Dead Zone Formula"
     file: "production/epics/input/story-002-dead-zone-formula.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-29"
 
   - id: "2-20"
     name: "Story 003: Player Input Polling"
     file: "production/epics/input/story-003-player-input-polling.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-29"
 
   - id: "2-21"
     name: "Story 004: Focus/Disconnect Safety"
     file: "production/epics/input/story-004-focus-disconnect-safety.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-29"
 
   - id: "2-22"
     name: "Story 005: GSM State Integration"
     file: "production/epics/input/story-005-gsm-state-integration.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-29"
 
   - id: "2-23"
     name: "Story 006: Debounce Edge Cases"
     file: "production/epics/input/story-006-debounce-edge-cases.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-29"
 
   - id: "2-24"
     name: "Story 007: Device Detection"
     file: "production/epics/input/story-007-device-detection.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-29"
 
   # Asset Manager
   - id: "2-25"

@@ -1,7 +1,8 @@
 # Story 002: Dead Zone Formula + Analog Processing
 
 > **Epic**: Input
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-29
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -112,7 +113,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 **Story Type**: Logic
 **Required evidence**:
 
-- Tests: `tests/unit/input/dead-zone-formula.test.ts` — must exist and pass
+- Tests: `tests/unit/core/input/dead-zone.test.ts` — must exist and pass
 - Full boundary coverage: threshold boundary, input range boundaries, sign preservation, zero threshold
 
 **Status**: [ ] Not yet created
@@ -123,3 +124,13 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 - Depends on: Story 001 (uses `InputState.ZERO` for zero-state reference, type interfaces)
 - Unlocks: Story 003 (PlayerInput needs dead zone function for polling loop)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-29
+**Criteria**: 6/6 passing
+**Deviations**: ADVISORY — File naming conventions corrected: deadZone.ts → dead-zone.ts (kebab-case), test moved from tests/unit/input/ to tests/unit/core/input/ (mirror src/ structure). Logged as tech debt.
+**Test Evidence**: Logic: test file at `tests/unit/core/input/dead-zone.test.ts` (36 tests, all passing)
+**Code Review**: Complete — APPROVED (babylonjs-specialist + qa-tester + lead-programmer all APPROVE/ADEQUATE)
