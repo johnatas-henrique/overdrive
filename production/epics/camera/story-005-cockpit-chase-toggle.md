@@ -1,11 +1,10 @@
 # Story 005: Instant Cockpit/Chase Toggle
 
 > **Epic**: Camera
-> **Status**: In Progress
+> **Status**: Ready
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
-> **Last Updated**: 2026-06-30
 > **Estimate**: 4h
 
 ## Context
