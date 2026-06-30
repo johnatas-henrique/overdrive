@@ -14,7 +14,7 @@ goal: "Core A — Carro na Tela (Telemetry → Dev Tools → Tech Debt → Input
 start: "2026-06-27"
 end: "2026-07-10"
 generated: "2026-06-26"
-updated: "2026-06-29"
+updated: "2026-06-30"
 
 stories:
   - id: "2-1"
@@ -340,11 +340,11 @@ stories:
     name: "Story 002: Arcade Grip Model"
     file: "production/epics/physics-handling/story-002-arcade-grip-model.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   - id: "2-33"
     name: "Story 003: Engine/Gears/Drag/Braking"
