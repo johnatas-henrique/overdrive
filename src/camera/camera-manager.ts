@@ -31,6 +31,7 @@ import type { IEventBus, Subscription } from "@/foundation/event-bus/types";
 import { defined } from "@/shared/assert-defined";
 import { createDefaultCameraConfig } from "./camera-defaults";
 import {
+  type ActiveShake,
   type CameraConfig,
   CameraError,
   CameraMode,
@@ -130,6 +131,19 @@ export class CameraManager implements ICameraManager {
    * @see Story 006
    */
   private _speedKmh = 0;
+
+  /**
+   * Active shake instances — each shake event creates one entry.
+   *
+   * Every frame, `_updateShake()` iterates these in reverse, computes
+   * the exponential decay per instance, accumulates a random offset,
+   * and removes entries that have decayed below 5% of their initial
+   * intensity. Multiple shakes stack additively and decay independently.
+   *
+   * @see TR-CAM-004 — Camera shake: additive, exponential decay
+   * @see Story 007 — Shake system
+   */
+  private _activeShakes: ActiveShake[] = [];
 
   /**
    * Shake transform node — sits between driver_eye and the cockpit camera.
@@ -355,28 +369,59 @@ export class CameraManager implements ICameraManager {
   }
 
   /**
-   * Queue a shake effect.
+   * Queue a shake effect with type-specific decay rate.
    *
-   * Stub for Story 007 — parameters are accepted but shake not yet applied.
+   * Creates an `ActiveShake` entry with the given intensity and a decay
+   * rate determined by the shake type. If `_activeShakes` has reached
+   * its capacity, the oldest entry is evicted (FIFO).
    *
-   * @param _type      — Shake source category
-   * @param _intensity — Shake strength (0.0 to 1.0)
+   * Decay rates per type (from config):
+   * - kerb:  `config.shake.kerbDecay` (default 6.0/s)
+   * - collision: `config.shake.collisionDecay` (default 4.0/s)
+   * - offTrack: `config.shake.offtrackDecay` (default 5.0/s)
+   *
+   * @param type      — Shake source category ("kerb" | "collision" | "offTrack")
+   * @param intensity — Shake strength. For kerb/offTrack, callers typically
+   *                    pass the config's default intensity. For collision,
+   *                    callers pass `impulse × config.shake.collisionFactor`.
+   *
+   * @see TR-CAM-004 — Camera shake: additive, exponential decay
+   * @see Story 007 Implementation Notes — addShake()
    */
-  addShake(_type: ShakeType, _intensity: number): void {
-    // Story 007: Shake system with ActiveShake[]
+  addShake(type: ShakeType, intensity: number): void {
+    const cfg = this._config.shake;
+    let decay: number;
+
+    switch (type) {
+      case "kerb":
+        decay = cfg.kerbDecay;
+        break;
+      case "collision":
+        decay = cfg.collisionDecay;
+        break;
+      case "offTrack":
+        decay = cfg.offtrackDecay;
+        break;
+    }
+
+    this._activeShakes.push({ intensity, decay, time: 0 });
   }
 
   /**
-   * Per-tick update. Runs FOV shift, shake decay, and chase occlusion.
+   * Per-tick update. Runs shake decay, FOV shift, and chase occlusion.
    *
    * Chase occlusion raycast (Story 004) runs every tick when the active
    * mode is Chase and a player car mesh reference is available.
    * Speed-dependent FOV shift (Story 006) runs every tick for Cockpit
-   * and Chase modes. Stories 007-009 incrementally add more update logic.
+   * and Chase modes. Shake decay (Story 007) runs every tick regardless
+   * of active mode (shake affects the cockpit camera's offset).
    *
-   * @param _dt — Delta time in seconds (fixed 1/60s), reserved for Stories 007-009
+   * @param dt — Delta time in seconds (fixed 1/60s)
    */
-  update(_dt: number): void {
+  update(dt: number): void {
+    // Shake decay and offset application (Story 007 — AC-4, AC-5, AC-6)
+    this._updateShake(dt);
+
     // Chase camera occlusion raycast (Story 004 — AC-11a, AC-11b)
     if (
       this._currentMode === CameraMode.Chase &&
@@ -388,6 +433,59 @@ export class CameraManager implements ICameraManager {
 
     // Speed-dependent FOV shift (Story 006 — AC-3a, AC-3b, AC-3c)
     this._updateFOV();
+  }
+
+  /**
+   * Process all active shake instances for one frame.
+   *
+   * Iterates `_activeShakes` in reverse order so splice is safe. For
+   * each active shake, computes the current decayed intensity:
+   * ```
+   * current = intensity × exp(-decay × time)
+   * ```
+   * then accumulates a random directional offset into `totalOffset`
+   * and advances the shake's elapsed time. When the current value
+   * drops below 5% of the initial intensity, the shake is removed.
+   *
+   * At the end of the loop, applies `totalOffset` to the shake
+   * TransformNode's local position. If no shake node exists (e.g.
+   * cockpit camera not yet attached), the offset is computed but
+   * not applied — the internal array state is still maintained.
+   *
+   * @param dt — Delta time in seconds (fixed 1/60s)
+   *
+   * @see TR-CAM-004 — Camera shake: additive, exponential decay
+   * @see ADR-0007 §Shake System
+   * @see Story 007 Implementation Notes — updateShake()
+   */
+  private _updateShake(dt: number): void {
+    const totalOffset = Vector3.Zero();
+
+    for (let i = this._activeShakes.length - 1; i >= 0; i--) {
+      const shake = this._activeShakes[i];
+      const current = shake.intensity * Math.exp(-shake.decay * shake.time);
+
+      // Random direction per frame — range [-current, +current] per axis
+      totalOffset.addInPlace(
+        new Vector3(
+          (Math.random() - 0.5) * current * 2,
+          (Math.random() - 0.5) * current * 2,
+          (Math.random() - 0.5) * current * 2
+        )
+      );
+
+      shake.time += dt;
+
+      // Remove when decayed to < 5% of original intensity
+      if (current < shake.intensity * 0.05) {
+        this._activeShakes.splice(i, 1);
+      }
+    }
+
+    // Apply to shake TransformNode local position
+    if (this._shakeNode) {
+      this._shakeNode.position = totalOffset;
+    }
   }
 
   /**
@@ -533,6 +631,7 @@ export class CameraManager implements ICameraManager {
     this._scene.activeCamera = null;
     this._playerCarMesh = null;
     this._occlusionActive = false;
+    this._activeShakes = [];
   }
 
   // ------------------------------------------------------------------

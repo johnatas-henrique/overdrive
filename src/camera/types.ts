@@ -215,24 +215,25 @@ export type ShakeType = "kerb" | "collision" | "offTrack";
 /**
  * Shake configuration knobs (6 values).
  *
- * Controls the global shake behaviour: base intensity, decay rate,
- * spatial limits, and concurrency.
+ * Per-type intensity and decay configuration. Each shake type (kerb,
+ * collision, offTrack) has its own default intensity and exponential
+ * decay rate, allowing different "feels" per trigger source.
  *
  * @see Story 007 — Full shake system with ActiveShake[] runtime state
  */
 export interface ShakeConfig {
-  /** Default intensity multiplier for shake events (0.0 to 1.0). */
-  intensity: number;
-  /** Per-second exponential decay rate (higher = faster fade). */
-  decayRate: number;
-  /** Maximum position offset per axis in world units. */
-  maxOffset: number;
-  /** Shake oscillation frequency in Hz. */
-  frequency: number;
-  /** Ratio threshold at which shake is considered finished (default 0.05 = 5%). */
-  decayFloor: number;
-  /** Maximum concurrent active shake instances. */
-  maxActiveShakes: number;
+  /** Default intensity for kerb-triggered shake (default 0.03). */
+  kerbIntensity: number;
+  /** Per-second exponential decay rate for kerb shake (default 6.0). */
+  kerbDecay: number;
+  /** Collision impulse-to-intensity multiplier (default 0.001). */
+  collisionFactor: number;
+  /** Per-second exponential decay rate for collision shake (default 4.0). */
+  collisionDecay: number;
+  /** Default intensity for off-track shake (default 0.02). */
+  offtrackIntensity: number;
+  /** Per-second exponential decay rate for off-track shake (default 5.0). */
+  offtrackDecay: number;
 }
 
 // ---------------------------------------------------------------------------

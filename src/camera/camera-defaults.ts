@@ -66,12 +66,12 @@ export function createDefaultCameraConfig(): CameraConfig {
 
     // ── Shake (6 knobs) ────────────────────────────────────────────
     shake: {
-      intensity: 1.0,
-      decayRate: 3.0,
-      maxOffset: 0.3,
-      frequency: 10.0,
-      decayFloor: 0.05,
-      maxActiveShakes: 5,
+      kerbIntensity: 0.03,
+      kerbDecay: 6.0,
+      collisionFactor: 0.001,
+      collisionDecay: 4.0,
+      offtrackIntensity: 0.02,
+      offtrackDecay: 5.0,
     },
   };
 }
