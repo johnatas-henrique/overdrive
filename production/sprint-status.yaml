@@ -381,7 +381,8 @@ stories:
     name: "Story 001: Camera Foundation"
     file: "production/epics/camera/story-001-camera-foundation.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
+    completed: 2026-06-30
     owner: ""
     estimate_days: 1
     blocker: ""
