@@ -426,7 +426,7 @@ stories:
     name: "Story 005: Cockpit/Chase Toggle"
     file: "production/epics/camera/story-005-cockpit-chase-toggle.md"
     priority: must-have
-    status: ready-for-dev
+    status: in_progress
     owner: ""
     estimate_days: 0.5
     blocker: ""
