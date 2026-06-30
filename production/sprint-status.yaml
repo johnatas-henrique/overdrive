@@ -360,11 +360,11 @@ stories:
     name: "Story 004: Surface Handling (Offtrack/Kerbs)"
     file: "production/epics/physics-handling/story-004-surface-handling-offtrack-kerbs.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   - id: "2-35"
     name: "Story 005: Lock/Pit/External Inputs/Events"
