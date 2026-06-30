@@ -255,11 +255,11 @@ stories:
     name: "Story 007: Device Detection"
     file: "production/epics/input/story-007-device-detection.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-29"
 
   # Asset Manager
   - id: "2-25"

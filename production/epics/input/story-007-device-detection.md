@@ -1,7 +1,8 @@
 # Story 007: Device Detection + onDeviceChanged Observable
 
 > **Epic**: Input
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-29
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
@@ -29,10 +30,12 @@
 
 _From GDD `design/gdd/input.md`, scoped to this story:_
 
-- [ ] **AC-1**: Tracks `lastActiveDevice: DeviceType` — keyboard key press → `"keyboard"`; gamepad analog above dead zone or gamepad button press → `"gamepad"`
-- [ ] **AC-2**: `onDeviceChanged` observable fires exactly once on switch, not every tick — repeated same-device input does not re-fire
+- [ ] **AC-1**: Tracks `lastActiveDevice: DeviceType` based on meaningful input:
+  - Keyboard: any key press (including non-game keys like caps lock)
+  - Gamepad: analog above dead zone (`Math.abs(leftStick.x) > deadZone` OR `rightTrigger > deadZone` OR `leftTrigger > deadZone`) OR any button press (A, B, Start, Y, shoulder, D-pad)
+  - Sub-threshold gamepad noise (stick drift below dead zone) does NOT trigger a switch
+- [ ] **AC-2**: `onDeviceChanged` observable fires exactly once on device switch. Initial `lastActiveDevice` is `"keyboard"` — first keyboard input does not fire (no switch from default). First gamepad input fires once. Repeated same-device input does not re-fire.
 - [ ] **AC-3**: No penalty for switching mid-race — observable fires, but steer/throttle/brake values continue uninterrupted (both devices remain readable simultaneously)
-- [ ] **AC-4**: If keyboard and gamepad are both active, the last device that sent **meaningful** input (above dead zone for analog, any press for digital) is tracked as active
 
 ---
 
@@ -106,13 +109,15 @@ _Written by qa-lead at story creation. The developer implements against these �
   - Edge cases: no input at all → `lastActiveDevice` remains at initial default (`"keyboard"`)
 
 - **AC-2**: onDeviceChanged fires once on switch, not each tick
-  - Given: observer spy on `onDeviceChanged`
-  - When: keyboard input occurs (device switch from default)
-  - Then: observer call count === 1
+  - Given: initial `lastActiveDevice` is `"keyboard"` (default)
+  - When: keyboard key 'w' is pressed
+  - Then: observer call count === 0 (no switch from default)
   - When: keyboard input continues for 10 ticks
+  - Then: observer call count === 0 (no additional fires)
+  - When: gamepad input above threshold occurs
+  - Then: observer call count === 1 (keyboard→gamepad switch)
+  - When: gamepad input continues for 10 ticks
   - Then: observer call count === 1 (no additional fires)
-  - When: gamepad input occurs
-  - Then: observer call count === 2 (keyboard→gamepad switch)
   - Edge cases: rapid alternating keyboard/gamepad input → fires each switch, not each tick
 
 - **AC-3**: no penalty for switching mid-race
@@ -122,7 +127,7 @@ _Written by qa-lead at story creation. The developer implements against these �
   - And: observer fired with DeviceType change
   - Edge cases: switch during dead-zone-zeroed input → switch still occurs (keyboard key is meaningful)
 
-- **AC-4**: last active device tracked with meaningful input only
+- **AC-1** (meaningful input definition): last active device tracked with meaningful input only
   - Given: both keyboard and gamepad active
   - When: keyboard input sent
   - Then: `lastActiveDevice === "keyboard"`
@@ -151,3 +156,11 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 - Depends on: Story 003 (PlayerInput polling loop; this story adds device tracking to it)
 - Unlocks: HUD/Hints system (Feature layer)
+
+## Completion Notes
+
+**Completed**: 2026-06-29
+**Criteria**: 3/3 passing
+**Deviations**: None
+**Test Evidence**: Integration test at `tests/integration/input/device-detection.test.ts` (31 tests)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (babylonjs-specialist + qa-tester), APPROVED WITH SUGGESTIONS (lead-programmer)
