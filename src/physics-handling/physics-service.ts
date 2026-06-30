@@ -28,10 +28,10 @@ import "@babylonjs/core/Physics/joinedPhysicsEngineComponent";
 
 import type { IFixedUpdatePipeline } from "@/foundation/determinism/fixed-update-pipeline";
 import { InputState } from "@/foundation/determinism/types";
+import { ArcadeGripModel } from "./arcade-grip-model";
 import type { CarPhysicsState } from "./car-physics-state";
 import type { CarTelemetry, IPhysics } from "./i-physics";
 import type { ITrackSystem } from "./i-track-system";
-import { Phase1Stub } from "./phase1-stub";
 import type { PhysicsConfig } from "./physics-config";
 
 /**
@@ -70,8 +70,14 @@ export class PhysicsService implements IPhysics {
   /** Pending tireCondition updates (applied next tick for 1-tick delay). */
   private readonly _pendingTireUpdates: Map<string, number> = new Map();
 
-  /** Phase 1 arcade model stub (replaced by Story 002). */
-  private readonly _phase1: Phase1Stub;
+  /** Phase 1 arcade grip model. */
+  private readonly _phase1: ArcadeGripModel;
+
+  /** Scratch Vector3 for velocity override (reused per tick to avoid allocation). */
+  private readonly _scratchVel = new Vector3(0, 0, 0);
+
+  /** Scratch Vector3 for angular velocity (reused per tick to avoid allocation). */
+  private readonly _scratchAngVel = new Vector3(0, 0, 0);
 
   /** Last tick's telemetry cache — rebuilt each update(). */
   private readonly _telemetry: Map<string, CarTelemetry> = new Map();
@@ -94,7 +100,7 @@ export class PhysicsService implements IPhysics {
     this._scene = scene;
     this._trackSystem = trackSystem ?? null;
     this._havokPlugin = havokPlugin ?? null;
-    this._phase1 = new Phase1Stub();
+    this._phase1 = new ArcadeGripModel();
   }
 
   // ─── Initialization ──────────────────────────────────────────────────
@@ -162,7 +168,7 @@ export class PhysicsService implements IPhysics {
    * @param dt - Delta time in seconds (typically 1/60)
    */
   update(dt: number): void {
-    if (!this._initialized || this._disposed) {
+    if (!this._initialized || this._disposed || !this._config) {
       return;
     }
     const havokPlugin = this._havokPlugin;
@@ -172,12 +178,7 @@ export class PhysicsService implements IPhysics {
     // Locked cars still receive Phase 1 updates (for telemetry/visuals),
     // but Phase 3 zeros their velocity (per ADR-0008).
     for (const state of this._carStates.values()) {
-      this._phase1.compute(
-        state,
-        InputState.ZERO,
-        dt,
-        this._config ?? ({} as PhysicsConfig)
-      );
+      this._phase1.compute(state, InputState.ZERO, dt, this._config);
     }
 
     // ── Phase 2: Havok Collision Step ──────────────────────────────────
@@ -212,17 +213,18 @@ export class PhysicsService implements IPhysics {
       }
 
       const forwardDir = this._getForwardDirection(state.splinePosition);
-      const targetVel = forwardDir.scale(state.targetSpeed);
+      forwardDir.scaleToRef(state.targetSpeed, this._scratchVel);
 
       // Y-up ground tracking: Y velocity correction from spline elevation
       // (ADR-0008 Ground Tracking section)
       if (this._trackSystem) {
         const splineY = this._trackSystem.getElevation(state.splinePosition);
-        targetVel.y = (splineY - body.getObjectCenterWorld().y) / dt;
+        this._scratchVel.y = (splineY - body.getObjectCenterWorld().y) / dt;
       }
 
-      body.setLinearVelocity(targetVel);
-      body.setAngularVelocity(new Vector3(0, state.targetYawRate, 0));
+      body.setLinearVelocity(this._scratchVel);
+      this._scratchAngVel.y = state.targetYawRate;
+      body.setAngularVelocity(this._scratchAngVel);
     }
 
     // ── Apply Pending External Updates (1-tick delay) ──────────────────
