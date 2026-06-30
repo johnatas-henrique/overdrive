@@ -1,10 +1,11 @@
 # Story 007: Camera Shake System
 
 > **Epic**: Camera
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
+> **Last Updated**: 2026-06-30
 > **Estimate**: 8h
 
 ## Context
@@ -208,7 +209,19 @@ _Written by qa-lead at story creation:_
 **Story Type**: Logic
 **Required evidence**: `tests/unit/camera/camera-shake-system_test.ts`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Complete
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-30
+**Criteria**: 4/4 passing (AC-4, AC-5, AC-6, additive stacking)
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/camera/camera-shake-system.test.ts` (29 tests)
+**Code Review**: Complete — engine specialist CLEAN, QA-testability GOOD
+**Coverage**: 100% all metrics (26 functions, 187 lines, 62 branches)
+**Stale test fix**: Updated camera-foundation.test.ts ShakeConfig references to new per-type structure
 
 ---
 

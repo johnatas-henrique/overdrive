@@ -450,9 +450,11 @@ stories:
     name: "Story 007: Camera Shake System"
     file: "production/epics/camera/story-007-camera-shake-system.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1
+    blocker: ""
+    completed: "2026-06-30"
     blocker: ""
     completed: ""
 
