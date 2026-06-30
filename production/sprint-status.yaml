@@ -438,9 +438,11 @@ stories:
     name: "Story 006: Speed FOV Shift"
     file: "production/epics/camera/story-006-speed-fov-shift.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
+    blocker: ""
+    completed: "2026-06-30"
     blocker: ""
     completed: ""
 
