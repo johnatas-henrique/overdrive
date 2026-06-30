@@ -7,7 +7,7 @@ import { PhysicsAggregate } from "@babylonjs/core/Physics/v2/physicsAggregate";
 import type { PhysicsBody } from "@babylonjs/core/Physics/v2/physicsBody";
 import type { Scene } from "@babylonjs/core/scene";
 
-import type { IEventBus } from "@/foundation/event-bus/types";
+import type { IEventBus, Subscription } from "@/foundation/event-bus/types";
 import { defined } from "@/shared/assert-defined";
 import type { CarEntity, EntityLifecycleState, GridConfig } from "./types";
 import { EntityLifecycleError } from "./types";
@@ -18,10 +18,14 @@ import { EntityLifecycleError } from "./types";
  * Instantiation result shape from `AssetContainer.instantiateModelsToScene()`.
  *
  * Aligned with Babylon.js 9.x `InstantiatedEntries` which exposes
- * `rootNodes: Node[]` (not `meshes` or `transformNodes`).
+ * `rootNodes: Node[]` and a `dispose()` method for cleanup.
+ *
+ * @see ADR-0003 — AssetContainers
  */
 interface InstantiationResult {
   rootNodes: Node[];
+  /** Dispose all root nodes and associated resources. */
+  dispose(): void;
 }
 
 // ── Constants ─────────────────────────────────────────────────
@@ -38,18 +42,23 @@ const PLAYER_CAR_ID = "player";
 /** Prefix for AI car IDs. */
 const AI_CAR_ID_PREFIX = "ai_";
 
+/** Event name for GSM state entry (subscribed in `init()`). */
+const GSM_STATE_ENTERED = "gsm.state.entered";
+
 // ── EntityLifecycle ───────────────────────────────────────────
 
 /**
  * Manages the lifecycle of all car entities in a race.
  *
  * ### Responsibilities
- * - State machine: Uninitialized → Idle → GridActive
+ * - State machine: Uninitialized → Idle → GridActive → Idle (or → Disposed)
  * - Spawning grid cars from cached AssetContainers
  * - Creating per-car PhysicsAggregate (CONVEX_HULL, 800 kg)
+ * - Destroying all cars: physics bodies before meshes, reverse iteration
+ * - GSM integration: auto-spawn on PreRace, auto-destroy on PostRace
  * - Maintaining the car entity registry (`Map<carId, CarEntity>`)
  * - Tracking cleanup refs (PhysicsBody[], InstantiationResult[])
- * - Emitting `'entity.spawned'` events per car
+ * - Emitting `'entity.spawned'` / `'entity.despawned'` events per car
  *
  * ### Ownership Rules
  * - **CarEntity is identity-only**: mesh ref, physics body, AI driver link.
@@ -60,24 +69,39 @@ const AI_CAR_ID_PREFIX = "ai_";
  * - **Grid order is caller-determined**: the `teams` array order IS the grid
  *   order; first element = pole position. (See ADR-0005)
  *
+ * ### GSM Integration
+ * - On `gsm.state.entered` → `PreRace`: `spawnGrid()` called with stored
+ *   container and config (from the previous manual spawn or first setup).
+ * - On `gsm.state.entered` → `PostRace`: `destroyAll()` called to clean up.
+ *
  * ### Usage
  * ```typescript
  * const lifecycle = new EntityLifecycle();
  * lifecycle.init(eventBus, raceScene);
- * lifecycle.spawnGrid(carContainer, {
+ *
+ * // Manual spawn (first time)
+ * const container = await assetManager.load("car");
+ * lifecycle.spawnGrid(container, {
  *   teams: [{ teamId: "macklen", driverProfile: "balanced" }, ...],
  *   playerTeamId: "macklen",
  * });
+ *
+ * // Subsequent races are auto-triggered by GSM transitions:
+ * //   PreRace → spawnGrid()  (uses stored container/config)
+ * //   PostRace → destroyAll()
  * const player = lifecycle.getEntity("player");
  * ```
  *
  * @see ADR-0005 — Entity/Car Lifecycle & State Ownership
  * @see TR-ECL-001 — CarEntity data structure
  * @see TR-ECL-002 — spawnGrid() implementation
+ * @see TR-ECL-003 — destroyAll() implementation
  * @see TR-ECL-004 — EntityLifecycleError on double-spawn
  * @see TR-ECL-005 — getEntity() accessor
  * @see TR-ECL-006 — State machine
  * @see TR-ECL-007 — Player/AI uniformity
+ * @see TR-ECL-008 — GSM integration
+ * @see TR-ECL-009 — dispose() teardown
  */
 export class EntityLifecycle {
   // ── State Machine ───────────────────────────────────────────
@@ -96,8 +120,7 @@ export class EntityLifecycle {
    * Active `PhysicsBody` references, collected during `spawnGrid()`.
    *
    * Used by the fixed-timestep pipeline (slot #2) for
-   * `executeStep(dt, bodies)` and by `destroyAll()` (Story 002)
-   * for body teardown.
+   * `executeStep(dt, bodies)` and by `destroyAll()` for body teardown.
    *
    * @see ADR-0002 — Fixed Timestep Determinism
    */
@@ -105,29 +128,42 @@ export class EntityLifecycle {
 
   /**
    * `InstantiationResult` entries from each `instantiateModelsToScene()`
-   * call, retained for mesh cleanup in `destroyAll()` (Story 002).
+   * call, retained for mesh cleanup in `destroyAll()`.
    */
   private readonly _entries: InstantiationResult[] = [];
 
-  // ── Guard Flag ──────────────────────────────────────────────
+  // ── GSM Integration ─────────────────────────────────────────
+
   /**
-   * When `true`, `getEntity()` returns `undefined` and all physics
-   * operations are no-ops. Set during `destroyAll()` (Story 002) to
-   * prevent mid-tick access to stale references.
-   *
-   * @see ADR-0005 destroy flow guard flag
+   * Subscription handle for the `gsm.state.entered` event.
+   * Created in `init()`, unsubscribed in `dispose()`.
    */
-  private _isDestroying = false;
+  private _gsmStateSub: Subscription | null = null;
+
+  /**
+   * Last `AssetContainer` passed to `spawnGrid()`, retained so the
+   * GSM can auto-spawn on `PreRace` without the caller re-supplying it.
+   */
+  private _storedContainer: AssetContainer | null = null;
+
+  /**
+   * Last `GridConfig` passed to `spawnGrid()`, retained for GSM re-spawn.
+   */
+  private _storedGridConfig: GridConfig | null = null;
 
   // ═════════════════════════════════════════════════════════════
   //  PUBLIC API
   // ═════════════════════════════════════════════════════════════
 
   /**
-   * Initialize the lifecycle with an EventBus and a Scene.
+   * Initialize the lifecycle with an EventBus, a Scene, and subscribe
+   * to GSM state transitions.
    *
    * Transitions state from `Uninitialized` to `Idle`, making the
    * system ready to accept a `spawnGrid()` call.
+   *
+   * Subscribes to `gsm.state.entered` events to automatically react
+   * to `PreRace` (spawn grid) and `PostRace` (destroy all).
    *
    * **Pre-condition**: The Scene must have physics enabled
    * (`scene.enablePhysics()`) — `PhysicsAggregate` constructors
@@ -147,6 +183,12 @@ export class EntityLifecycle {
     this._assertUninitialized();
     this._eventBus = eventBus;
     this._scene = scene;
+
+    // Subscribe to GSM state transitions for auto-spawn / auto-destroy
+    this._gsmStateSub = eventBus.on(GSM_STATE_ENTERED, (payload) => {
+      this._onGsmStateEntered(payload);
+    });
+
     this._state = "Idle";
   }
 
@@ -161,6 +203,9 @@ export class EntityLifecycle {
    * 5. Emit `'entity.spawned'{ carId, teamId, gridIndex }` on the Event Bus
    *
    * After all cars are created, the state machine transitions to `GridActive`.
+   *
+   * The container and config are retained internally so the GSM can
+   * auto-spawn on future `PreRace` transitions.
    *
    * **Pre-condition**: The AssetContainer **must** already be loaded and cached.
    * The caller (Race Management) obtains it from `AssetManager.load()`.
@@ -189,6 +234,10 @@ export class EntityLifecycle {
    */
   spawnGrid(container: AssetContainer, config: GridConfig): void {
     this._assertStateIs("Idle");
+
+    // Store container and config for GSM auto-replay
+    this._storedContainer = container;
+    this._storedGridConfig = config;
 
     const { teams, playerTeamId } = config;
     let aiIndex = 0;
@@ -243,11 +292,77 @@ export class EntityLifecycle {
   }
 
   /**
+   * Destroy all car entities and clean up the grid.
+   *
+   * ### Cleanup Order (per ADR-0005)
+   * 1. Reverse-iterate cars: emit `entity.despawned`, dispose physics bodies
+   * 2. Clear `_activeBodies` array
+   * 3. Dispose all mesh entries (removes meshes from scene)
+   * 4. Clear `_entries` array
+   * 5. Clear entity map
+   * 6. Transition to `Idle`
+   *
+   * Physics bodies are disposed BEFORE mesh entries to prevent dangling
+   * Havok references. Reverse iteration ensures no dependency cascade.
+   *
+   * **Idempotent**: If state is not `GridActive`, this is a no-op.
+   * Safe to call multiple times.
+   *
+   * @see ADR-0005 — Cleanup Flow
+   * @see TR-ECL-003 — destroyAll() implementation
+   *
+   * @example
+   * ```typescript
+   * lifecycle.destroyAll();
+   * expect(lifecycle.state).toBe("Idle");
+   * ```
+   */
+  destroyAll(): void {
+    // Idempotent: no-op if not GridActive
+    if (this._state !== "GridActive") return;
+
+    // (1) Reverse-iterate cars (per ADR-0005 — prevents dependency cascade)
+    const carIds = Array.from(this._entities.keys());
+    for (let i = carIds.length - 1; i >= 0; i--) {
+      const carId = carIds[i];
+      const entity = this._entities.get(carId);
+      defined(
+        entity,
+        `EntityLifecycle: entity '${carId}' not found during destroyAll`
+      );
+
+      // (1a) Emit despawn event for downstream subscribers
+      this._eventBus?.emit("entity.despawned", { carId });
+
+      // (1b) Dispose physics body BEFORE mesh entries
+      // PhysicsAggregate.dispose() removes the onDisposeObservable handler,
+      // preventing double-dispose when the mesh is released.
+      entity.physicsBody?.dispose();
+    }
+
+    // (2) Clear physics body tracking
+    this._activeBodies.length = 0;
+
+    // (3) Dispose all mesh entries (removes meshes from scene)
+    for (const entry of this._entries) {
+      entry.dispose();
+    }
+
+    // (4) Clear cleanup tracking
+    this._entries.length = 0;
+
+    // (5) Clear entity map
+    this._entities.clear();
+
+    // (6) Transition to Idle — ready for next race
+    this._state = "Idle";
+  }
+
+  /**
    * Retrieve a `CarEntity` by its identifier.
    *
-   * Safe to call from any state. Returns `undefined` when:
-   * - The car ID does not exist in the registry
-   * - `destroyAll()` is in progress (guard flag active)
+   * Safe to call from any state. Returns `undefined` when the car ID
+   * does not exist in the registry.
    *
    * @param carId - `'player'` for the player car, or `'ai_0'` … `'ai_6'`
    * @returns The `CarEntity`, or `undefined` if not found
@@ -261,8 +376,88 @@ export class EntityLifecycle {
    * ```
    */
   getEntity(carId: string): CarEntity | undefined {
-    if (this._isDestroying) return undefined;
     return this._entities.get(carId);
+  }
+
+  /**
+   * Dispose the lifecycle — permanent teardown.
+   *
+   * ### What this does
+   * - Unsubscribes from GSM state events
+   * - Disposes any remaining physics bodies (if called mid-race)
+   * - Disposes any remaining mesh entries
+   * - Clears all internal state
+   * - Transitions to `Disposed` (terminal state)
+   *
+   * After `dispose()`:
+   * - State is `"Disposed"`
+   * - `init()`, `spawnGrid()`, `destroyAll()` all throw or are no-ops
+   * - The lifecycle is **not reusable** — create a new instance
+   *
+   * @remarks
+   * Unlike `destroyAll()` which cleans up cars but keeps the lifecycle
+   * ready for another race, `dispose()` completely shuts down the
+   * lifecycle. Call this during app teardown or when the race scene
+   * is being unloaded.
+   *
+   * @see TR-ECL-009 — dispose() teardown
+   *
+   * @example
+   * ```typescript
+   * lifecycle.dispose();
+   * expect(lifecycle.state).toBe("Disposed");
+   * ```
+   */
+  dispose(): void {
+    // Unsubscribe from GSM state events
+    this._gsmStateSub?.unsubscribe();
+    this._gsmStateSub = null;
+
+    // Dispose any remaining physics bodies (cleanup regardless of state)
+    for (const entity of this._entities.values()) {
+      entity.physicsBody?.dispose();
+    }
+    this._activeBodies.length = 0;
+
+    // Dispose any remaining mesh entries
+    for (const entry of this._entries) {
+      entry.dispose();
+    }
+
+    // Clear all tracking
+    this._entities.clear();
+    this._entries.length = 0;
+    this._storedContainer = null;
+    this._storedGridConfig = null;
+
+    // Clear dependencies
+    this._eventBus = null;
+    this._scene = null;
+
+    // Transition to terminal state
+    this._state = "Disposed";
+  }
+
+  /**
+   * Expose stored container for inspection (testing/debug).
+   *
+   * @returns The stored AssetContainer, or `null` if never set
+   *
+   * @internal
+   */
+  getStoredContainer(): AssetContainer | null {
+    return this._storedContainer;
+  }
+
+  /**
+   * Expose stored grid config for inspection (testing/debug).
+   *
+   * @returns The stored GridConfig, or `null` if never set
+   *
+   * @internal
+   */
+  getStoredGridConfig(): GridConfig | null {
+    return this._storedGridConfig;
   }
 
   // ── State Accessors ─────────────────────────────────────────
@@ -301,6 +496,34 @@ export class EntityLifecycle {
    */
   get entityCount(): number {
     return this._entities.size;
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  //  INTERNAL: GSM Integration
+  // ═════════════════════════════════════════════════════════════
+
+  /**
+   * Handle `gsm.state.entered` events for auto-spawn and auto-destroy.
+   *
+   * - `PreRace` → calls `spawnGrid()` with the stored container and config
+   * - `PostRace` → calls `destroyAll()` to clean up
+   *
+   * If no container/config is stored (spawnGrid was never called manually),
+   * the PreRace handler is a silent no-op — the caller must first set up the
+   * grid via an explicit `spawnGrid()` call.
+   *
+   * @param payload - The GSM state transition payload
+   */
+  private _onGsmStateEntered(payload: { from: string; to: string }): void {
+    if (payload.to === "PreRace") {
+      // Auto-spawn the grid using stored container/config
+      if (this._storedContainer && this._storedGridConfig) {
+        this.spawnGrid(this._storedContainer, this._storedGridConfig);
+      }
+    } else if (payload.to === "PostRace") {
+      // Auto-destroy all entities
+      this.destroyAll();
+    }
   }
 
   // ═════════════════════════════════════════════════════════════
@@ -399,13 +622,24 @@ export class EntityLifecycle {
     }
   }
 
-  /** Assert state matches the expected value. */
+  /**
+   * Assert state matches the expected value.
+   *
+   * Provides clear error messages for each invalid state:
+   * - `GridActive` → "Grid already active"
+   * - `Disposed` → "Lifecycle is disposed — create a new instance"
+   * - Other → generic message with current and expected state
+   */
   private _assertStateIs(expected: EntityLifecycleState): void {
     if (this._state !== expected) {
-      const message =
-        this._state === "GridActive"
-          ? "Grid already active"
-          : `Cannot spawnGrid() from state '${this._state}' — expected '${expected}'`;
+      let message: string;
+      if (this._state === "GridActive") {
+        message = "Grid already active";
+      } else if (this._state === "Disposed") {
+        message = "Lifecycle is disposed — create a new instance";
+      } else {
+        message = `Cannot spawnGrid() from state '${this._state}' — expected '${expected}'`;
+      }
       throw new EntityLifecycleError(message);
     }
   }

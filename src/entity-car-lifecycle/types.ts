@@ -90,12 +90,86 @@ export interface GridConfig {
  * States for the `EntityLifecycle` state machine.
  *
  * ```
- * [Uninitialized] --init()--> [Idle] --spawnGrid()--> [Grid Active]
+ * [Uninitialized] --init()--> [Idle] --spawnGrid()--> [Grid Active] --destroyAll()--> [Idle]
+ *                                               │
+ *                                               └--init()--> [Disposed] (permanent teardown)
  * ```
  *
+ * @remarks
+ * `Disposed` is a terminal state entered via `dispose()`.
+ * Once disposed, the lifecycle is not reusable — create a new instance.
+ *
  * @see ADR-0005 — State Machine
+ * @see TR-ECL-009 — dispose() teardown
  */
-export type EntityLifecycleState = "Uninitialized" | "Idle" | "GridActive";
+export type EntityLifecycleState =
+  | "Uninitialized"
+  | "Idle"
+  | "GridActive"
+  | "Disposed";
+
+/**
+ * Payload for the `gsm.state.entered` event.
+ *
+ * @see ADR-0024 — Game State Machine
+ */
+export interface GsmStateChangePayload {
+  /** State transitioning from */
+  readonly from: string;
+  /** State transitioning to */
+  readonly to: string;
+}
+
+/**
+ * Handle for unsubscribing from GSM state events.
+ *
+ * @see ADR-0001 — Event Bus Subscription Pattern (F8)
+ */
+export interface GsmSubscription {
+  /** Remove the subscription so the handler no longer receives events. */
+  unsubscribe(): void;
+}
+
+/**
+ * Game State Machine interface for lifecycle integration.
+ *
+ * @remarks
+ * The `EntityLifecycle` subscribes to state entry events to automatically
+ * spawn the grid on `PreRace` and destroy all entities on `PostRace`.
+ *
+ * This interface defines the contract the lifecycle expects from the
+ * Game State Machine layer. In practice, the lifecycle subscribes to
+ * `gsm.state.entered` events via the Event Bus (see `init()`).
+ *
+ * @see ADR-0024 — Game State Machine
+ * @see ADR-0001 — Event Bus Architecture
+ */
+export interface IGameStateMachine {
+  /**
+   * Subscribe to state entry events.
+   *
+   * @param handler - Callback receiving the transition payload
+   * @returns A handle that can be used to unsubscribe
+   *
+   * @example
+   * ```typescript
+   * const sub = gsm.onStateEntered(({ from, to }) => {
+   *   if (to === "PreRace") spawnGrid();
+   * });
+   * ```
+   */
+  onStateEntered(
+    handler: (payload: GsmStateChangePayload) => void
+  ): GsmSubscription;
+
+  /**
+   * Subscribe to state exit events.
+   *
+   * @param handler - Callback receiving the exit payload
+   * @returns A handle that can be used to unsubscribe
+   */
+  onStateExited?(handler: (payload: { from: string }) => void): GsmSubscription;
+}
 
 /**
  * Error thrown by `EntityLifecycle` on invalid state transitions.
