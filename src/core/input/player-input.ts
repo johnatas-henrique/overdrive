@@ -7,6 +7,8 @@
  *   steer/throttle/brake when both active; keyboard digital always active.
  * GDD Requirement: TR-INP-005 — Focus loss zeros all outputs immediately;
  *   focus return resumes live hardware state (no replay).
+ * GDD Requirement: TR-INP-008 — onDeviceChanged observable fires once per
+ *   device switch (keyboard→gamepad or vice versa) for HUD hints.
  * GDD Requirement: TR-INP-009 — Gamepad disconnect → activeGamepad set to null;
  *   getState() returns zeroed axes; keyboard remains active.
  *
@@ -121,6 +123,20 @@ export class PlayerInput implements IInput {
   private _transitionBlocking = false;
   private _deadZoneThreshold = DEFAULT_DEAD_ZONE;
   private _lastActiveDevice: DeviceType = "keyboard";
+
+  /**
+   * Per-tick flag: was any keyboard key pressed this frame?
+   * Used by _determineActiveDevice() for device tracking (TR-INP-008).
+   * Reset to false at the start of each getState() call.
+   */
+  private _hadKeyboardInput = false;
+
+  /**
+   * Per-tick flag: was any meaningful gamepad input detected this frame?
+   * Used by _determineActiveDevice() for device tracking (TR-INP-008).
+   * Reset to false at the start of each getState() call.
+   */
+  private _hadGamepadInput = false;
 
   // -- Injected dependencies (GSM state integration — Story 005) ------------
   /** Event Bus — subscribed to gsm.state.exited/entered during init(). */
@@ -319,6 +335,8 @@ export class PlayerInput implements IInput {
     // Reset per-tick accumulators
     this._resetOutputState();
     this._resetRawDigital();
+    this._hadKeyboardInput = false;
+    this._hadGamepadInput = false;
 
     // 2. Read keyboard via DSM
     this._readKeyboard();
@@ -326,10 +344,15 @@ export class PlayerInput implements IInput {
     // 3. Read gamepad via GamepadManager
     this._readGamepad();
 
-    // 4. Gamepad analog override already applied in _readGamepad —
+    // 4. Determine active device for onDeviceChanged (GDD TR-INP-008)
+    //    After both keyboard and gamepad are read, check which device
+    //    produced meaningful input this tick. Fire observable on switch.
+    this._determineActiveDevice();
+
+    // 5. Gamepad analog override already applied in _readGamepad —
     //    it overwrites _currentState.steer/throttle/brake from keyboard binary values.
 
-    // 5. Apply dead zone to all analog inputs
+    // 6. Apply dead zone to all analog inputs
     this._currentState.steer = applyDeadZone(
       this._currentState.steer,
       this._deadZoneThreshold
@@ -343,18 +366,18 @@ export class PlayerInput implements IInput {
       this._deadZoneThreshold
     );
 
-    // 6. Pulse edge detection for digital fields
+    // 7. Pulse edge detection for digital fields
     this._detectEdges();
 
-    // 6.5 Camera toggle debounce — gates cameraToggle through debounce timer
+    // 7.5 Camera toggle debounce — gates cameraToggle through debounce timer
     //     GDD TR-INP-007: single pulse per press, press-and-hold does not cycle.
     //     performance.now() is permitted here — outside pipeline slot, no determinism requirement.
     this._applyCameraDebounce();
 
-    // 7. Process pulse-based cross-system routing (pauseToggle, confirm)
+    // 8. Process pulse-based cross-system routing (pauseToggle, confirm)
     this._processPulse();
 
-    // 8. Gate menu navigation — navUp, navDown, cancel only active in Menu state
+    // 9. Gate menu navigation — navUp, navDown, cancel only active in Menu state
     //    Prevents navigation inputs from leaking into gameplay states.
     if (this._gsmCurrentState !== "Menu") {
       this._currentState.navUp = false;
@@ -563,6 +586,23 @@ export class PlayerInput implements IInput {
 
     this._readKeyboardAnalog(isPressed);
     this._readKeyboardDigital(isPressed);
+
+    // GDD TR-INP-008: Any key press counts as meaningful keyboard input
+    // for device detection — covers WASD, gear keys, pulses, and nav keys.
+    this._hadKeyboardInput =
+      this._hadKeyboardInput ||
+      isPressed(KEY_W) ||
+      isPressed(KEY_A) ||
+      isPressed(KEY_S) ||
+      isPressed(KEY_D) ||
+      isPressed(KEY_Q) ||
+      isPressed(KEY_E) ||
+      isPressed(KEY_SPACE) ||
+      isPressed(KEY_ESCAPE) ||
+      isPressed(KEY_C) ||
+      isPressed(KEY_BACKSPACE) ||
+      isPressed(KEY_ARROW_UP) ||
+      isPressed(KEY_ARROW_DOWN);
   }
 
   /** Read binary WASD → steer/throttle/brake and track keyboard activity. */
@@ -584,10 +624,6 @@ export class PlayerInput implements IInput {
     }
     if (isPressed(KEY_S)) {
       this._currentState.brake = 1;
-    }
-
-    if (aPressed || dPressed || isPressed(KEY_W) || isPressed(KEY_S)) {
-      this._lastActiveDevice = "keyboard";
     }
   }
 
@@ -695,18 +731,31 @@ export class PlayerInput implements IInput {
       this._rawDigital.navDown || isPressed(GP_BUTTON_DPAD_DOWN);
   }
 
-  /** Detect any gamepad activity for device-switch tracking. */
+  /**
+   * Detect any gamepad activity for device-switch tracking.
+   *
+   * Sets _hadGamepadInput when meaningful gamepad input is detected:
+   * - Analog (leftStick, triggers) above the dead zone threshold
+   * - Any digital button press (A, B, Y, Start, shoulder, D-pad)
+   *
+   * Sub-threshold analog noise (stick drift below dead zone) does NOT trigger.
+   * Uses _deadZoneThreshold so the gamepad detection threshold stays
+   * consistent with the analog dead zone applied to outputs.
+   */
   private _updateGamepadDeviceActivity(
     steerRaw: number,
     buttons: readonly GamepadButton[]
   ): void {
+    const threshold = this._deadZoneThreshold;
     const isPressed = (idx: number): boolean => buttons[idx]?.pressed ?? false;
 
     const throttleRaw = buttons[GP_BUTTON_R_TRIGGER]?.value ?? 0;
     const brakeRaw = buttons[GP_BUTTON_L_TRIGGER]?.value ?? 0;
 
     const hasAnalogInput =
-      Math.abs(steerRaw) > 0.1 || throttleRaw > 0.1 || brakeRaw > 0.1;
+      Math.abs(steerRaw) > threshold ||
+      throttleRaw > threshold ||
+      brakeRaw > threshold;
     const hasDigitalInput =
       isPressed(GP_BUTTON_A) ||
       isPressed(GP_BUTTON_START) ||
@@ -718,7 +767,36 @@ export class PlayerInput implements IInput {
       isPressed(GP_BUTTON_L_SHOULDER);
 
     if (hasAnalogInput || hasDigitalInput) {
-      this._lastActiveDevice = "gamepad";
+      this._hadGamepadInput = true;
+    }
+  }
+
+  // -- Device detection -----------------------------------------------------
+
+  /**
+   * Determine the last active device based on per-tick input flags.
+   *
+   * Called from getState() after both keyboard and gamepad are read.
+   * Fires onDeviceChanged only when the device actually changes (not every tick).
+   *
+   * Priority: gamepad wins when both have input in the same tick
+   * (racing game — gamepad is primary input device).
+   *
+   * GDD TR-INP-008: onDeviceChanged fires once per device switch.
+   * ADR-0006: Detection logic — gamepad priority when both have input in same tick.
+   * AC-2: Initial _lastActiveDevice is "keyboard" (from _fullReset). First keyboard
+   *   input does not fire (no switch from default). First gamepad input fires once.
+   */
+  private _determineActiveDevice(): void {
+    const newDevice: DeviceType = this._hadGamepadInput
+      ? "gamepad"
+      : this._hadKeyboardInput
+        ? "keyboard"
+        : this._lastActiveDevice; // no change
+
+    if (newDevice !== this._lastActiveDevice) {
+      this._lastActiveDevice = newDevice;
+      this.onDeviceChanged.notifyObservers(newDevice);
     }
   }
 
