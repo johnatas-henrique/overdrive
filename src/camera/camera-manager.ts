@@ -22,6 +22,7 @@
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
 import { FollowCamera } from "@babylonjs/core/Cameras/followCamera";
 import { FreeCamera } from "@babylonjs/core/Cameras/freeCamera";
+import { Ray } from "@babylonjs/core/Culling/ray";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
@@ -112,6 +113,12 @@ export class CameraManager implements ICameraManager {
   private _gridReader: GridCameraReader | null = null;
   /** Reader for chase camera target (player car mesh). */
   private _chaseReader: ChaseCameraReader | null = null;
+
+  /** Reference to the player car AbstractMesh for occlusion ray origins (Story 004). */
+  private _playerCarMesh: AbstractMesh | null = null;
+
+  /** True when the chase camera is occluded and snapped closer than the configured distance. */
+  private _occlusionActive = false;
 
   /**
    * Shake transform node — sits between driver_eye and the cockpit camera.
@@ -349,13 +356,77 @@ export class CameraManager implements ICameraManager {
   /**
    * Per-tick update. Runs FOV shift, shake decay, and chase occlusion.
    *
-   * Stub for Story 001 — active camera is set but no per-tick effects
-   * are applied yet. Stories 002-009 incrementally add update logic.
+   * Chase occlusion raycast (Story 004) runs every tick when the active
+   * mode is Chase and a player car mesh reference is available.
+   * Stories 006-009 incrementally add more update logic.
    *
-   * @param _dt — Delta time in seconds (fixed 1/60s)
+   * @param _dt — Delta time in seconds (fixed 1/60s), reserved for Stories 006-009
    */
   update(_dt: number): void {
+    // Chase camera occlusion raycast (Story 004 — AC-11a, AC-11b)
+    if (
+      this._currentMode === CameraMode.Chase &&
+      this._chaseCam &&
+      this._playerCarMesh
+    ) {
+      this._runOcclusionRaycast();
+    }
+
     // Stories 006-009: FOV shift, shake decay, head bob, lean
+  }
+
+  /**
+   * Per-frame occlusion raycast for the chase camera.
+   *
+   * Casts a ray from the car center backward (TR-CAM-005). If an
+   * occluding mesh is detected on the barrier collision layer, the
+   * camera position is snapped to `hitPoint - 0.5m` along the backward
+   * ray (AC-11a). When clear, the occlusion state is released and the
+   * FollowCamera's lockedTarget spring returns the camera to the
+   * configured follow distance (AC-11b).
+   *
+   * The barrier collision layer check uses a numeric group placeholder
+   * until the CollisionGroup enum is defined by the collision system.
+   *
+   * @see TR-CAM-005 — Occlusion raycast snap closer
+   */
+  private _runOcclusionRaycast(): void {
+    // Guard: chaseCam and playerCarMesh are asserted in the caller (update)
+    // biome-ignore lint/style/noNonNullAssertion: guarded by caller
+    const cam = this._chaseCam!;
+    // biome-ignore lint/style/noNonNullAssertion: guarded by caller
+    const car = this._playerCarMesh!;
+    const maxDist = this._config.chase.distance;
+
+    // Ray origin: car's absolute world position
+    const carPos = car.absolutePosition;
+
+    // Backward direction: negate the car's forward direction (world space).
+    // In Babylon.js, Vector3.Backward() returns (0, 0, 1) in local space;
+    // car.forward is already in world space, so negating it is equivalent
+    // to TransformNormal(Vector3.Backward(), car.getWorldMatrix()).
+    const backward = car.forward.scale(-1);
+
+    const ray = new Ray(carPos, backward, maxDist);
+    const hit = this._scene.pickWithRay(ray, (mesh) => {
+      // TODO: Replace magic number with CollisionGroup.Barrier when the
+      //       collision system defines the CollisionGroup enum.
+      //       Barrier layer = group 2 (bit 1).
+      return (mesh as AbstractMesh).collisionGroup === 2;
+    });
+
+    if (hit?.hit && hit.pickedMesh && hit.pickedPoint) {
+      // Occluded — snap camera closer with 0.5m buffer toward the car.
+      // Using subtract moves the snap position from the hit point toward
+      // the car (along the backward direction).
+      const snapPosition = hit.pickedPoint.subtract(backward.scale(0.5));
+      cam.position = snapPosition;
+      this._occlusionActive = true;
+    } else if (this._occlusionActive) {
+      // Clear — release occlusion. FollowCamera.lockedTarget is still set,
+      // so the native spring snaps the camera back to configured distance.
+      this._occlusionActive = false;
+    }
   }
 
   /**
@@ -399,6 +470,8 @@ export class CameraManager implements ICameraManager {
     this._droneCam = null;
     this._currentMode = CameraMode.Inactive;
     this._scene.activeCamera = null;
+    this._playerCarMesh = null;
+    this._occlusionActive = false;
   }
 
   // ------------------------------------------------------------------
@@ -488,7 +561,8 @@ export class CameraManager implements ICameraManager {
    * Wire the FollowCamera target to the player car mesh.
    *
    * Uses the ChaseCameraReader if available. Called each time Chase
-   * camera is activated to pick up late-spawned car meshes.
+   * camera is activated to pick up late-spawned car meshes. Also
+   * stores the mesh reference for occlusion raycast (Story 004).
    */
   private _wireChaseCameraTarget(): void {
     if (!this._chaseReader || !this._chaseCam) return;
@@ -499,7 +573,9 @@ export class CameraManager implements ICameraManager {
       // each frame to auto-track the car mesh with elastic spring behavior.
       // ChaseCameraReader returns unknown to avoid entity system dependency.
       // biome-ignore lint/suspicious/noExplicitAny: mesh is AbstractMesh at runtime
-      this._chaseCam.lockedTarget = mesh as any;
+      const carMesh = mesh as any;
+      this._chaseCam.lockedTarget = carMesh;
+      this._playerCarMesh = carMesh;
     }
   }
 
@@ -527,12 +603,17 @@ export class CameraManager implements ICameraManager {
       this._scene
     );
 
-    // Chase camera: offset behind the player car
+    // Chase camera: FollowCamera elastic follow behind the player car
     this._chaseCam = new FollowCamera(
       "chaseCam",
-      new Vector3(0, 3, -6),
+      new Vector3(0, this._config.chase.height, -this._config.chase.distance),
       this._scene
     );
+    this._chaseCam.heightOffset = this._config.chase.height;
+    this._chaseCam.radius = this._config.chase.distance;
+    this._chaseCam.rotationOffset = this._config.chase.offset;
+    this._chaseCam.cameraAcceleration = this._config.chase.cameraAcceleration;
+    this._chaseCam.maxCameraSpeed = this._config.chase.maxCameraSpeed;
 
     // Drone camera: ArcRotateCamera orbiting the origin
     this._droneCam = new ArcRotateCamera(
