@@ -106,6 +106,9 @@ export class AssetManager {
    */
   private _pendingLoads = new Map<string, Promise<AssetContainer>>();
 
+  /** Asset IDs whose containers are currently added to the active scene. */
+  private _inScene = new Set<string>();
+
   /** Current state machine state. */
   private _state: AssetState = "uninitialized";
 
@@ -303,6 +306,7 @@ export class AssetManager {
     for (const container of this._cache.values()) {
       container.removeAllFromScene();
     }
+    this._inScene.clear();
   }
 
   /**
@@ -329,6 +333,8 @@ export class AssetManager {
       container.dispose();
     }
     this._cache.clear();
+    this._pendingLoads.clear();
+    this._inScene.clear();
   }
 
   /**
@@ -388,7 +394,7 @@ export class AssetManager {
     const manifest = this._manifests.get(id);
     if (!manifest) {
       this._emit("asset.error", {
-        assetId: id,
+        id,
         error: new AssetError(`Manifest not found for asset '${id}'`),
       });
       throw new AssetError(`Manifest not found for asset '${id}'`);
@@ -429,7 +435,7 @@ export class AssetManager {
       );
     } catch (error) {
       this._emit("asset.error", {
-        assetId: id,
+        id,
         error: error instanceof Error ? error : new Error(String(error)),
       });
       throw error;
@@ -488,7 +494,10 @@ export class AssetManager {
     this._emit("asset.load.start", { ids: [id] });
 
     const container = await this._loadToCache(id);
-    this._addAllToScene(container);
+    if (!this._inScene.has(id)) {
+      this._addAllToScene(container);
+      this._inScene.add(id);
+    }
     return container;
   }
 

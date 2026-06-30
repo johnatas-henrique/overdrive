@@ -85,7 +85,7 @@ export type EventMap = {
   /** A new race has started with the given configuration. */
   "race.started": { track: string; totalLaps: number; playerCarId: string };
   /** An asset failed to load. */
-  "asset.error": { assetId: string; error: Error };
+  "asset.error": { id: string; error: Error };
   /** An asset load has started. */
   "asset.load.start": { ids: string[] };
   /** Progress update during an asset load. */
