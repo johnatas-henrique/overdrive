@@ -23,12 +23,15 @@ import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
 import { FollowCamera } from "@babylonjs/core/Cameras/followCamera";
 import { FreeCamera } from "@babylonjs/core/Cameras/freeCamera";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
+import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { Scene } from "@babylonjs/core/scene";
 import type { IEventBus, Subscription } from "@/foundation/event-bus/types";
 import { defined } from "@/shared/assert-defined";
 import { createDefaultCameraConfig } from "./camera-defaults";
 import {
   type CameraConfig,
+  CameraError,
   CameraMode,
   type ICameraManager,
   type ShakeType,
@@ -111,6 +114,18 @@ export class CameraManager implements ICameraManager {
   private _chaseReader: ChaseCameraReader | null = null;
 
   /**
+   * Shake transform node — sits between driver_eye and the cockpit camera.
+   *
+   * Created by `attachCockpitToCar()`. The cockpit camera is parented to
+   * this node so that shake effects can offset the camera position without
+   * affecting the driver_eye transform (Story 007).
+   *
+   * Car lifecycle may dispose this node before CameraManager.dispose()
+   * is called (AC-17 DNF coasting), so dispose() checks isDisposed().
+   */
+  private _shakeNode: TransformNode | null = null;
+
+  /**
    * @param scene    — The Babylon.js Scene to create cameras in.
    * @param eventBus — Optional EventBus for GSM lifecycle subscription.
    *                   If provided, CameraManager subscribes to
@@ -157,6 +172,64 @@ export class CameraManager implements ICameraManager {
    */
   setChaseCameraReader(reader: ChaseCameraReader): void {
     this._chaseReader = reader;
+  }
+
+  /**
+   * The shake TransformNode, or null if not yet created.
+   *
+   * This node sits between driver_eye and the cockpit camera. Shake
+   * effects (Story 007) offset this node's position to create camera
+   * shake without affecting the driver_eye transform.
+   *
+   * @see Story 007 — Shake system
+   */
+  get shakeNode(): TransformNode | null {
+    return this._shakeNode;
+  }
+
+  /**
+   * Parent the cockpit camera to the player car's driver_eye node.
+   *
+   * Creates a shake TransformNode as an intermediate parent so that
+   * shake effects (Story 007) can offset the camera position without
+   * affecting the driver_eye or car transforms.
+   *
+   * **Parent chain after this call:**
+   * ```text
+   * carMesh (AbstractMesh)
+   *   └── driver_eye (TransformNode)
+   *        └── cockpitShakeNode (TransformNode)  ← created here
+   *             └── cockpitCam (FreeCamera)       ← parented here
+   * ```
+   *
+   * @param carMesh — The player car mesh containing a `driver_eye` child
+   * @throws {CameraError} If `driver_eye` child transform is not found
+   * @throws {Error} If `_cockpitCam` is null (init not called)
+   *
+   * @see AC-12 — Cockpit camera inherits car position via driver_eye
+   * @see Story 003 — Cockpit Camera
+   */
+  attachCockpitToCar(carMesh: AbstractMesh): void {
+    defined(this._cockpitCam, "CameraManager: cockpitCam not initialised");
+
+    // getChildTransformNodes returns all descendant TransformNodes.
+    // Babylon.js 9.13 has only getChildTransformNodes (plural), not the singular form.
+    const driverEye = carMesh
+      .getChildTransformNodes(true)
+      .find((node) => node.name === "driver_eye");
+    if (!driverEye) {
+      throw new CameraError(
+        "attachCockpitToCar: driver_eye transform not found on car mesh"
+      );
+    }
+
+    // Create shake node as intermediary for shake effects
+    this._shakeNode = new TransformNode("cockpitShakeNode", this._scene);
+    this._shakeNode.parent = driverEye;
+
+    // Parent cockpit camera to shake node at zero local offset
+    this._cockpitCam.parent = this._shakeNode;
+    this._cockpitCam.position = Vector3.Zero();
   }
 
   // ------------------------------------------------------------------
@@ -297,6 +370,14 @@ export class CameraManager implements ICameraManager {
       sub.unsubscribe();
     }
     this._subscriptions = [];
+
+    // Dispose shakeNode if it hasn't already been cleaned up by the
+    // car lifecycle (AC-17 DNF coasting — car may have already
+    // disposed driver_eye, which cascades to shakeNode and camera).
+    if (this._shakeNode && !this._shakeNode.isDisposed()) {
+      this._shakeNode.dispose();
+    }
+    this._shakeNode = null;
 
     // Dispose camera instances
     const cameras = [

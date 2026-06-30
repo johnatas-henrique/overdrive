@@ -235,6 +235,31 @@ export interface ShakeConfig {
   maxActiveShakes: number;
 }
 
+// ---------------------------------------------------------------------------
+// CameraError
+// ---------------------------------------------------------------------------
+
+/**
+ * Error thrown by camera system operations when a precondition fails.
+ *
+ * Used instead of raw Error to allow callers (GSM, entity system) to
+ * catch and handle camera-specific failures separately from generic errors.
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   cameraManager.attachCockpitToCar(carMesh);
+ * } catch (err) {
+ *   if (err instanceof CameraError) {
+ *     // Handle missing driver_eye node gracefully
+ *   }
+ * }
+ * ```
+ */
+export class CameraError extends Error {
+  readonly name = "CameraError";
+}
+
 /**
  * Runtime active shake state.
  *
