@@ -565,12 +565,12 @@ describe("Camera Foundation (Story 001)", () => {
       expect(fixture.scene.activeCamera).toBeNull();
     });
 
-    it("test_toggleCockpitChase_when_inactive_defaults_to_cockpit", () => {
+    it("test_toggleCockpitChase_when_inactive_is_noop", () => {
       const cm = new CameraManager(fixture.scene);
       cm.init(fixture.scene, "player-1");
-      // No active mode set — toggleCockpitChase should activate Cockpit
+      // No active mode set — toggleCockpitChase is no-op (AC-16)
       cm.toggleCockpitChase();
-      expect(fixture.scene.activeCamera?.name).toBe("cockpitCam");
+      expect(fixture.scene.activeCamera).toBeNull();
       cm.dispose();
     });
   });
@@ -636,26 +636,28 @@ describe("Camera Foundation (Story 001)", () => {
     });
   });
 
-  // ── Branch coverage: toggleCockpitChase from non-Cockpit/Chase ─
+  // ── AC-16: toggleCockpitChase no-op on non-Cockpit/Chase ──────
 
-  describe("toggleCockpitChase branch coverage", () => {
-    it("test_toggle_from_grid_defaults_to_cockpit", () => {
+  describe("AC-16 — toggleCockpitChase no-op on non-Cockpit/Chase", () => {
+    it("test_toggle_from_grid_does_not_switch", () => {
       const cm = new CameraManager(fixture.scene);
       cm.init(fixture.scene, "player-1");
       cm.setActiveMode(CameraMode.Grid);
       expect(fixture.scene.activeCamera?.name).toBe("gridCam");
       cm.toggleCockpitChase();
-      expect(fixture.scene.activeCamera?.name).toBe("cockpitCam");
+      // Grid camera stays active — no crash, no switch (AC-16)
+      expect(fixture.scene.activeCamera?.name).toBe("gridCam");
       cm.dispose();
     });
 
-    it("test_toggle_from_drone_defaults_to_cockpit", () => {
+    it("test_toggle_from_drone_does_not_switch", () => {
       const cm = new CameraManager(fixture.scene);
       cm.init(fixture.scene, "player-1");
       cm.setActiveMode(CameraMode.Drone);
       expect(fixture.scene.activeCamera?.name).toBe("droneCam");
       cm.toggleCockpitChase();
-      expect(fixture.scene.activeCamera?.name).toBe("cockpitCam");
+      // Drone camera stays active — no crash, no switch (AC-16)
+      expect(fixture.scene.activeCamera?.name).toBe("droneCam");
       cm.dispose();
     });
   });
