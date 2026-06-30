@@ -1,11 +1,12 @@
 # Story 002: Destroy All & GSM Integration
 
 > **Epic**: Entity/Car Lifecycle
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Estimate**: 5-7h
 > **Manifest Version**: 2026-06-21
+> **Last Updated**: 2026-06-30
 
 ## Context
 
@@ -134,7 +135,7 @@ _Written by qa-lead at story creation:_
 **Story Type**: Integration
 **Required evidence**: `tests/integration/entity-car-lifecycle/destroy-gsm-integration.test.ts`
 
-**Status**: [ ] Not yet created
+**Status**: ✅ Created — 37 tests, 100% coverage
 
 ---
 
@@ -142,3 +143,11 @@ _Written by qa-lead at story creation:_
 
 - Depends on: Story 001 (needs CarEntity types, spawnGrid, entity.spawned events)
 - Unlocks: None (completes Entity/Car Lifecycle epic)
+
+## Completion Notes
+
+**Completed**: 2026-06-30
+**Criteria**: 6/6 passing
+**Deviations**: None
+**Test Evidence**: Integration test at `tests/integration/entity-car-lifecycle/destroy-gsm-integration.test.ts` (37 tests, 100% coverage)
+**Code Review**: Complete — APPROVED

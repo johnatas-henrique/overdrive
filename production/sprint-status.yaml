@@ -487,3 +487,13 @@ stories:
     estimate_days: 1
     blocker: ""
     completed: "2026-06-30"
+
+  - id: "2-47"
+    name: "Story 002: Destroy All & GSM Integration"
+    file: "production/epics/entity-car-lifecycle/story-002-destroy-gsm-integration.md"
+    priority: must-have
+    status: done
+    owner: ""
+    estimate_days: 1.5
+    blocker: ""
+    completed: "2026-06-30"
