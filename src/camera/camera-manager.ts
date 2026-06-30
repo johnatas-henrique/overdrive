@@ -24,6 +24,7 @@ import { FollowCamera } from "@babylonjs/core/Cameras/followCamera";
 import { FreeCamera } from "@babylonjs/core/Cameras/freeCamera";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { Scene } from "@babylonjs/core/scene";
+import type { IEventBus, Subscription } from "@/foundation/event-bus/types";
 import { defined } from "@/shared/assert-defined";
 import { createDefaultCameraConfig } from "./camera-defaults";
 import {
@@ -32,6 +33,38 @@ import {
   type ICameraManager,
   type ShakeType,
 } from "./types";
+
+// ---------------------------------------------------------------------------
+// Reader interfaces (dependency inversion — entity system provides these)
+// ---------------------------------------------------------------------------
+
+/**
+ * Provides grid camera positioning data at runtime.
+ *
+ * The grid camera needs track center and car positions to frame the grid.
+ * Since car positions come from the entity system (not available at camera
+ * init time), this reader function pattern inverts the dependency.
+ *
+ * @see Story 002 — Grid camera positioning (AC-7)
+ */
+export interface GridCameraReader {
+  /** Track center position in world space. */
+  getTrackCenter(): Vector3;
+  /** World position of the first car on the grid. */
+  getFirstCarPosition(): Vector3;
+  /** World position of the last car on the grid. */
+  getLastCarPosition(): Vector3;
+}
+
+/**
+ * Provides the player car mesh for FollowCamera targeting.
+ *
+ * @see Story 002 — Chase camera configuration
+ */
+export interface ChaseCameraReader {
+  /** Returns the player car's AbstractMesh, or null if not yet spawned. */
+  getPlayerCarMesh(): unknown;
+}
 
 /**
  * CameraManager implementation.
@@ -64,14 +97,29 @@ export class CameraManager implements ICameraManager {
   /** Drone camera (ArcRotateCamera) — auto-orbits the car. */
   private _droneCam: ArcRotateCamera | null = null;
 
+  // ── GSM lifecycle (Story 002) ────────────────────────────────────
+  /** EventBus for GSM state subscriptions. */
+  private _eventBus: IEventBus | null = null;
+  /** Active EventBus subscriptions — cleaned up in dispose(). */
+  private _subscriptions: Subscription[] = [];
+  /** Player's last toggle choice — restored on Racing entry. */
+  private _lastToggleChoice: CameraMode.Cockpit | CameraMode.Chase | null =
+    null;
+  /** Reader for grid camera positioning (track center + car positions). */
+  private _gridReader: GridCameraReader | null = null;
+  /** Reader for chase camera target (player car mesh). */
+  private _chaseReader: ChaseCameraReader | null = null;
+
   /**
-   * @param scene — The Babylon.js Scene to create cameras in.
-   *   Must be a valid, non-disposed Scene instance. CameraManager does
-   *   NOT own the Scene — it will not dispose it.
+   * @param scene    — The Babylon.js Scene to create cameras in.
+   * @param eventBus — Optional EventBus for GSM lifecycle subscription.
+   *                   If provided, CameraManager subscribes to
+   *                   `gsm.state.entered` and switches cameras automatically.
    */
-  constructor(scene: Scene) {
+  constructor(scene: Scene, eventBus?: IEventBus | null) {
     this._scene = scene;
     this._config = createDefaultCameraConfig();
+    this._eventBus = eventBus ?? null;
   }
 
   /**
@@ -83,6 +131,32 @@ export class CameraManager implements ICameraManager {
    */
   get config(): Readonly<CameraConfig> {
     return this._config;
+  }
+
+  // ------------------------------------------------------------------
+  // Reader injection (dependency inversion)
+  // ------------------------------------------------------------------
+
+  /**
+   * Set the grid camera reader for dynamic positioning.
+   *
+   * The grid camera needs track center and car positions to frame the grid.
+   * This reader is called each time the Grid camera is activated.
+   *
+   * @param reader — Provides track center and car positions at runtime
+   * @see Story 002 — AC-7 grid camera positioning
+   */
+  setGridCameraReader(reader: GridCameraReader): void {
+    this._gridReader = reader;
+  }
+
+  /**
+   * Set the chase camera reader for FollowCamera targeting.
+   *
+   * @param reader — Provides the player car mesh at runtime
+   */
+  setChaseCameraReader(reader: ChaseCameraReader): void {
+    this._chaseReader = reader;
   }
 
   // ------------------------------------------------------------------
@@ -104,6 +178,7 @@ export class CameraManager implements ICameraManager {
     this._applyInputCleanup();
     this._currentMode = CameraMode.Inactive;
     this._scene.activeCamera = null;
+    this._subscribeToEvents();
   }
 
   /**
@@ -124,6 +199,7 @@ export class CameraManager implements ICameraManager {
         break;
       case CameraMode.Grid: {
         defined(this._gridCam, "CameraManager: gridCam not initialised");
+        this._positionGridCamera();
         this._scene.activeCamera = this._gridCam;
         break;
       }
@@ -134,6 +210,7 @@ export class CameraManager implements ICameraManager {
       }
       case CameraMode.Chase: {
         defined(this._chaseCam, "CameraManager: chaseCam not initialised");
+        this._wireChaseCameraTarget();
         this._scene.activeCamera = this._chaseCam;
         break;
       }
@@ -159,13 +236,16 @@ export class CameraManager implements ICameraManager {
     switch (this._currentMode) {
       case CameraMode.Cockpit: // Cockpit -> Chase
         this.setActiveMode(CameraMode.Chase);
+        this._lastToggleChoice = CameraMode.Chase;
         break;
       case CameraMode.Chase: // Chase -> Cockpit
         this.setActiveMode(CameraMode.Cockpit);
+        this._lastToggleChoice = CameraMode.Cockpit;
         break;
       default:
         // Neither active — default to Cockpit
         this.setActiveMode(CameraMode.Cockpit);
+        this._lastToggleChoice = CameraMode.Cockpit;
         break;
     }
   }
@@ -212,6 +292,12 @@ export class CameraManager implements ICameraManager {
    * Scene. Safe to call multiple times (idempotent).
    */
   dispose(): void {
+    // Unsubscribe from EventBus before disposing cameras
+    for (const sub of this._subscriptions) {
+      sub.unsubscribe();
+    }
+    this._subscriptions = [];
+
     // Dispose camera instances
     const cameras = [
       this._gridCam,
@@ -237,6 +323,104 @@ export class CameraManager implements ICameraManager {
   // ------------------------------------------------------------------
   // Private helpers
   // ------------------------------------------------------------------
+
+  /**
+   * Subscribe to GSM state events via EventBus.
+   *
+   * Maps `gsm.state.entered` events to CameraMode transitions:
+   * - PreRace → Grid
+   * - Racing → Cockpit (or Chase if toggle preference exists)
+   * - PostRace → Drone
+   * - Menu/Loading/other → Inactive
+   *
+   * Paused state is intentionally omitted — the active camera is preserved
+   * (frozen view) when the game is paused.
+   *
+   * @see C18 — Camera reactive to gsm.state.entered only
+   * @see C-F7 — Never make Camera initiate GSM transitions
+   */
+  private _subscribeToEvents(): void {
+    if (!this._eventBus) return;
+
+    const sub = this._eventBus.on(
+      "gsm.state.entered",
+      ({ from, to }: { from: string; to: string }) => {
+        const mode = this._mapStateToCameraMode(to, from);
+        this.setActiveMode(mode);
+      }
+    );
+    this._subscriptions.push(sub);
+  }
+
+  /**
+   * Map a GSM state string to the corresponding CameraMode.
+   *
+   * @param to   — The GSM state being entered
+   * @param _from — The GSM state being exited (unused, reserved for future)
+   * @returns The CameraMode for the incoming state
+   * @see ADR-0007 §GSM Lifecycle
+   */
+  private _mapStateToCameraMode(to: string, _from: string): CameraMode {
+    switch (to) {
+      case "PreRace":
+        return CameraMode.Grid;
+      case "Racing":
+        // Restore last toggle choice, default to Cockpit on first entry
+        return this._lastToggleChoice ?? CameraMode.Cockpit;
+      case "PostRace":
+        return CameraMode.Drone;
+      case "Paused":
+        // Preserve the current active camera — freeze the view
+        return this._currentMode;
+      default:
+        // Menu, Loading, and unknown states → Inactive
+        return CameraMode.Inactive;
+    }
+  }
+
+  /**
+   * Position the grid camera based on track center and car positions.
+   *
+   * Uses the GridCameraReader if available, otherwise falls back to
+   * the default position (0, 30, -40) with no explicit look-at target.
+   *
+   * @see AC-7 — Grid camera at (trackCenter.x, 30, trackCenter.z - 40)
+   */
+  private _positionGridCamera(): void {
+    if (!this._gridReader || !this._gridCam) return;
+
+    const center = this._gridReader.getTrackCenter();
+    this._gridCam.position = new Vector3(center.x, 30, center.z - 40);
+
+    // Look-at: midpoint between first and last car
+    const first = this._gridReader.getFirstCarPosition();
+    const last = this._gridReader.getLastCarPosition();
+    const mid = new Vector3(
+      (first.x + last.x) / 2,
+      (first.y + last.y) / 2,
+      (first.z + last.z) / 2
+    );
+    this._gridCam.setTarget(mid);
+  }
+
+  /**
+   * Wire the FollowCamera target to the player car mesh.
+   *
+   * Uses the ChaseCameraReader if available. Called each time Chase
+   * camera is activated to pick up late-spawned car meshes.
+   */
+  private _wireChaseCameraTarget(): void {
+    if (!this._chaseReader || !this._chaseCam) return;
+
+    const mesh = this._chaseReader.getPlayerCarMesh();
+    if (mesh) {
+      // Set lockedTarget so FollowCamera._checkInputs() calls _follow()
+      // each frame to auto-track the car mesh with elastic spring behavior.
+      // ChaseCameraReader returns unknown to avoid entity system dependency.
+      // biome-ignore lint/suspicious/noExplicitAny: mesh is AbstractMesh at runtime
+      this._chaseCam.lockedTarget = mesh as any;
+    }
+  }
 
   /**
    * Create all 4 Babylon.js camera instances.
