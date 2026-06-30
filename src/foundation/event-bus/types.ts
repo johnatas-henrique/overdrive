@@ -86,6 +86,13 @@ export type EventMap = {
   "race.started": { track: string; totalLaps: number; playerCarId: string };
   /** An asset failed to load. */
   "asset.error": { assetId: string; error: Error };
+
+  /** Player confirmed to depart from pit stop. */
+  "input.pit.depart": Record<string, never>;
+  /** Player confirmed on post-race results screen. */
+  "input.confirm.postRace": Record<string, never>;
+  /** Player confirmed on menu screen. */
+  "input.confirm.menu": Record<string, never>;
 };
 
 /**

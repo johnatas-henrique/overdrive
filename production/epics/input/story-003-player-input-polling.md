@@ -1,7 +1,8 @@
 # Story 003: PlayerInput — Keyboard + Gamepad Polling Loop
 
 > **Epic**: Input
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-29
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
@@ -88,7 +89,7 @@ _Derived from ADR-0006 Implementation Guidelines:_
 
 5. **DSM keyboard reading**: Use `dsm.getInput(DeviceSourceType.Keyboard, keyCode)` — returns 0 (up) or 1 (down) for each key. Key mappings:
    - W (87) → throttle=1, A (65) → steer=-1, S (83) → brake=1, D (68) → steer=+1
-   - Q (81) → gearDelta=-1 (gear up), E (69) → gearDelta=+1 (gear down)
+   - Q (81) → gearDelta=+1 (gear up), E (69) → gearDelta=-1 (gear down)
    - Space (32) → confirm, Escape (27) → pauseToggle, C (67) → cameraToggle
    - Backspace (8) → cancel, ArrowUp (38) → navUp, ArrowDown (40) → navDown
 
@@ -205,3 +206,14 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 - Depends on: Story 001 (IInput interface, InputState type), Story 002 (applyDeadZone function)
 - Unlocks: Stories 004, 005, 006, 007
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-29
+**Criteria**: 10/10 passing
+**Deviations**: ADVISORY — ADR-0006 import path fix (documentation), Story 003 Q→gearDelta fix (documentation), file naming follows project convention (kebab-case)
+**Test Evidence**: Integration test at `tests/integration/input/player-input-polling.test.ts` (66 tests, all passing, 100% coverage)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (babylonjs-specialist + qa-tester + lead-programmer all APPROVE)
+**Tech debt logged**: 1 item (JSDoc completeness on public setters — S-1 from lead-programmer review)
