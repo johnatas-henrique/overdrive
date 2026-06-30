@@ -507,12 +507,12 @@ describe("Camera Foundation (Story 001)", () => {
       expect(typeof config.lean.intensity).toBe("number");
 
       // Shake (6 knobs)
-      expect(typeof config.shake.intensity).toBe("number");
-      expect(typeof config.shake.decayRate).toBe("number");
-      expect(typeof config.shake.maxOffset).toBe("number");
-      expect(typeof config.shake.frequency).toBe("number");
-      expect(typeof config.shake.decayFloor).toBe("number");
-      expect(typeof config.shake.maxActiveShakes).toBe("number");
+      expect(typeof config.shake.kerbIntensity).toBe("number");
+      expect(typeof config.shake.kerbDecay).toBe("number");
+      expect(typeof config.shake.collisionFactor).toBe("number");
+      expect(typeof config.shake.collisionDecay).toBe("number");
+      expect(typeof config.shake.offtrackIntensity).toBe("number");
+      expect(typeof config.shake.offtrackDecay).toBe("number");
     });
 
     it("test_default_config_values_are_in_expected_ranges", () => {
@@ -534,10 +534,12 @@ describe("Camera Foundation (Story 001)", () => {
       expect(config.speedFactor).toBeGreaterThan(0);
 
       // Shake parameters should be reasonable
-      expect(config.shake.intensity).toBeGreaterThan(0);
-      expect(config.shake.decayRate).toBeGreaterThan(0);
-      expect(config.shake.maxOffset).toBeGreaterThan(0);
-      expect(config.shake.maxActiveShakes).toBeGreaterThanOrEqual(1);
+      expect(config.shake.kerbIntensity).toBeGreaterThan(0);
+      expect(config.shake.kerbDecay).toBeGreaterThan(0);
+      expect(config.shake.collisionFactor).toBeGreaterThan(0);
+      expect(config.shake.collisionDecay).toBeGreaterThan(0);
+      expect(config.shake.offtrackIntensity).toBeGreaterThan(0);
+      expect(config.shake.offtrackDecay).toBeGreaterThan(0);
     });
   });
 
