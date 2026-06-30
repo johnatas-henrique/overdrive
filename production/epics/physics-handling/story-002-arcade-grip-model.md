@@ -252,7 +252,7 @@ _Written by qa-lead at story creation:_
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/physics-handling/arcade-grip-model_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/physics-handling/arcade-grip-model.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 

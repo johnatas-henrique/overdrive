@@ -78,7 +78,7 @@ _Derived from ADR-0016 Implementation Guidelines:_
 
 7. **`CURRENT_VERSION` constant** — The game build version. Set at Persistence construction. Used to stamp `PersistedEntry.version` on save (Story 002) and as the target version for migration on load.
 
-8. **Integration with `load()`** — Story 002's `load()` calls `_runMigrations(stored.version, stored.data, CURRENT_VERSION)` when `stored.version !== CURRENT_VERSION` and `stored.version` is numerically less. This story tests the `_runMigrations` algorithm; the full load → detect → migrate → return pipeline is covered by the cross-story integration test (Epic DoD item: `tests/integration/persistence/migration_load_integration_test.ts`).
+8. **Integration with `load()`** — Story 002's `load()` calls `_runMigrations(stored.version, stored.data, CURRENT_VERSION)` when `stored.version !== CURRENT_VERSION` and `stored.version` is numerically less. This story tests the `_runMigrations` algorithm; the full load → detect → migrate → return pipeline is covered by the cross-story integration test (Epic DoD item: `tests/integration/persistence/migration_load_integration.test.ts`).
 
 ---
 

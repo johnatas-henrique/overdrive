@@ -156,7 +156,7 @@ updateWind(speedKmh: number): void {
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/audio/pit-wind-ambient_test.ts` — must exist and pass.
+**Required evidence**: `tests/unit/audio/pit-wind-ambient.test.ts` — must exist and pass.
 
 **Status**: [ ] Not yet created
 

@@ -98,7 +98,7 @@ _Manual verification steps for Integration story:_
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/unit/ai/telemetry_provider_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/ai/telemetry_provider.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 

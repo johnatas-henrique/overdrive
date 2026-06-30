@@ -142,7 +142,7 @@ _Handled by neighbouring stories — do not implement here:_
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/ai/overtaking_fsm_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/ai/overtaking_fsm.test.ts` — must exist and pass
 
 **Note**: AC-9 and AC-10 are integration-level across Stories 001–005. These should be written as part of an integration test suite (`tests/integration/ai/`) that depends on all earlier stories being DONE.
 

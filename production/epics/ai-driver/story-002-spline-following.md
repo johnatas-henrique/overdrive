@@ -120,7 +120,7 @@ _Handled by neighbouring stories — do not implement here:_
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/ai/spline_following_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/ai/spline_following.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 

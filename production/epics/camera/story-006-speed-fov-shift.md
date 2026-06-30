@@ -150,7 +150,7 @@ _Written by qa-lead at story creation:_
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/camera/speed-fov-shift_test.ts`
+**Required evidence**: `tests/unit/camera/speed-fov-shift.test.ts`
 
 **Status**: [ ] Not yet created
 

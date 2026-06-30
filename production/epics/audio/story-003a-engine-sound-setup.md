@@ -128,7 +128,7 @@ createEngineOscillator(carId: string, audioContext: AudioContext): SoundSource {
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/audio/engine-sound-setup_test.ts` — must exist and pass.
+**Required evidence**: `tests/unit/audio/engine-sound-setup.test.ts` — must exist and pass.
 
 **Status**: [ ] Not yet created
 

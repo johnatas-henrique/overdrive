@@ -173,7 +173,7 @@ class TrackEnvironmentManager {
 
 _Written by qa-lead at story creation. The developer implements against these â€” do not invent new test cases during implementation._
 
-**Test file**: `tests/integration/track-environment/track-physics_test.ts`
+**Test file**: `tests/integration/track-environment/track-physics.test.ts`
 
 - **AC-1** (mesh categorization):
   - Given: A GLB with meshes named "barrier_main", "track_surface_01", "tree_palm_01"
@@ -224,7 +224,7 @@ _Written by qa-lead at story creation. The developer implements against these â€
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/track-environment/track-physics_test.ts` OR documented playtest with physics body count verification via Dev Tools overlay
+**Required evidence**: `tests/integration/track-environment/track-physics.test.ts` OR documented playtest with physics body count verification via Dev Tools overlay
 
 **Status**: [ ] Not yet created
 

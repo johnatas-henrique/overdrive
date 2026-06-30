@@ -150,7 +150,7 @@ _Written by qa-lead at story creation:_
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/camera/chase-camera-occlusion_test.ts`
+**Required evidence**: `tests/integration/camera/chase-camera-occlusion.test.ts`
 
 **Status**: [ ] Not yet created
 

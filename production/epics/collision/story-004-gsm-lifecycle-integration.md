@@ -173,7 +173,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/collision/gsm-lifecycle_test.ts` — must exist and pass
+**Required evidence**: `tests/integration/collision/gsm-lifecycle.test.ts` — must exist and pass
 **Status**: [ ] Not yet created
 
 ---

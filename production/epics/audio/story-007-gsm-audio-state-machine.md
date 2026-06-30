@@ -141,7 +141,7 @@ private _applyBusTransition(bus: AudioBus, target: number | null, duration: numb
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/audio/gsm-audio-state-machine_test.ts` OR playtest doc.
+**Required evidence**: `tests/integration/audio/gsm-audio-state-machine.test.ts` OR playtest doc.
 
 **Status**: [ ] Not yet created
 

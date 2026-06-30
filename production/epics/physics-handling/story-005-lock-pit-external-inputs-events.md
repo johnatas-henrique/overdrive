@@ -267,7 +267,7 @@ _Written by qa-lead at story creation:_
 
 ## Test Evidence
 
-**Story Type**: Integration
+**Story Type**: Integration.test.ts
 **Required evidence**: `tests/integration/physics-handling/lock-pit-events_test.ts` OR documented playtest
 
 **Status**: [ ] Not yet created

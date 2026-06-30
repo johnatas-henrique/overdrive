@@ -238,7 +238,7 @@ _Written by qa-lead at story creation:_
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/camera/camera-foundation_test.ts`
+**Required evidence**: `tests/integration/camera/camera-foundation.test.ts`
 
 **Status**: [ ] Not yet created
 

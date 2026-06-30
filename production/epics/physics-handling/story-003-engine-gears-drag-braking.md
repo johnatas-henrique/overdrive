@@ -359,7 +359,7 @@ _Written by qa-lead at story creation:_
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/physics-handling/engine-gears-drag-braking_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/physics-handling/engine-gears-drag-braking.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 
