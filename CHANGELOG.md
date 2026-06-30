@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.0](https://github.com/johnatas-henrique/overdrive/compare/overdrive-v0.4.1...overdrive-v0.5.0) (2026-06-30)
+
+
+### Features
+
+* **input:** complete Input system — 7 stories, 22 files, 6247 lines ([f0bac70](https://github.com/johnatas-henrique/overdrive/commit/f0bac7089820061d8b7e21775cc62a5b2f27d2a2))
+* **input:** dead zone formula (TR-INP-003) ([bdc3c5a](https://github.com/johnatas-henrique/overdrive/commit/bdc3c5a3b0e5eace35eff7ad03e7ed806b32d898))
+* **input:** debounce + digital edge cases (TR-INP-007) ([95d7cbf](https://github.com/johnatas-henrique/overdrive/commit/95d7cbf97b707029d2de5f7d6668952456ee0833))
+* **input:** device detection + onDeviceChanged observable (TR-INP-008) ([a3bdf25](https://github.com/johnatas-henrique/overdrive/commit/a3bdf252b910461b29db72dc848234bf40c81e53))
+* **input:** gsm state integration + pulse routing (TR-INP-006) ([3f9be3a](https://github.com/johnatas-henrique/overdrive/commit/3f9be3a26ec2d3a94b6b6a094f482eae07061d02))
+* **input:** iinput interface + inputstate type definitions (TR-INP-001) ([9038ac3](https://github.com/johnatas-henrique/overdrive/commit/9038ac35996868b553fc85ff98e364250a013279))
+* **input:** player input keyboard + gamepad polling (TR-INP-002, TR-INP-004) ([561575b](https://github.com/johnatas-henrique/overdrive/commit/561575b6d978534283f2ac819c86537301e4176b))
+* **input:** tab blur safety + gamepad disconnect handling (TR-INP-005, TR-INP-009) ([af3e9a9](https://github.com/johnatas-henrique/overdrive/commit/af3e9a93edad06a61d71fe63d0fe28d38b81f919))
+
+
+### Bug Fixes
+
+* **input:** pr review fixes — optional chain, drift overwrite, jsdoc ([f3cc823](https://github.com/johnatas-henrique/overdrive/commit/f3cc823754fcce45cb7856a6d063f0500b8fec80))
+
 ## [0.4.1](https://github.com/johnatas-henrique/overdrive/compare/overdrive-v0.4.0...overdrive-v0.4.1) (2026-06-29)
 
 
