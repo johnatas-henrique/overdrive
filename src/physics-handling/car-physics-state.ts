@@ -102,6 +102,11 @@ export interface CarPhysicsState {
   /** Current effective grip multiplier (gripMax / baseGrip). */
   gripMultiplier: number;
 
+  // ─── Track Data ──────────────────────────────────────────────────
+
+  /** Track gradient at car's spline position (sin of slope angle). Positive = uphill. */
+  gradient: number;
+
   // ─── External Inputs (1-tick delay per ADR-0008) ──────────────────
 
   /** Fuel multiplier from Fuel system (0..1). Default 1.0. */

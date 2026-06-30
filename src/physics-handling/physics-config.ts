@@ -87,6 +87,23 @@ export interface PhysicsConfig {
   readonly autoShiftRpmThreshold: number;
   /** Maximum engine RPM. */
   readonly rpmMax: number;
+  /** 6 forward gear ratios (G1 through G6). */
+  readonly gearRatios: number[];
+  /** Acceleration level (1–5) for torque curve multiplier. */
+  readonly accelLevel: number;
+  /** RPM ratio for downshift threshold (fraction of upshift threshold). */
+  readonly downshiftRpmRatio: number;
+  /** Maximum reverse speed (m/s). */
+  readonly reverseMaxSpeed: number;
+  /** Speed (m/s) at which 1st gear reaches rpmMax — determines RPM scaling. */
+  readonly gear1RedlineSpeed: number;
+
+  // ─── Engine Power ──────────────────────────────────────────────────
+
+  /** Maximum power output multiplier. */
+  readonly powerCeiling: number;
+  /** Car mass in kg (used for gradient force and coast deceleration). */
+  readonly mass: number;
 
   // ─── Misc ──────────────────────────────────────────────────────────
 
