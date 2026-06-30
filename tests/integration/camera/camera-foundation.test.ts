@@ -565,12 +565,14 @@ describe("Camera Foundation (Story 001)", () => {
       expect(fixture.scene.activeCamera).toBeNull();
     });
 
-    it("test_toggleCockpitChase_when_inactive_defaults_to_cockpit", () => {
+    it("test_toggleCockpitChase_when_inactive_does_nothing", () => {
       const cm = new CameraManager(fixture.scene);
       cm.init(fixture.scene, "player-1");
-      // No active mode set — toggleCockpitChase should activate Cockpit
+      // No active mode set — toggleCockpitChase should be no-op
+      // (default branch was removed in Story 005)
+      expect(fixture.scene.activeCamera).toBeNull();
       cm.toggleCockpitChase();
-      expect(fixture.scene.activeCamera?.name).toBe("cockpitCam");
+      expect(fixture.scene.activeCamera).toBeNull();
       cm.dispose();
     });
   });
@@ -639,23 +641,25 @@ describe("Camera Foundation (Story 001)", () => {
   // ── Branch coverage: toggleCockpitChase from non-Cockpit/Chase ─
 
   describe("toggleCockpitChase branch coverage", () => {
-    it("test_toggle_from_grid_defaults_to_cockpit", () => {
+    it("test_toggle_from_grid_does_nothing", () => {
       const cm = new CameraManager(fixture.scene);
       cm.init(fixture.scene, "player-1");
       cm.setActiveMode(CameraMode.Grid);
       expect(fixture.scene.activeCamera?.name).toBe("gridCam");
       cm.toggleCockpitChase();
-      expect(fixture.scene.activeCamera?.name).toBe("cockpitCam");
+      // Default branch removed in Story 005 — no-op from non-Cockpit/Chase
+      expect(fixture.scene.activeCamera?.name).toBe("gridCam");
       cm.dispose();
     });
 
-    it("test_toggle_from_drone_defaults_to_cockpit", () => {
+    it("test_toggle_from_drone_does_nothing", () => {
       const cm = new CameraManager(fixture.scene);
       cm.init(fixture.scene, "player-1");
       cm.setActiveMode(CameraMode.Drone);
       expect(fixture.scene.activeCamera?.name).toBe("droneCam");
       cm.toggleCockpitChase();
-      expect(fixture.scene.activeCamera?.name).toBe("cockpitCam");
+      // Default branch removed in Story 005 — no-op from non-Cockpit/Chase
+      expect(fixture.scene.activeCamera?.name).toBe("droneCam");
       cm.dispose();
     });
   });
