@@ -181,6 +181,7 @@ function addCarState(
     fuelMult: 1,
     tireCondition: 1,
     gradient: 0,
+    topSpeedMs: TEST_CONFIG.topSpeedL1toL5[0],
     pitEntrySpeed: null,
     tireBlownEmitted: false,
     fuelEmptyEmitted: false,
@@ -1317,5 +1318,91 @@ describe("Edge Cases", () => {
     expect(body.setLinearVelocity).toHaveBeenCalledWith(
       expect.objectContaining({ x: 0, y: 0, z: 0 })
     );
+  });
+});
+
+// ─── TD-PHYS-003: Input validation ────────────────────────────────────────
+
+describe("TD-PHYS-003 — onFuelUpdate/onTireUpdate clamped to [0,1]", () => {
+  let physics: PhysicsService;
+
+  beforeEach(async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    physics = new PhysicsService(scene, undefined, havok);
+    physics.setSurfaceProvider(() => SurfaceType.Tarmac);
+    await physics.init(TEST_CONFIG);
+    addCarState(physics, "car_01", createMockBody(), {
+      gear: 1,
+      speedKmh: 50,
+      rpm: 3000,
+    });
+    setInput(physics, "car_01", { throttle: 0.5 });
+  });
+
+  it("onFuelUpdate clamps negative values to 0", () => {
+    physics.onFuelUpdate("car_01", -0.5);
+    physics.update(FIXED_DT);
+    const state = (physics as any)._carStates.get("car_01") as CarPhysicsState;
+    expect(state.fuelMult).toBeGreaterThanOrEqual(0);
+  });
+
+  it("onFuelUpdate clamps values above 1 to 1", () => {
+    physics.onFuelUpdate("car_01", 1.5);
+    physics.update(FIXED_DT);
+    const state = (physics as any)._carStates.get("car_01") as CarPhysicsState;
+    expect(state.fuelMult).toBeLessThanOrEqual(1);
+  });
+
+  it("onTireUpdate clamps negative values to 0", () => {
+    physics.onTireUpdate("car_01", -0.3);
+    physics.update(FIXED_DT);
+    const state = (physics as any)._carStates.get("car_01") as CarPhysicsState;
+    expect(state.tireCondition).toBeGreaterThanOrEqual(0);
+  });
+
+  it("onTireUpdate clamps values above 1 to 1", () => {
+    physics.onTireUpdate("car_01", 2.0);
+    physics.update(FIXED_DT);
+    const state = (physics as any)._carStates.get("car_01") as CarPhysicsState;
+    expect(state.tireCondition).toBeLessThanOrEqual(1);
+  });
+});
+
+// ─── TD-PHYS-004: onRaceGreenFlag clears pending maps ─────────────────────
+
+describe("TD-PHYS-004 — onRaceGreenFlag clears pending fuel/tire updates", () => {
+  let physics: PhysicsService;
+
+  beforeEach(async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    physics = new PhysicsService(scene, undefined, havok);
+    physics.setSurfaceProvider(() => SurfaceType.Tarmac);
+    await physics.init(TEST_CONFIG);
+    addCarState(physics, "car_01", createMockBody(), {
+      gear: 1,
+      speedKmh: 50,
+      rpm: 3000,
+    });
+    setInput(physics, "car_01", { throttle: 0.5 });
+  });
+
+  it("pending fuel updates are cleared on green flag", () => {
+    physics.onFuelUpdate("car_01", 0.5);
+    // Pending map has the update, but it hasn't been applied yet
+    physics.onRaceGreenFlag();
+    physics.update(FIXED_DT);
+    // fuelMult should remain at default (1.0) — pending was cleared
+    const state = (physics as any)._carStates.get("car_01") as CarPhysicsState;
+    expect(state.fuelMult).toBe(1);
+  });
+
+  it("pending tire updates are cleared on green flag", () => {
+    physics.onTireUpdate("car_01", 0.3);
+    physics.onRaceGreenFlag();
+    physics.update(FIXED_DT);
+    const state = (physics as any)._carStates.get("car_01") as CarPhysicsState;
+    expect(state.tireCondition).toBe(1);
   });
 });
