@@ -42,6 +42,9 @@ import type { Engine } from "@babylonjs/core/Engines/engine";
 import type { Gamepad } from "@babylonjs/core/Gamepads/gamepad";
 import { GamepadManager } from "@babylonjs/core/Gamepads/gamepadManager";
 import { Observable } from "@babylonjs/core/Misc/observable";
+import type { IEventBus, Subscription } from "@/foundation/event-bus/types";
+import type { GameStateMachine } from "@/foundation/gsm/GameStateMachine";
+import type { State } from "@/foundation/gsm/types";
 import { applyDeadZone } from "./dead-zone";
 import { type DeviceType, type IInput, InputState } from "./IInput";
 
@@ -114,9 +117,40 @@ export class PlayerInput implements IInput {
   /** AbortController for tab blur/focus event listener lifecycle management. */
   private _blurController: AbortController | null = null;
 
+  /** GSM transition blocking flag — when true, getState() returns InputState.ZERO. */
   private _transitionBlocking = false;
   private _deadZoneThreshold = DEFAULT_DEAD_ZONE;
   private _lastActiveDevice: DeviceType = "keyboard";
+
+  // -- Injected dependencies (GSM state integration — Story 005) ------------
+  /** Event Bus — subscribed to gsm.state.exited/entered during init(). */
+  private _eventBus: IEventBus | null = null;
+
+  /** Game State Machine — used to initiate pauseToggle transitions. */
+  private _gsm: GameStateMachine | null = null;
+
+  /** Active Event Bus subscriptions — cleaned up in dispose(). */
+  private _gsmSubscriptions: Subscription[] = [];
+
+  /**
+   * Current GSM state — maintained from gsm.state.entered payload (to field).
+   * NEVER call gsm.getCurrentState() (rule F-F5 / F23).
+   * Initialized to "Loading" matching GSM's bootstrap state.
+   */
+  private _gsmCurrentState: State = "Loading";
+
+  /**
+   * Create a new PlayerInput instance.
+   *
+   * @param eventBus - Optional Event Bus for GSM state integration.
+   *   If provided, subscribes to gsm.state.exited/entered during init().
+   * @param gsm - Optional Game State Machine for pauseToggle transitions.
+   *   If provided, pauseToggle and confirm (PreRace) route through gsm.transition().
+   */
+  constructor(eventBus?: IEventBus | null, gsm?: GameStateMachine | null) {
+    this._eventBus = eventBus ?? null;
+    this._gsm = gsm ?? null;
+  }
 
   /** Reusable mutable InputState — mutated in place, zero allocation. */
   private _currentState: InputState = {
@@ -215,6 +249,30 @@ export class PlayerInput implements IInput {
     // NOTE: Config integration for input.deadZone is deferred until the Data &
     // Config Manager (Story DCM) is available. For now the default 0.15 applies.
     // HMR live-update of dead zone is also deferred (Integration/Polish phase).
+
+    // -- GSM State Integration (Story 005) ---------------------------------
+    // Subscribe to GSM events when Event Bus is available.
+    // The Event Bus may be absent in testing scenarios or before GSM init.
+    if (this._eventBus) {
+      this._gsmSubscriptions.push(
+        this._eventBus.on("gsm.state.exited", () => {
+          // Transition started — zero outputs immediately.
+          // Prevents stale inputs crossing state boundaries.
+          this._transitionBlocking = true;
+        }),
+
+        this._eventBus.on("gsm.state.entered", ({ to }) => {
+          // Transition complete — resume live input.
+          this._transitionBlocking = false;
+          this._gsmCurrentState = to as State;
+
+          // Flush stale cached digital state: set prevDigital to current raw
+          // hardware state. This prevents stale pulse edges (e.g., a held menu
+          // button) from triggering after the transition completes.
+          this._prevDigital = { ...this._rawDigital };
+        })
+      );
+    }
   }
 
   /** @inheritdoc */
@@ -227,6 +285,7 @@ export class PlayerInput implements IInput {
     this._blurController?.abort();
     this._blurController = null;
     this.onDeviceChanged.clear();
+    this._unsubscribeGsm();
     this._fullReset();
   }
 
@@ -273,6 +332,17 @@ export class PlayerInput implements IInput {
     // 6. Pulse edge detection for digital fields
     this._detectEdges();
 
+    // 7. Process pulse-based cross-system routing (pauseToggle, confirm)
+    this._processPulse();
+
+    // 8. Gate menu navigation — navUp, navDown, cancel only active in Menu state
+    //    Prevents navigation inputs from leaking into gameplay states.
+    if (this._gsmCurrentState !== "Menu") {
+      this._currentState.navUp = false;
+      this._currentState.navDown = false;
+      this._currentState.cancel = false;
+    }
+
     return this._currentState;
   }
 
@@ -292,6 +362,7 @@ export class PlayerInput implements IInput {
    * Set whether the window/tab is hidden (tab blur detection).
    * Called by Story 004 (Focus/Disconnect) when blur/focus/visibility fires.
    *
+   * @internal Test/init wiring only — production state set by DOM events.
    * @param hidden - `true` when the tab loses focus; `false` when focus returns.
    */
   setHidden(hidden: boolean): void {
@@ -302,10 +373,24 @@ export class PlayerInput implements IInput {
    * Set whether GSM transition is active (input blocking).
    * Called by Story 005 (GSM State Integration) when transition starts/ends.
    *
+   * @internal Test/init wiring only — production state set by Event Bus events.
    * @param blocking - `true` to zero all outputs during transition; `false` to resume normal polling.
    */
   setTransitionBlocking(blocking: boolean): void {
     this._transitionBlocking = blocking;
+  }
+
+  /**
+   * Set the current GSM state (for testing/init wiring).
+   * Called by Story 005 (GSM State Integration) and test scenarios.
+   *
+   * NOTE: In production, this is maintained from gsm.state.entered events.
+   * This setter exists for testability and init wiring only.
+   *
+   * @param state - The GSM state to set as current.
+   */
+  setGsmCurrentState(state: State): void {
+    this._gsmCurrentState = state;
   }
 
   /**
@@ -351,6 +436,77 @@ export class PlayerInput implements IInput {
     this._resetRawDigital();
     this._prevDigital = { ...this._rawDigital };
     this._lastActiveDevice = "keyboard";
+    this._gsmCurrentState = "Loading";
+  }
+
+  /** Unsubscribe all GSM Event Bus subscriptions (used by dispose and re-init guard). */
+  private _unsubscribeGsm(): void {
+    for (const sub of this._gsmSubscriptions) {
+      sub.unsubscribe();
+    }
+    this._gsmSubscriptions = [];
+  }
+
+  /**
+   * Process pulse-based inputs that have cross-system routing.
+   *
+   * Called after edge detection in getState(). Routes:
+   * - pauseToggle → gsm.transition() per _gsmCurrentState
+   * - confirm    → gsm.transition() or eventBus.emit() per _gsmCurrentState
+   *
+   * @see TR-INP-006 — GSM state integration
+   * @see ADR-0006 — GSM Transition Blocking
+   */
+  private _processPulse(): void {
+    const pulse = this._currentState;
+
+    // --- pauseToggle routing ---
+    if (pulse.pauseToggle) {
+      if (this._gsmCurrentState === "Racing") {
+        // Racing → Paused
+        this._gsm?.transition("Paused").catch((err: unknown) => {
+          console.warn("[PlayerInput] Racing→Paused transition failed:", err);
+        });
+      } else if (this._gsmCurrentState === "Paused") {
+        // Paused → Racing
+        this._gsm?.transition("Racing").catch((err: unknown) => {
+          console.warn("[PlayerInput] Paused→Racing transition failed:", err);
+        });
+      }
+      // Other states → silently ignored (no stray transition)
+    }
+
+    // --- confirm routing ---
+    if (pulse.confirm) {
+      switch (this._gsmCurrentState) {
+        case "PreRace":
+          // Skip grid cinematic, start race
+          this._gsm?.transition("Racing").catch((err: unknown) => {
+            console.warn(
+              "[PlayerInput] PreRace→Racing transition failed:",
+              err
+            );
+          });
+          break;
+
+        case "Racing":
+          // Pit Stop system gatekeeps: only acts when pitStopped (C49)
+          this._eventBus?.emit("input.pit.depart", {});
+          break;
+
+        case "PostRace":
+          // PostRace overlay consumes
+          this._eventBus?.emit("input.confirm.postRace", {});
+          break;
+
+        case "Menu":
+          // Menu layer consumes
+          this._eventBus?.emit("input.confirm.menu", {});
+          break;
+
+        // Loading, Paused → silently ignored (pause owns Escape)
+      }
+    }
   }
 
   // -- Keyboard reading -----------------------------------------------------
