@@ -16,7 +16,7 @@ Accepted
 | **Domain**                | Scene Management / Asset Loading                                                           |
 | **Knowledge Risk**        | MEDIUM                                                                                     |
 | **References Consulted**  | VERSION.md, modules/rendering.md, breaking-changes.md, deprecated-apis.md                  |
-| **Post-Cutoff APIs Used** | `SceneLoader.LoadAssetContainerAsync()` (async-only since 7.34 — sync variants deprecated) |
+| **Post-Cutoff APIs Used** | `LoadAssetContainerAsync()` module-level API (replaces deprecated `SceneLoader.LoadAssetContainerAsync()` static method) |
 | **Verification Required** | AssetContainer lifecycle timing; `engine.runRenderLoop()` drives pipeline (see ADR-0002)   |
 
 ## ADR Dependencies
@@ -44,7 +44,7 @@ The game transitions between two visual contexts: Menu (Title → Car Select →
 
 ### Requirements
 
-- `SceneLoader.LoadAssetContainerAsync()` — load once, instantiate per scene
+- `LoadAssetContainerAsync()` (module-level) — load once, instantiate per scene
 - Containers cached in `Map<string, AssetContainer>` — zero I/O on transition
 - `asset.error` event emitted on load failure, GSM handles recovery
 - Both scenes coexist in `engine.scenes[]`, only one renders per frame
@@ -160,13 +160,12 @@ scene is dormant during Menu. This enables `instantiateModelsToScene()` to
 create clones in the correct scene.
 
 ```typescript
-// ✅ Correct pattern for race assets:
+// ✅ Correct pattern for race assets (module-level API):
 // raceScene exists from init, even though it doesn't render yet
-const container = await SceneLoader.LoadAssetContainerAsync(
-  url,
-  null,
-  null,
-  raceScene // 4th param = target scene
+const container = await LoadAssetContainerAsync(
+  filename,
+  raceScene,
+  { rootUrl } // rootUrl in options for correct relative texture resolution
 );
 container.removeAllFromScene(); // unparent source meshes from raceScene
 this.cache.set(id, container);
@@ -212,7 +211,7 @@ interface IAssetManager {
   // - 'asset.load.start'(ids: string[])     — batch started
   // - 'asset.load.progress'(id: string, loaded: number, total: number) — per-file progress
   // - 'asset.load.complete'(id: string)     — single asset finished
-  // - 'asset.load.error'(id: string, error: Error) — existing
+  // - 'asset.error'(assetId: string, error: Error) — load failure (re-thrown)
   // - 'asset.load.allComplete'(ids: string[]) — entire batch finished
 }
 ```
@@ -229,7 +228,7 @@ async preload(ids: string[]): Promise<void> {
       this.cache.set(id, container);
       eventBus.emit('asset.load.complete', id);
     } catch (e) {
-      eventBus.emit('asset.load.error', id, e);
+      eventBus.emit('asset.error', { assetId: id, error: e });
       throw e;
     }
     completed++;

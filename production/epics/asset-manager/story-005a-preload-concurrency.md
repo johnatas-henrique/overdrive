@@ -1,7 +1,8 @@
 # Story 005a: Preload Concurrency
 
 > **Epic**: Asset Manager
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-29
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
@@ -30,12 +31,13 @@ _(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh 
 
 _From GDD `design/gdd/asset-manager.md`, scoped to this story:_
 
-- [ ] AC-p1: `preload(['spa', 'monza'])` calls `LoadAssetContainerAsync` for each uncached ID. All started concurrently (no sequential await).
-- [ ] AC-p2: `preload()` returns a single `Promise<void>` that resolves when ALL loads complete.
-- [ ] AC-p3: If one preload asset fails, `'asset.error'` is emitted for that ID. Other assets continue loading. The overall Promise rejects.
-- [ ] AC-p4: `'asset.load.allComplete'` is emitted with `{ ids: ['spa', 'monza'] }` when the entire batch finishes successfully.
-- [ ] AC-p5: Preloading an already-cached ID skips that ID immediately (no I/O, no duplicate events).
-- [ ] AC-p6: `preload([])` with an empty array resolves immediately — no events emitted, no async overhead.
+- [x] AC-p1: `preload(['spa', 'monza'])` calls `LoadAssetContainerAsync` for each uncached ID. All started concurrently (no sequential await).
+- [x] AC-p2: `preload()` returns a single `Promise<void>` that resolves when ALL loads complete.
+- [x] AC-p3: If one preload asset fails, `'asset.error'` is emitted for that ID. Other assets continue loading. The overall Promise rejects.
+- [x] AC-p4: `'asset.load.allComplete'` is emitted with `{ ids: ['spa', 'monza'] }` when the entire batch finishes successfully.
+- [x] AC-p5: Preloading an already-cached ID skips that ID immediately (no I/O, no duplicate events).
+- [x] AC-p6: `preload([])` with an empty array resolves immediately — no events emitted, no async overhead.
+- [x] AC-p7: `preload()` before `init()` throws `AssetError('Not initialized')`. `preload()` after `dispose()` throws `AssetError('Already disposed')`.
 
 ---
 
@@ -43,9 +45,9 @@ _From GDD `design/gdd/asset-manager.md`, scoped to this story:_
 
 _Derived from ADR-0003 Implementation Guidelines:_
 
-1. **Concurrent pattern** — Use `Promise.all(ids.map(id => this.loadOne(id)))` or similar. Each `loadOne()` calls `LoadAssetContainerAsync` independently.
-2. **Batch events** — Emit `'asset.load.allComplete'` only when ALL assets in the batch complete successfully.
-3. **Partial failure** — Wrap each individual load in try/catch. On failure, emit `'asset.error'` and store the error. After all settles, reject the overall preload Promise with one of the errors.
+1. **Concurrent pattern** — Use `Promise.all(ids.map(id => this.loadOne(id)))` or similar. Each `loadOne()` calls `LoadAssetContainerAsync` independently. **Note**: ADR-0003's implementation example shows a sequential pattern for illustration — this story's concurrent requirement takes precedence.
+2. **Batch events** — Emit `'asset.load.start'` once with `{ ids: [...allRequestedIds] }` before any loads begin. Emit `'asset.load.allComplete'` only when ALL assets in the batch complete successfully.
+3. **Partial failure** — Wrap each individual load in try/catch. On failure, emit `'asset.error'` and store the error. After all settles, reject the overall preload Promise with the **first** error encountered (in input array order). If multiple assets fail, only the first error is propagated.
 4. **Cache skip** — Check `this.cache.has(id)` before initiating load. Cached IDs are excluded from the batch entirely — no events fire for them during preload.
 5. **Empty batch** — Return immediately. No events.
 
@@ -88,13 +90,20 @@ _Written by qa-lead at story creation. The developer implements against these �
 - When: `preload([])`
 - Then: Resolves immediately; no events emitted; no `LoadAssetContainerAsync` calls
 
+**AC-p7: Lifecycle guards**
+
+- Given: AssetManager not initialized
+- When: `preload(['spa'])`
+- Then: Throws `AssetError('Not initialized')`
+- Edge: After `dispose()`, `preload(['spa'])` throws `AssetError('Already disposed')`
+
 ---
 
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/asset-manager/story-005a-preload-concurrency_test.ts` OR playtest doc
-**Status**: [ ] Not yet created
+**Required evidence**: `tests/integration/asset-manager/preload-concurrency.test.ts` OR playtest doc
+**Status**: [x] Created and passing (13 integration tests)
 
 ---
 
@@ -102,3 +111,12 @@ _Written by qa-lead at story creation. The developer implements against these �
 
 - Depends on: Story 002 (single `load()`), Story 003 (event emission)
 - Unlocks: Story 005b (GSM orchestration calls `preload()`)
+
+## Completion Notes
+
+**Completed**: 2026-06-29
+**Criteria**: 7/7 passing
+**Deviations**: None
+**Test Evidence**: 13 integration tests at `tests/integration/asset-manager/preload-concurrency.test.ts`
+**Code Review**: Complete — APPROVED with fixes applied
+**Tech Debt Resolved**: 2 items (stale test path in story-002, pending-load dedup via _pendingLoads Map)

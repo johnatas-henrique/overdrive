@@ -85,8 +85,15 @@ export type EventMap = {
   /** A new race has started with the given configuration. */
   "race.started": { track: string; totalLaps: number; playerCarId: string };
   /** An asset failed to load. */
-  "asset.error": { assetId: string; error: Error };
-
+  "asset.error": { id: string; error: Error };
+  /** An asset load has started. */
+  "asset.load.start": { ids: string[] };
+  /** Progress update during an asset load. */
+  "asset.load.progress": { id: string; loaded: number; total: number };
+  /** An asset load has completed successfully. */
+  "asset.load.complete": { id: string };
+  /** All assets in a preload batch have completed successfully. */
+  "asset.load.allComplete": { ids: string[] };
   /** Player confirmed to depart from pit stop. */
   "input.pit.depart": Record<string, never>;
   /** Player confirmed on post-race results screen. */
