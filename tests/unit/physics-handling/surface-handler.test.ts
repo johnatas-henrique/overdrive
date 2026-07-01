@@ -503,6 +503,34 @@ describe("enforceMinSurfaceSpeed — speed floor clamping", () => {
     const result = enforceMinSurfaceSpeed(0, 0);
     expect(result).toBe(0);
   });
+
+  // ── FR-011: Negative target speed (reverse gear) guards ────────────────
+  // enforceMinSurfaceSpeed must not clamp a negative (reverse) target speed
+  // upward — that would pin the car moving forward while the driver intends
+  // reverse. The guard at the top of the function returns targetSpeed
+  // immediately when targetSpeed < 0.
+
+  it("returns negative target speed unchanged (reverse gear, min>0)", () => {
+    const result = enforceMinSurfaceSpeed(-5, 15);
+    expect(result).toBe(-5);
+  });
+
+  it("returns zero target speed unchanged (reverse stall, min>0)", () => {
+    const result = enforceMinSurfaceSpeed(0, 15);
+    // FR-009: zero targetSpeed is not clamped by negative guard — but
+    // minSurfaceSpeed > 0 means Math.max(0, 15) = 15, so it WILL be clamped.
+    expect(result).toBe(15);
+  });
+
+  it("returns negative target speed unchanged (reverse gear, min=0)", () => {
+    const result = enforceMinSurfaceSpeed(-3, 0);
+    expect(result).toBe(-3);
+  });
+
+  it("returns negative target speed unchanged (reverse gear, min>target)", () => {
+    const result = enforceMinSurfaceSpeed(-10, 5);
+    expect(result).toBe(-10);
+  });
 });
 
 // ─── AC-4: Kerb Timer-Based Grip Loss (2 ticks) ─────────────────────────

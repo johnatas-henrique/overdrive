@@ -216,12 +216,14 @@ describe("AC-1 — computeRpm: RPM from speed and gear", () => {
     expect(rpmOob).toBe(rpmNormal);
   });
 
-  it("test_shortGearRatios_throwsValidationError", () => {
-    // FR-019: gearRatios must have at least GEAR_COUNT (6) entries
+  it("test_shortGearRatios_validationMovedToInit", () => {
+    // FR-004: gearRatios validation moved from computeRpm to PhysicsService.init().
+    // computeRpm no longer validates — it produces NaN for out-of-bounds ratios
+    // since it indexes gearRatios with Math.min(gear, GEAR_COUNT) - 1.
     const shortRatios = [3.5, 2.5]; // only 2 gears
-    expect(() =>
-      ArcadeGripModel.computeRpm(20, 3, shortRatios, rpmMax, 10)
-    ).toThrow(/gearRatios length .+ must be at least 6/);
+    const result = ArcadeGripModel.computeRpm(20, 3, shortRatios, rpmMax, 10);
+    // gear=3, idx = Math.min(3, 6) - 1 = 2, shortRatios[2] is undefined → NaN
+    expect(result).toBeNaN();
   });
 
   it("test_deterministic_identicalInputs", () => {

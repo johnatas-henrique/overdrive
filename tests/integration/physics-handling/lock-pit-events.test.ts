@@ -26,7 +26,10 @@ import { FIXED_DT } from "@/foundation/determinism/accumulator";
 import { InputState } from "@/foundation/determinism/types";
 import type { IEventBus } from "@/foundation/event-bus/types";
 import { ArcadeGripModel } from "@/physics-handling/arcade-grip-model";
-import type { CarPhysicsState } from "@/physics-handling/car-physics-state";
+import {
+  type CarPhysicsState,
+  createDefaultCarPhysicsState,
+} from "@/physics-handling/car-physics-state";
 import type { ITrackSystem } from "@/physics-handling/i-track-system";
 import type { PhysicsConfig } from "@/physics-handling/physics-config";
 import { PhysicsService } from "@/physics-handling/physics-service";
@@ -171,33 +174,14 @@ function addCarState(
   overrides?: Partial<CarPhysicsState>
 ): void {
   const states = (physics as any)._carStates as Map<string, CarPhysicsState>;
-  const state: CarPhysicsState = {
+  const state = createDefaultCarPhysicsState(
     carId,
     body,
-    targetSpeed: 0,
-    targetYawRate: 0,
-    splinePosition: 0,
-    speedKmh: 0,
-    rpm: 0,
-    gear: 0,
-    lateralG: 0,
-    accelG: 0,
-    tireSqueal: 0,
-    kerbHit: false,
-    offTrack: false,
-    frictionMultiplier: 1,
-    minSurfaceSpeed: 0,
-    gripMultiplier: 1,
-    fuelMult: 1,
-    tireCondition: 1,
-    gradient: 0,
-    topSpeedMs: TEST_CONFIG.topSpeedL1toL5[0],
-    pitEntrySpeed: null,
-    tireBlownEmitted: false,
-    fuelEmptyEmitted: false,
-    wasAboveStopEpsilon: false,
-    ...overrides,
-  };
+    TEST_CONFIG.topSpeedL1toL5[0]
+  );
+  if (overrides) {
+    Object.assign(state, overrides);
+  }
   states.set(carId, state);
 }
 

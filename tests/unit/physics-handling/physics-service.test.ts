@@ -20,6 +20,7 @@ import { FixedUpdatePipeline } from "@/foundation/determinism/fixed-update-pipel
 import { InputState } from "@/foundation/determinism/types";
 import { ArcadeGripModel } from "@/physics-handling/arcade-grip-model";
 import type { CarPhysicsState } from "@/physics-handling/car-physics-state";
+import { createDefaultCarPhysicsState } from "@/physics-handling/car-physics-state";
 import type { IPhysics } from "@/physics-handling/i-physics";
 import type { ITrackSystem } from "@/physics-handling/i-track-system";
 import type { PhysicsConfig } from "@/physics-handling/physics-config";
@@ -176,33 +177,11 @@ function addCarState(
 ): void {
   // Access internal state map via bracket notation (testing pattern)
   const states = (physics as any)._carStates as Map<string, CarPhysicsState>;
-  const state: CarPhysicsState = {
+  const state = createDefaultCarPhysicsState(
     carId,
     body,
-    targetSpeed: 0,
-    targetYawRate: 0,
-    splinePosition: 0,
-    speedKmh: 0,
-    rpm: 0,
-    gear: 0,
-    lateralG: 0,
-    accelG: 0,
-    tireSqueal: 0,
-    kerbHit: false,
-    offTrack: false,
-    frictionMultiplier: 1,
-    minSurfaceSpeed: 0,
-    gripMultiplier: 1,
-    fuelMult: 1,
-    tireCondition: 1,
-    pitEntrySpeed: null,
-    gradient: 0,
-    topSpeedMs: TEST_CONFIG.topSpeedL1toL5[0],
-
-    tireBlownEmitted: false,
-    fuelEmptyEmitted: false,
-    wasAboveStopEpsilon: false,
-  };
+    TEST_CONFIG.topSpeedL1toL5[0]
+  );
   if (overrides) {
     Object.assign(state, overrides);
   }
@@ -423,6 +402,26 @@ describe("AC-2 — Havok executeStep called exactly once per tick", () => {
     expect(() => rawPhysics.update(FIXED_DT)).toThrow(
       "[PhysicsService] Surface provider not set"
     );
+  });
+
+  it("throws when gearRatios has fewer than 6 entries", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = new PhysicsService(scene, undefined, havok);
+
+    const badConfig = {
+      ...TEST_CONFIG,
+      gearRatios: [3.5, 2.5, 1.8] as [
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+      ],
+    };
+
+    await expect(physics.init(badConfig)).rejects.toThrow("gearRatios length");
   });
 });
 
@@ -1120,6 +1119,15 @@ describe("Edge Cases", () => {
     expect(telemetry?.accelG).not.toBeNaN();
     expect(telemetry?.accelG).not.toBe(Infinity);
     expect(telemetry?.accelG).not.toBe(-Infinity);
+
+    // FR-008: body.setLinearVelocity must receive finite values,
+    // especially the Y component which would be (splineY - bodyY) / 0
+    // With splineY=5.01, bodyY=5: numerator=0.01, dt=0 → Infinity
+    expect(body.setLinearVelocity).toHaveBeenCalled();
+    const lastVel = body.setLinearVelocity.mock.lastCall[0];
+    expect(Number.isFinite(lastVel.y)).toBe(true);
+    expect(Number.isFinite(lastVel.x)).toBe(true);
+    expect(Number.isFinite(lastVel.z)).toBe(true);
   });
 
   it("prevents duplicate body in activeBodies array", async () => {
