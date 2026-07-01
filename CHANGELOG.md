@@ -1,5 +1,54 @@
 # Changelog
 
+## [0.6.0](https://github.com/johnatas-henrique/overdrive/compare/overdrive-v0.5.0...overdrive-v0.6.0) (2026-07-01)
+
+
+### Features
+
+* Camera epic (10/10) + Entity/Car Lifecycle (2/2) + Physics skeleton ([e9b7fc0](https://github.com/johnatas-henrique/overdrive/commit/e9b7fc0eb982329d94a4e3a882de33cf089d1cd7))
+* **camera:** add attachCockpitToCar with shakeNode hierarchy for Story 003 ([69c7b7e](https://github.com/johnatas-henrique/overdrive/commit/69c7b7e0976f7f771fe17f4ac78ab0a411efb259))
+* **camera:** add chase occlusion raycast with FollowCamera config for story 004 ([e6cd61b](https://github.com/johnatas-henrique/overdrive/commit/e6cd61b22798ec03492b18754316330ba9674719))
+* **camera:** add ConfigManager HMR integration (Story 010) ([8d12cc0](https://github.com/johnatas-henrique/overdrive/commit/8d12cc00d97258480d358819697a6ac968a61c54))
+* **camera:** add speed-dependent FOV shift for Story 006 ([9cb8038](https://github.com/johnatas-henrique/overdrive/commit/9cb80385425072b1797bfe2b080ee5d32fe07021))
+* **camera:** camera foundation — enum, interface, config, manager ([2571e27](https://github.com/johnatas-henrique/overdrive/commit/2571e270db680b3c934ec23869031fc3270556be))
+* **camera:** gsm-driven camera lifecycle (TR-CAM-007) ([2abf1dc](https://github.com/johnatas-henrique/overdrive/commit/2abf1dce93d37b82b2e823f2758f36f1eb5a82da))
+* **camera:** implement camera shake system for Story 007 ([7180c97](https://github.com/johnatas-henrique/overdrive/commit/7180c97f186972dd200734329d86bb355bc806ab))
+* **camera:** implement drone camera auto-orbit for Story 008 ([8d3a87e](https://github.com/johnatas-henrique/overdrive/commit/8d3a87e823837ff5f56698bb3dfaa9d0416a2f05))
+* **camera:** implement head bob + lateral lean for Story 009 ([5673dfb](https://github.com/johnatas-henrique/overdrive/commit/5673dfb999b528cf40e69d935aae35b046f09b17))
+* **camera:** remove toggle default branch for AC-16, fix _currentMode ordering ([3e92ac7](https://github.com/johnatas-henrique/overdrive/commit/3e92ac745e5aa565f174b1f39e0922fccee6c9eb))
+* **camera:** remove toggleCockpitChase default branch for AC-16 no-op ([5fd5e4f](https://github.com/johnatas-henrique/overdrive/commit/5fd5e4f560487fd812459ec1068d45027466f349))
+* **entity-car-lifecycle:** carEntity spawn & lifecycle ([9069685](https://github.com/johnatas-henrique/overdrive/commit/90696850402427f7c08b339f4e1cb6ea4361f234))
+* **entity-car-lifecycle:** destroyAll, GSM integration, dispose ([f5bb6cb](https://github.com/johnatas-henrique/overdrive/commit/f5bb6cbeade7e9f91e200247da1de3601f7b6591))
+* **physics:** add brakeMax to PhysicsConfig, remove liftOffRearFactor ([abb07b2](https://github.com/johnatas-henrique/overdrive/commit/abb07b27d52ad6cac40bed0d811b1d0dfc6c931c))
+* **physics:** add engine config fields and gradient to CarPhysicsState ([e162221](https://github.com/johnatas-henrique/overdrive/commit/e162221cdac141b9ab366172e82de21702ff1e32))
+* **physics:** add pitEntrySpeed to CarPhysicsState and pitSpeedTransitionTime to PhysicsConfig ([e5a867e](https://github.com/johnatas-henrique/overdrive/commit/e5a867e6116379c11b77a956a043d9985edf4c43))
+* **physics:** add type definitions for physics system ([c28718a](https://github.com/johnatas-henrique/overdrive/commit/c28718aee0750503ad65dea6d99036886ec4a442))
+* **physics:** complete Physics/Handling epic — 5 stories, 2044 tests, 100% coverage ([80bf943](https://github.com/johnatas-henrique/overdrive/commit/80bf943076a3c0015aefea942e3a0ab432522ff4))
+* **physics:** implement ArcadeGripModel replacing Phase1Stub ([d089508](https://github.com/johnatas-henrique/overdrive/commit/d089508a4f2b84e9015f82c797e680e8788db11c))
+* **physics:** implement engine model, auto-shift, drag, braking, and input integration ([8ef895f](https://github.com/johnatas-henrique/overdrive/commit/8ef895f06d8c286570b5eeb45ff3f664f4c81ad6))
+* **physics:** implement Event Bus integration, pit limiter, edge events, and pending updates ([ccd10f5](https://github.com/johnatas-henrique/overdrive/commit/ccd10f553b82e5900e95af9b92799abc34fd221d))
+* **physics:** implement PhysicsService with 3-phase pipeline ([50c540b](https://github.com/johnatas-henrique/overdrive/commit/50c540bc900f6a5fda8b6918b5d102d1b8cf7413))
+* **physics:** implement surface handling for off-track and kerb grip modifiers ([0b330c1](https://github.com/johnatas-henrique/overdrive/commit/0b330c12747cd0562984464ea005608ca64738d6))
+* **physics:** resolve TD-1 through TD-4 — topSpeedMs, input validation, pending map cleanup ([912c904](https://github.com/johnatas-henrique/overdrive/commit/912c904b075b91bf9bcc8e146ac9355aa74233ac))
+* **tools:** add pr-review-decisions skill ([78293cc](https://github.com/johnatas-henrique/overdrive/commit/78293cca3c3d5bf990e5fca4207a680618190f60))
+
+
+### Bug Fixes
+
+* **camera + entity:** null guard + comment fix ([cac29f6](https://github.com/johnatas-henrique/overdrive/commit/cac29f648d87a1e2782b53c61089286a000972b0))
+* **camera:** remove unreachable defensive guard ([39b2dc4](https://github.com/johnatas-henrique/overdrive/commit/39b2dc4ec5373483a737683a96bb8083a9f930d7))
+* **camera:** tighten types, add guards, HMR push, FIFO capacity ([f0dbf9f](https://github.com/johnatas-henrique/overdrive/commit/f0dbf9f9380773bff838a00c366c0e1ac3d2a17f))
+* **entity-car:** widen CarEntity.mesh to Node, fix comment ([5283adf](https://github.com/johnatas-henrique/overdrive/commit/5283adf59e6bec07f44ef5d52eaa030139d4a154))
+* **physics:** add createDefaultCarPhysicsState factory and [@throws](https://github.com/throws) JSDoc ([fbe39ad](https://github.com/johnatas-henrique/overdrive/commit/fbe39adbaca0f0e8d9edace3e010521fd1f404d0))
+* **physics:** add registerCar/removeCar API and update interface ([7a73684](https://github.com/johnatas-henrique/overdrive/commit/7a736849791d49a4d2b76c2db1f70f463dfb39b3))
+* **physics:** brake at rest, surface state, tuple validation, NaN guard, removeCar, registerCar ([1830639](https://github.com/johnatas-henrique/overdrive/commit/18306392d2bd4166a4b37d90f22be3106be0c8a5))
+* **physics:** dt guard, localeCompare, gear type, JSDoc, disablePreStep ([a08ba26](https://github.com/johnatas-henrique/overdrive/commit/a08ba26c8434c8cc4852ab6beb02427d6dee2b40))
+* **physics:** implement PR review fixes — pit limiter, brake direction, NaN guards ([250f712](https://github.com/johnatas-henrique/overdrive/commit/250f712e92d21385b9018e4b8d48ed002532624f))
+* **physics:** remove hot-path validation, fix reverse gear, add dt=0 guard ([d61edbd](https://github.com/johnatas-henrique/overdrive/commit/d61edbd0f5ada31317ae51e269d87225ba1466c9))
+* **physics:** tighten config types and add liftOffRefSpeedKmh ([6e1d8d8](https://github.com/johnatas-henrique/overdrive/commit/6e1d8d8e786a580a90699c37e5aab8c3a02ef265))
+* **physics:** update source imports + sort determinism ([60d6de7](https://github.com/johnatas-henrique/overdrive/commit/60d6de710474ed7c9f47a03d1a21694ce5eda756))
+* **tools:** skill md npx to npm exec + PT to EN ([e4c847a](https://github.com/johnatas-henrique/overdrive/commit/e4c847a62ec094ede64dee9f3b12c385bd299651))
+
 ## [0.5.0](https://github.com/johnatas-henrique/overdrive/compare/overdrive-v0.4.1...overdrive-v0.5.0) (2026-06-30)
 
 
