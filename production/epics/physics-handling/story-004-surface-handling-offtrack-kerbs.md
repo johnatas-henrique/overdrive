@@ -223,7 +223,7 @@ _Written by qa-lead at story creation:_
 **Story Type**: Logic
 **Required evidence**: `tests/unit/physics-handling/surface-handling.test.ts` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — surface-handler.test.ts
 
 ---
 

@@ -128,7 +128,7 @@ _Written by qa-lead at story creation. The developer implements against these â€
 **Story Type**: Integration
 **Required evidence**: `tests/integration/dev-tools/config-tree.test.ts` or documented playtest
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing â€” config-tree.test.ts
 
 ---
 

@@ -119,7 +119,7 @@ _Handled by separate tasks:_
 
 - Logic: `tests/unit/dev-infra/telemetry-noop.test.ts` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — telemetry-recorder.test.ts
 
 ---
 
