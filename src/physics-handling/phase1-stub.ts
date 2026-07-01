@@ -8,8 +8,7 @@
  */
 
 import type { InputState } from "@/foundation/determinism/types";
-import type { CarPhysicsState } from "./car-physics-state";
-import type { PhysicsConfig } from "./physics-config";
+import type { CarPhysicsState, PhysicsConfig } from "./types";
 
 /**
  * Stub Phase 1 compute function.

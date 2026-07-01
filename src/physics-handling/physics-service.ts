@@ -28,11 +28,14 @@ import "@babylonjs/core/Physics/joinedPhysicsEngineComponent";
 
 import type { IFixedUpdatePipeline } from "@/foundation/determinism/fixed-update-pipeline";
 import { InputState } from "@/foundation/determinism/types";
-import type { CarPhysicsState } from "./car-physics-state";
-import type { CarTelemetry, IPhysics } from "./i-physics";
-import type { ITrackSystem } from "./i-track-system";
 import { Phase1Stub } from "./phase1-stub";
-import type { PhysicsConfig } from "./physics-config";
+import type {
+  CarPhysicsState,
+  CarTelemetry,
+  IPhysics,
+  ITrackSystem,
+  PhysicsConfig,
+} from "./types";
 
 /**
  * PhysicsService implements the Arcade Dynamic vehicle model.

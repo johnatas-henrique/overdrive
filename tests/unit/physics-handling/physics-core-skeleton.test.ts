@@ -17,12 +17,14 @@
 import { Vector3 } from "@babylonjs/core/Maths/math";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FixedUpdatePipeline } from "@/foundation/determinism/fixed-update-pipeline";
-import type { CarPhysicsState } from "@/physics-handling/car-physics-state";
-import type { IPhysics } from "@/physics-handling/i-physics";
-import type { ITrackSystem } from "@/physics-handling/i-track-system";
 import { Phase1Stub } from "@/physics-handling/phase1-stub";
-import type { PhysicsConfig } from "@/physics-handling/physics-config";
 import { PhysicsService } from "@/physics-handling/physics-service";
+import type {
+  CarPhysicsState,
+  IPhysics,
+  ITrackSystem,
+  PhysicsConfig,
+} from "@/physics-handling/types";
 
 // ─── Mock Babylon.js WASM module ──────────────────────────────────────────
 // @babylonjs/havok loads a WebAssembly binary. We mock the default export
