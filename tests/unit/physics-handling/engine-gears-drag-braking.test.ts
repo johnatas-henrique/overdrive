@@ -38,6 +38,13 @@ const DEFAULT_ENGINE_CONFIG: EngineConfigSub = {
   dragCoeff: 0.3,
   maxBrakeForce: 15,
   stopEpsilon: 0.1,
+  accelerationL1toL5: [0.8, 1.0, 1.2, 1.4, 1.6] as [
+    number,
+    number,
+    number,
+    number,
+    number,
+  ],
   autoShiftRpmThreshold: 0.8,
   downshiftRpmRatio: 0.5,
   reverseMaxSpeed: 20,
@@ -69,18 +76,27 @@ function createTestConfig(overrides?: Partial<PhysicsConfig>): PhysicsConfig {
     liftOffMinSteering: 0.3,
     liftOffThrottleMax: 0.3,
     liftOffBrakeMax: 0.05,
+    liftOffRefSpeedKmh: 200,
     dragCoeff: 0.3,
     maxBrakeForce: 15,
     pitSpeedLimit: 12,
+    pitSpeedTransitionTime: 2,
     offTrackFriction: 0.4,
     offTrackGripFactor: 0.6,
     offTrackMinSpeedFraction: 5,
     kerbGripLoss: 0.5,
     speedModRefSpeed: 30,
     speedModMinFactor: 0.8,
-    autoShiftRpmThreshold: 8000,
+    autoShiftRpmThreshold: 0.8,
     rpmMax: 10000,
-    gearRatios: [3.5, 2.5, 1.8, 1.3, 1.0, 0.8],
+    gearRatios: [3.5, 2.5, 1.8, 1.3, 1.0, 0.8] as [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+    ],
     accelLevel: 1,
     powerCeiling: 1,
     downshiftRpmRatio: 0.5,
@@ -133,11 +149,14 @@ function createState(overrides?: Partial<CarPhysicsState>): CarPhysicsState {
     tireSqueal: 0,
     kerbHit: false,
     offTrack: false,
+    frictionMultiplier: 1,
+    minSurfaceSpeed: 0,
     gripMultiplier: 1,
     fuelMult: 1,
     tireCondition: 1,
     pitEntrySpeed: null,
     gradient: 0,
+    topSpeedMs: 50,
 
     tireBlownEmitted: false,
     fuelEmptyEmitted: false,
@@ -197,14 +216,12 @@ describe("AC-1 — computeRpm: RPM from speed and gear", () => {
     expect(rpmOob).toBe(rpmNormal);
   });
 
-  it("test_shortGearRatios_fallbackToRatio1", () => {
-    // When gearRatios has fewer entries than gear index, ?? 1 fallback triggers
+  it("test_shortGearRatios_throwsValidationError", () => {
+    // FR-019: gearRatios must have at least GEAR_COUNT (6) entries
     const shortRatios = [3.5, 2.5]; // only 2 gears
-    const rpm = ArcadeGripModel.computeRpm(20, 3, shortRatios, rpmMax, 10);
-    // gear 3 → idx=2, shortRatios[2] is undefined → ?? 1
-    // RPM = 20 × 1 × (10000 / (10 × 3.5))
-    const expected = 20 * 1 * (rpmMax / (10 * shortRatios[0]));
-    expect(rpm).toBeCloseTo(expected, 0);
+    expect(() =>
+      ArcadeGripModel.computeRpm(20, 3, shortRatios, rpmMax, 10)
+    ).toThrow(/gearRatios length .+ must be at least 6/);
   });
 
   it("test_deterministic_identicalInputs", () => {
@@ -1069,6 +1086,32 @@ describe("Edge cases", () => {
     expect(newSpeed).toBeLessThan(engineState.speedMs);
   });
 
+  // FR-025: Braking in reverse gear — brake should decelerate toward zero
+  it("test_reverseBraking_deceleratesTowardZero", () => {
+    const engineState: EngineStateSnapshot = {
+      ...DEFAULT_ENGINE_STATE,
+      speedMs: -5,
+      gear: -1,
+      rpm: 4000,
+    };
+    const inputs: EngineInputs = { throttle: 0, brake: 1, gearDelta: 0 };
+
+    const newSpeed = ArcadeGripModel.computeTargetSpeed(
+      engineState,
+      inputs,
+      1 / 60,
+      DEFAULT_ENGINE_CONFIG
+    );
+
+    // Brake in reverse: should push speed toward zero (less negative)
+    // FR-002 fix: brakeSign = -1 (since speedMs < 0)
+    // brake force = -1 * computeBrakeForce(1, 15) = -15 (positive net)
+    // Result: newSpeedMs > speedMs (decelerating toward zero)
+    expect(newSpeed).toBeGreaterThan(engineState.speedMs);
+    // Must not cross into positive (no overshoot)
+    expect(newSpeed).toBeLessThanOrEqual(0);
+  });
+
   it("test_gear6_upshift_staysAtSix", () => {
     const gear = ArcadeGripModel.applyGearDelta(
       6,
@@ -1119,5 +1162,79 @@ describe("ACCEL_MAP — Acceleration multiplier table", () => {
 describe("GEAR_COUNT — Forward gear count", () => {
   it("is exactly 6", () => {
     expect(GEAR_COUNT).toBe(6);
+  });
+});
+
+// ─── FR-027: Auto-Shift Integration ──────────────────────────────────────────
+
+describe("FR-027 — Auto-shift triggers", () => {
+  it("upshifts when RPM exceeds threshold * rpmMax", () => {
+    // rpm=9500 > rpmMax(10000) * threshold(0.8) = 8000 → upshift
+    const gear = ArcadeGripModel.autoShift(9500, 3, 10000, 0.8);
+    expect(gear).toBe(4);
+  });
+
+  it("downshifts when RPM drops below half-threshold", () => {
+    // rpm=3000 < 8000 * 0.5 = 4000 → downshift
+    const gear = ArcadeGripModel.autoShift(3000, 3, 10000, 0.8);
+    expect(gear).toBe(2);
+  });
+
+  it("computeTargetSpeed with high RPM triggers auto-upshift", () => {
+    // Engine state at high RPM in gear 3, throttle not zero
+    const engineState: EngineStateSnapshot = {
+      ...DEFAULT_ENGINE_STATE,
+      speedMs: 60,
+      gear: 3,
+      rpm: 4000,
+    };
+    const inputs: EngineInputs = { throttle: 0.8, brake: 0, gearDelta: 0 };
+
+    const config: EngineConfigSub = {
+      ...DEFAULT_ENGINE_CONFIG,
+      autoShiftRpmThreshold: 0.8,
+    };
+
+    const newSpeed = ArcadeGripModel.computeTargetSpeed(
+      engineState,
+      inputs,
+      1 / 60,
+      config
+    );
+
+    // With speed=60 m/s in gear 3 (ratio 1.8), RPM should be high
+    // Expected RPM = 60 * 1.8 * (10000 / (3.5 * 10)) = 30857 → clamped to rpmMax*1.05 = 10500
+    // 10500 > 8000 (threshold) → auto-upshift to gear 4
+    expect(engineState.gear).toBe(4);
+    expect(newSpeed).toBeGreaterThanOrEqual(0);
+  });
+
+  it("low RPM with automatic shift triggers downshift", () => {
+    // Engine state at low RPM in gear 4
+    const engineState: EngineStateSnapshot = {
+      ...DEFAULT_ENGINE_STATE,
+      speedMs: 10,
+      gear: 4,
+      rpm: 4000,
+    };
+    const inputs: EngineInputs = { throttle: 0, brake: 0, gearDelta: 0 };
+
+    const config: EngineConfigSub = {
+      ...DEFAULT_ENGINE_CONFIG,
+      autoShiftRpmThreshold: 0.8,
+    };
+
+    const newSpeed = ArcadeGripModel.computeTargetSpeed(
+      engineState,
+      inputs,
+      1 / 60,
+      config
+    );
+
+    // With speed=10 m/s in gear 4 (ratio 1.3), RPM should be low
+    // Expected RPM = 10 * 1.3 * (10000 / (3.5 * 10)) = 371
+    // 371 < 4000 (half-threshold) → auto-downshift from gear 4
+    expect(engineState.gear).toBeLessThan(4);
+    expect(newSpeed).toBeGreaterThanOrEqual(0);
   });
 });

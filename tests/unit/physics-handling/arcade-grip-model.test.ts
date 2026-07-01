@@ -53,16 +53,18 @@ function createTestConfig(overrides?: Partial<PhysicsConfig>): PhysicsConfig {
     liftOffMinSteering: 0.3,
     liftOffThrottleMax: 0.3,
     liftOffBrakeMax: 0.05,
+    liftOffRefSpeedKmh: 200,
     dragCoeff: 0.3,
     maxBrakeForce: 15,
     pitSpeedLimit: 12,
+    pitSpeedTransitionTime: 2,
     offTrackFriction: 0.4,
     offTrackGripFactor: 0.6,
     offTrackMinSpeedFraction: 5,
     kerbGripLoss: 0.5,
     speedModRefSpeed: 30, // m/s = 108 km/h
     speedModMinFactor: 0.8,
-    autoShiftRpmThreshold: 8000,
+    autoShiftRpmThreshold: 0.8,
     rpmMax: 10000,
     minGripFactor: 0.1,
     stopEpsilon: 0.1,
@@ -88,7 +90,14 @@ function createTestConfig(overrides?: Partial<PhysicsConfig>): PhysicsConfig {
       number,
       number,
     ],
-    gearRatios: [3.5, 2.5, 1.8, 1.3, 1.0, 0.8],
+    gearRatios: [3.5, 2.5, 1.8, 1.3, 1.0, 0.8] as [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+    ],
     accelLevel: 1,
     powerCeiling: 1,
     downshiftRpmRatio: 0.5,
@@ -117,11 +126,14 @@ function createState(overrides?: Partial<CarPhysicsState>): CarPhysicsState {
     tireSqueal: 0,
     kerbHit: false,
     offTrack: false,
+    frictionMultiplier: 1,
+    minSurfaceSpeed: 0,
     gripMultiplier: 1,
     fuelMult: 1,
     tireCondition: 1,
     pitEntrySpeed: null,
     gradient: 0,
+    topSpeedMs: 50,
 
     tireBlownEmitted: false,
     fuelEmptyEmitted: false,
@@ -404,20 +416,20 @@ describe("AC-3 — Lift-off oversteer", () => {
 
   it("test_rotationBoost_returnsPositiveValue", () => {
     // rotationBoost should return > 0 when lateralDemand > 0 and speed > 0
-    const boost = ArcadeGripModel.rotationBoost(0.5, 100);
+    const boost = ArcadeGripModel.rotationBoost(0.5, 100, 200);
     expect(boost).toBeGreaterThan(0);
   });
 
   it("test_rotationBoost_returnsZero_atZeroSpeed", () => {
     // No rotation boost at zero speed (no weight transfer)
-    const boost = ArcadeGripModel.rotationBoost(0.5, 0);
+    const boost = ArcadeGripModel.rotationBoost(0.5, 0, 200);
     expect(boost).toBe(0);
   });
 
   it("test_rotationBoost_plateausAtHighSpeed", () => {
     // At 200+ km/h, speedWeight = 1.0
-    const boost200 = ArcadeGripModel.rotationBoost(0.5, 200);
-    const boost300 = ArcadeGripModel.rotationBoost(0.5, 300);
+    const boost200 = ArcadeGripModel.rotationBoost(0.5, 200, 200);
+    const boost300 = ArcadeGripModel.rotationBoost(0.5, 300, 200);
     expect(boost200).toBe(boost300);
   });
 
@@ -455,8 +467,8 @@ describe("AC-3 — Lift-off oversteer", () => {
 
   it("test_rotationBoost_symmetric_positiveAndNegativeSteer", () => {
     // Positive and negative steer should produce equal magnitude boost
-    const boostPositive = ArcadeGripModel.rotationBoost(0.5, 100);
-    const boostNegative = ArcadeGripModel.rotationBoost(-0.5, 100);
+    const boostPositive = ArcadeGripModel.rotationBoost(0.5, 100, 200);
+    const boostNegative = ArcadeGripModel.rotationBoost(-0.5, 100, 200);
     expect(Math.abs(boostPositive)).toBe(Math.abs(boostNegative));
     expect(boostPositive).toBeGreaterThan(0);
     expect(boostNegative).toBeLessThan(0);
@@ -667,6 +679,21 @@ describe("AC-5 — SpeedMod lerp", () => {
     // lerp(0.5, 1.0, 0.25) = 0.5 + 0.5 * 0.25 = 0.625
     expect(mod).toBeCloseTo(0.625, 5);
   });
+
+  // FR-013: computeSpeedMod with zero reference speed should return 1.0
+  it("test_zeroRefSpeed_returnsOne", () => {
+    const zeroConfig: GripConfig = {
+      speedModRefSpeedKmh: 0,
+      speedModMinFactor: 0.5,
+      minGripFactor: 0.15,
+    };
+    const mod = ArcadeGripModel.computeSpeedMod(0, zeroConfig);
+    expect(mod).toBe(1.0);
+
+    // Non-zero speed with zero ref should also return 1.0
+    const modHigh = ArcadeGripModel.computeSpeedMod(100, zeroConfig);
+    expect(modHigh).toBe(1.0);
+  });
 });
 
 // ─── AC-6: CornerStat Levels ───────────────────────────────────────────────
@@ -704,6 +731,56 @@ describe("AC-6 — CornerStat levels", () => {
 
   it("test_negativeLevel_clampsToLevel1", () => {
     expect(ArcadeGripModel.computeCornerStat(-1)).toBe(0.6);
+  });
+
+  // FR-005: Config-level corneringL1toL5 array flows through
+  it("test_corneringMap_configDriven", () => {
+    // Custom cornering map — different from the formula 0.6+(level-1)*0.1
+    const customMap: readonly number[] = [0.5, 0.6, 0.75, 0.85, 1.0];
+    expect(ArcadeGripModel.computeCornerStat(1, customMap)).toBe(0.5);
+    expect(ArcadeGripModel.computeCornerStat(3, customMap)).toBe(0.75);
+    expect(ArcadeGripModel.computeCornerStat(5, customMap)).toBe(1.0);
+  });
+
+  // FR-005: Config-level accelerationL1toL5 array flows through
+  it("test_accelerationMap_configDriven", () => {
+    const customMap: readonly number[] = [0.9, 1.0, 1.1, 1.2, 1.4];
+    const rpmMax = 10000;
+    // At rpmMax, torque = 1.0 × customMap[level-1]
+    const torqueL1 = ArcadeGripModel.computeTorque(
+      rpmMax,
+      1,
+      rpmMax,
+      customMap
+    );
+    expect(torqueL1).toBeCloseTo(0.9, 5);
+    const torqueL5 = ArcadeGripModel.computeTorque(
+      rpmMax,
+      5,
+      rpmMax,
+      customMap
+    );
+    expect(torqueL5).toBeCloseTo(1.4, 5);
+  });
+
+  // FR-005: computeGripMax with cornering map produces expected values
+  it("test_computeGripMax_withCorneringMap", () => {
+    const customCornering: readonly number[] = [0.4, 0.6, 0.8, 0.9, 1.0];
+    const gripConfig: GripConfig = {
+      speedModRefSpeedKmh: 250,
+      speedModMinFactor: 0.5,
+      minGripFactor: 0.15,
+    };
+    const grip = ArcadeGripModel.computeGripMax(
+      10.0,
+      2,
+      1.0,
+      250,
+      gripConfig,
+      customCornering
+    );
+    // gripMax = 10.0 × 0.6 (custom level2) × 1.0 × 1.0 = 6.0
+    expect(grip).toBeCloseTo(6.0, 5);
   });
 });
 

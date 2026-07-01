@@ -52,6 +52,7 @@ const TEST_CONFIG: PhysicsConfig = {
   liftOffMinSteering: 0.3,
   liftOffThrottleMax: 0.3,
   liftOffBrakeMax: 0.05,
+  liftOffRefSpeedKmh: 200,
   dragCoeff: 0.3,
   maxBrakeForce: 15,
   pitSpeedLimit: 22.222, // 80 km/h in m/s
@@ -62,7 +63,7 @@ const TEST_CONFIG: PhysicsConfig = {
   kerbGripLoss: 0.5,
   speedModRefSpeed: 30,
   speedModMinFactor: 0.8,
-  autoShiftRpmThreshold: 8000,
+  autoShiftRpmThreshold: 0.8,
   rpmMax: 10000,
   minGripFactor: 0.15,
   stopEpsilon: 0.01,
@@ -88,7 +89,14 @@ const TEST_CONFIG: PhysicsConfig = {
     number,
     number,
   ],
-  gearRatios: [3.5, 2.5, 1.8, 1.3, 1.0, 0.8],
+  gearRatios: [3.5, 2.5, 1.8, 1.3, 1.0, 0.8] as [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+  ],
   accelLevel: 1,
   powerCeiling: 1,
   downshiftRpmRatio: 0.5,
@@ -177,6 +185,8 @@ function addCarState(
     tireSqueal: 0,
     kerbHit: false,
     offTrack: false,
+    frictionMultiplier: 1,
+    minSurfaceSpeed: 0,
     gripMultiplier: 1,
     fuelMult: 1,
     tireCondition: 1,
@@ -357,7 +367,6 @@ describe("AC-2 — setPit() linear ramp to pitSpeedLimit", () => {
 
     for (let i = 0; i < ticks; i++) {
       speed = (PhysicsService as any).applyPitLimiter(
-        speed,
         speed,
         pitLimit,
         true,
@@ -1096,9 +1105,8 @@ describe("AC-8 — fuelMult and tireCondition 1-tick delay", () => {
 // ─── Static Pure Function Tests ─────────────────────────────────────────────
 
 describe("applyPitLimiter — pure function", () => {
-  it("returns targetSpeed unchanged when not in pit mode", () => {
+  it("returns currentSpeed unchanged when not in pit mode", () => {
     const result = (PhysicsService as any).applyPitLimiter(
-      50, // targetSpeed
       50, // currentSpeed
       22.222, // pitSpeedLimit
       false, // isPitMode
@@ -1111,7 +1119,6 @@ describe("applyPitLimiter — pure function", () => {
 
   it("returns pitSpeedLimit when speed is very close to limit", () => {
     const result = (PhysicsService as any).applyPitLimiter(
-      22.3, // targetSpeed
       22.3, // currentSpeed (near pitSpeedLimit)
       22.222, // pitSpeedLimit
       true,
@@ -1119,7 +1126,21 @@ describe("applyPitLimiter — pure function", () => {
       FIXED_DT,
       22.3 // pitEntrySpeed
     );
-    expect(result).toBeCloseTo(22.222, 1); // snaps to limit
+    expect(result).toBeCloseTo(22.222, 1);
+  });
+
+  // FR-024: Below-limit path — speed stays constant
+  it("returns currentSpeed unchanged when below pitSpeedLimit", () => {
+    const result = (PhysicsService as any).applyPitLimiter(
+      10, // currentSpeed < pitSpeedLimit
+      22.222, // pitSpeedLimit
+      true,
+      2.0,
+      FIXED_DT,
+      10 // pitEntrySpeed
+    );
+    // Must not accelerate toward the limit (FR-001 strict ceiling)
+    expect(result).toBe(10);
   });
 
   it("reduces speed toward pitSpeedLimit by constant-rate linear ramp", () => {
@@ -1129,7 +1150,6 @@ describe("applyPitLimiter — pure function", () => {
     // Result = 69.44 - 0.3935 = 69.05 m/s
     const currentSpeed = 250 / 3.6; // 69.44 m/s
     const result = (PhysicsService as any).applyPitLimiter(
-      currentSpeed,
       currentSpeed,
       80 / 3.6, // 22.22 m/s
       true,
@@ -1157,7 +1177,6 @@ describe("applyPitLimiter — pure function", () => {
       const prevSpeed = speed;
       speed = (PhysicsService as any).applyPitLimiter(
         speed,
-        speed,
         pitLimit,
         true,
         transitionTime,
@@ -1176,7 +1195,6 @@ describe("applyPitLimiter — pure function", () => {
     const currentSpeed = 69.44;
     const result = (PhysicsService as any).applyPitLimiter(
       currentSpeed,
-      currentSpeed,
       22.222,
       true,
       0, // transition time = 0 → instant snap
@@ -1192,7 +1210,6 @@ describe("applyPitLimiter — pure function", () => {
     const currentSpeed = 69.44;
     const pitLimit = 22.222;
     const result = (PhysicsService as any).applyPitLimiter(
-      currentSpeed,
       currentSpeed,
       pitLimit,
       true,

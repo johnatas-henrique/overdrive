@@ -48,6 +48,7 @@ const TEST_CONFIG: PhysicsConfig = {
   liftOffMinSteering: 0.3,
   liftOffThrottleMax: 0.3,
   liftOffBrakeMax: 0.05,
+  liftOffRefSpeedKmh: 200,
   dragCoeff: 0.3,
   maxBrakeForce: 15,
   pitSpeedLimit: 12,
@@ -58,7 +59,7 @@ const TEST_CONFIG: PhysicsConfig = {
   kerbGripLoss: 0.5,
   speedModRefSpeed: 30,
   speedModMinFactor: 0.8,
-  autoShiftRpmThreshold: 8000,
+  autoShiftRpmThreshold: 0.8,
   rpmMax: 10000,
   minGripFactor: 0.1,
   stopEpsilon: 0.1,
@@ -84,7 +85,14 @@ const TEST_CONFIG: PhysicsConfig = {
     number,
     number,
   ],
-  gearRatios: [3.5, 2.5, 1.8, 1.3, 1.0, 0.8],
+  gearRatios: [3.5, 2.5, 1.8, 1.3, 1.0, 0.8] as [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+  ],
   accelLevel: 1,
   powerCeiling: 1,
   downshiftRpmRatio: 0.5,
@@ -182,6 +190,8 @@ function addCarState(
     tireSqueal: 0,
     kerbHit: false,
     offTrack: false,
+    frictionMultiplier: 1,
+    minSurfaceSpeed: 0,
     gripMultiplier: 1,
     fuelMult: 1,
     tireCondition: 1,
@@ -1100,9 +1110,16 @@ describe("Edge Cases", () => {
     body.getObjectCenterWorld.mockReturnValue({ x: 0, y: 5, z: 0 });
     addCarState(physics, "car_01", body);
 
-    // dt=0 would cause division by zero in Y correction
-    // The implementation should handle this gracefully
+    // dt=0 would cause division by zero in Y correction and accelG
+    // The implementation should handle this gracefully (FR-011)
     expect(() => physics.update(0)).not.toThrow();
+
+    // After dt=0 update, telemetry values must not be Infinity/NaN
+    const telemetry = physics.getTelemetry("car_01");
+    expect(telemetry).toBeDefined();
+    expect(telemetry?.accelG).not.toBeNaN();
+    expect(telemetry?.accelG).not.toBe(Infinity);
+    expect(telemetry?.accelG).not.toBe(-Infinity);
   });
 
   it("prevents duplicate body in activeBodies array", async () => {
@@ -1125,6 +1142,80 @@ describe("Edge Cases", () => {
     expect(callArg.length).toBe(2);
     expect(callArg[0]).toBe(body);
     expect(callArg[1]).toBe(body);
+  });
+
+  // FR-015: registerCar() API
+  it("registerCar creates a new car state and includes it in update", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
+    await physics.init(TEST_CONFIG);
+    physics.setSurfaceProvider(() => SurfaceType.Tarmac);
+
+    const body = createMockBody();
+    physics.registerCar("car_01", body);
+
+    const states = (physics as any)._carStates as Map<string, CarPhysicsState>;
+    expect(states.has("car_01")).toBe(true);
+    const state = states.get("car_01") as CarPhysicsState;
+    expect(state.carId).toBe("car_01");
+    expect(state.body).toBe(body);
+
+    // Update should not throw with registered car
+    expect(() => physics.update(FIXED_DT)).not.toThrow();
+  });
+
+  it("registerCar throws for duplicate carId", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
+    await physics.init(TEST_CONFIG);
+
+    const body = createMockBody();
+    physics.registerCar("car_01", body);
+    expect(() => physics.registerCar("car_01", body)).toThrow(
+      /already registered/i
+    );
+  });
+
+  it("removeCar cleans up all associated state", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
+    await physics.init(TEST_CONFIG);
+    physics.setSurfaceProvider(() => SurfaceType.Tarmac);
+
+    const body = createMockBody();
+    physics.registerCar("car_01", body);
+    physics.update(FIXED_DT);
+
+    // Verify state exists before removal
+    const states = (physics as any)._carStates as Map<string, CarPhysicsState>;
+    expect(states.has("car_01")).toBe(true);
+
+    physics.removeCar("car_01");
+
+    // All maps should be cleaned
+    expect(states.has("car_01")).toBe(false);
+    expect((physics as any)._surfaceStates.has("car_01")).toBe(false);
+    expect((physics as any)._inputStates.has("car_01")).toBe(false);
+    expect((physics as any)._telemetry.has("car_01")).toBe(false);
+  });
+
+  it("registerCar with initialState overrides defaults", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
+    await physics.init(TEST_CONFIG);
+
+    const body = createMockBody();
+    physics.registerCar("car_01", body, { gear: 3, rpm: 5000, speedKmh: 100 });
+
+    const states = (physics as any)._carStates as Map<string, CarPhysicsState>;
+    const state = states.get("car_01") as CarPhysicsState;
+    expect(state.gear).toBe(3);
+    expect(state.rpm).toBe(5000);
+    expect(state.speedKmh).toBe(100);
   });
 });
 
