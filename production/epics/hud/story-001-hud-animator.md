@@ -113,7 +113,7 @@ _Automated test specs — written by qa-lead at story creation:_
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/hud/hudAnimator_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/hud/hudAnimator.test.ts` — must exist and pass
 **Status**: [ ] Not yet created
 
 ## Dependencies

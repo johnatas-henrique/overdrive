@@ -128,7 +128,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/race-management/results-serialization_test.ts` — must exist and pass (or documented playtest)
+**Required evidence**: `tests/integration/race-management/results-serialization.test.ts` — must exist and pass (or documented playtest)
 **Status**: [ ] Not yet created
 
 ---

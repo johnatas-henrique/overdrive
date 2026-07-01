@@ -136,7 +136,7 @@ _Handled by neighbouring stories — do not implement here:_
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/ai/team_performance_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/ai/team_performance.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 

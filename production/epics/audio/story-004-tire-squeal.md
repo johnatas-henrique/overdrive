@@ -144,7 +144,7 @@ updateTireSqueal(lateralG: number, tireCondition: number): void {
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/audio/tire-squeal_test.ts` — must exist and pass.
+**Required evidence**: `tests/unit/audio/tire-squeal.test.ts` — must exist and pass.
 
 **Status**: [ ] Not yet created
 

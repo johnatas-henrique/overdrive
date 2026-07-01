@@ -168,7 +168,7 @@ _Written by qa-lead at story creation:_
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/camera/drone-camera-orbit_test.ts`
+**Required evidence**: `tests/integration/camera/drone-camera-orbit.test.ts`
 
 **Status**: [x] Complete
 

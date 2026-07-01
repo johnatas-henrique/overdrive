@@ -113,7 +113,7 @@ _Written by qa-lead at story creation. The developer implements against these â€
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/single-race/raceFlow_test.ts` OR playtest doc
+**Required evidence**: `tests/integration/single-race/raceFlow.test.ts` OR playtest doc
 
 **Status**: [ ] Not yet created
 

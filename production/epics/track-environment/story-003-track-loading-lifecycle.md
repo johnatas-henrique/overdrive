@@ -182,7 +182,7 @@ validatePitExit(): void {
 
 _Written by qa-lead at story creation. The developer implements against these â€” do not invent new test cases during implementation._
 
-**Test file**: `tests/integration/track-environment/track-loading_test.ts`
+**Test file**: `tests/integration/track-environment/track-loading.test.ts`
 
 - **AC-1** (state observable):
   - Given: Initialized TrackEnvironmentManager
@@ -249,7 +249,7 @@ _Written by qa-lead at story creation. The developer implements against these â€
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/track-environment/track-loading_test.ts` OR documented playtest with load/dispose cycle verification
+**Required evidence**: `tests/integration/track-environment/track-loading.test.ts` OR documented playtest with load/dispose cycle verification
 
 **Status**: [ ] Not yet created
 

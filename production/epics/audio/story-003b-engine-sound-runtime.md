@@ -134,7 +134,7 @@ updateEngineSound(carId: string, physics: CarPhysics): void {
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/audio/engine-sound-runtime_test.ts` — must exist and pass.
+**Required evidence**: `tests/integration/audio/engine-sound-runtime.test.ts` — must exist and pass.
 
 **Status**: [ ] Not yet created
 

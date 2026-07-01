@@ -134,7 +134,7 @@ _Written by qa-lead at story creation:_
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/camera/cockpit-camera_test.ts`
+**Required evidence**: `tests/integration/camera/cockpit-camera.test.ts`
 
 **Status**: [x] Complete
 

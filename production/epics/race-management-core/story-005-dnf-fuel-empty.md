@@ -90,7 +90,7 @@ _Written by qa-lead at story creation. The developer implements against these â€
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/race-management/dnf-fuel-empty_test.ts` OR playtest doc
+**Required evidence**: `tests/integration/race-management/dnf-fuel-empty.test.ts` OR playtest doc
 **Status**: [ ] Not yet created
 
 ---

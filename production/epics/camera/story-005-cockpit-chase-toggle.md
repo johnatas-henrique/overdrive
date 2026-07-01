@@ -131,7 +131,7 @@ _Written by qa-lead at story creation:_
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/camera/cockpit-chase-toggle_test.ts`
+**Required evidence**: `tests/unit/camera/cockpit-chase-toggle.test.ts`
 
 **Status**: [x] Complete
 

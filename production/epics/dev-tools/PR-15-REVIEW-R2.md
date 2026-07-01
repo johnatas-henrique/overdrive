@@ -763,7 +763,7 @@
 | **Reviewer** | coderabbitai[bot] |
 | **Category** | Documentation |
 
-**Finding**: _📐 Maintainability & Code Quality_ | _🟡 Minor_ | _⚡ Quick win_ **Reconcile the completion notes with Test Evidence.** These notes say the story is complete and cite tests/integration/dev-tools/ai-telemetry-panel.test.ts, but the Test Evidence block above still says Not yet created and references ai-telemetry-tab_test.ts. Please make both sections agree.
+**Finding**: _📐 Maintainability & Code Quality_ | _🟡 Minor_ | _⚡ Quick win_ **Reconcile the completion notes with Test Evidence.** These notes say the story is complete and cite tests/integration/dev-tools/ai-telemetry-panel.test.ts, but the Test Evidence block above still says Not yet created and references ai-telemetry-tab.test.ts. Please make both sections agree.
 
 **Recommendation**: Address in current sprint or document as deferred.
 

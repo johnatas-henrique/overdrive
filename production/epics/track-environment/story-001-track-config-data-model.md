@@ -115,7 +115,7 @@ All types in this story are pure data — no imports from `@babylonjs/core`. Zer
 
 _Written by qa-lead at story creation. The developer implements against these — do not invent new test cases during implementation._
 
-**Test file**: `tests/unit/track-environment/track-config_test.ts`
+**Test file**: `tests/unit/track-environment/track-config.test.ts`
 
 - **AC-1** (SplineSegment interface):
   - Given: A valid SplineSegment object with point, width, next, gripSurface
@@ -160,7 +160,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 ## Test Evidence
 
 **Story Type**: Config/Data
-**Required evidence**: `tests/unit/track-environment/track-config_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/track-environment/track-config.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 
