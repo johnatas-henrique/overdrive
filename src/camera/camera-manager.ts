@@ -133,6 +133,17 @@ export class CameraManager implements ICameraManager {
   private _speedKmh = 0;
 
   /**
+   * Player car lateral acceleration in G-forces, updated each tick.
+   *
+   * Used by `_updateShake()` to compute the lateral lean angle in
+   * cockpit mode. Defaults to 0 and is updated via `setLateralG()`.
+   *
+   * @see TR-CAM-009 — Head bob and lateral lean
+   * @see Story 009
+   */
+  private _lateralG = 0;
+
+  /**
    * Active shake instances — each shake event creates one entry.
    *
    * Every frame, `_updateShake()` iterates these in reverse, computes
@@ -399,6 +410,20 @@ export class CameraManager implements ICameraManager {
   }
 
   /**
+   * Store current lateral acceleration for lean calculation.
+   *
+   * Called each tick by the entity system with the player car's current
+   * lateral G-force. The stored value is consumed by `_updateShake()`
+   * on every `update()` call to compute the cockpit lean angle (Story 009).
+   *
+   * @param lateralG — Player car lateral acceleration in G-forces
+   * @see TR-CAM-009 — Head bob and lateral lean
+   */
+  setLateralG(lateralG: number): void {
+    this._lateralG = Number.isFinite(lateralG) ? lateralG : 0;
+  }
+
+  /**
    * Queue a shake effect with type-specific decay rate.
    *
    * Creates an `ActiveShake` entry with the given intensity and a decay
@@ -459,14 +484,15 @@ export class CameraManager implements ICameraManager {
   }
 
   /**
-   * Per-tick update. Runs shake decay, FOV shift, chase occlusion,
-   * and drone auto-orbit.
+   * Per-tick update. Runs head bob/lateral lean, shake decay, FOV shift,
+   * chase occlusion, and drone auto-orbit.
    *
    * Chase occlusion raycast (Story 004) runs every tick when the active
    * mode is Chase and a player car mesh reference is available.
    * Speed-dependent FOV shift (Story 006) runs every tick for Cockpit
-   * and Chase modes. Shake decay (Story 007) runs every tick regardless
-   * of active mode (shake affects the cockpit camera's offset).
+   * and Chase modes. Head bob and lateral lean (Story 009) run every
+   * tick for Cockpit mode only. Shake decay (Story 007) runs every tick
+   * regardless of active mode (shake affects the cockpit camera's offset).
    * Drone auto-orbit (Story 008) runs every tick in Drone mode.
    *
    * @param dt — Delta time in seconds (fixed 1/60s)
@@ -475,8 +501,24 @@ export class CameraManager implements ICameraManager {
     // Accumulate total elapsed time (Story 008 — skip delay timing)
     this._totalElapsed += dt;
 
-    // Shake decay and offset application (Story 007 — AC-4, AC-5, AC-6)
-    this._updateShake(dt);
+    // Head bob + lateral lean computation (Story 009 — cockpit only)
+    let bobOffset = 0;
+    let leanAngle = 0;
+    if (this._currentMode === CameraMode.Cockpit) {
+      if (this._config.headBob.intensity > 0) {
+        bobOffset =
+          Math.sin(
+            this._totalElapsed * this._config.headBob.frequency * 2 * Math.PI
+          ) * this._config.headBob.intensity;
+      }
+      if (this._config.lean.intensity > 0) {
+        leanAngle =
+          this._lateralG * this._config.lean.intensity * (Math.PI / 180);
+      }
+    }
+
+    // Shake decay, offset application, bob, and lean (Story 007 + Story 009)
+    this._updateShake(dt, bobOffset, leanAngle);
 
     // Chase camera occlusion raycast (Story 004 — AC-11a, AC-11b)
     if (
@@ -528,13 +570,17 @@ export class CameraManager implements ICameraManager {
    * cockpit camera not yet attached), the offset is computed but
    * not applied — the internal array state is still maintained.
    *
-   * @param dt — Delta time in seconds (fixed 1/60s)
+   * @param dt       — Delta time in seconds (fixed 1/60s)
+   * @param bobOffset — Vertical head bob offset (Story 009, default 0)
+   * @param leanAngle — Lateral lean roll angle in radians (Story 009, default 0)
    *
    * @see TR-CAM-004 — Camera shake: additive, exponential decay
+   * @see TR-CAM-009 — Head bob and lateral lean
    * @see ADR-0007 §Shake System
    * @see Story 007 Implementation Notes — updateShake()
+   * @see Story 009 Implementation Notes — Combining with Shake
    */
-  private _updateShake(dt: number): void {
+  private _updateShake(dt: number, bobOffset = 0, leanAngle = 0): void {
     const totalOffset = Vector3.Zero();
 
     for (let i = this._activeShakes.length - 1; i >= 0; i--) {
@@ -558,9 +604,16 @@ export class CameraManager implements ICameraManager {
       }
     }
 
-    // Apply to shake TransformNode local position
+    // Apply combined transforms to shake TransformNode:
+    // - position.y = bobOffset + totalOffset.y (bob + shake stack additively)
+    // - rotation.z = leanAngle (roll, unaffected by shake)
     if (this._shakeNode) {
-      this._shakeNode.position = totalOffset;
+      this._shakeNode.position = new Vector3(
+        totalOffset.x,
+        bobOffset + totalOffset.y,
+        totalOffset.z
+      );
+      this._shakeNode.rotation.z = leanAngle;
     }
   }
 
@@ -709,6 +762,7 @@ export class CameraManager implements ICameraManager {
     this._occlusionActive = false;
     this._activeShakes = [];
     this._totalElapsed = 0;
+    this._lateralG = 0;
     this._droneSkippable = false;
   }
 

@@ -48,7 +48,7 @@ export enum CameraMode {
 /**
  * CameraManager contract — the only public API external systems interact with.
  *
- * All 8 methods are required. The CameraManager is constructed with a Scene
+ * All 9 methods are required. The CameraManager is constructed with a Scene
  * reference, then `init()` creates cameras and stores the player car ID.
  * After init, `setActiveMode()` activates one camera per frame via
  * `scene.activeCamera`. `update(dt)` runs per-tick (FOV shift, shake, etc.)
@@ -93,6 +93,15 @@ export interface ICameraManager {
    * @see Story 006 — FOV shift
    */
   setSpeedData(speedKmh: number): void;
+
+  /**
+   * Push current lateral acceleration into the camera system.
+   * Used by the lateral lean calculation each tick (cockpit only).
+   *
+   * @param lateralG — Current lateral acceleration in G-forces
+   * @see Story 009 — Head bob + lateral lean
+   */
+  setLateralG(lateralG: number): void;
 
   /**
    * Add a shake effect to the active camera.
@@ -203,7 +212,7 @@ export interface CameraConfig {
 
   /** Lateral lean effect (cosmetic, cockpit-only). */
   lean: {
-    /** Lean displacement amplitude in world units. */
+    /** Lean sensitivity in degrees per G of lateral acceleration. */
     intensity: number;
   };
 
