@@ -256,4 +256,18 @@ describe("Camera Config HMR (Story 010)", () => {
       cm2.dispose();
     });
   });
+
+  it("update after dispose does not crash (FR-005 chaseCam null)", () => {
+    const cm2 = new ConfigManager();
+    cm2.init();
+    const localScene = new Scene(engine);
+    const localCm = new CameraManager(localScene, null, cm2);
+    localCm.init(localScene, "player-1");
+    localCm.dispose();
+
+    // update() should return early without crashing when chaseCam is null
+    expect(() => localCm.update(1 / 60)).not.toThrow();
+
+    localScene.dispose();
+  });
 });

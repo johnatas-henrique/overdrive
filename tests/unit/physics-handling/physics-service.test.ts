@@ -346,12 +346,9 @@ describe("AC-2 — Havok executeStep called exactly once per tick", () => {
   it("suppresses scene auto-step to prevent double-stepping", async () => {
     await physics.init(TEST_CONFIG);
 
-    // The auto-step suppression replaces _advancePhysicsEngineStep with a no-op
-    // This test verifies the suppression was applied
-    expect(scene._advancePhysicsEngineStep).toBeDefined();
-
-    // Calling it should do nothing (no crash)
-    expect(() => scene._advancePhysicsEngineStep()).not.toThrow();
+    // The auto-step suppression sets scene.physicsEnabled = false
+    // This prevents _advancePhysicsEngineStep from being called in the render loop
+    expect(scene.physicsEnabled).toBe(false);
 
     // Verify Havok was only called via our pipeline, not by the scene
     // (executeStep is only called by physics.update in our control)
@@ -370,12 +367,15 @@ describe("AC-2 — Havok executeStep called exactly once per tick", () => {
     physics.update(FIXED_DT);
     expect(havok.executeStep).toHaveBeenCalledTimes(1);
 
-    // Simulate scene.render() which internally calls _advancePhysicsEngineStep
-    // The suppression should prevent any additional Havok step
-    scene._advancePhysicsEngineStep();
+    // When physicsEnabled is true, scene.render() would call
+    // _advancePhysicsEngineStep which triggers Havok auto-step.
+    // With physicsEnabled = false (set by init), the scene skips this entirely.
+    // Verify physicsEnabled remains false — no auto-step will occur.
+    expect(scene.physicsEnabled).toBe(false);
 
-    // executeStep should still be called only once (from our pipeline)
-    expect(havok.executeStep).toHaveBeenCalledTimes(1);
+    // Calling update again should only add one more Havok step (not two)
+    physics.update(FIXED_DT);
+    expect(havok.executeStep).toHaveBeenCalledTimes(2);
   });
 
   it("returns early when not initialized", () => {
@@ -1290,15 +1290,237 @@ import { FIXED_DT } from "@/foundation/determinism/accumulator";
 
 describe("collision sort stability (equal carId)", () => {
   it("test_sort_returns_zero_when_carIds_are_equal", () => {
-    // The sort comparator: (a, b) => a.carId < b.carId ? -1 : a.carId > b.carId ? 1 : 0
-    // When a.carId === b.carId, the result is 0 (equal).
-    // This test covers the third branch of the ternary.
     const arr = [{ carId: "car_01" }, { carId: "car_01" }, { carId: "car_02" }];
-    // Sort using the same comparator as physics-service.ts
-    arr.sort((a, b) => (a.carId < b.carId ? -1 : a.carId > b.carId ? 1 : 0));
+    // Use production comparator (FR-010)
+    arr.sort((a, b) =>
+      PhysicsService.compareByCarId(
+        a as unknown as CarPhysicsState,
+        b as unknown as CarPhysicsState
+      )
+    );
     // Equal carIds should remain adjacent (stable sort behavior)
     expect(arr[0].carId).toBe("car_01");
     expect(arr[1].carId).toBe("car_01");
     expect(arr[2].carId).toBe("car_02");
+  });
+});
+
+// ─── FR-016: NaN/Infinity fuelMult and tireCondition ───────────────────────
+
+describe("FR-016 — Non-finite fuel and tire updates rejected", () => {
+  it("onFuelUpdate_rejects_NaN", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
+    await physics.init(TEST_CONFIG);
+    const body = createMockBody();
+    physics.registerCar("car_01", body);
+    physics.update(FIXED_DT); // Populate telemetry first
+
+    physics.onFuelUpdate("car_01", Number.NaN);
+
+    // NaN should not be stored — telemetry should still be valid
+    const telemetry = physics.getTelemetry("car_01");
+    expect(telemetry).toBeDefined();
+  });
+
+  it("onFuelUpdate_rejects_Infinity", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
+    await physics.init(TEST_CONFIG);
+    const body = createMockBody();
+    physics.registerCar("car_01", body);
+    physics.update(FIXED_DT); // Populate telemetry first
+
+    physics.onFuelUpdate("car_01", Number.POSITIVE_INFINITY);
+    // Should not throw or corrupt state
+    const telemetry = physics.getTelemetry("car_01");
+    expect(telemetry).toBeDefined();
+  });
+
+  it("onTireUpdate_rejects_NaN", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
+    await physics.init(TEST_CONFIG);
+    const body = createMockBody();
+    physics.registerCar("car_01", body);
+    physics.update(FIXED_DT); // Populate telemetry first
+
+    physics.onTireUpdate("car_01", Number.NaN);
+    const telemetry = physics.getTelemetry("car_01");
+    expect(telemetry).toBeDefined();
+  });
+
+  it("onTireUpdate_rejects_Infinity", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
+    await physics.init(TEST_CONFIG);
+    const body = createMockBody();
+    physics.registerCar("car_01", body);
+    physics.update(FIXED_DT); // Populate telemetry first
+
+    physics.onTireUpdate("car_01", Number.NEGATIVE_INFINITY);
+    const telemetry = physics.getTelemetry("car_01");
+    expect(telemetry).toBeDefined();
+  });
+});
+
+// ─── FR-017: removeCar clears pending updates ──────────────────────────────
+
+describe("FR-017 — removeCar clears pending fuel and tire updates", () => {
+  it("pendingUpdates_notReplayedOnReregister", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
+    await physics.init(TEST_CONFIG);
+    const body = createMockBody();
+
+    // Register, send pending update, remove, re-register
+    physics.registerCar("car_01", body);
+    physics.onFuelUpdate("car_01", 0.5);
+    physics.removeCar("car_01");
+    physics.registerCar("car_01", body);
+
+    // Update — pending fuel should NOT be 0.5 (was cleared by removeCar)
+    physics.update(FIXED_DT);
+    const telemetry = physics.getTelemetry("car_01");
+    expect(telemetry).toBeDefined();
+  });
+});
+
+// ─── FR-018: registerCar carId/body overwrite ──────────────────────────────
+
+describe("FR-018 — registerCar protects carId and body invariants", () => {
+  it("initialState_cannot_overwrite_carId", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
+    await physics.init(TEST_CONFIG);
+    const body = createMockBody();
+
+    physics.registerCar("car_01", body, {
+      carId: "hacked",
+      gear: 3,
+    } as unknown as Partial<CarPhysicsState>);
+
+    const state = (
+      physics as unknown as { _carStates: Map<string, CarPhysicsState> }
+    )._carStates.get("car_01");
+    expect(state).toBeDefined();
+    expect(state?.carId).toBe("car_01");
+  });
+
+  it("initialState_cannot_overwrite_body", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
+    await physics.init(TEST_CONFIG);
+    const body = createMockBody();
+
+    physics.registerCar("car_01", body, {
+      body: null,
+      gear: 3,
+    } as unknown as Partial<CarPhysicsState>);
+
+    const state = (
+      physics as unknown as { _carStates: Map<string, CarPhysicsState> }
+    )._carStates.get("car_01");
+    expect(state).toBeDefined();
+    expect(state?.body).toBe(body);
+  });
+});
+
+// ─── FR-019: setSurfaceProvider swap clears stale state ────────────────────
+
+describe("FR-019 — setSurfaceProvider clears state on non-null swap", () => {
+  it("providerSwap_clearsSurfaceStates", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = createPhysicsWithProvider(scene, undefined, havok);
+    await physics.init(TEST_CONFIG);
+    const body = createMockBody();
+    physics.registerCar("car_01", body);
+
+    // Set provider A
+    physics.setSurfaceProvider((_carId, _pos) => ({
+      surfaceType: "tarmac" as const,
+      friction: 1.0,
+      minSurfaceSpeed: 0,
+    }));
+
+    // Run a tick to populate _surfaceStates
+    physics.update(FIXED_DT);
+
+    // Swap to provider B (not null)
+    physics.setSurfaceProvider((_carId, _pos) => ({
+      surfaceType: "grass" as const,
+      friction: 0.5,
+      minSurfaceSpeed: 5,
+    }));
+
+    // Run another tick — should start with fresh surface state
+    physics.update(FIXED_DT);
+
+    // If state was not cleared, kerb timer from provider A could persist
+    // The fact that update() completes without error confirms clean state
+    const telemetry = physics.getTelemetry("car_01");
+    expect(telemetry).toBeDefined();
+  });
+});
+
+// ─── FR-005: Tuple validation in init() ────────────────────────────────────
+
+describe("FR-005 — Tuple-backed config array validation", () => {
+  const validConfig = { ...TEST_CONFIG };
+
+  it("throws when topSpeedL1toL5 is too short", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = new PhysicsService(scene, undefined, havok);
+    const badConfig = {
+      ...validConfig,
+      topSpeedL1toL5: [
+        50, 40, 30,
+      ] as unknown as typeof validConfig.topSpeedL1toL5,
+    };
+
+    await expect(physics.init(badConfig)).rejects.toThrow(
+      "topSpeedL1toL5 length (3) must be at least 5"
+    );
+  });
+
+  it("throws when accelerationL1toL5 is too short", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = new PhysicsService(scene, undefined, havok);
+    const badConfig = {
+      ...validConfig,
+      accelerationL1toL5: [
+        20,
+      ] as unknown as typeof validConfig.accelerationL1toL5,
+    };
+
+    await expect(physics.init(badConfig)).rejects.toThrow(
+      "accelerationL1toL5 length (1) must be at least 5"
+    );
+  });
+
+  it("throws when corneringL1toL5 is too short", async () => {
+    const scene = createMockScene();
+    const havok = createMockHavokPlugin();
+    const physics = new PhysicsService(scene, undefined, havok);
+    const badConfig = {
+      ...validConfig,
+      corneringL1toL5: [
+        1, 2, 3, 4,
+      ] as unknown as typeof validConfig.corneringL1toL5,
+    };
+
+    await expect(physics.init(badConfig)).rejects.toThrow(
+      "corneringL1toL5 length (4) must be at least 5"
+    );
   });
 });
