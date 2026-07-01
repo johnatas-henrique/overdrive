@@ -34,12 +34,12 @@
 
 _From GDD `design/gdd/entity-car-lifecycle.md`, scoped to this story:_
 
-- [ ] **AC-5**: `destroyAll()` — all physics bodies disposed, all meshes removed from scene, `'entity.despawned'` emitted per car, entity map cleared.
-- [ ] **AC-6**: `getEntity('player')` after `destroyAll()` returns `null`.
-- [ ] **AC-8**: Fuel system initializes its per-car state map on each `'entity.spawned'` — player and AI alike. _(Note: this AC verifies the event is received, not the Fuel implementation)_
-- [ ] **GSM-1**: On `gsm.state.entered(PreRace)`, `spawnGrid()` is called automatically.
-- [ ] **GSM-2**: On `gsm.state.entered(PostRace)`, `destroyAll()` is called automatically.
-- [ ] **IDEMPOTENT**: `destroyAll()` called twice is a no-op (no errors, no double-dispose).
+- [x] **AC-5**: `destroyAll()` — all physics bodies disposed, all meshes removed from scene, `'entity.despawned'` emitted per car, entity map cleared.
+- [x] **AC-6**: `getEntity('player')` after `destroyAll()` returns `null`.
+- [x] **AC-8**: Fuel system initializes its per-car state map on each `'entity.spawned'` — player and AI alike. _(Note: this AC verifies the event is received, not the Fuel implementation)_
+- [x] **GSM-1**: On `gsm.state.entered(PreRace)`, `spawnGrid()` is called automatically.
+- [x] **GSM-2**: On `gsm.state.entered(PostRace)`, `destroyAll()` is called automatically.
+- [x] **IDEMPOTENT**: `destroyAll()` called twice is a no-op (no errors, no double-dispose).
 
 ---
 

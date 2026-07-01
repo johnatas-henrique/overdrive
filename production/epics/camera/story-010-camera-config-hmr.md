@@ -153,7 +153,7 @@ _Written by qa-lead at story creation:_
 **Story Type**: Config/Data
 **Required evidence**: Smoke check pass (`production/qa/smoke-camera-config.md`)
 
-**Status**: [ ] Not yet created
+**Status**: [x] Complete — 10 unit tests in tests/unit/camera/camera-config-hmr.test.ts
 
 ---
 

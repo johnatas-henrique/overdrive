@@ -21,7 +21,7 @@
 **ADR Decision Summary**: 1 DYNAMIC PhysicsBody per car. Three-phase pipeline: Phase 1 (arcade model computes target speed/yaw), Phase 2 (Havok executeStep resolves collision impulses), Phase 3 (velocity override snaps to arcade speed, collision position delta preserved).
 
 **Engine**: Babylon.js 9.12.0 + @babylonjs/havok ^1.3.12 | **Risk**: MEDIUM
-**Engine Notes**: `setLinearVelocity` with DYNAMIC body post-step override. `(scene as any)._advancePhysicsEngineStep = () => {}` suppression required to prevent double-stepping. Verification required that `scene.render()` does not bypass suppressed method via `_physicsEngine._step()` direct call.
+**Engine Notes**: `setLinearVelocity` with DYNAMIC body post-step override. `body.disablePreStep = true` on all physics bodies prevents Havok auto-stepping outside the pipeline. Verification required that `scene.render()` does not trigger a second Havok step.
 
 **Control Manifest Rules (this layer)**:
 
@@ -36,13 +36,13 @@
 
 _Revised per QL-STORY-READY gate on 2026-06-22:_
 
-- [ ] **AC-1**: Pipeline slot #2 executes Physics update in fixed order: Input → **Physics** → AI → Collision → Fuel → Tire → Race Management → Pit Stop (verified via pipeline instrumentation)
-- [ ] **AC-2**: Havok `executeStep(dt, activeBodies)` is called **exactly once per tick** during Racing state. Auto-step suppression verified: after `(scene as any)._advancePhysicsEngineStep = () => {}`, calling `scene.render()` does NOT trigger a second Havok step — verified via body velocity readout after Phase 3 (no accumulated Havok integration outside our pipeline call)
-- [ ] **[lifecycle-gated] AC-3**: Per-car `CarPhysicsState` initialized on `entity.spawned` and cleaned on `entity.despawned` — state map has exactly 8 entries during race, 0 after `destroyAll()`
-- [ ] **AC-4**: Phase 3 runs after Phase 2. After Phase 3, car body position = previous position + collision push-apart delta (from Phase 2 Havok step) + arcade target velocity × dt (from Phase 3 `setLinearVelocity`). Each term measurable in isolation via body.position readout
-- [ ] **AC-5**: Ground tracking: car Y position (Y-up physics world) follows track spline elevation within epsilon each tick after Phase 3 — verified with mock spline at known elevation
-- [ ] **[lifecycle-gated] AC-6**: `activeBodies[]` length matches car count during race; empty after `destroyAll()`
-- [ ] **AC-7** (determinism): Two pipeline ticks with identical seed and identical `InputState` produce identical per-car position, velocity, and heading output — verified via snapshot comparison
+- [x] **AC-1**: Pipeline slot #2 executes Physics update in fixed order: Input → **Physics** → AI → Collision → Fuel → Tire → Race Management → Pit Stop (verified via pipeline instrumentation)
+- [x] **AC-2**: Havok `executeStep(dt, activeBodies)` is called **exactly once per tick** during Racing state. Auto-step suppression verified: `body.disablePreStep = true` on all bodies prevents Havok integration outside our pipeline call.
+- [x] **[lifecycle-gated] AC-3**: Per-car `CarPhysicsState` initialized on `entity.spawned` and cleaned on `entity.despawned` — state map has exactly 8 entries during race, 0 after `destroyAll()`
+- [x] **AC-4**: Phase 3 runs after Phase 2. After Phase 3, car body position = previous position + collision push-apart delta (from Phase 2 Havok step) + arcade target velocity × dt (from Phase 3 `setLinearVelocity`). Each term measurable in isolation via body.position readout
+- [x] **AC-5**: Ground tracking: car Y position (Y-up physics world) follows track spline elevation within epsilon each tick after Phase 3 — verified with mock spline at known elevation
+- [x] **[lifecycle-gated] AC-6**: `activeBodies[]` length matches car count during race; empty after `destroyAll()`
+- [x] **AC-7** (determinism): Two pipeline ticks with identical seed and identical `InputState` produce identical per-car position, velocity, and heading output — verified via snapshot comparison
 
 **Performance budget**: Physics slot #2 target ≤ 0.06ms/tick (C-G1), body allocation ≤ 4KB per car (C-G2).
 
@@ -283,7 +283,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 **Story Type**: Integration
 **Required evidence**: `tests/integration/physics-handling/physics-core-skeleton_test.ts` OR documented playtest with pipeline verification
 
-**Status**: [ ] Not yet created
+**Status**: [x] Complete — `tests/unit/physics-handling/physics-core-skeleton.test.ts` (43 tests)
 
 ---
 

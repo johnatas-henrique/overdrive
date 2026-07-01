@@ -3,8 +3,8 @@
 > **Layer**: Core (Infrastructure)
 > **GDD**: design/gdd/entity-car-lifecycle.md
 > **Architecture Module**: Entity/Car Lifecycle
-> **Status**: Ready
-> **Stories**: 2 stories (Ready) — run `/story-readiness production/epics/entity-car-lifecycle/story-001-spawn-lifecycle.md`
+> **Status**: Complete
+> **Stories**: 2 stories (Complete)
 
 ## Overview
 

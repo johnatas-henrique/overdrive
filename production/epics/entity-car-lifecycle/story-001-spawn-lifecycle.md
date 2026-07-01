@@ -38,11 +38,11 @@
 
 _From GDD `design/gdd/entity-car-lifecycle.md`, scoped to this story:_
 
-- [ ] **AC-1**: `EntityLifecycle.init()` enters Idle state.
-- [ ] **AC-2**: `spawnGrid([teamA, teamB, ...], 'teamA')` — N cars are cloned, each has a unique `carId`, physics bodies created, and `'entity.spawned'` emitted per car.
-- [ ] **AC-3**: `getEntity('player')` returns the player's `CarEntity` with valid mesh and physics body.
-- [ ] **AC-4**: `getEntity('ai_3')` returns the 4th AI car with a valid `aiDriver` — player car has `aiDriver = undefined`.
-- [ ] **AC-7**: `spawnGrid()` while Grid Active throws `EntityLifecycleError('Grid already active')`.
+- [x] **AC-1**: `EntityLifecycle.init()` enters Idle state.
+- [x] **AC-2**: `spawnGrid([teamA, teamB, ...], 'teamA')` — N cars are cloned, each has a unique `carId`, physics bodies created, and `'entity.spawned'` emitted per car.
+- [x] **AC-3**: `getEntity('player')` returns the player's `CarEntity` with valid mesh and physics body.
+- [x] **AC-4**: `getEntity('ai_3')` returns the 4th AI car with a valid `aiDriver` — player car has `aiDriver = undefined`.
+- [x] **AC-7**: `spawnGrid()` while Grid Active throws `EntityLifecycleError('Grid already active')`.
 
 ---
 

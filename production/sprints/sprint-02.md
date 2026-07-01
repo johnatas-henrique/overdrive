@@ -142,7 +142,7 @@ Parallel execution — 2 agent sessions after Physics 001:
 | 7     | #32-35 (Physics 002-005)    | #36-45 (Camera 001-010)| 58h+69h |
 
 > **Phase 7 parallelism**: Physics 002-005 and Camera 001-010 run simultaneously.
-> No file overlap (`src/physics/` vs `src/camera/`).
+> No file overlap (`src/physics-handling/` vs `src/camera/`).
 > Both branches depend on Physics 001 being in main.
 
 ## Carryover from Previous Sprint

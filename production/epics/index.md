@@ -26,7 +26,7 @@
 | 12  | Asset Manager        | asset-manager        | asset-manager.md        | 10  | 6 stories (Ready)  | Ready  |
 | 13  | Physics / Handling   | physics-handling     | physics-handling.md     | 10  | 5 stories (Ready)  | Ready  |
 
-## Core B — Corrida com AI (4 epics)
+## Core B — Corrida com AI (5 epics)
 
 | #   | Epic                | Slug              | GDD                  | TRs | Stories           | Status |
 | --- | ------------------- | ----------------- | -------------------- | --- | ----------------- | ------ |
@@ -36,7 +36,7 @@
 | 17  | Fuel                | fuel              | fuel.md              | 10  | 6 stories (Ready) | Ready  |
 | 18  | Tire Wear           | tire-wear         | tire-wear.md         | 10  | 3 stories (Ready) | Ready  |
 
-## Core C — Estratégia (5 epics)
+## Core C — Estratégia (4 epics)
 
 | #   | Epic                   | Slug                 | GDD                | TRs | Stories           | Status |
 | --- | ---------------------- | -------------------- | ------------------ | --- | ----------------- | ------ |
@@ -45,7 +45,7 @@
 | 21  | Race Results           | race-results         | race-management.md | 5   | 4 stories (Ready) | Ready  |
 | 22  | Single Race            | single-race          | single-race.md     | 6   | 2 stories (Ready) | Ready  |
 
-## Core C + Presentation (4 epics)
+## Core C + Presentation (3 epics)
 
 | #   | Epic      | Slug      | GDD          | TRs          | Stories            | Status |
 | --- | --------- | --------- | ------------ | ------------ | ------------------ | ------ |

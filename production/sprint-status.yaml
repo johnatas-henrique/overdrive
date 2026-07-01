@@ -333,8 +333,6 @@ stories:
     completed: 2026-06-30
     owner: ""
     estimate_days: 3
-    blocker: ""
-    completed: ""
 
   - id: "2-32"
     name: "Story 002: Arcade Grip Model"
