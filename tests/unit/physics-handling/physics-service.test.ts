@@ -1217,6 +1217,19 @@ describe("Edge Cases", () => {
     expect(state.rpm).toBe(5000);
     expect(state.speedKmh).toBe(100);
   });
+
+  it("registerCar before init defaults topSpeedMs to 50", () => {
+    const scene = createMockScene();
+    const physics = new PhysicsService(scene, null);
+
+    // _config is null before init()
+    const body = createMockBody();
+    physics.registerCar("car_01", body);
+
+    const states = (physics as any)._carStates as Map<string, CarPhysicsState>;
+    const state = states.get("car_01") as CarPhysicsState;
+    expect(state.topSpeedMs).toBe(50);
+  });
 });
 
 // ─── FIXED_DT import from accumulator ──────────────────────────────────────
