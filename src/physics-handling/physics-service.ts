@@ -192,7 +192,7 @@ export class PhysicsService implements IPhysics {
       // (e.g., unit tests with mock HavokPlugin injection)
       const HavokPhysics = (await import("@babylonjs/havok")).default;
       const havokInstance = await HavokPhysics();
-      this._havokPlugin = new HavokPlugin(true, havokInstance);
+      this._havokPlugin = new HavokPlugin(false, havokInstance);
     }
 
     // enablePhysics is required for PhysicsBody/PhysicsAggregate constructors
@@ -254,6 +254,14 @@ export class PhysicsService implements IPhysics {
     >;
     const config = this._config;
 
+    // ── Surface Provider Guard ───────────────────────────────────────────
+    // Fail-fast before any car iteration (FR-023).
+    if (!this._surfaceProvider) {
+      throw new Error(
+        "[PhysicsService] Surface provider not set. Call setSurfaceProvider() before the first update tick."
+      );
+    }
+
     // ── Apply Pending External Updates (1-tick delay) ──────────────────
     // Applied BEFORE Phase 1 so fuelMult/tireCondition take effect on the
     // tick AFTER receipt (1-tick delay contract per AC-8 / C26 / C27).
@@ -282,13 +290,6 @@ export class PhysicsService implements IPhysics {
       const input = this._inputStates.get(state.carId) ?? InputState.ZERO;
 
       // ── Surface Type Query ─────────────────────────────────────────
-      // Provider must be set before the first update tick.
-      // See CONCERN-6 — callback pattern, no ITrackSystem change.
-      if (!this._surfaceProvider) {
-        throw new Error(
-          "[PhysicsService] Surface provider not set. Call setSurfaceProvider() before the first update tick."
-        );
-      }
       const surfaceType = this._surfaceProvider(state.splinePosition);
 
       // ── Lazy Surface State Init ────────────────────────────────────
@@ -363,7 +364,6 @@ export class PhysicsService implements IPhysics {
       if (this._pitCars.has(state.carId)) {
         const currentSpeed = state.speedKmh / 3.6;
         state.targetSpeed = PhysicsService.applyPitLimiter(
-          state.targetSpeed,
           currentSpeed,
           config.pitSpeedLimit,
           true,
@@ -381,8 +381,6 @@ export class PhysicsService implements IPhysics {
     // Active bodies are rebuilt each tick from the car state map, sorted
     // by carId for deterministic collision resolution order (AC-7).
     // Contact callbacks fire during this call.
-    // Active bodies are rebuilt each tick from the car state map, sorted
-    // by carId for deterministic collision resolution order (AC-7).
     this._activeBodies.length = 0;
     this._sortedStates.length = 0;
     for (const state of this._carStates.values()) {
@@ -441,6 +439,77 @@ export class PhysicsService implements IPhysics {
 
     // ── Rebuild Telemetry Cache ────────────────────────────────────────
     this._rebuildTelemetry();
+  }
+
+  // ─── Car Registration ────────────────────────────────────────────────
+
+  /**
+   * Register a car with the physics service.
+   *
+   * Creates a new CarPhysicsState entry and initialises it with the given
+   * PhysicsBody and optional partial state overrides.
+   *
+   * @param carId - Unique car identifier
+   * @param body - Havok PhysicsBody for the car
+   * @param initialState - Optional partial state values to apply after defaults
+   *
+   * @throws Error if carId is already registered
+   */
+  registerCar(
+    carId: string,
+    body: PhysicsBody,
+    initialState?: Partial<CarPhysicsState>
+  ): void {
+    if (this._carStates.has(carId)) {
+      throw new Error(`[PhysicsService] Car "${carId}" is already registered.`);
+    }
+    const state: CarPhysicsState = {
+      carId,
+      body,
+      targetSpeed: 0,
+      targetYawRate: 0,
+      splinePosition: 0,
+      speedKmh: 0,
+      rpm: 0,
+      gear: 0,
+      lateralG: 0,
+      accelG: 0,
+      tireSqueal: 0,
+      kerbHit: false,
+      offTrack: false,
+      frictionMultiplier: 1,
+      minSurfaceSpeed: 0,
+      gripMultiplier: 1,
+      fuelMult: 1,
+      tireCondition: 1,
+      pitEntrySpeed: null,
+      gradient: 0,
+      topSpeedMs: this._config ? this._config.topSpeedL1toL5[0] : 50,
+      tireBlownEmitted: false,
+      fuelEmptyEmitted: false,
+      wasAboveStopEpsilon: false,
+    };
+    if (initialState) {
+      Object.assign(state, initialState);
+    }
+    this._carStates.set(carId, state);
+  }
+
+  /**
+   * Remove a car and all associated state.
+   *
+   * Cleans up _carStates, _surfaceStates, _inputStates, _telemetry,
+   * _pitCars, and _lockedCars for the given carId.
+   *
+   * @param carId - Unique car identifier
+   */
+  removeCar(carId: string): void {
+    this._carStates.delete(carId);
+    this._surfaceStates.delete(carId);
+    this._inputStates.delete(carId);
+    this._telemetry.delete(carId);
+    this._pitCars.delete(carId);
+    this._lockedCars.delete(carId);
   }
 
   // ─── Control Methods ─────────────────────────────────────────────────
@@ -636,30 +705,29 @@ export class PhysicsService implements IPhysics {
   // ─── Private Helpers ─────────────────────────────────────────────────
 
   /**
-   * Apply pit lane speed limiter with linear ramp.
+   * Apply pit lane speed limiter — strict ceiling (FR-001).
    *
-   * When pit mode is active, this function smoothly transitions the car's
-   * target speed toward `pitSpeedLimit` using a constant-rate linear
-   * deceleration profile over `transitionTime` seconds.
+   * When pit mode is active and current speed exceeds pitSpeedLimit,
+   * decelerate with a constant-rate linear ramp over transitionTime.
+   * When current speed is at or below pitSpeedLimit, return unchanged
+   * (never accelerate toward the limit).
    *
    * The deceleration rate is computed from `pitEntrySpeed` (the speed at pit
    * mode entry), not the current speed. This produces a true linear ramp:
    * constant deceleration per tick until pitSpeedLimit is reached.
    *
-   * @param targetSpeed - Current arcade target speed (m/s)
    * @param currentSpeed - Car's actual speed this tick (m/s)
    * @param pitSpeedLimit - Maximum allowed speed in pit lane (m/s)
    * @param isPitMode - True if pit limiter is active
    * @param transitionTime - Time in seconds for the full speed→limit transition
    * @param dt - Delta time in seconds
    * @param pitEntrySpeed - Speed at pit mode entry (m/s), or null if not set
-   * @returns Clamped target speed (m/s)
+   * @returns Pit-limited speed (m/s) — never exceeds pitSpeedLimit
    *
    * @see C25 — setPit() speed clamping with smooth deceleration
    * @see AC-2 — Pit limiter linear ramp acceptance criteria
    */
   private static applyPitLimiter(
-    targetSpeed: number,
     currentSpeed: number,
     pitSpeedLimit: number,
     isPitMode: boolean,
@@ -668,22 +736,26 @@ export class PhysicsService implements IPhysics {
     pitEntrySpeed: number | null
   ): number {
     if (!isPitMode) {
-      return targetSpeed;
+      return currentSpeed;
     }
 
-    // Linear ramp toward pitSpeedLimit using constant deceleration rate
+    // Strict ceiling: never accelerate toward the limit (FR-001)
+    if (currentSpeed <= pitSpeedLimit) {
+      return currentSpeed;
+    }
+
+    // Near-zero difference: snap to limit to avoid micro-deceleration per tick
+    if (currentSpeed - pitSpeedLimit < 0.1) {
+      return pitSpeedLimit;
+    }
+
+    // Linear ramp: constant deceleration rate from entry speed to pitSpeedLimit
     const speedDiff = currentSpeed - pitSpeedLimit;
-    if (Math.abs(speedDiff) < 0.1) {
-      return pitSpeedLimit; // near-zero → snap to limit
-    }
-
-    // Constant deceleration rate from entry speed to pitSpeedLimit
     const entryDiff =
       pitEntrySpeed !== null ? pitEntrySpeed - pitSpeedLimit : speedDiff;
     const safeTransitionTime = Math.max(transitionTime, 0.001);
     const maxStep = (Math.abs(entryDiff) / safeTransitionTime) * dt;
-    const clampedDiff =
-      Math.sign(speedDiff) * Math.min(Math.abs(speedDiff), maxStep);
+    const clampedDiff = Math.min(Math.abs(speedDiff), maxStep);
     return currentSpeed - clampedDiff;
   }
 
@@ -794,7 +866,7 @@ export class PhysicsService implements IPhysics {
       Object.assign(telemetry, {
         speedKmh: state.speedKmh,
         rpm: state.rpm,
-        gear: state.gear as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+        gear: state.gear,
         lateralG: state.lateralG,
         accelG: state.accelG,
         tireSqueal: state.tireSqueal,

@@ -105,11 +105,11 @@ export interface EngineStateSnapshot {
  */
 export interface EngineConfigSub {
   /** 6 forward gear ratios (G1 through G6). */
-  readonly gearRatios: number[];
+  readonly gearRatios: [number, number, number, number, number, number];
   /** Maximum engine RPM. */
   readonly rpmMax: number;
   /** Acceleration level (1–5) for torque curve multiplier. */
-  readonly accelLevel: number;
+  readonly accelLevel: 1 | 2 | 3 | 4 | 5;
   /** Maximum power output multiplier. */
   readonly powerCeiling: number;
   /** Aerodynamic drag coefficient. */
@@ -118,6 +118,8 @@ export interface EngineConfigSub {
   readonly maxBrakeForce: number;
   /** Speed below which the car is considered stopped (m/s). */
   readonly stopEpsilon: number;
+  /** Acceleration factor per level 1–5. */
+  readonly accelerationL1toL5: [number, number, number, number, number];
   /** RPM threshold for automatic upshift (fraction of rpmMax). */
   readonly autoShiftRpmThreshold: number;
   /** RPM ratio for downshift threshold (fraction of upshift threshold). */
@@ -177,9 +179,13 @@ export class ArcadeGripModel {
     corneringLevel: number,
     tireCondition: number,
     speedKmh: number,
-    config: GripConfig
+    config: GripConfig,
+    corneringMap?: readonly number[]
   ): number {
-    const cornerStat = ArcadeGripModel.computeCornerStat(corneringLevel);
+    const cornerStat = ArcadeGripModel.computeCornerStat(
+      corneringLevel,
+      corneringMap
+    );
     const speedMod = ArcadeGripModel.computeSpeedMod(speedKmh, config);
     // tireCondition is clamped to minGripFactor to prevent zero-grip ice
     const clampedTire = Math.max(config.minGripFactor, tireCondition);
@@ -195,9 +201,15 @@ export class ArcadeGripModel {
    * @param level - Cornering upgrade level (1–5)
    * @returns Corner stat multiplier
    */
-  static computeCornerStat(level: number): number {
+  static computeCornerStat(
+    level: number,
+    corneringMap?: readonly number[]
+  ): number {
     // Clamp to 1–5 range to prevent out-of-bounds
     const clamped = Math.max(1, Math.min(5, Math.round(level)));
+    if (corneringMap) {
+      return corneringMap[clamped - 1];
+    }
     return 0.6 + (clamped - 1) * 0.1;
   }
 
@@ -213,6 +225,10 @@ export class ArcadeGripModel {
    * @returns Speed modulation factor (speedModMinFactor .. 1.0)
    */
   static computeSpeedMod(speedKmh: number, config: SpeedModConfig): number {
+    // Guard: zero reference speed means speed modulation is disabled
+    if (config.speedModRefSpeedKmh === 0) {
+      return 1;
+    }
     const t = Math.max(0, Math.min(1, speedKmh / config.speedModRefSpeedKmh));
     // lerp(speedModMinFactor, 1.0, t)
     return config.speedModMinFactor + (1.0 - config.speedModMinFactor) * t;
@@ -271,7 +287,8 @@ export class ArcadeGripModel {
     speedKmh: number,
     throttle: number,
     brake: number,
-    liftOffConfig: LiftOffConfig
+    liftOffConfig: LiftOffConfig,
+    liftOffRefSpeedKmh: number = 200
   ): number {
     let lateralDemand = steerInput * steeringLimit;
 
@@ -281,7 +298,11 @@ export class ArcadeGripModel {
       brake < liftOffConfig.brakeMax &&
       Math.abs(steerInput) > liftOffConfig.minSteering
     ) {
-      lateralDemand += ArcadeGripModel.rotationBoost(lateralDemand, speedKmh);
+      lateralDemand += ArcadeGripModel.rotationBoost(
+        lateralDemand,
+        speedKmh,
+        liftOffRefSpeedKmh
+      );
     }
 
     // Convert km/h to m/s for grip limit calculation
@@ -361,10 +382,17 @@ export class ArcadeGripModel {
    * @param speedKmh - Current speed in km/h
    * @returns Rotation boost value (added to lateral demand)
    */
-  static rotationBoost(lateralDemand: number, speedKmh: number): number {
+  static rotationBoost(
+    lateralDemand: number,
+    speedKmh: number,
+    liftOffRefSpeedKmh: number
+  ): number {
     // Signed: preserves steer direction for left/right symmetry.
     // Positive steer → positive boost, negative steer → negative boost.
-    const speedWeight = Math.min(speedKmh / 200, 1.0);
+    const speedWeight = Math.min(
+      speedKmh / Math.max(liftOffRefSpeedKmh, 1),
+      1.0
+    );
     return lateralDemand * speedWeight;
   }
 
@@ -416,6 +444,13 @@ export class ArcadeGripModel {
     rpmMax: number,
     gear1RedlineSpeed: number
   ): number {
+    // Validate: require at least GEAR_COUNT gear ratios (FR-019)
+    if (gearRatios.length < GEAR_COUNT) {
+      throw new Error(
+        `gearRatios length (${gearRatios.length}) must be at least ${GEAR_COUNT}`
+      );
+    }
+
     // Neutral or reverse: return 40% of rpmMax (ticking idle)
     if (gear < 1) {
       return rpmMax * 0.4;
@@ -427,7 +462,7 @@ export class ArcadeGripModel {
     }
 
     const idx = Math.min(gear, GEAR_COUNT) - 1;
-    const ratio = gearRatios[idx] ?? 1;
+    const ratio = gearRatios[idx];
 
     // RPM = speed × gearRatio × (rpmMax / (gear1RedlineSpeed × gear1Ratio))
     // For a typical car: redline in 1st gear at ~10 m/s.
@@ -452,10 +487,13 @@ export class ArcadeGripModel {
   static computeTorque(
     rpm: number,
     accelLevel: number,
-    rpmMax: number
+    rpmMax: number,
+    accelerationMap?: readonly number[]
   ): number {
     const clampedLevel = Math.max(1, Math.min(5, Math.round(accelLevel)));
-    const multiplier = ACCEL_MAP[clampedLevel - 1];
+    const multiplier = accelerationMap
+      ? accelerationMap[clampedLevel - 1]
+      : ACCEL_MAP[clampedLevel - 1];
     const t = rpm / Math.max(rpmMax, 1);
     return t * multiplier;
   }
@@ -679,7 +717,8 @@ export class ArcadeGripModel {
     const torque = ArcadeGripModel.computeTorque(
       engineState.rpm,
       config.accelLevel,
-      config.rpmMax
+      config.rpmMax,
+      config.accelerationL1toL5
     );
     let power =
       torque * inputs.throttle * engineState.fuelMult * config.powerCeiling;
@@ -698,14 +737,20 @@ export class ArcadeGripModel {
       config.dragCoeff
     );
 
-    // Step 7: Brake override — braking replaces throttle power entirely
+    // Step 7: Brake override — braking replaces throttle power entirely.
+    // Brake force opposes motion direction (FR-002).
     if (inputs.brake > 0) {
       const drag = ArcadeGripModel.computeDragForce(
         engineState.speedMs,
         config.dragCoeff
       );
+      const brakeSign = engineState.speedMs >= 0 ? -1 : 1;
       netForce =
-        -ArcadeGripModel.computeBrakeForce(inputs.brake, config.maxBrakeForce) +
+        brakeSign *
+          ArcadeGripModel.computeBrakeForce(
+            inputs.brake,
+            config.maxBrakeForce
+          ) +
         drag;
     }
 
@@ -782,7 +827,8 @@ export class ArcadeGripModel {
       corneringLevel,
       state.tireCondition,
       speedKmh,
-      this._gripConfig
+      this._gripConfig,
+      config.corneringL1toL5
     );
 
     // Apply surface grip override (Story 004)
@@ -809,7 +855,8 @@ export class ArcadeGripModel {
       speedKmh,
       input.throttle,
       input.brake,
-      this._liftOffConfig
+      this._liftOffConfig,
+      config.liftOffRefSpeedKmh
     );
 
     // ── Engine Model (Story 003) ─────────────────────────────────────
@@ -840,6 +887,7 @@ export class ArcadeGripModel {
       dragCoeff: config.dragCoeff * frictionMultiplier,
       maxBrakeForce: config.maxBrakeForce,
       stopEpsilon: config.stopEpsilon,
+      accelerationL1toL5: config.accelerationL1toL5,
       autoShiftRpmThreshold: config.autoShiftRpmThreshold,
       downshiftRpmRatio: config.downshiftRpmRatio,
       reverseMaxSpeed: config.reverseMaxSpeed,
@@ -916,7 +964,8 @@ export class ArcadeGripModel {
     state.gripMultiplier = gripMax / Math.max(config.baseGrip, 0.01);
 
     // Longitudinal acceleration in G (positive = accelerating, negative = braking)
-    const accelMs2 = (speedMs - oldSpeedMs) / dt;
+    // Guard: dt > 0 prevents NaN from division by zero (FR-022)
+    const accelMs2 = dt > 0 ? (speedMs - oldSpeedMs) / dt : 0;
     state.accelG = accelMs2 / 9.81;
 
     // RPM and gear are now set by the engine model in compute()
