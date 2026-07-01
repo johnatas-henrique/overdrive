@@ -2,7 +2,7 @@
 
 > Last Updated: 2026-06-30
 > Total registered tests: 39
-> Total assertions: 4020
+> Total assertions: 4021
 > Coverage: 100% of implemented systems (12/24 MVP systems)
 
 ## How to run
@@ -97,7 +97,7 @@ npx vitest run
 | -------------------------------------------------- | ---------- | ------------------------------- | ---------- |
 | `tests/unit/physics-handling/arcade-grip-model.test.ts` | 109       | Grip model, steering, lift-off oversteer | 2026-06-30 |
 | `tests/unit/physics-handling/engine-gears-drag-braking.test.ts` | 123 | Engine model, auto-shift, drag, braking | 2026-06-30 |
-| `tests/unit/physics-handling/physics-service.test.ts` | 123        | 3-phase pipeline, velocity override, determinism | 2026-06-30 |
+| `tests/unit/physics-handling/physics-service.test.ts` | 124        | 3-phase pipeline, velocity override, determinism | 2026-06-30 |
 | `tests/unit/physics-handling/surface-handler.test.ts` | 91         | Off-track grip, kerb timer, surface modifiers | 2026-06-30 |
 | `tests/integration/physics-handling/lock-pit-events.test.ts` | 109 | Lock, pit limiter, edge events, 1-tick delay | 2026-06-30 |
 
