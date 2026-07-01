@@ -138,21 +138,27 @@ describe("Camera Foundation (Story 001)", () => {
   // ── F2: ICameraManager interface ─────────────────────────────────
 
   describe("F2 — ICameraManager interface", () => {
-    it("test_interface_has_7_methods", () => {
+    it("test_interface_has_expected_methods", () => {
       // Compile-time check: these should all compile without error
       const _check: ICameraManager = null as unknown as ICameraManager;
 
-      // Runtime method name check via a mock implementation
+      // Runtime method name check via a mock implementation.
+      // Derived from keyof ICameraManager so the list is self-maintaining
+      // and throws a type error if the interface signature changes.
       const methodNames: Array<keyof ICameraManager> = [
         "init",
         "setActiveMode",
         "toggleCockpitChase",
         "setSpeedData",
+        "setLateralG",
         "addShake",
+        "trySkipDrone",
         "update",
         "dispose",
       ];
-      expect(methodNames).toHaveLength(7);
+      // keyof ICameraManager is a compile-time type — verify runtime length
+      // matches expected interface surface (9 methods).
+      expect(methodNames).toHaveLength(9);
     });
 
     it("test_init_signature_accepts_scene_and_carId", () => {

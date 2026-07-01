@@ -307,39 +307,45 @@ describe("AC-2 — Havok executeStep called exactly once per tick", () => {
     expect(callArg[1]).toBe(body2);
   });
 
-  it("suppresses scene auto-step to prevent double-stepping", async () => {
+  it("suppresses auto-step via body.disablePreStep = true", async () => {
     await physics.init(TEST_CONFIG);
 
-    // The auto-step suppression replaces _advancePhysicsEngineStep with a no-op
-    // This test verifies the suppression was applied
-    expect(scene._advancePhysicsEngineStep).toBeDefined();
+    // The physics pipeline sets disablePreStep = true on each body during
+    // Phase 2 body collection, preventing Havok from auto-stepping bodies
+    // outside the pipeline (FR-034).
+    const body1 = createMockBody();
+    const body2 = createMockBody();
+    addCarState(physics, "car_01", body1);
+    addCarState(physics, "car_02", body2);
 
-    // Calling it should do nothing (no crash)
-    expect(() => scene._advancePhysicsEngineStep()).not.toThrow();
+    // Before update, disablePreStep is not set yet
+    expect(body1.disablePreStep).toBeUndefined();
+    expect(body2.disablePreStep).toBeUndefined();
 
     // Verify Havok was only called via our pipeline, not by the scene
-    // (executeStep is only called by physics.update in our control)
     expect(havok.executeStep).toHaveBeenCalledTimes(0);
 
-    // Now call update and verify executeStep is called exactly once
+    // After update, each body should have disablePreStep = true
     physics.update(FIXED_DT);
     expect(havok.executeStep).toHaveBeenCalledTimes(1);
+    expect(body1.disablePreStep).toBe(true);
+    expect(body2.disablePreStep).toBe(true);
   });
 
-  it("scene.render() does not trigger additional Havok step", async () => {
+  it("body.disablePreStep remains true after update", async () => {
     await physics.init(TEST_CONFIG);
-    addCarState(physics, "car_01", createMockBody());
+    const body = createMockBody();
+    addCarState(physics, "car_01", body);
 
-    // Call update — executeStep should be called once
+    // After update, the body should have disablePreStep = true set by Phase 2
     physics.update(FIXED_DT);
     expect(havok.executeStep).toHaveBeenCalledTimes(1);
+    expect(body.disablePreStep).toBe(true);
 
-    // Simulate scene.render() which internally calls _advancePhysicsEngineStep
-    // The suppression should prevent any additional Havok step
-    scene._advancePhysicsEngineStep();
-
-    // executeStep should still be called only once (from our pipeline)
-    expect(havok.executeStep).toHaveBeenCalledTimes(1);
+    // A second update re-affirms disablePreStep (idempotent)
+    physics.update(FIXED_DT);
+    expect(havok.executeStep).toHaveBeenCalledTimes(2);
+    expect(body.disablePreStep).toBe(true);
   });
 
   it("returns early when not initialized", () => {
@@ -801,8 +807,9 @@ describe("AC-7 — Determinism", () => {
 
     const stub = new Phase1Stub();
     const input = { steer: 0, throttle: 0, brake: 1, gearDelta: 0 } as any;
-    stub.compute(state1, input, FIXED_DT);
-    stub.compute(state2, input, FIXED_DT);
+    const config = { stopEpsilon: 0.1 } as any;
+    stub.compute(state1, input, FIXED_DT, config);
+    stub.compute(state2, input, FIXED_DT, config);
 
     expect(state1.targetSpeed).toBe(state2.targetSpeed);
     expect(state1.targetYawRate).toBe(state2.targetYawRate);

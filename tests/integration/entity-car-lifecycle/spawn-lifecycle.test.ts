@@ -219,8 +219,8 @@ describe("EntityLifecycle", () => {
 
     // 8 distinct meshes and transform nodes created
     const nodeCount = scene.transformNodes.length;
-    // 8 root nodes from instantiateModelsToScene + 0 pre-existing
-    expect(nodeCount).toBeGreaterThanOrEqual(8);
+    // 8 root nodes from instantiateModelsToScene on a fresh NullEngine scene
+    expect(nodeCount).toBe(8);
   });
 
   // ── AC-3: Player entity ─────────────────────────────────────

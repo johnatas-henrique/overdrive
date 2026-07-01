@@ -350,18 +350,23 @@ describe("GSM Camera Lifecycle (Story 002)", () => {
 
   describe("EventBus lifecycle", () => {
     it("test_dispose_unsubscribes_from_bus", () => {
-      const cm2 = new CameraManager(scene, bus);
+      // Use a fresh EventBus for cm2 so handler isolation is verifiable
+      // (FR-026: shared bus with cm1 would mask whether cm2's handler was
+      // actually removed on dispose).
+      const bus2 = new EventBus();
+      bus2.init();
+      const cm2 = new CameraManager(scene, bus2);
       cm2.init(scene, "player-2");
 
       // Should work before dispose
-      bus.emit("gsm.state.entered", { from: "Menu", to: "PreRace" });
+      bus2.emit("gsm.state.entered", { from: "Menu", to: "PreRace" });
       expect(scene.activeCamera?.name).toBe("gridCam");
 
       cm2.dispose();
 
-      // After dispose, events should not crash (handlers removed)
+      // After dispose, events on cm2's bus should not crash (handlers removed)
       expect(() =>
-        bus.emit("gsm.state.entered", { from: "PreRace", to: "Racing" })
+        bus2.emit("gsm.state.entered", { from: "PreRace", to: "Racing" })
       ).not.toThrow();
     });
 
