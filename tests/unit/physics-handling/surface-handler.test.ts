@@ -15,8 +15,6 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import type { CarPhysicsState } from "@/physics-handling/car-physics-state";
-import type { PhysicsConfig } from "@/physics-handling/physics-config";
 import {
   buildSurfaceModifiers,
   type CarSurfaceState,
@@ -25,6 +23,7 @@ import {
   SurfaceType,
   updateSurfaceState,
 } from "@/physics-handling/surface-handler";
+import type { CarPhysicsState, PhysicsConfig } from "@/physics-handling/types";
 
 // ─── Test Helpers ───────────────────────────────────────────────────────────
 

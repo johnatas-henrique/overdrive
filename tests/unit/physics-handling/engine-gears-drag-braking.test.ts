@@ -22,8 +22,7 @@ import {
   ArcadeGripModel,
   GEAR_COUNT,
 } from "@/physics-handling/arcade-grip-model";
-import type { CarPhysicsState } from "@/physics-handling/car-physics-state";
-import type { PhysicsConfig } from "@/physics-handling/physics-config";
+import type { CarPhysicsState, PhysicsConfig } from "@/physics-handling/types";
 
 // ─── Test Helpers ───────────────────────────────────────────────────────────
 
