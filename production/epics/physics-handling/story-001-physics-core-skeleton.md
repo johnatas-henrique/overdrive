@@ -281,7 +281,7 @@ _Written by qa-lead at story creation. The developer implements against these â€
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/physics-handling/physics-core-skeleton.test.ts` OR documented playtest with pipeline verification
+**Required evidence**: `tests/integration/physics-handling/physics-service.test.ts` OR documented playtest with pipeline verification
 
 **Status**: [x] Created and passing â€” physics-service.test.ts
 

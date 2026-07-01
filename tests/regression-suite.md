@@ -2,7 +2,7 @@
 
 > Last Updated: 2026-06-30
 > Total registered tests: 39
-> Total assertions: 4021
+> Total assertions: 4151
 > Coverage: 100% of implemented systems (12/24 MVP systems)
 
 ## How to run
