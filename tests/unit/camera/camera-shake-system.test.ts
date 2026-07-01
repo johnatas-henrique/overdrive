@@ -520,5 +520,32 @@ describe("camera shake system (Story 007)", () => {
       cm.update(1 / 60);
       expect(getShakes(cm)).toHaveLength(1);
     });
+
+    it("test_addShake_nan_intensity_is_rejected", () => {
+      // NaN is not finite — should be rejected (early return)
+      cm.addShake("kerb", NaN);
+      expect(getShakes(cm)).toHaveLength(0);
+    });
+
+    it("test_addShake_infinity_intensity_is_rejected", () => {
+      // Infinity is not finite — should be rejected (early return)
+      cm.addShake("kerb", Infinity);
+      expect(getShakes(cm)).toHaveLength(0);
+    });
+
+    it("test_addShake_negative_infinity_intensity_is_rejected", () => {
+      // -Infinity is not finite — should be rejected (early return)
+      cm.addShake("kerb", -Infinity);
+      expect(getShakes(cm)).toHaveLength(0);
+    });
+
+    it("test_addShake_unknown_type_uses_kerb_fallback", () => {
+      // Unknown shake type should use kerbDecay as safe fallback
+      cm.addShake("unknown_type" as "kerb" | "collision" | "offTrack", 0.5);
+
+      const shakes = getShakes(cm);
+      expect(shakes).toHaveLength(1);
+      expect(shakes[0].decay).toBeCloseTo(KERB_DECAY, 6);
+    });
   });
 });

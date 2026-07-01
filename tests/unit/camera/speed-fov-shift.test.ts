@@ -332,5 +332,35 @@ describe("speed-dependent FOV shift (Story 006)", () => {
       // With speedFactor=0, FOV = baseFOV regardless of speed
       expect(scene.activeCamera?.fov).toBeCloseTo(degToRad(COCKPIT_BASE), 5);
     });
+
+    it("test_setSpeedData_nan_resets_to_zero", () => {
+      // AC: setSpeedData(NaN) should reset _speedKmh to 0
+      cm.setActiveMode(CameraMode.Cockpit);
+      cm.setSpeedData(NaN);
+      cm.update(1 / 60);
+
+      // NaN → 0, so FOV should be baseFOV
+      expect(scene.activeCamera?.fov).toBeCloseTo(degToRad(COCKPIT_BASE), 5);
+    });
+
+    it("test_setSpeedData_infinity_resets_to_zero", () => {
+      // AC: setSpeedData(Infinity) should reset _speedKmh to 0
+      cm.setActiveMode(CameraMode.Cockpit);
+      cm.setSpeedData(Infinity);
+      cm.update(1 / 60);
+
+      // Infinity → 0, so FOV should be baseFOV
+      expect(scene.activeCamera?.fov).toBeCloseTo(degToRad(COCKPIT_BASE), 5);
+    });
+
+    it("test_setSpeedData_negative_infinity_resets_to_zero", () => {
+      // AC: setSpeedData(-Infinity) should reset _speedKmh to 0
+      cm.setActiveMode(CameraMode.Cockpit);
+      cm.setSpeedData(-Infinity);
+      cm.update(1 / 60);
+
+      // -Infinity → 0, so FOV should be baseFOV
+      expect(scene.activeCamera?.fov).toBeCloseTo(degToRad(COCKPIT_BASE), 5);
+    });
   });
 });
