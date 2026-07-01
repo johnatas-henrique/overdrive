@@ -64,7 +64,7 @@ export interface CarPhysicsState {
   rpm: number;
 
   /** Current gear: 0 = neutral, 1–6 = forward gears. */
-  gear: number;
+  gear: 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
   // ─── Telemetry (published each tick) ────────────────────────────────
 

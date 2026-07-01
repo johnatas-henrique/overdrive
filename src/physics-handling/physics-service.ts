@@ -133,13 +133,12 @@ export class PhysicsService implements IPhysics {
     const gravity = new Vector3(0, -9.81, 0);
     this._scene.enablePhysics(gravity, this._havokPlugin);
 
-    // Suppress auto-step — our pipeline calls executeStep exclusively
-    // (ADR-0002 F17, TR-DET-006)
-    (
-      this._scene as unknown as { _advancePhysicsEngineStep: () => void }
-    )._advancePhysicsEngineStep = () => {
-      /* no-op — pipeline controls stepping */
-    };
+    // Per-body pre-step suppression — our pipeline calls executeStep
+    // exclusively (ADR-0002 F17, TR-DET-006). Each body has
+    // disablePreStep = true set during Phase 2 body collection to prevent
+    // Havok from auto-stepping bodies outside the pipeline.
+    // This replaces the previous monkey-patch on
+    // _advancePhysicsEngineStep (private Babylon.js API).
 
     this._initialized = true;
   }
@@ -150,12 +149,14 @@ export class PhysicsService implements IPhysics {
    * Execute one physics tick.
    *
    * **Phase 1**: Arcade model computes targetSpeed and targetYawRate per car.
-   * Locked cars skip Phase 1 (their state is already zero from Phase 3).
+   * Phase 1 runs for ALL cars — locked cars still receive Phase 1 updates
+   * for telemetry/visuals even though Phase 3 will zero their velocity.
    *
    * **Phase 2**: Havok executeStep resolves DYNAMIC×DYNAMIC and
    * DYNAMIC×STATIC collisions. Contact callbacks fire → collision.impact events.
    *
    * **Phase 3**: Velocity override snaps each car to arcade velocity.
+   * Locked cars get zero velocity in Phase 3 (overriding Phase 1 telemetry).
    * Car position = previous position + collision push-apart delta
    * (from Phase 2) + arcade target velocity × dt (from Phase 3).
    *
@@ -190,10 +191,11 @@ export class PhysicsService implements IPhysics {
     // by carId for deterministic collision resolution order (AC-7).
     this._activeBodies.length = 0;
     const sortedStates = [...this._carStates.values()].sort((a, b) =>
-      a.carId.localeCompare(b.carId)
+      a.carId < b.carId ? -1 : a.carId > b.carId ? 1 : 0
     );
     for (const state of sortedStates) {
       if (state.body) {
+        state.body.disablePreStep = true;
         this._activeBodies.push(state.body);
       }
     }
@@ -219,7 +221,7 @@ export class PhysicsService implements IPhysics {
 
       // Y-up ground tracking: Y velocity correction from spline elevation
       // (ADR-0008 Ground Tracking section)
-      if (this._trackSystem) {
+      if (this._trackSystem && dt > 0) {
         const splineY = this._trackSystem.getElevation(state.splinePosition);
         targetVel.y = (splineY - body.getObjectCenterWorld().y) / dt;
       }
@@ -415,7 +417,7 @@ export class PhysicsService implements IPhysics {
       this._telemetry.set(carId, {
         speedKmh: state.speedKmh,
         rpm: state.rpm,
-        gear: state.gear as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+        gear: state.gear,
         lateralG: state.lateralG,
         accelG: state.accelG,
         tireSqueal: state.tireSqueal,
