@@ -53,6 +53,11 @@ export interface PhysicsConfig {
   /** Brake threshold below which lift-off oversteer activates. */
   readonly liftOffBrakeMax: number;
 
+  // ─── Lift-Off Oversteer Speed ─────────────────────────────────────────
+
+  /** Reference speed (km/h) for rotation boost normalization. Default: 200. */
+  readonly liftOffRefSpeedKmh: number;
+
   // ─── Drag & Braking ────────────────────────────────────────────────
 
   /** Aerodynamic drag coefficient (applied as deceleration opposing velocity). */
@@ -95,14 +100,14 @@ export interface PhysicsConfig {
 
   // ─── Gearbox ───────────────────────────────────────────────────────
 
-  /** RPM threshold for automatic upshift. */
+  /** Fraction of rpmMax for upshift threshold (0..1, e.g. 0.8 = 80% of rpmMax). */
   readonly autoShiftRpmThreshold: number;
   /** Maximum engine RPM. */
   readonly rpmMax: number;
   /** 6 forward gear ratios (G1 through G6). */
-  readonly gearRatios: number[];
+  readonly gearRatios: [number, number, number, number, number, number];
   /** Acceleration level (1–5) for torque curve multiplier. */
-  readonly accelLevel: number;
+  readonly accelLevel: 1 | 2 | 3 | 4 | 5;
   /** RPM ratio for downshift threshold (fraction of upshift threshold). */
   readonly downshiftRpmRatio: number;
   /** Maximum reverse speed (m/s). */
