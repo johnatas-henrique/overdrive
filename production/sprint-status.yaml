@@ -384,7 +384,6 @@ stories:
     owner: ""
     estimate_days: 1
     blocker: ""
-    completed: ""
 
   - id: "2-37"
     name: "Story 002: GSM Camera Lifecycle"
@@ -405,8 +404,6 @@ stories:
     estimate_days: 1.5
     blocker: ""
     completed: "2026-06-30"
-    blocker: ""
-    completed: ""
 
   - id: "2-39"
     name: "Story 004: Chase Camera Occlusion"
