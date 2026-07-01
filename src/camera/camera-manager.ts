@@ -27,6 +27,7 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { Scene } from "@babylonjs/core/scene";
+import type { ConfigManager } from "@/foundation/config/config-manager";
 import type { IEventBus, Subscription } from "@/foundation/event-bus/types";
 import { defined } from "@/shared/assert-defined";
 import { createDefaultCameraConfig } from "./camera-defaults";
@@ -105,6 +106,8 @@ export class CameraManager implements ICameraManager {
   // ── GSM lifecycle (Story 002) ────────────────────────────────────
   /** EventBus for GSM state subscriptions. */
   private _eventBus: IEventBus | null = null;
+  /** ConfigManager for live config reads (optional — DI for testing). */
+  private _configManager: ConfigManager | null = null;
   /** Active EventBus subscriptions — cleaned up in dispose(). */
   private _subscriptions: Subscription[] = [];
   /** Player's last toggle choice — restored on Racing entry. */
@@ -196,15 +199,19 @@ export class CameraManager implements ICameraManager {
   private _droneSkippable = false;
 
   /**
-   * @param scene    — The Babylon.js Scene to create cameras in.
-   * @param eventBus — Optional EventBus for GSM lifecycle subscription.
-   *                   If provided, CameraManager subscribes to
-   *                   `gsm.state.entered` and switches cameras automatically.
+   * @param scene          — The Babylon.js Scene to create cameras in.
+   * @param eventBus       — Optional EventBus for GSM lifecycle subscription.
+   * @param configManager  — Optional ConfigManager for live config reads (Story 010).
    */
-  constructor(scene: Scene, eventBus?: IEventBus | null) {
+  constructor(
+    scene: Scene,
+    eventBus?: IEventBus | null,
+    configManager?: ConfigManager | null
+  ) {
     this._scene = scene;
     this._config = createDefaultCameraConfig();
     this._eventBus = eventBus ?? null;
+    this._configManager = configManager ?? null;
   }
 
   /**
@@ -317,6 +324,11 @@ export class CameraManager implements ICameraManager {
    * @param _playerCarId — Player entity ID (stored for later stories)
    */
   init(_scene: Scene, _playerCarId: string): void {
+    // Register camera config namespace with ConfigManager (Story 010 — AC-14a)
+    if (this._configManager) {
+      this._configManager.register("camera", this._config);
+    }
+
     this._createCameras();
     this._applyInputCleanup();
     this._currentMode = CameraMode.Inactive;
@@ -498,6 +510,11 @@ export class CameraManager implements ICameraManager {
    * @param dt — Delta time in seconds (fixed 1/60s)
    */
   update(dt: number): void {
+    // Read fresh config each tick (Story 010 — AC-14c, HMR invalidation)
+    if (this._configManager) {
+      this._config = this._configManager.get<CameraConfig>("camera");
+    }
+
     // Accumulate total elapsed time (Story 008 — skip delay timing)
     this._totalElapsed += dt;
 
