@@ -444,13 +444,6 @@ export class ArcadeGripModel {
     rpmMax: number,
     gear1RedlineSpeed: number
   ): number {
-    // Validate: require at least GEAR_COUNT gear ratios (FR-019)
-    if (gearRatios.length < GEAR_COUNT) {
-      throw new Error(
-        `gearRatios length (${gearRatios.length}) must be at least ${GEAR_COUNT}`
-      );
-    }
-
     // Neutral or reverse: return 40% of rpmMax (ticking idle)
     if (gear < 1) {
       return rpmMax * 0.4;

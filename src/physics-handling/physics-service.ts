@@ -30,7 +30,10 @@ import type { IFixedUpdatePipeline } from "@/foundation/determinism/fixed-update
 import { InputState } from "@/foundation/determinism/types";
 import type { IEventBus, Subscription } from "@/foundation/event-bus/types";
 import { ArcadeGripModel } from "./arcade-grip-model";
-import type { CarPhysicsState } from "./car-physics-state";
+import {
+  type CarPhysicsState,
+  createDefaultCarPhysicsState,
+} from "./car-physics-state";
 import type { CarTelemetry, IPhysics } from "./i-physics";
 import type { ITrackSystem } from "./i-track-system";
 import type { PhysicsConfig } from "./physics-config";
@@ -181,6 +184,15 @@ export class PhysicsService implements IPhysics {
       return;
     }
     this._config = config;
+
+    // Validate gearRatios at init time (FR-019, FR-004).
+    // The type system ensures exactly 6 elements, but runtime validation
+    // catches dynamically-loaded configs that may have truncated data.
+    if (config.gearRatios.length < 6) {
+      throw new Error(
+        `[PhysicsService] gearRatios length (${config.gearRatios.length}) must be at least 6 — received ${JSON.stringify(config.gearRatios)}`
+      );
+    }
 
     // Build surface modifier lookup table from config (Story 004).
     // Cached once — zero per-tick allocation.
@@ -413,8 +425,11 @@ export class PhysicsService implements IPhysics {
       forwardDir.scaleToRef(state.targetSpeed, this._scratchVel);
 
       // Y-up ground tracking: Y velocity correction from spline elevation
-      // (ADR-0008 Ground Tracking section)
-      if (this._trackSystem) {
+      // (ADR-0008 Ground Tracking section).
+      // Guard against dt <= 0 to prevent Infinity in the Y correction
+      // (FR-008). When dt <= 0, the Y component stays at 0 (default
+      // from forwardDir.scaleToRef above).
+      if (dt > 0 && this._trackSystem) {
         const splineY = this._trackSystem.getElevation(state.splinePosition);
         body.getObjectCenterWorldToRef(this._scratchWorldPos);
         this._scratchVel.y = (splineY - this._scratchWorldPos.y) / dt;
@@ -463,32 +478,8 @@ export class PhysicsService implements IPhysics {
     if (this._carStates.has(carId)) {
       throw new Error(`[PhysicsService] Car "${carId}" is already registered.`);
     }
-    const state: CarPhysicsState = {
-      carId,
-      body,
-      targetSpeed: 0,
-      targetYawRate: 0,
-      splinePosition: 0,
-      speedKmh: 0,
-      rpm: 0,
-      gear: 0,
-      lateralG: 0,
-      accelG: 0,
-      tireSqueal: 0,
-      kerbHit: false,
-      offTrack: false,
-      frictionMultiplier: 1,
-      minSurfaceSpeed: 0,
-      gripMultiplier: 1,
-      fuelMult: 1,
-      tireCondition: 1,
-      pitEntrySpeed: null,
-      gradient: 0,
-      topSpeedMs: this._config ? this._config.topSpeedL1toL5[0] : 50,
-      tireBlownEmitted: false,
-      fuelEmptyEmitted: false,
-      wasAboveStopEpsilon: false,
-    };
+    const topSpeedMs = this._config ? this._config.topSpeedL1toL5[0] : 50;
+    const state = createDefaultCarPhysicsState(carId, body, topSpeedMs);
     if (initialState) {
       Object.assign(state, initialState);
     }

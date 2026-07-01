@@ -270,9 +270,14 @@ export function enforceMinSurfaceSpeed(
   targetSpeed: number,
   minSurfaceSpeed: number
 ): number {
-  // If there is a minimum surface speed floor (off-track), clamp upward.
+  // FR-009: guard against negative or zero target speed (reverse gear).
+  // When reversing, the car is intentionally moving backward, so the
+  // minimum surface speed floor should not apply — it would pin the car
+  // at a forward speed.
+  if (minSurfaceSpeed <= 0 || targetSpeed < 0) {
+    return targetSpeed;
+  }
   // On tarmac/kerb, minSurfaceSpeed = 0, so no clamp.
-  return minSurfaceSpeed > 0
-    ? Math.max(targetSpeed, minSurfaceSpeed)
-    : targetSpeed;
+  // On off-track surfaces (grass/gravel), clamp target speed upward.
+  return Math.max(targetSpeed, minSurfaceSpeed);
 }
