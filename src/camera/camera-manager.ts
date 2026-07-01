@@ -69,7 +69,7 @@ export interface GridCameraReader {
  */
 export interface ChaseCameraReader {
   /** Returns the player car's AbstractMesh, or null if not yet spawned. */
-  getPlayerCarMesh(): unknown;
+  getPlayerCarMesh(): AbstractMesh | null;
 }
 
 /**
@@ -418,7 +418,7 @@ export class CameraManager implements ICameraManager {
    * @see TR-CAM-003 — Speed-dependent FOV shift
    */
   setSpeedData(speedKmh: number): void {
-    this._speedKmh = speedKmh;
+    this._speedKmh = Number.isFinite(speedKmh) ? speedKmh : 0;
   }
 
   /**
@@ -435,12 +435,15 @@ export class CameraManager implements ICameraManager {
     this._lateralG = Number.isFinite(lateralG) ? lateralG : 0;
   }
 
+  /** Maximum concurrent shake instances before FIFO eviction. */
+  private static readonly MAX_ACTIVE_SHAKES = 8;
+
   /**
    * Queue a shake effect with type-specific decay rate.
    *
    * Creates an `ActiveShake` entry with the given intensity and a decay
    * rate determined by the shake type. If `_activeShakes` has reached
-   * its capacity, the oldest entry is evicted (FIFO).
+   * capacity (MAX_ACTIVE_SHAKES = 8), the oldest entry is evicted (FIFO).
    *
    * Decay rates per type (from config):
    * - kerb:  `config.shake.kerbDecay` (default 6.0/s)
@@ -448,14 +451,25 @@ export class CameraManager implements ICameraManager {
    * - offTrack: `config.shake.offtrackDecay` (default 5.0/s)
    *
    * @param type      — Shake source category ("kerb" | "collision" | "offTrack")
-   * @param intensity — Shake strength. For kerb/offTrack, callers typically
-   *                    pass the config's default intensity. For collision,
-   *                    callers pass `impulse × config.shake.collisionFactor`.
+   * @param intensity — Shake strength. Must be a finite positive number.
+   *                    For kerb/offTrack, callers typically pass the config's
+   *                    default intensity. For collision, callers pass
+   *                    `impulse × config.shake.collisionFactor`.
    *
    * @see TR-CAM-004 — Camera shake: additive, exponential decay
    * @see Story 007 Implementation Notes — addShake()
    */
   addShake(type: ShakeType, intensity: number): void {
+    // Guard: reject NaN/Infinity/-Infinity (zero is valid — creates a zero-effect entry)
+    if (!Number.isFinite(intensity)) {
+      return;
+    }
+
+    // FIFO eviction when at capacity
+    if (this._activeShakes.length >= CameraManager.MAX_ACTIVE_SHAKES) {
+      this._activeShakes.shift();
+    }
+
     const cfg = this._config.shake;
     let decay: number;
 
@@ -468,6 +482,10 @@ export class CameraManager implements ICameraManager {
         break;
       case "offTrack":
         decay = cfg.offtrackDecay;
+        break;
+      default:
+        // Unknown shake type — use kerb decay as safe fallback
+        decay = cfg.kerbDecay;
         break;
     }
 
@@ -513,6 +531,8 @@ export class CameraManager implements ICameraManager {
     // Read fresh config each tick (Story 010 — AC-14c, HMR invalidation)
     if (this._configManager) {
       this._config = this._configManager.get<CameraConfig>("camera");
+      // Push live config values to FollowCamera instances (FR-011)
+      this._applyConfigToCameras();
     }
 
     // Accumulate total elapsed time (Story 008 — skip delay timing)
@@ -880,11 +900,8 @@ export class CameraManager implements ICameraManager {
     if (mesh) {
       // Set lockedTarget so FollowCamera._checkInputs() calls _follow()
       // each frame to auto-track the car mesh with elastic spring behavior.
-      // ChaseCameraReader returns unknown to avoid entity system dependency.
-      // biome-ignore lint/suspicious/noExplicitAny: mesh is AbstractMesh at runtime
-      const carMesh = mesh as any;
-      this._chaseCam.lockedTarget = carMesh;
-      this._playerCarMesh = carMesh;
+      this._chaseCam.lockedTarget = mesh;
+      this._playerCarMesh = mesh;
     }
   }
 
@@ -904,8 +921,7 @@ export class CameraManager implements ICameraManager {
     if (this._chaseReader) {
       const mesh = this._chaseReader.getPlayerCarMesh();
       if (mesh) {
-        // biome-ignore lint/suspicious/noExplicitAny: mesh is AbstractMesh at runtime
-        this._playerCarMesh = mesh as any;
+        this._playerCarMesh = mesh;
         return;
       }
     }
@@ -959,6 +975,26 @@ export class CameraManager implements ICameraManager {
       Vector3.Zero(), // target position
       this._scene
     );
+  }
+
+  /**
+   * Push live config values to FollowCamera instances.
+   *
+   * Called after config is reloaded from ConfigManager (every tick during HMR).
+   * Only updates FollowCamera properties that are not automatically applied
+   * by the camera system (properties like fov are handled separately by
+   * `_updateFOV()`).
+   *
+   * @see Story 010 — Camera Config HMR (AC-14c)
+   */
+  private _applyConfigToCameras(): void {
+    if (!this._chaseCam) return;
+
+    this._chaseCam.radius = this._config.chase.distance;
+    this._chaseCam.heightOffset = this._config.chase.height;
+    this._chaseCam.rotationOffset = this._config.chase.offset;
+    this._chaseCam.cameraAcceleration = this._config.chase.cameraAcceleration;
+    this._chaseCam.maxCameraSpeed = this._config.chase.maxCameraSpeed;
   }
 
   /**

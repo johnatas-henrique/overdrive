@@ -3,7 +3,7 @@
  *
  * Core types shared across all camera stories:
  * - CameraMode enum (5 values: Inactive, Grid, Cockpit, Chase, Drone)
- * - ICameraManager interface (7 methods)
+ * - ICameraManager interface (9 methods)
  * - CameraConfig interface (25 knobs across 7 groups)
  * - ShakeType, ShakeConfig, ActiveShake (forward types — full impl in Story 007)
  *
