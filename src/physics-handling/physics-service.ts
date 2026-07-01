@@ -31,13 +31,6 @@ import { InputState } from "@/foundation/determinism/types";
 import type { IEventBus, Subscription } from "@/foundation/event-bus/types";
 import { ArcadeGripModel } from "./arcade-grip-model";
 import {
-  type CarPhysicsState,
-  createDefaultCarPhysicsState,
-} from "./car-physics-state";
-import type { CarTelemetry, IPhysics } from "./i-physics";
-import type { ITrackSystem } from "./i-track-system";
-import type { PhysicsConfig } from "./physics-config";
-import {
   buildSurfaceModifiers,
   type CarSurfaceState,
   enforceMinSurfaceSpeed,
@@ -45,6 +38,14 @@ import {
   SurfaceType,
   updateSurfaceState,
 } from "./surface-handler";
+import {
+  type CarPhysicsState,
+  type CarTelemetry,
+  createDefaultCarPhysicsState,
+  type IPhysics,
+  type ITrackSystem,
+  type PhysicsConfig,
+} from "./types";
 
 /**
  * PhysicsService implements the Arcade Dynamic vehicle model.
@@ -398,7 +399,7 @@ export class PhysicsService implements IPhysics {
     for (const state of this._carStates.values()) {
       this._sortedStates.push(state);
     }
-    this._sortedStates.sort((a, b) => a.carId.localeCompare(b.carId));
+    this._sortedStates.sort(PhysicsService.compareByCarId);
     for (const state of this._sortedStates) {
       if (state.body) {
         this._activeBodies.push(state.body);
@@ -718,6 +719,13 @@ export class PhysicsService implements IPhysics {
    * @see C25 — setPit() speed clamping with smooth deceleration
    * @see AC-2 — Pit limiter linear ramp acceptance criteria
    */
+  /** Compare two CarPhysicsState entries by carId for deterministic sort order. */
+  static compareByCarId(a: CarPhysicsState, b: CarPhysicsState): number {
+    if (a.carId < b.carId) return -1;
+    if (a.carId > b.carId) return 1;
+    return 0;
+  }
+
   private static applyPitLimiter(
     currentSpeed: number,
     pitSpeedLimit: number,

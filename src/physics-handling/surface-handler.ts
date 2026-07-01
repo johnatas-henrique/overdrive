@@ -16,8 +16,7 @@
  * @see C59 — Track spline carries per-segment gripSurface metadata
  */
 
-import type { CarPhysicsState } from "./car-physics-state";
-import type { PhysicsConfig } from "./physics-config";
+import type { CarPhysicsState, PhysicsConfig } from "./types";
 
 // ─── Surface Type ────────────────────────────────────────────────────────────
 
