@@ -20,6 +20,53 @@ import type { PhysicsBody } from "@babylonjs/core/Physics/v2/physicsBody";
 // ---------------------------------------------------------------------------
 
 /**
+ * Create a default CarPhysicsState with all fields initialised.
+ *
+ * Shared factory function used by PhysicsService.registerCar() and
+ * test helpers — prevents field drift when CarPhysicsState is extended.
+ *
+ * @param carId - Unique car identifier
+ * @param body - Havok PhysicsBody for the car
+ * @param topSpeedMs - Car's top speed in m/s (used for off-track min speed floor).
+ *                     Defaults to 50 when config is not yet available.
+ * @returns A fully initialised CarPhysicsState
+ *
+ * @see FR-006 — Factory extraction for DRY default state
+ */
+export function createDefaultCarPhysicsState(
+  carId: string,
+  body: PhysicsBody | null,
+  topSpeedMs: number = 50
+): CarPhysicsState {
+  return {
+    carId,
+    body,
+    targetSpeed: 0,
+    targetYawRate: 0,
+    splinePosition: 0,
+    speedKmh: 0,
+    rpm: 0,
+    gear: 0,
+    lateralG: 0,
+    accelG: 0,
+    tireSqueal: 0,
+    kerbHit: false,
+    offTrack: false,
+    frictionMultiplier: 1,
+    minSurfaceSpeed: 0,
+    gripMultiplier: 1,
+    fuelMult: 1,
+    tireCondition: 1,
+    pitEntrySpeed: null,
+    gradient: 0,
+    topSpeedMs,
+    tireBlownEmitted: false,
+    fuelEmptyEmitted: false,
+    wasAboveStopEpsilon: false,
+  };
+}
+
+/**
  * Per-car physics state for one simulation tick.
  *
  * Instances are created on entity.spawned (Story 001 defines the structure;
@@ -63,8 +110,8 @@ export interface CarPhysicsState {
   /** Current engine RPM. */
   rpm: number;
 
-  /** Current gear: 0 = neutral, 1–6 = forward gears. */
-  gear: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  /** Current gear: -1 (reverse), 0 (neutral), or 1–6. */
+  gear: number;
 
   // ─── Telemetry (published each tick) ────────────────────────────────
 
@@ -83,8 +130,44 @@ export interface CarPhysicsState {
   /** True if car is fully off the track surface. */
   offTrack: boolean;
 
+  /**
+   * Friction multiplier from surface (1.0 = tarmac, >1 = off-track).
+   * Applied to dragCoeff in the engine model to increase drag on
+   * off-track surfaces (grass/gravel).
+   *
+   * @see STORY-004 — AC-2: Off-track 6× friction
+   */
+  frictionMultiplier: number;
+
+  /**
+   * Minimum speed floor for current surface in m/s.
+   * 0 = no floor (tarmac/kerb). >0 = car cannot slow below this on
+   * off-track surfaces (grass/gravel).
+   *
+   * Formula: minSurfaceSpeed = topSpeed × minSpeedFraction
+   *
+   * @see STORY-004 — AC-3: Off-track minimum speed
+   */
+  minSurfaceSpeed: number;
+
   /** Current effective grip multiplier (gripMax / baseGrip). */
   gripMultiplier: number;
+
+  // ─── Track Data ──────────────────────────────────────────────────
+
+  /** Track gradient at car's spline position (sin of slope angle). Positive = uphill. */
+  gradient: number;
+
+  /**
+   * Car's top speed in m/s — used for off-track minimum speed floor.
+   *
+   * Initialized from PhysicsConfig.topSpeedL1toL5[defaultLevel] when the
+   * car state is created. Will be replaced by per-car stat lookup when
+   * car stats integration lands (Story 005b+).
+   *
+   * @see TD-PHYS-001 — per-car topSpeed integration
+   */
+  topSpeedMs: number;
 
   // ─── External Inputs (1-tick delay per ADR-0008) ──────────────────
 
@@ -94,13 +177,16 @@ export interface CarPhysicsState {
   /** Tire condition from Tire Wear system (0..1). Default 1.0. */
   tireCondition: number;
 
-  // ─── Control State ──────────────────────────────────────────────────
+  // ─── Pit Limiter State ────────────────────────────────────────────
 
-  /** True when car is locked (grid start / pit stop). */
-  locked: boolean;
-
-  /** True when car is in pit lane speed-limited mode. */
-  pitMode: boolean;
+  /**
+   * Speed at pit mode entry (m/s). Used to compute constant-rate linear
+   * deceleration toward pitSpeedLimit. Set when setPit(true) is called,
+   * cleared when setPit(false).
+   *
+   * @see AC-2 — Pit limiter linear ramp acceptance criteria
+   */
+  pitEntrySpeed: number | null;
 
   // ─── Edge-Event Guards ──────────────────────────────────────────────
 
@@ -138,8 +224,8 @@ export interface CarTelemetry {
   readonly speedKmh: number;
   /** Engine RPM. */
   readonly rpm: number;
-  /** Current gear: 0 (neutral) or 1–6. */
-  readonly gear: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  /** Current gear: -1 (reverse), 0 (neutral), or 1–6. */
+  readonly gear: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
   /** Lateral acceleration in G. */
   readonly lateralG: number;
   /** Longitudinal acceleration in G. */
@@ -171,6 +257,7 @@ export interface CarTelemetry {
  * ```typescript
  * const physics = new PhysicsService(scene, trackSystem);
  * await physics.init(config);
+ * physics.setSurfaceProvider((pos) => trackSystem.getSurfaceAt(pos));
  * pipeline.register("physics", (dt) => physics.update(dt), 2);
  * ```
  */
@@ -194,6 +281,34 @@ export interface IPhysics {
    * @param dt - Delta time in seconds (typically 1/60)
    */
   update(dt: number): void;
+
+  /**
+   * Register a car with the physics service.
+   *
+   * Creates internal state for the car so it participates in the physics
+   * pipeline on subsequent update() ticks.
+   *
+   * @param carId - Unique car identifier
+   * @param body - Havok PhysicsBody for the car
+   * @param initialState - Optional partial state overrides for initial setup
+   *
+   * @throws {Error} When carId is already registered
+   */
+  registerCar(
+    carId: string,
+    body: PhysicsBody,
+    initialState?: Partial<CarPhysicsState>
+  ): void;
+
+  /**
+   * Remove a car and all associated state from the physics service.
+   *
+   * Cleans up surface state, input state, telemetry, pit mode, and lock
+   * state for the given carId.
+   *
+   * @param carId - Unique car identifier
+   */
+  removeCar(carId: string): void;
 
   /**
    * Lock or unlock a car for grid start or pit stop.
@@ -327,6 +442,11 @@ export interface PhysicsConfig {
   /** Base grip coefficient — primary feel knob. */
   readonly baseGrip: number;
 
+  // ─── Physics Constants ─────────────────────────────────────────────
+
+  /** Gravity acceleration in m/s² (positive = downward). */
+  readonly gravity: number;
+
   // ─── Steering ──────────────────────────────────────────────────────
 
   /** Speed (m/s) at which steering is fully clamped to steerMinRatio. */
@@ -336,12 +456,17 @@ export interface PhysicsConfig {
 
   // ─── Lift-Off Oversteer ────────────────────────────────────────────
 
-  /** Rear grip multiplier during lift-off (e.g., 0.7 = 30% grip loss). */
-  readonly liftOffRearFactor: number;
   /** Minimum steering input magnitude to trigger lift-off oversteer. */
   readonly liftOffMinSteering: number;
   /** Throttle threshold below which lift-off oversteer activates. */
   readonly liftOffThrottleMax: number;
+  /** Brake threshold below which lift-off oversteer activates. */
+  readonly liftOffBrakeMax: number;
+
+  // ─── Lift-Off Oversteer Speed ─────────────────────────────────────────
+
+  /** Reference speed (km/h) for rotation boost normalization. Default: 200. */
+  readonly liftOffRefSpeedKmh: number;
 
   // ─── Drag & Braking ────────────────────────────────────────────────
 
@@ -355,14 +480,21 @@ export interface PhysicsConfig {
   /** Maximum speed in pit lane (m/s). */
   readonly pitSpeedLimit: number;
 
+  /**
+   * Time in seconds to transition from current speed to pitSpeedLimit.
+   * Used by the linear ramp in applyPitLimiter().
+   * Default: 2.0s — car decelerates smoothly from 250 km/h to 80 km/h.
+   */
+  readonly pitSpeedTransitionTime: number;
+
   // ─── Off-Track ─────────────────────────────────────────────────────
 
   /** Friction multiplier when off-track. */
   readonly offTrackFriction: number;
   /** Grip multiplier when off-track (0..1). */
   readonly offTrackGripFactor: number;
-  /** Minimum speed maintained when off-track (m/s). */
-  readonly offTrackMinSpeed: number;
+  /** Minimum speed fraction of topSpeed when off-track (0..1, e.g. 0.3 = 30%). */
+  readonly offTrackMinSpeedFraction: number;
 
   // ─── Kerb ──────────────────────────────────────────────────────────
 
@@ -378,10 +510,27 @@ export interface PhysicsConfig {
 
   // ─── Gearbox ───────────────────────────────────────────────────────
 
-  /** RPM threshold for automatic upshift. */
+  /** Fraction of rpmMax for upshift threshold (0..1, e.g. 0.8 = 80% of rpmMax). */
   readonly autoShiftRpmThreshold: number;
   /** Maximum engine RPM. */
   readonly rpmMax: number;
+  /** 6 forward gear ratios (G1 through G6). */
+  readonly gearRatios: [number, number, number, number, number, number];
+  /** Acceleration level (1–5) for torque curve multiplier. */
+  readonly accelLevel: 1 | 2 | 3 | 4 | 5;
+  /** RPM ratio for downshift threshold (fraction of upshift threshold). */
+  readonly downshiftRpmRatio: number;
+  /** Maximum reverse speed (m/s). */
+  readonly reverseMaxSpeed: number;
+  /** Speed (m/s) at which 1st gear reaches rpmMax — determines RPM scaling. */
+  readonly gear1RedlineSpeed: number;
+
+  // ─── Engine Power ──────────────────────────────────────────────────
+
+  /** Maximum power output multiplier. */
+  readonly powerCeiling: number;
+  /** Car mass in kg (used for gradient force and coast deceleration). */
+  readonly mass: number;
 
   // ─── Misc ──────────────────────────────────────────────────────────
 
