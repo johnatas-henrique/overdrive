@@ -10,6 +10,8 @@
  * @see C22 — 3-phase execution within pipeline slot #2
  */
 
+import type { PhysicsBody } from "@babylonjs/core/Physics/v2/physicsBody";
+import type { CarPhysicsState } from "./car-physics-state";
 import type { PhysicsConfig } from "./physics-config";
 
 /**
@@ -32,8 +34,8 @@ export interface CarTelemetry {
   readonly speedKmh: number;
   /** Engine RPM. */
   readonly rpm: number;
-  /** Current gear: 0 (neutral) or 1–6. */
-  readonly gear: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  /** Current gear: -1 (reverse), 0 (neutral), or 1–6. */
+  readonly gear: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
   /** Lateral acceleration in G. */
   readonly lateralG: number;
   /** Longitudinal acceleration in G. */
@@ -57,6 +59,7 @@ export interface CarTelemetry {
  * ```typescript
  * const physics = new PhysicsService(scene, trackSystem);
  * await physics.init(config);
+ * physics.setSurfaceProvider((pos) => trackSystem.getSurfaceAt(pos));
  * pipeline.register("physics", (dt) => physics.update(dt), 2);
  * ```
  */
@@ -80,6 +83,32 @@ export interface IPhysics {
    * @param dt - Delta time in seconds (typically 1/60)
    */
   update(dt: number): void;
+
+  /**
+   * Register a car with the physics service.
+   *
+   * Creates internal state for the car so it participates in the physics
+   * pipeline on subsequent update() ticks.
+   *
+   * @param carId - Unique car identifier
+   * @param body - Havok PhysicsBody for the car
+   * @param initialState - Optional partial state overrides for initial setup
+   */
+  registerCar(
+    carId: string,
+    body: PhysicsBody,
+    initialState?: Partial<CarPhysicsState>
+  ): void;
+
+  /**
+   * Remove a car and all associated state from the physics service.
+   *
+   * Cleans up surface state, input state, telemetry, pit mode, and lock
+   * state for the given carId.
+   *
+   * @param carId - Unique car identifier
+   */
+  removeCar(carId: string): void;
 
   /**
    * Lock or unlock a car for grid start or pit stop.
