@@ -1,10 +1,11 @@
 # Story 001: Camera Foundation
 
 > **Epic**: Camera
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
+> **Last Updated**: 2026-06-30
 > **Estimate**: 8h
 
 ## Context
@@ -34,7 +35,7 @@
 _From QL-STORY-READY gate, defined for infrastructure story:_
 
 - [ ] **F1**: `CameraMode` enum compiles with exactly 5 values: `Inactive`, `Grid`, `Cockpit`, `Chase`, `Drone`.
-- [ ] **F2**: `ICameraManager` interface is defined with all 8 methods: `init`, `setActiveMode`, `toggleCockpitChase`, `setSpeedData`, `addShake`, `update`, `dispose`.
+- [ ] **F2**: `ICameraManager` interface is defined with all 7 methods: `init`, `setActiveMode`, `toggleCockpitChase`, `setSpeedData`, `addShake`, `update`, `dispose`.
 - [ ] **F3**: A class implementing `ICameraManager` exists and initializes without error.
 - [ ] **F4**: 4 camera instances are created on init, each with the correct Babylon.js type: FreeCamera (grid), FreeCamera (cockpit), FollowCamera (chase), ArcRotateCamera (drone).
 - [ ] **F5**: Each camera instance has `camera.inputs.clear()` called and `camera.inertia === 0` post-init.
@@ -198,7 +199,7 @@ _Written by qa-lead at story creation:_
 - **F2** (interface methods):
   - Given: `ICameraManager` interface defined
   - When: TypeScript type check is run
-  - Then: Interface contains exactly 8 methods with correct signatures
+  - Then: Interface contains exactly 7 methods with correct signatures
   - Edge: Verify no extra or missing methods
 
 - **F3** (class init):
@@ -248,3 +249,13 @@ _Written by qa-lead at story creation:_
 
 - Depends on: ConfigManager (Foundation), Scene is provided at init time
 - Unlocks: Stories 002–010
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-30
+**Criteria**: 7/7 passing
+**Deviations**: None
+**Test Evidence**: Integration test at `tests/integration/camera/camera-foundation.test.ts` (36 tests)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS, all suggestions applied

@@ -81,3 +81,6 @@
 | ✅     | 2026-06-30 | SP2/physics/ST5    | `onRaceGreenFlag` doesn't clear `_pendingFuelUpdates`/`_pendingTireUpdates`. Added .clear() calls. | physics-service.ts:531-538 | S | SP2/physics/tech-debt |
 | ✅     | 2026-06-30 | SP2/flaky-test     | getState_completes_within_0_01ms flaky — JIT warmup sensitivity. Added 500 warmup iterations. | debounce-edge-cases.test.ts | S | SP2/physics/tech-debt |
 | ✅     | 2026-06-30 | SP2/physics/ST2    | Phase1Stub dead code — Story 002 replaced it with ArcadeGripModel but stub and its tests were never removed. Removed file, updated determinism test to use ArcadeGripModel. | phase1-stub.ts, physics-service.test.ts | S | SP2/physics/tech-debt |
+| 🔴     | 2026-06-30 | SP2/camera/ST4              | AC-11b spring-back not verifiable with NullEngine — requires manual QA with scene.render() | chase-camera-occlusion.test.ts | S | |
+| 🔴     | 2026-06-30 | SP2/camera/ST4              | collisionGroup === 2 hardcoded — should use CollisionGroup.Barrier enum when defined | camera-manager.ts:415 | S | |
+| 🔴     | 2026-06-30 | SP2/camera/ST4 code-review  | _occlusionActive not exposed — consider public getter for future HUD/audio | camera-manager.ts | S | |

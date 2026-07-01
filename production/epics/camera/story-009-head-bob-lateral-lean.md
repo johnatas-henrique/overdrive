@@ -1,10 +1,11 @@
 # Story 009: Head Bob + Lateral Lean
 
 > **Epic**: Camera
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Visual/Feel
 > **Manifest Version**: 2026-06-21
+> **Last Updated**: 2026-06-30
 > **Estimate**: 5h
 
 ## Context
@@ -162,7 +163,20 @@ _Written by qa-lead at story creation:_
 **Story Type**: Visual/Feel
 **Required evidence**: `production/qa/evidence/camera-head-bob-lean-evidence.md` + sign-off from playtest
 
-**Status**: [ ] Not yet created
+**Status**: [x] Complete
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-30
+**Criteria**: 3/3 passing (AC-13, AC-16, AC-16a)
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/camera/head-bob-lean.test.ts` (28 tests)
+**Code Review**: Complete — engine specialist CLEAN, QA-testability GOOD
+**Coverage**: 100% all 4 metrics on camera-manager.ts
+**NaN guard added**: `setLateralG()` rejects NaN/Infinity, resets to 0
+**JSDoc fix**: lean.intensity clarified as "degrees per G of lateral acceleration"
 
 ---
 

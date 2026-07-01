@@ -333,8 +333,6 @@ stories:
     completed: 2026-06-30
     owner: ""
     estimate_days: 3
-    blocker: ""
-    completed: ""
 
   - id: "2-32"
     name: "Story 002: Arcade Grip Model"
@@ -381,39 +379,41 @@ stories:
     name: "Story 001: Camera Foundation"
     file: "production/epics/camera/story-001-camera-foundation.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
+    completed: 2026-06-30
     owner: ""
     estimate_days: 1
     blocker: ""
-    completed: ""
 
   - id: "2-37"
     name: "Story 002: GSM Camera Lifecycle"
     file: "production/epics/camera/story-002-gsm-camera-lifecycle.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   - id: "2-38"
     name: "Story 003: Cockpit Camera"
     file: "production/epics/camera/story-003-cockpit-camera.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   - id: "2-39"
     name: "Story 004: Chase Camera Occlusion"
     file: "production/epics/camera/story-004-chase-camera-occlusion.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
+    blocker: ""
+    completed: "2026-06-30"
     blocker: ""
     completed: ""
 
@@ -421,9 +421,11 @@ stories:
     name: "Story 005: Cockpit/Chase Toggle"
     file: "production/epics/camera/story-005-cockpit-chase-toggle.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
+    blocker: ""
+    completed: "2026-06-30"
     blocker: ""
     completed: ""
 
@@ -431,9 +433,11 @@ stories:
     name: "Story 006: Speed FOV Shift"
     file: "production/epics/camera/story-006-speed-fov-shift.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
+    blocker: ""
+    completed: "2026-06-30"
     blocker: ""
     completed: ""
 
@@ -441,9 +445,11 @@ stories:
     name: "Story 007: Camera Shake System"
     file: "production/epics/camera/story-007-camera-shake-system.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1
+    blocker: ""
+    completed: "2026-06-30"
     blocker: ""
     completed: ""
 
@@ -451,9 +457,11 @@ stories:
     name: "Story 008: Drone Camera Orbit"
     file: "production/epics/camera/story-008-drone-camera-orbit.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1
+    blocker: ""
+    completed: "2026-06-30"
     blocker: ""
     completed: ""
 
@@ -461,18 +469,38 @@ stories:
     name: "Story 009: Head Bob + Lateral Lean"
     file: "production/epics/camera/story-009-head-bob-lateral-lean.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   - id: "2-45"
     name: "Story 010: Camera Config HMR"
     file: "production/epics/camera/story-010-camera-config-hmr.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
+
+  - id: "2-46"
+    name: "Story 001: CarEntity Spawn & Lifecycle"
+    file: "production/epics/entity-car-lifecycle/story-001-spawn-lifecycle.md"
+    priority: must-have
+    status: done
+    owner: ""
+    estimate_days: 1
+    blocker: ""
+    completed: "2026-06-30"
+
+  - id: "2-47"
+    name: "Story 002: Destroy All & GSM Integration"
+    file: "production/epics/entity-car-lifecycle/story-002-destroy-gsm-integration.md"
+    priority: must-have
+    status: done
+    owner: ""
+    estimate_days: 1.5
+    blocker: ""
+    completed: "2026-06-30"

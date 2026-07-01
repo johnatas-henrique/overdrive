@@ -1,10 +1,11 @@
 # Story 005: Instant Cockpit/Chase Toggle
 
 > **Epic**: Camera
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
+> **Last Updated**: 2026-06-30
 > **Estimate**: 4h
 
 ## Context
@@ -132,7 +133,19 @@ _Written by qa-lead at story creation:_
 **Story Type**: Logic
 **Required evidence**: `tests/unit/camera/cockpit-chase-toggle.test.ts`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Complete
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-30
+**Criteria**: 3/3 passing (AC-2, AC-15, AC-16)
+**Deviations**: None
+**Test Evidence**: Unit test at `tests/unit/camera/cockpit-chase-toggle.test.ts` (16 tests)
+**Code Review**: Complete — engine specialist CLEAN, QA-testability TESTABLE
+**Coverage**: 100% all metrics on camera-manager.ts
+**Extra fix**: `_currentMode` assignment order in `setActiveMode()` (pre-existing concern found during code review)
 
 ---
 

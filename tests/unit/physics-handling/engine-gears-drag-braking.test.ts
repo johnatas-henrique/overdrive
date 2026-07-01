@@ -22,8 +22,7 @@ import {
   ArcadeGripModel,
   GEAR_COUNT,
 } from "@/physics-handling/arcade-grip-model";
-import type { CarPhysicsState } from "@/physics-handling/car-physics-state";
-import type { PhysicsConfig } from "@/physics-handling/physics-config";
+import type { CarPhysicsState, PhysicsConfig } from "@/physics-handling/types";
 
 // ─── Test Helpers ───────────────────────────────────────────────────────────
 
@@ -1238,5 +1237,56 @@ describe("FR-027 — Auto-shift triggers", () => {
     // 371 < 4000 (half-threshold) → auto-downshift from gear 4
     expect(engineState.gear).toBeLessThan(4);
     expect(newSpeed).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ─── FR-015: Brake at zero speed must not create propulsion ────────────────
+
+describe("FR-015 — Brake at zero speed: no backward propulsion from rest", () => {
+  it("test_brakeAtZeroSpeed_staysZero", () => {
+    // When speedMs=0 and brake=1, the car should NOT move backward.
+    // Previously brakeSign = speedMs >= 0 ? -1 : 1 evaluated to -1 at speedMs=0,
+    // pushing a stationary car backward. Fixed: brakeSign=0 when speedMs===0.
+    const engineState: EngineStateSnapshot = {
+      speedMs: 0,
+      gear: -1,
+      rpm: 0,
+      fuelMult: 1,
+      gradient: 0,
+      mass: 800,
+    };
+    const inputs: EngineInputs = { throttle: 0, brake: 1, gearDelta: 0 };
+
+    const newSpeed = ArcadeGripModel.computeTargetSpeed(
+      engineState,
+      inputs,
+      1 / 60,
+      DEFAULT_ENGINE_CONFIG
+    );
+
+    // Must stay at zero — no backward propulsion from rest
+    expect(newSpeed).toBe(0);
+  });
+
+  it("test_brakeAtZeroSpeed_forwardGear_staysZero", () => {
+    // Same test but in forward gear — brake at rest should still not move the car
+    const engineState: EngineStateSnapshot = {
+      speedMs: 0,
+      gear: 1,
+      rpm: 0,
+      fuelMult: 1,
+      gradient: 0,
+      mass: 800,
+    };
+    const inputs: EngineInputs = { throttle: 0, brake: 1, gearDelta: 0 };
+
+    const newSpeed = ArcadeGripModel.computeTargetSpeed(
+      engineState,
+      inputs,
+      1 / 60,
+      DEFAULT_ENGINE_CONFIG
+    );
+
+    expect(newSpeed).toBe(0);
   });
 });

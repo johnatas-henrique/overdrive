@@ -1,10 +1,11 @@
 # Story 003: Cockpit Camera
 
 > **Epic**: Camera
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Manifest Version**: 2026-06-21
+> **Last Updated**: 2026-06-30
 > **Estimate**: 10h
 
 ## Context
@@ -135,7 +136,18 @@ _Written by qa-lead at story creation:_
 **Story Type**: Integration
 **Required evidence**: `tests/integration/camera/cockpit-camera.test.ts`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Complete
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-30
+**Criteria**: 3/3 passing (AC-1, AC-12, AC-17)
+**Deviations**: None
+**Test Evidence**: Integration test at `tests/integration/camera/cockpit-camera.test.ts` (14 tests)
+**Code Review**: Complete — engine specialist CLEAN, QA-testability 3 gaps fixed (rotation, multi-frame, GSM hook)
+**Coverage**: 100% all metrics on camera-manager.ts
 
 ---
 

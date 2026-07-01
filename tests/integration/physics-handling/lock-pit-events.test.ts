@@ -26,14 +26,14 @@ import { FIXED_DT } from "@/foundation/determinism/accumulator";
 import { InputState } from "@/foundation/determinism/types";
 import type { IEventBus } from "@/foundation/event-bus/types";
 import { ArcadeGripModel } from "@/physics-handling/arcade-grip-model";
+import { PhysicsService } from "@/physics-handling/physics-service";
+import { SurfaceType } from "@/physics-handling/surface-handler";
 import {
   type CarPhysicsState,
   createDefaultCarPhysicsState,
-} from "@/physics-handling/car-physics-state";
-import type { ITrackSystem } from "@/physics-handling/i-track-system";
-import type { PhysicsConfig } from "@/physics-handling/physics-config";
-import { PhysicsService } from "@/physics-handling/physics-service";
-import { SurfaceType } from "@/physics-handling/surface-handler";
+  type ITrackSystem,
+  type PhysicsConfig,
+} from "@/physics-handling/types";
 
 // ─── Mock Babylon.js WASM module ──────────────────────────────────────────
 vi.mock("@babylonjs/havok", () => ({

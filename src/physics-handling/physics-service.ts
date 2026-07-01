@@ -31,13 +31,6 @@ import { InputState } from "@/foundation/determinism/types";
 import type { IEventBus, Subscription } from "@/foundation/event-bus/types";
 import { ArcadeGripModel } from "./arcade-grip-model";
 import {
-  type CarPhysicsState,
-  createDefaultCarPhysicsState,
-} from "./car-physics-state";
-import type { CarTelemetry, IPhysics } from "./i-physics";
-import type { ITrackSystem } from "./i-track-system";
-import type { PhysicsConfig } from "./physics-config";
-import {
   buildSurfaceModifiers,
   type CarSurfaceState,
   enforceMinSurfaceSpeed,
@@ -45,6 +38,14 @@ import {
   SurfaceType,
   updateSurfaceState,
 } from "./surface-handler";
+import {
+  type CarPhysicsState,
+  type CarTelemetry,
+  createDefaultCarPhysicsState,
+  type IPhysics,
+  type ITrackSystem,
+  type PhysicsConfig,
+} from "./types";
 
 /**
  * PhysicsService implements the Arcade Dynamic vehicle model.
@@ -194,6 +195,20 @@ export class PhysicsService implements IPhysics {
       );
     }
 
+    // Validate tuple-backed config arrays (FR-005)
+    const tupleFields = [
+      { name: "topSpeedL1toL5", arr: config.topSpeedL1toL5, min: 5 },
+      { name: "accelerationL1toL5", arr: config.accelerationL1toL5, min: 5 },
+      { name: "corneringL1toL5", arr: config.corneringL1toL5, min: 5 },
+    ] as const;
+    for (const { name, arr, min } of tupleFields) {
+      if (arr.length < min) {
+        throw new Error(
+          `[PhysicsService] ${name} length (${arr.length}) must be at least ${min}`
+        );
+      }
+    }
+
     // Build surface modifier lookup table from config (Story 004).
     // Cached once — zero per-tick allocation.
     // @see CONCERN-2 — physics specialist review: build once at init
@@ -214,11 +229,9 @@ export class PhysicsService implements IPhysics {
 
     // Suppress auto-step — our pipeline calls executeStep exclusively
     // (ADR-0002 F17, TR-DET-006)
-    (
-      this._scene as unknown as { _advancePhysicsEngineStep: () => void }
-    )._advancePhysicsEngineStep = () => {
-      /* no-op — pipeline controls stepping */
-    };
+    // Uses the official Babylon.js API: scene.physicsEnabled = false prevents
+    // _advancePhysicsEngineStep from being called in the render loop.
+    this._scene.physicsEnabled = false;
 
     // Subscribe to Event Bus events
     // race.green.flag resets per-car edge-event guards for a fresh race session.
@@ -398,7 +411,7 @@ export class PhysicsService implements IPhysics {
     for (const state of this._carStates.values()) {
       this._sortedStates.push(state);
     }
-    this._sortedStates.sort((a, b) => a.carId.localeCompare(b.carId));
+    this._sortedStates.sort(PhysicsService.compareByCarId);
     for (const state of this._sortedStates) {
       if (state.body) {
         this._activeBodies.push(state.body);
@@ -481,7 +494,13 @@ export class PhysicsService implements IPhysics {
     const topSpeedMs = this._config ? this._config.topSpeedL1toL5[0] : 50;
     const state = createDefaultCarPhysicsState(carId, body, topSpeedMs);
     if (initialState) {
-      Object.assign(state, initialState);
+      // Apply only mutable fields — protect carId and body invariants (FR-008)
+      const {
+        carId: _ignoreCarId,
+        body: _ignoreBody,
+        ...mutableFields
+      } = initialState;
+      Object.assign(state, mutableFields);
     }
     this._carStates.set(carId, state);
   }
@@ -501,6 +520,9 @@ export class PhysicsService implements IPhysics {
     this._telemetry.delete(carId);
     this._pitCars.delete(carId);
     this._lockedCars.delete(carId);
+    // Clear pending updates to prevent stale values on re-register (FR-007)
+    this._pendingFuelUpdates.delete(carId);
+    this._pendingTireUpdates.delete(carId);
   }
 
   // ─── Control Methods ─────────────────────────────────────────────────
@@ -566,12 +588,10 @@ export class PhysicsService implements IPhysics {
     provider: ((splinePosition: number) => SurfaceType) | null
   ): void {
     this._surfaceProvider = provider;
-    // Clear stale per-car surface state when provider changes.
+    // Clear stale per-car surface state when provider changes (FR-004).
     // Kerb timers and wasOnKerb flags are tied to the previous provider's
-    // surface decisions and must restart fresh with the new provider.
-    if (provider === null) {
-      this._surfaceStates.clear();
-    }
+    // surface decisions and must restart fresh with any new provider.
+    this._surfaceStates.clear();
   }
 
   // ─── Query Methods ───────────────────────────────────────────────────
@@ -621,7 +641,11 @@ export class PhysicsService implements IPhysics {
    * @inheritdoc
    */
   onFuelUpdate(carId: string, fuelMult: number): void {
-    // Defense-in-depth: clamp to [0, 1] to prevent invalid values from
+    // Defense-in-depth: reject non-finite values (FR-006)
+    if (!Number.isFinite(fuelMult)) {
+      return;
+    }
+    // Clamp to [0, 1] to prevent invalid values from
     // propagating into the engine model (TD-PHYS-003).
     this._pendingFuelUpdates.set(carId, Math.max(0, Math.min(1, fuelMult)));
   }
@@ -632,7 +656,11 @@ export class PhysicsService implements IPhysics {
    * @inheritdoc
    */
   onTireUpdate(carId: string, tireCondition: number): void {
-    // Defense-in-depth: clamp to [0, 1] to prevent invalid values from
+    // Defense-in-depth: reject non-finite values (FR-006)
+    if (!Number.isFinite(tireCondition)) {
+      return;
+    }
+    // Clamp to [0, 1] to prevent invalid values from
     // propagating into the grip model (TD-PHYS-003).
     this._pendingTireUpdates.set(
       carId,
@@ -718,6 +746,13 @@ export class PhysicsService implements IPhysics {
    * @see C25 — setPit() speed clamping with smooth deceleration
    * @see AC-2 — Pit limiter linear ramp acceptance criteria
    */
+  /** Compare two CarPhysicsState entries by carId for deterministic sort order. */
+  static compareByCarId(a: CarPhysicsState, b: CarPhysicsState): number {
+    if (a.carId < b.carId) return -1;
+    if (a.carId > b.carId) return 1;
+    return 0;
+  }
+
   private static applyPitLimiter(
     currentSpeed: number,
     pitSpeedLimit: number,
