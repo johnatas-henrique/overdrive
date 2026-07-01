@@ -12,6 +12,53 @@
 import type { PhysicsBody } from "@babylonjs/core/Physics/v2/physicsBody";
 
 /**
+ * Create a default CarPhysicsState with all fields initialised.
+ *
+ * Shared factory function used by PhysicsService.registerCar() and
+ * test helpers — prevents field drift when CarPhysicsState is extended.
+ *
+ * @param carId - Unique car identifier
+ * @param body - Havok PhysicsBody for the car
+ * @param topSpeedMs - Car's top speed in m/s (used for off-track min speed floor).
+ *                     Defaults to 50 when config is not yet available.
+ * @returns A fully initialised CarPhysicsState
+ *
+ * @see FR-006 — Factory extraction for DRY default state
+ */
+export function createDefaultCarPhysicsState(
+  carId: string,
+  body: PhysicsBody | null,
+  topSpeedMs: number = 50
+): CarPhysicsState {
+  return {
+    carId,
+    body,
+    targetSpeed: 0,
+    targetYawRate: 0,
+    splinePosition: 0,
+    speedKmh: 0,
+    rpm: 0,
+    gear: 0,
+    lateralG: 0,
+    accelG: 0,
+    tireSqueal: 0,
+    kerbHit: false,
+    offTrack: false,
+    frictionMultiplier: 1,
+    minSurfaceSpeed: 0,
+    gripMultiplier: 1,
+    fuelMult: 1,
+    tireCondition: 1,
+    pitEntrySpeed: null,
+    gradient: 0,
+    topSpeedMs,
+    tireBlownEmitted: false,
+    fuelEmptyEmitted: false,
+    wasAboveStopEpsilon: false,
+  };
+}
+
+/**
  * Per-car physics state for one simulation tick.
  *
  * Instances are created on entity.spawned (Story 001 defines the structure;

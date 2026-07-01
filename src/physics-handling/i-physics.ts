@@ -93,6 +93,8 @@ export interface IPhysics {
    * @param carId - Unique car identifier
    * @param body - Havok PhysicsBody for the car
    * @param initialState - Optional partial state overrides for initial setup
+   *
+   * @throws {Error} When carId is already registered
    */
   registerCar(
     carId: string,
