@@ -125,7 +125,7 @@ onCollisionImpact(payload: CollisionImpactPayload): void {
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/audio/collision-sounds_test.ts` OR playtest doc.
+**Required evidence**: `tests/integration/audio/collision-sounds.test.ts` OR playtest doc.
 
 **Status**: [ ] Not yet created
 

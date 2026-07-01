@@ -149,7 +149,7 @@ This module operates on pure data (SplineSegment[], Vec3). No imports from `@bab
 
 _Written by qa-lead at story creation. The developer implements against these — do not invent new test cases during implementation._
 
-**Test file**: `tests/unit/track-environment/spline-queries_test.ts`
+**Test file**: `tests/unit/track-environment/spline-queries.test.ts`
 
 - **AC-1** (getTrackHalfWidth):
   - Given: Spline with 3 segments where segment[0].point = (0,0,0), width = 12, segment[1].point = (10,0,0), width = 20, segment[2].point = (20,0,0), width = 8
@@ -199,7 +199,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/track-environment/spline-queries_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/track-environment/spline-queries.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 

@@ -125,7 +125,7 @@ export class AudioManager {
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/audio/audio-engine-init_test.ts` — must exist and pass.
+**Required evidence**: `tests/integration/audio/audio-engine-init.test.ts` — must exist and pass.
 
 **Status**: [ ] Not yet created
 

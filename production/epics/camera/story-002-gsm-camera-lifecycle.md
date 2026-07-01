@@ -174,7 +174,7 @@ _Written by qa-lead at story creation:_
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/camera/gsm-camera-lifecycle_test.ts`
+**Required evidence**: `tests/integration/camera/gsm-camera-lifecycle.test.ts`
 
 **Status**: [ ] Not yet created
 

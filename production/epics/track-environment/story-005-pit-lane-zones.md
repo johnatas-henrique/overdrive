@@ -180,7 +180,7 @@ getPitGarageSlot(index: number): Vec3 {
 
 _Written by qa-lead at story creation. The developer implements against these — do not invent new test cases during implementation._
 
-**Test file**: `tests/unit/track-environment/pit-zones_test.ts`
+**Test file**: `tests/unit/track-environment/pit-zones.test.ts`
 
 - **AC-1** (isInPitEntryZone):
   - Given: PitEntryZone with xMin=100, xMax=200, zMin=50, zMax=150
@@ -252,7 +252,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/track-environment/pit-zones_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/track-environment/pit-zones.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 

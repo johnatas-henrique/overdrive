@@ -1,7 +1,8 @@
 # Story 002: Arcade Grip Model
 
 > **Epic**: Physics / Handling
-> **Status**: Ready
+> **Status**: Complete
+> **Last Updated**: 2026-06-30
 > **Layer**: Core
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
@@ -251,7 +252,7 @@ _Written by qa-lead at story creation:_
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/physics-handling/arcade-grip-model_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/physics-handling/arcade-grip-model.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 
@@ -261,3 +262,12 @@ _Written by qa-lead at story creation:_
 
 - Depends on: Story 001 (CarPhysicsState structure, PhysicsConfig)
 - Unlocks: Stories 003, 004, 005
+
+## Completion Notes
+
+**Completed**: 2026-06-30
+**Criteria**: 7/7 passing
+**Deviations**: Scope expansion — `physics-config.ts` modified (removed `liftOffRearFactor`, added `liftOffBrakeMax`) and `physics-core-skeleton.test.ts` updated to match. Valid changes for code review fixes.
+**Test Evidence**: `tests/unit/physics-handling/arcade-grip-model.test.ts` — 65 tests, 100% coverage (stmts/branches/funcs/lines)
+**Code Review**: Complete — APPROVED (2 required fixes + 5 suggestions applied)
+**QL-TEST-COVERAGE**: ADEQUATE

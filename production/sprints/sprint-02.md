@@ -25,53 +25,45 @@ Deliver the complete Core A layer — dev infrastructure, telemetry, input, asse
 ## Execution Order (Parallel — 2 Agent Sessions)
 
 ```
-COMPLETED (17/45):
-  1.  Tech Debt Cleanup (4 CRITICALs + WARNings)          ✅
+COMPLETED (30/45):
+  1.    Tech Debt Cleanup (4 CRITICALs + WARNings)          ✅
   2-7.  Telemetry 001-006                                  ✅
   8-16. Dev Tools 001-009                                  ✅
-  17. Tech Debt Full Cleanup (48 items)                    ✅
+  17.   Tech Debt Full Cleanup (48 items)                    ✅
+  18-24. Input 001-007                                     ✅
+  25-30. Asset Manager 001-005b                            ✅
 
-REMAINING (28/45) — Parallel Execution:
+REMAINING (15/45):
 
-  Session A (Linear)              │ Session B (Linear)
-  ─────────────────────────────── │ ──────────────────────────────
-  18. Input 001: Interface Types  │ 25. Asset Manager 001: Init
-  19. Input 002: Dead Zone        │ 26. Asset Manager 002: Cache
-  20. Input 003: Polling          │ 27. Asset Manager 003: Events
-  21. Input 004: Focus Safety     │ 28. Asset Manager 004: Unload
-  22. Input 005: GSM Integration  │ 29. Asset Manager 005a: Preload
-  23. Input 006: Debounce         │ 30. Asset Manager 005b: GSM
-  24. Input 007: Device Detection │
-  ─────────────────────────────── │ (Session B done — 6 stories)
-  31. Physics 001: Core Skeleton  │
-  32. Physics 002: Grip Model     │
-  33. Physics 003: Engine/Gears   │
-  34. Physics 004: Surface        │
-  35. Physics 005: Lock/Pit       │
-  ─────────────────────────────── │
-  36. Camera 001: Foundation      │
-  37. Camera 002: GSM Lifecycle   │
-  38. Camera 003: Cockpit         │
-  39. Camera 004: Occlusion       │
-  40. Camera 005: Toggle          │
-  41. Camera 006: FOV Shift       │
-  42. Camera 007: Shake           │
-  43. Camera 008: Drone           │
-  44. Camera 009: Head Bob        │
-  45. Camera 010: Config HMR      │
+  Phase 1 (Linear — main):
+  31. Physics 001: Core Skeleton
+
+  Phase 2 (Parallel — 2 worktrees):
+  Session A (Physics)        │ Session B (Camera)
+  ───────────────────────────│─────────────────────
+  32. Physics 002: Grip      │ 36. Camera 001: Foundation
+  33. Physics 003: Engine    │ 37. Camera 002: GSM Lifecycle
+  34. Physics 004: Surface   │ 38. Camera 003: Cockpit
+  35. Physics 005: Lock/Pit  │ 39. Camera 004: Occlusion
+                             │ 40. Camera 005: Toggle
+                             │ 41. Camera 006: FOV Shift
+                             │ 42. Camera 007: Shake
+                             │ 43. Camera 008: Drone
+                             │ 44. Camera 009: Head Bob
+                             │ 45. Camera 010: Config HMR
 ```
 
 **Parallel rules:**
-- Two git worktrees: one per session (isolated working directories)
-- Session A branch: `feat/input` → merged to `main` after completion
-- Session B branch: `feat/asset-manager` → merged to `main` after completion
+- Phase 1: Physics 001 runs on main (prerequisite for everything)
+- Phase 2: Two git worktrees after Physics 001 merges to main
+- Session A branch: `feat/physics` (Physics 002-005)
+- Session B branch: `feat/camera` (Camera 001-010)
 - Each worktree runs its own dev server (different ports)
-- Shared files (Foundation, config, types) are read-only during Phase 5
+- Shared files (Foundation, config, types) are read-only during Phase 2
 - Each session runs full OCGS workflow: /dev-story → /code-review → /story-done
-- Sprint status updated by whichever session finishes the story first
-- Merge order: Asset Manager first (smaller, fewer conflicts), then Input
+- Merge order: Physics first, then Camera
 
-**Parallel strategy**: Input (Session A) and Asset Manager (Session B) run in separate git worktrees on dedicated branches (`feat/input` and `feat/asset-manager`). Complete isolation — no merge conflicts. After completion, branches merge to `main`. Physics and Camera run linearly in Session A after Input completes. Session B finishes early with Asset Manager.
+**Parallel strategy**: Physics 001 completes first on main. Then Physics 002-005 (Session A) and Camera 001-010 (Session B) run in separate git worktrees. No file overlap (`src/physics/` vs `src/camera/`). Both branches depend on Physics 001 being in main.
 
 **Story completion rule**: each story must achieve **100% coverage on all 4 metrics** (stmts/branches/functions/lines) before advancing to the next. No exceptions.
 
@@ -137,7 +129,7 @@ REMAINING (28/45) — Parallel Execution:
 
 ### Execution Phases
 
-Parallel execution — 2 agent sessions:
+Parallel execution — 2 agent sessions after Physics 001:
 
 | Phase | Session A                   | Session B              | Est.  |
 | ----- | --------------------------- | ---------------------- | ----- |
@@ -146,11 +138,12 @@ Parallel execution — 2 agent sessions:
 | 3     | #8-16 (Dev Tools 001-009)   | —                      | 48h   |
 | 4     | #17 (Tech Debt Full Cleanup)| —                      | 40h   |
 | 5     | #18-24 (Input 001-007)      | #25-30 (Asset Manager) | 32h   |
-| 6     | #31-35 (Physics 001-005)    | *(done)*               | 58h   |
-| 7     | #36-45 (Camera 001-010)     | *(done)*               | 69h   |
+| 6     | #31 (Physics 001)           | — *(waits)*            | 20h   |
+| 7     | #32-35 (Physics 002-005)    | #36-45 (Camera 001-010)| 58h+69h |
 
-> **Phase 5 parallelism**: Input and Asset Manager run simultaneously.
-> No file overlap (`src/input/` vs `src/asset-manager/`).
+> **Phase 7 parallelism**: Physics 002-005 and Camera 001-010 run simultaneously.
+> No file overlap (`src/physics/` vs `src/camera/`).
+> Both branches depend on Physics 001 being in main.
 
 ## Carryover from Previous Sprint
 

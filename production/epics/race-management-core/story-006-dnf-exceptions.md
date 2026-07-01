@@ -85,7 +85,7 @@ _Written by qa-lead at story creation. The developer implements against these â€
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/race-management/dnf-exceptions_test.ts` OR playtest doc
+**Required evidence**: `tests/integration/race-management/dnf-exceptions.test.ts` OR playtest doc
 **Status**: [ ] Not yet created
 
 ---

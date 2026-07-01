@@ -98,7 +98,7 @@ _Handled by neighbouring stories — do not implement here:_
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/ai/fuel_tire_awareness_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/ai/fuel_tire_awareness.test.ts` — must exist and pass
 
 **Status**: [ ] Not yet created
 

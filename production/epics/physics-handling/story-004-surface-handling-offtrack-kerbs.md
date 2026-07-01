@@ -1,8 +1,9 @@
 # Story 004: Surface Handling — Off-Track & Kerbs
 
 > **Epic**: Physics / Handling
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
+> **Last Updated**: 2026-06-30
 > **Type**: Logic
 > **Manifest Version**: 2026-06-21
 > **Estimate**: 6h
@@ -220,9 +221,9 @@ _Written by qa-lead at story creation:_
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/physics-handling/surface-handling_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/physics-handling/surface-handler.test.ts` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — surface-handler.test.ts
 
 ---
 
@@ -230,3 +231,13 @@ _Written by qa-lead at story creation:_
 
 - Depends on: Story 001 (CarPhysicsState, trackSystem access), Story 002 (gripMax formula — this story applies surface modifiers to it)
 - Unlocks: Story 005 (surface state feeds into grip chain consumed by lock/pit logic)
+
+## Completion Notes
+
+**Completed**: 2026-06-30
+**Criteria**: 6/6 passing
+**Deviations**: None
+**Test Evidence**: tests/unit/physics-handling/surface-handling.test.ts (49 tests)
+**Code Review**: APPROVED (LP-CODE-REVIEW gate)
+**Tech Debt Resolved**: 1 item (gravity vector → PhysicsConfig.gravity)
+**Tech Debt Active**: 1 item (topSpeedL1toL5[0] hardcoded — deferred to per-car stats integration)

@@ -119,7 +119,7 @@ async initRace(): Promise<void> {
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/audio/race-again-cleanup_test.ts` OR playtest doc.
+**Required evidence**: `tests/integration/audio/race-again-cleanup.test.ts` OR playtest doc.
 
 **Status**: [ ] Not yet created
 

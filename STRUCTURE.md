@@ -12,19 +12,23 @@ overdrive/
 │   │   ├── determinism/    # Deterministic RNG and pipeline
 │   │   ├── persistence/    # Async-first storage abstraction
 │   │   └── simulation-snapshot/ # Deterministic state capture/restore
-│   ├── core/               # Core game systems (dev tools)
-│   │   └── dev-tools/      # Debug overlay, keybinds, data panels, tabbed panels
+│   ├── core/               # Core game systems
+│   │   ├── dev-tools/      # Debug overlay, keybinds, data panels, tabbed panels
+│   │   └── input/          # Player input abstraction (IInput, PlayerInput, dead-zone)
+│   ├── asset-manager/      # Two-scene architecture and asset lifecycle
 │   ├── dev-infra/          # Dev-only infrastructure (telemetry)
 │   ├── shared/             # Shared utilities (assertion functions)
-│   ├── playground/         # Prototyping and scene setup
-│   ├── config/             # Feature flags and template config
+│   ├── config/             # Feature flags, template config, and asset manifest IDs
+│   │   └── assets/         # Asset manifest ID constants (car team IDs)
 │   ├── css/                # Stylesheets
 │   ├── styles/             # CSS custom properties and design tokens
 │   └── app.ts              # Main entry point
 ├── tests/                  # Automated test suites
 │   ├── unit/               # Unit tests for all systems
 │   │   ├── core/            # Tests mirroring src/core/
-│   │   │   └── dev-tools/   # Dev tools overlay, keybinds, and utility tests
+│   │   │   ├── dev-tools/   # Dev tools overlay, keybinds, and utility tests
+│   │   │   └── input/       # Input interface types, dead-zone, debounce tests
+│   │   ├── asset-manager/   # AssetManager unit tests
 │   │   ├── dev-infra/       # Telemetry recorder tests
 │   │   └── foundation/      # Foundation system tests (mirrors src/foundation/)
 │   │       ├── config/       # ConfigManager and HMR tests
@@ -35,7 +39,9 @@ overdrive/
 │   │       └── simulation-snapshot/ # Snapshot tests
 │   ├── integration/        # Integration tests
 │   │   ├── core/            # Tests mirroring src/core/
-│   │   │   └── dev-tools/   # Dev tools panel integration tests
+│   │   │   ├── dev-tools/   # Dev tools panel integration tests
+│   │   │   └── input/       # Input polling, focus safety, GSM integration, device detection
+│   │   ├── asset-manager/   # AssetManager lifecycle, GSM orchestration, preload concurrency
 │   │   └── dev-infra/      # Telemetry lifecycle tests
 │   ├── e2e/                # Playwright browser E2E tests
 │   ├── evidence/           # Test evidence artifacts
@@ -69,38 +75,50 @@ overdrive/
 **`src/foundation/config/`:**
 - Purpose: Central configuration registry with namespace isolation and env overrides
 - Contains: ConfigManager, ConfigError, HMR wiring
-- Key files: `configManager.ts`, `configError.ts`, `hmr.ts`, `index.ts`
+- Key files: `configManager.ts`, `configError.ts`, `hmr.ts`
 
 **`src/foundation/event-bus/`:**
 - Purpose: Typed synchronous pub-sub with error isolation and leak detection
 - Contains: EventBus implementation, EventMap, IEventBus interface, error types
-- Key files: `event-bus.ts`, `types.ts`, `errors.ts`, `index.ts`
+- Key files: `event-bus.ts`, `types.ts`, `errors.ts`
 
 **`src/foundation/gsm/`:**
 - Purpose: Flat FSM with lifecycle hooks, transition throttling, and state history
 - Contains: GameStateMachine, TransitionTable, State types, StateDefinition
-- Key files: `GameStateMachine.ts`, `TransitionTable.ts`, `types.ts`, `GameStateError.ts`, `index.ts`
+- Key files: `GameStateMachine.ts`, `TransitionTable.ts`, `types.ts`, `GameStateError.ts`
 
 **`src/foundation/determinism/`:**
 - Purpose: Deterministic RNG, fixed timestep pipeline, and dev-mode guards
 - Contains: SeededRandom, FixedUpdatePipeline, PipelineRuntime, InputBuffer, Accumulator, DeterminismGuard
-- Key files: `seeded-random.ts`, `fixed-update-pipeline.ts`, `pipeline-runtime.ts`, `input-buffer.ts`, `accumulator.ts`, `dev-guard.ts`, `types.ts`, `errors.ts`, `index.ts`
+- Key files: `seeded-random.ts`, `fixed-update-pipeline.ts`, `pipeline-runtime.ts`, `input-buffer.ts`, `accumulator.ts`, `dev-guard.ts`, `types.ts`, `errors.ts`
 
 **`src/foundation/persistence/`:**
 - Purpose: Async-first localStorage abstraction with versioned payloads and degraded mode
 - Contains: Persistence state machine, PersistedEntry, migration chain, error types
-- Key files: `persistence.ts`, `errors.ts`, `index.ts`
+- Key files: `persistence.ts`, `errors.ts`
 
 **`src/foundation/simulation-snapshot/`:**
 - Purpose: Deterministic state capture and restore across registered systems
 - Contains: SimulationSnapshot orchestrator, ISnapshotable interface, fnv1a/sha256 hashing, error types
-- Key files: `simulation-snapshot.ts`, `types.ts`, `fnv1a.ts`, `sha256.ts`, `snapshot-error.ts`, `index.ts`
+- Key files: `simulation-snapshot.ts`, `types.ts`, `fnv1a.ts`, `sha256.ts`, `snapshot-error.ts`
 
 **`src/core/dev-tools/`:**
 - Purpose: Debug overlay, keybinds, data panel registration, and tabbed debug panels for development
 - Contains: DevTools overlay class, IDevTools interface, keyboard keybinds, singleton proxy, Event Bus Inspector, Config Tree Panel, GSM Visualizer, Sim Snapshot Panel, AI Telemetry Panel
 - Key files: `dev-tools.ts`, `index.ts`, `keybinds.ts`, `types.ts`, `event-bus-inspector.ts`, `config-tree.ts`, `gsm-visualizer.ts`, `sim-snapshot-panel.ts`, `ai-telemetry-panel.ts`
 - Note: Tree-shaken in production via `import.meta.env.DEV`
+
+**`src/core/input/`:**
+- Purpose: Player hardware input abstraction — polls keyboard and gamepad per tick, merges into unified InputState
+- Contains: IInput interface, PlayerInput implementation, dead-zone formula, device detection, GSM state integration, camera toggle debounce
+- Key files: `IInput.ts`, `player-input.ts`, `dead-zone.ts`
+- Note: Direct imports (no barrel file). `IInput.ts` is pure types + interface only (zero runtime cost).
+
+**`src/asset-manager/`:**
+- Purpose: Two-scene architecture (menuScene + raceScene) and asset lifecycle management
+- Contains: AssetManager state machine, TrackManifest type, AssetError, manifest registry, AssetContainer cache, preload pipeline, GSM orchestration
+- Key files: `asset-manager.ts`, `types.ts`, `asset-error.ts`
+- Note: Direct imports (no barrel file). GSM subscription reacts to state entries for scene switching and asset preloading.
 
 **`src/dev-infra/`:**
 - Purpose: Dev-only telemetry recording and data export for simulation analysis
@@ -113,15 +131,15 @@ overdrive/
 - Contains: Assertion functions, type guards, and other language-level utilities
 - Key files: `assert-defined.ts`
 
-**`src/playground/`:**
-- Purpose: Rapid prototyping and visual testing of foundation systems
-- Contains: Scene creation, GUI setup, test meshes
-- Key files: `main-scene.ts`, `gui.ts`
-
 **`src/config/`:**
-- Purpose: Feature flags and engine settings for the template
-- Contains: Configuration objects, feature toggles
+- Purpose: Feature flags, engine settings, and asset manifest IDs for the template
+- Contains: Configuration objects, feature toggles, car manifest ID constants
 - Key files: `template-config.ts`, `dev-tools-config.ts`
+
+**`src/config/assets/`:**
+- Purpose: Asset manifest ID constants consumed by the preload pipeline
+- Contains: Car team manifest IDs as readonly string arrays
+- Key files: `cars.ts`
 
 **`src/css/`:**
 - Purpose: Stylesheet files for the application
@@ -152,6 +170,26 @@ overdrive/
 - Purpose: Unit tests for Dev Tools overlay, keybinds, compile guard, and shared utilities
 - Contains: Overlay toggle, singleton proxy, keybind handling, DEV guard verification, assert-defined tests
 - Key files: `dev-tools.test.ts`, `dev-tools-singleton.test.ts`, `dev-compile-guard.test.ts`, `input-keybinds.test.ts`, `assert-defined.test.ts`
+
+**`tests/unit/core/input/`:**
+- Purpose: Unit tests for input interface types, dead-zone formula, and debounce/edge cases
+- Contains: InputState type tests, dead-zone formula tests, debounce and pulse edge case tests
+- Key files: `input-interface-types.test.ts`, `dead-zone.test.ts`, `debounce-edge-cases.test.ts`
+
+**`tests/unit/asset-manager/`:**
+- Purpose: Unit tests for AssetManager (state machine, manifest registration, load/cache, lifecycle)
+- Contains: Init, load, cache hit, dispose, error handling, and preload tests
+- Key files: `asset-manager.test.ts`
+
+**`tests/integration/input/`:**
+- Purpose: Integration tests for PlayerInput (polling, focus/disconnect safety, GSM state integration, device detection)
+- Contains: Keyboard/gamepad polling, tab blur safety, GSM transition blocking, onDeviceChanged observable tests
+- Key files: `player-input-polling.test.ts`, `focus-disconnect-safety.test.ts`, `gsm-state-integration.test.ts`, `device-detection.test.ts`
+
+**`tests/integration/asset-manager/`:**
+- Purpose: Integration tests for AssetManager (lifecycle, GSM orchestration, preload concurrency)
+- Contains: Full lifecycle tests, GSM state-driven scene switching, concurrent preload deduplication tests
+- Key files: `asset-manager-lifecycle.test.ts`, `gsm-orchestration.test.ts`, `preload-concurrency.test.ts`
 
 **`tests/integration/dev-infra/`:**
 - Purpose: Integration tests for TelemetryRecorder lifecycle
@@ -185,9 +223,10 @@ overdrive/
 
 ## Key File Locations
 
-**Entry Points:** `src/app.ts`: Main application entry, engine initialization, render loop
+**Entry Points:** `src/app.ts`: Main application entry, engine initialization, two-scene bootstrap, AssetManager construction, render loop
 **Configuration:** `src/config/template-config.ts`: Feature flags and engine settings
 **Configuration:** `src/config/dev-tools-config.ts`: Dev Tools keybind configuration
+**Configuration:** `src/config/assets/cars.ts`: Car team manifest IDs for preload pipeline
 **Core Logic:** `src/foundation/config/configManager.ts`: Central configuration registry
 **Core Logic:** `src/foundation/event-bus/event-bus.ts`: Typed pub-sub event system
 **Core Logic:** `src/foundation/gsm/GameStateMachine.ts`: Game state machine with lifecycle hooks
@@ -195,6 +234,12 @@ overdrive/
 **Core Logic:** `src/foundation/determinism/pipeline-runtime.ts`: Babylon.js integration layer
 **Core Logic:** `src/foundation/persistence/persistence.ts`: Async-first storage abstraction
 **Core Logic:** `src/foundation/simulation-snapshot/simulation-snapshot.ts`: State capture orchestrator
+**Asset Manager:** `src/asset-manager/asset-manager.ts`: Two-scene architecture, manifest registry, AssetContainer cache, GSM orchestration
+**Asset Manager:** `src/asset-manager/types.ts`: TrackManifest interface for GLB asset paths
+**Asset Manager:** `src/asset-manager/asset-error.ts`: Typed error for AssetManager state violations
+**Input:** `src/core/input/IInput.ts`: InputState interface, DeviceType union, InputState.ZERO singleton
+**Input:** `src/core/input/player-input.ts`: Concrete IInput — DeviceSourceManager + GamepadManager polling, dead zone, device detection, GSM integration
+**Input:** `src/core/input/dead-zone.ts`: Pure math dead zone formula for analog axes
 **Dev Tools:** `src/core/dev-tools/dev-tools.ts`: HTML overlay with SceneInstrumentation metrics
 **Dev Tools:** `src/core/dev-tools/index.ts`: Singleton proxy and `initDevTools()` entry
 **Dev Tools:** `src/core/dev-tools/keybinds.ts`: Keyboard keybind registration and handling
@@ -212,8 +257,12 @@ overdrive/
 **Stylesheets:** `src/styles/variables.css`: CSS custom properties and design tokens
 **Tests:** `tests/unit/`: Unit tests for all systems (mirrors `src/` structure)
 **Tests:** `tests/unit/foundation/`: Foundation system unit tests (per-system subdirectories)
+**Tests:** `tests/unit/asset-manager/`: Unit tests for AssetManager
+**Tests:** `tests/unit/core/input/`: Unit tests for input interface types, dead-zone, debounce
 **Tests:** `tests/unit/dev-infra/`: Unit tests for TelemetryRecorder
 **Tests:** `tests/unit/core/dev-tools/`: Unit tests for Dev Tools overlay, keybinds, and shared utilities
+**Tests:** `tests/integration/asset-manager/`: Integration tests for AssetManager lifecycle, GSM orchestration, preload concurrency
+**Tests:** `tests/integration/input/`: Integration tests for PlayerInput polling, focus safety, GSM integration, device detection
 **Tests:** `tests/integration/core/dev-tools/`: Integration tests for Dev Tools panels
 **Tests:** `tests/integration/dev-infra/`: Integration tests for TelemetryRecorder lifecycle
 **Tests:** `tests/e2e/`: Playwright E2E tests for Dev Tools overlay
@@ -228,16 +277,19 @@ overdrive/
 
 ## Where to Add New Code
 
-**New foundation system:** `src/foundation/[system-name]/` — follow existing pattern with index.ts barrel export
+**New foundation system:** `src/foundation/[system-name]/` — follow existing pattern with direct imports (no barrel file)
 **New config namespace:** `src/config/[namespace].ts` — use `wireConfigHmr()` for HMR support
+**New asset manifest IDs:** `src/config/assets/[category].ts` — export readonly string arrays consumed by AssetManager preload
 **New dev tools panel:** `src/core/dev-tools/` — implement `IDevTools.registerDataSource()` behind `import.meta.env.DEV`, or create a new tab panel class (follow `EventBusInspector`, `GsmVisualizer`, `SimSnapshotPanel`, `AiTelemetryPanel` patterns)
 **New dev infra module:** `src/dev-infra/[module-name].ts` — tree-shaken in production, import dynamically behind `import.meta.env.DEV`
+**New input device mapping:** `src/core/input/player-input.ts` — add keycode/button constants and update `_readKeyboard`/`_readGamepad` methods
+**New asset lifecycle event:** Add to `EventMap` in `src/foundation/event-bus/types.ts` and emit from `AssetManager`
 **New event types:** Add to `EventMap` in `src/foundation/event-bus/types.ts`
-**New game state:** Add to `State` type in `src/foundation/gsm/types.ts` and update `TransitionTable.ts`
+**New game state:** Add to `State` type in `src/foundation/gsm/types.ts` and update `TransitionTable.ts`, add GSM handler in `AssetManager._onGsmEvent()`
 **New pipeline slot:** Register via `FixedUpdatePipeline.register(systemId, update)` in `src/foundation/determinism/fixed-update-pipeline.ts`
 **New snapshot system:** Implement `ISnapshotable` interface and register with `SimulationSnapshot.register()`
-**New test suite:** `tests/unit/foundation/[system-name]/[feature].test.ts` — mirrors `src/foundation/` structure, per-system subdirectories
-**New dev-infra test:** `tests/unit/dev-infra/[module-name].test.ts` — for TelemetryRecorder and similar modules
+**New unit test:** `tests/unit/[layer]/[feature].test.ts` — mirrors `src/` structure (e.g., `tests/unit/core/input/`, `tests/unit/asset-manager/`)
+**New integration test:** `tests/integration/[layer]/[feature].test.ts` — for lifecycle, GSM orchestration, and interaction tests
 **New dev-tools test:** `tests/unit/core/dev-tools/[feature].test.ts` — for overlay, keybinds, compile guard, shared utilities
 **New dev-tools integration test:** `tests/integration/core/dev-tools/[panel-name].test.ts` — for panel rendering, refresh, and interaction
 **New E2E test:** `tests/e2e/[feature].spec.ts` — Playwright browser tests for DOM state and CSS verification
@@ -245,4 +297,3 @@ overdrive/
 **New epic:** `production/epics/[epic-name]/` — with sprint planning and status tracking
 **New design doc:** `design/[category]/[document-name].md` — follow existing design document format
 **Shared utilities:** `src/shared/` (when needed)
-**Playground experiments:** `src/playground/` — for visual testing and prototyping

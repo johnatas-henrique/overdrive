@@ -206,7 +206,7 @@ _Written by qa-lead at story creation:_
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/camera/camera-shake-system_test.ts`
+**Required evidence**: `tests/unit/camera/camera-shake-system.test.ts`
 
 **Status**: [ ] Not yet created
 

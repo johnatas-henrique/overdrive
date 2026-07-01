@@ -14,7 +14,7 @@ goal: "Core A — Carro na Tela (Telemetry → Dev Tools → Tech Debt → Input
 start: "2026-06-27"
 end: "2026-07-10"
 generated: "2026-06-26"
-updated: "2026-06-29"
+updated: "2026-06-30"
 
 stories:
   - id: "2-1"
@@ -329,7 +329,8 @@ stories:
     name: "Story 001: Physics Core Skeleton"
     file: "production/epics/physics-handling/story-001-physics-core-skeleton.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
+    completed: 2026-06-30
     owner: ""
     estimate_days: 3
     blocker: ""
@@ -339,41 +340,41 @@ stories:
     name: "Story 002: Arcade Grip Model"
     file: "production/epics/physics-handling/story-002-arcade-grip-model.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   - id: "2-33"
     name: "Story 003: Engine/Gears/Drag/Braking"
     file: "production/epics/physics-handling/story-003-engine-gears-drag-braking.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   - id: "2-34"
     name: "Story 004: Surface Handling (Offtrack/Kerbs)"
     file: "production/epics/physics-handling/story-004-surface-handling-offtrack-kerbs.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   - id: "2-35"
     name: "Story 005: Lock/Pit/External Inputs/Events"
     file: "production/epics/physics-handling/story-005-lock-pit-external-inputs-events.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 2
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   # Camera (needs Physics)
   - id: "2-36"

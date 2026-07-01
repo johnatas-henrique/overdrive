@@ -139,7 +139,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/race-management/fastest-lap_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/race-management/fastest-lap.test.ts` — must exist and pass
 **Status**: [ ] Not yet created
 
 ---

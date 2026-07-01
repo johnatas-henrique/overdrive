@@ -142,7 +142,7 @@ _Written by qa-lead at story creation. The developer implements against these �
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/race-management/results-data-model_test.ts` — must exist and pass
+**Required evidence**: `tests/unit/race-management/results-data-model.test.ts` — must exist and pass
 **Status**: [ ] Not yet created
 
 ---

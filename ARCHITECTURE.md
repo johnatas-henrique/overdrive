@@ -12,6 +12,8 @@
 - Deterministic simulation pipeline with fixed timestep and dev-mode guards
 - Async-first persistence with state machine and degraded mode
 - Simulation snapshot system for deterministic state capture and restore
+- Two-scene architecture (menu + race) managed by AssetManager with GSM-driven lifecycle
+- Input abstraction polls keyboard and gamepad per tick, merging into a unified InputState
 - Engine abstraction supports WebGPU-first with WebGL2 fallback
 - Dev Tools overlay and Telemetry Recorder are tree-shaken in production via `import.meta.env.DEV`
 
@@ -24,25 +26,18 @@
 - Depends on: None (zero external dependencies within foundation, except `pipeline-runtime.ts` imports Babylon.js)
 - Used by: All gameplay systems, UI, audio, physics
 
-**Playground Layer:**
-- Purpose: Rapid prototyping and scene setup for testing foundation systems
-- Location: `src/playground/`
-- Contains: Scene creation, GUI setup, test meshes
-- Depends on: Babylon.js, Foundation layer
-- Used by: Development workflow, visual testing
-
 **Configuration Layer:**
-- Purpose: Feature flags and engine settings for the template
+- Purpose: Feature flags, engine settings, and asset manifest IDs for the template
 - Location: `src/config/`
-- Contains: Template configuration, feature toggles
+- Contains: Template configuration, feature toggles, car manifest IDs
 - Depends on: None
-- Used by: App bootstrap, Playground layer
+- Used by: App bootstrap, AssetManager
 
 **Application Layer:**
 - Purpose: Main entry point and engine initialization
 - Location: `src/app.ts`
-- Contains: Engine creation, physics setup, render loop
-- Depends on: Babylon.js, Configuration layer, Playground layer
+- Contains: Engine creation, physics setup, two-scene bootstrap, AssetManager construction, render loop
+- Depends on: Babylon.js, Configuration layer, Asset Manager layer
 - Used by: Browser runtime
 
 **Dev Tools Layer:**
@@ -58,6 +53,20 @@
 - Contains: TelemetryRecorder — data model, sampling loop, console summary, JSON export
 - Depends on: Foundation layer (EventBus), Babylon.js types
 - Used by: Development workflow only (tree-shaken in production via `import.meta.env.DEV`)
+
+**Asset Manager Layer:**
+- Purpose: Two-scene architecture, asset lifecycle, and GSM-driven asset orchestration
+- Location: `src/asset-manager/`
+- Contains: AssetManager (state machine, manifest registry, AssetContainer cache, preload pipeline), TrackManifest, AssetError
+- Depends on: Babylon.js (LoadAssetContainerAsync, AssetContainer), Foundation layer (EventBus, GSM events)
+- Used by: Application layer (render loop, scene switching), GSM state transitions
+
+**Input Layer:**
+- Purpose: Player hardware input abstraction — polls keyboard and gamepad per tick, merges into unified InputState
+- Location: `src/core/input/`
+- Contains: IInput interface, PlayerInput (DeviceSourceManager + GamepadManager), dead-zone formula, device detection, GSM state integration
+- Depends on: Babylon.js (DeviceSourceManager, GamepadManager, Observable), Foundation layer (EventBus, GSM)
+- Used by: Deterministic pipeline (slot #1), UI menu navigation, camera control
 
 ## Data Flow
 
@@ -107,11 +116,29 @@
 7. `fnv1a()` hashes each system state, `sha256()` hashes the combined snapshot — `src/foundation/simulation-snapshot/fnv1a.ts`, `src/foundation/simulation-snapshot/sha256.ts`
 8. `SimulationSnapshot.restoreSnapshot(snap)` calls `deserialize()` per system with error isolation — `src/foundation/simulation-snapshot/simulation-snapshot.ts`
 
+**Asset Loading:**
+1. `AssetManager(eventBus)` — `src/asset-manager/asset-manager.ts`
+2. `assetManager.init(menuScene, raceScene)` stores scene references, creates empty cache, transitions to Ready — `src/asset-manager/asset-manager.ts`
+3. `assetManager.registerManifest(id, manifest)` stores manifest keyed by ID — `src/asset-manager/asset-manager.ts`
+4. `assetManager.load(id)` resolves manifest, calls `LoadAssetContainerAsync`, caches container, adds to active scene — `src/asset-manager/asset-manager.ts`
+5. `assetManager.preload(ids)` loads uncached assets concurrently via `Promise.allSettled`, emits batch events — `src/asset-manager/asset-manager.ts`
+6. `assetManager.setActiveScene("menu" | "race")` switches which scene the render loop calls `.render()` on — `src/asset-manager/asset-manager.ts`
+7. GSM subscription reacts to state entries: Loading→Menu preloads car manifests, Menu→PreRace loads track, PostRace→Menu unloads and switches — `src/asset-manager/asset-manager.ts`
+
+**Input Polling:**
+1. `PlayerInput(eventBus?, gsm?)` — `src/core/input/player-input.ts`
+2. `playerInput.init(engine)` creates DeviceSourceManager (keyboard) and GamepadManager (gamepad), wires tab blur/focus detection, subscribes to GSM events — `src/core/input/player-input.ts`
+3. `playerInput.getState()` polls keyboard (binary WASD → steer/throttle/brake) and gamepad (analog override) — `src/core/input/player-input.ts`
+4. `applyDeadZone(raw, threshold)` remaps analog values below threshold to zero — `src/core/input/dead-zone.ts`
+5. Pulse edge detection ensures each digital button press produces exactly one tick of output — `src/core/input/player-input.ts`
+6. Camera toggle debounced at configurable interval (default 200ms) — `src/core/input/player-input.ts`
+7. `onDeviceChanged` observable fires once per device switch (keyboard ↔ gamepad) — `src/core/input/player-input.ts`
+
 ## Key Abstractions
 
 **ConfigManager:**
 - Purpose: Central configuration registry with namespace isolation and env overrides
-- Location: `src/foundation/config/configManager.ts`, `src/foundation/config/index.ts`
+- Location: `src/foundation/config/configManager.ts`
 - Pattern: Singleton registry with init guard, two-tier storage (raw + resolved)
 
 **EventBus:**
@@ -214,12 +241,42 @@
 - Location: `src/shared/assert-defined.ts`
 - Pattern: TypeScript `asserts` keyword, throws `Error` with custom message if value is `null` or `undefined`, used across dev tools panels for safe nullable narrowing
 
+**AssetManager:**
+- Purpose: Two-scene architecture manager with AssetContainer cache, manifest registry, and GSM-driven lifecycle orchestration
+- Location: `src/asset-manager/asset-manager.ts`
+- Pattern: State machine (Uninitialized → Ready → Disposed), Map-based AssetContainer cache, concurrent load deduplication via `_pendingLoads`, GSM subscription for scene switching and asset preloading, optional EventBus for lifecycle events (`asset.load.start`, `asset.load.progress`, `asset.load.complete`, `asset.load.allComplete`, `asset.error`)
+
+**TrackManifest:**
+- Purpose: GLB asset path descriptor for deferred loading
+- Location: `src/asset-manager/types.ts`
+- Pattern: Interface with `glb.rootUrl` and `glb.filename` fields, consumed by `AssetManager.load()` to build the URL for `LoadAssetContainerAsync`
+
+**AssetError:**
+- Purpose: Typed error for AssetManager state violations and load failures
+- Location: `src/asset-manager/asset-error.ts`
+- Pattern: Extends `Error`, thrown for uninitialized/disposed state, missing manifests, invalid scene names, and disposal during async loads
+
+**IInput:**
+- Purpose: Input abstraction interface — player hardware input provider contract
+- Location: `src/core/input/IInput.ts`
+- Pattern: Type-only file (zero runtime cost), defines `InputState` interface (steer/throttle/brake normalized, gearDelta tri-state, digital pulses), `InputState.ZERO` frozen singleton for zero-allocation paths, `DeviceType` union, `onDeviceChanged` Observable
+
+**PlayerInput:**
+- Purpose: Concrete IInput implementation — polls DeviceSourceManager (keyboard) and GamepadManager (gamepad) per tick
+- Location: `src/core/input/player-input.ts`
+- Pattern: Zero-allocation mutable InputState reused across ticks, gamepad analog overrides keyboard binary, dual pulse edge detection, camera toggle debounce (configurable, default 200ms), GSM transition blocking via Event Bus subscriptions, AbortController for tab blur/focus lifecycle, device detection with gamepad priority
+
+**applyDeadZone:**
+- Purpose: Dead zone formula for analog input axes — pure math utility
+- Location: `src/core/input/dead-zone.ts`
+- Pattern: `output = |raw| < threshold ? 0 : sign(raw) × (|raw| - threshold) / (1 - threshold)`, threshold clamped to [0, 0.99999], zero Babylon.js imports, estimated < 0.001ms per call
+
 ## Entry Points
 
 **Browser Entry:**
 - Location: `src/app.ts`
 - Triggers: HTML page load (`<script>` tag or module)
-- Responsibilities: Create engine, initialize physics, setup scene, start render loop
+- Responsibilities: Create engine, initialize physics, create two persistent scenes (menuScene + raceScene), construct AssetManager with EventBus, init AssetManager with scene references, bootstrap Dev Tools (DEV only), start render loop via `assetManager.getActiveScene().render()`
 
 **Development Server:**
 - Location: `vite.config.ts` (implied by package.json scripts)
@@ -247,6 +304,8 @@
 - `Persistence`: Throws `PersistenceError` for uninitialized state; `MigrationError` for missing migration steps
 - `SimulationSnapshot`: Throws `SnapshotError` for duplicate registration, deserialize failures, init-after-dispose, not-initialized state
 - `DeterminismGuard`: Throws `DeterminismError` when non-deterministic APIs are called during pipeline ticks
+- `AssetManager`: Throws `AssetError` for uninitialized/disposed state, missing manifests, invalid scene names, and disposal during async loads
+- `PlayerInput`: Throws no custom errors; returns `InputState.ZERO` on tab blur, GSM transition blocking, or missing device
 - `DevTools`: Throws no custom errors; overlay DOM creation is guarded by `import.meta.env.DEV`
 - `TelemetryRecorder`: Throws no custom errors; noop in production builds
 - Handler errors in EventBus are caught and logged individually (error isolation)
@@ -257,6 +316,8 @@
 **Logging:** Console-based with structured prefixes (`[EventBus]`, `ConfigManager:`, `[GSM]`, `[Pipeline]`)
 **Caching:** ConfigManager uses two-tier cache (raw store + resolved env-overridden clone)
 **Storage:** Persistence wraps localStorage with async-first interface, degraded mode, and migration chain
+**Asset Pipeline:** AssetManager loads GLB containers via `LoadAssetContainerAsync`, caches in `Map<string, AssetContainer>`, GSM-driven scene switching and preloading
+**Input Abstraction:** PlayerInput polls keyboard (DeviceSourceManager) and gamepad (GamepadManager) per tick, merges into unified InputState with dead zone processing and pulse edge detection
 **HMR:** Vite hot module replacement via `wireConfigHmr()` for config files
 **Type Safety:** TypeScript strict mode with compile-time event payload validation
 **Determinism:** Dev-mode guard replaces non-deterministic APIs; pipeline runs at fixed 1/60s timestep
