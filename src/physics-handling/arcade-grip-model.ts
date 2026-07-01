@@ -20,7 +20,7 @@
  */
 
 import type { InputState } from "@/foundation/determinism/types";
-import type { CarPhysicsState, PhysicsConfig } from "./types";
+import type { CarPhysicsState, Gear, PhysicsConfig } from "./types";
 
 // ─── Config Sub-Interfaces ──────────────────────────────────────────────────
 
@@ -88,7 +88,7 @@ export interface EngineStateSnapshot {
   /** Current forward speed in m/s. */
   speedMs: number;
   /** Current gear (0 = neutral, 1–6 = forward, -1 = reverse). */
-  gear: number;
+  gear: Gear;
   /** Current engine RPM. */
   rpm: number;
   /** Fuel multiplier (0..1) — scales power linearly. */
@@ -558,12 +558,12 @@ export class ArcadeGripModel {
    * @returns New gear
    */
   static applyGearDelta(
-    currentGear: number,
+    currentGear: Gear,
     delta: -1 | 0 | 1,
     brake: number,
     speedMs: number,
     config: EngineConfigSub
-  ): number {
+  ): Gear {
     if (delta === 0) {
       return currentGear;
     }
@@ -580,7 +580,7 @@ export class ArcadeGripModel {
 
     // Forward gears: apply delta with clamping
     const newGear = currentGear + delta;
-    return Math.max(1, Math.min(GEAR_COUNT, newGear));
+    return Math.max(1, Math.min(GEAR_COUNT, newGear)) as Gear;
   }
 
   /**
@@ -597,11 +597,11 @@ export class ArcadeGripModel {
    */
   static autoShift(
     rpm: number,
-    currentGear: number,
+    currentGear: Gear,
     rpmMax: number,
     threshold: number,
     downshiftRatio: number = 0.5
-  ): number {
+  ): Gear {
     // Auto-shift only applies to forward gears
     if (currentGear < 1 || currentGear >= GEAR_COUNT) {
       return currentGear;
@@ -611,10 +611,10 @@ export class ArcadeGripModel {
     const downshiftThreshold = upshiftThreshold * downshiftRatio;
 
     if (rpm > upshiftThreshold) {
-      return currentGear + 1;
+      return (currentGear + 1) as Gear;
     }
     if (rpm < downshiftThreshold && currentGear > 1) {
-      return currentGear - 1;
+      return (currentGear - 1) as Gear;
     }
     return currentGear;
   }
@@ -736,7 +736,9 @@ export class ArcadeGripModel {
         engineState.speedMs,
         config.dragCoeff
       );
-      const brakeSign = engineState.speedMs >= 0 ? -1 : 1;
+      // Brake only opposes existing motion — no propulsion from rest (FR-003)
+      const brakeSign =
+        engineState.speedMs > 0 ? -1 : engineState.speedMs < 0 ? 1 : 0;
       netForce =
         brakeSign *
           ArcadeGripModel.computeBrakeForce(

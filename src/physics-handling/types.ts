@@ -16,6 +16,13 @@ import type { Vector3 } from "@babylonjs/core/Maths/math";
 import type { PhysicsBody } from "@babylonjs/core/Physics/v2/physicsBody";
 
 // ---------------------------------------------------------------------------
+// Gear type
+// ---------------------------------------------------------------------------
+
+/** Transmission gear: -1 (reverse), 0 (neutral), 1–6 (forward). */
+export type Gear = -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+// ---------------------------------------------------------------------------
 // CarPhysicsState
 // ---------------------------------------------------------------------------
 
@@ -111,7 +118,7 @@ export interface CarPhysicsState {
   rpm: number;
 
   /** Current gear: -1 (reverse), 0 (neutral), or 1–6. */
-  gear: number;
+  gear: Gear;
 
   // ─── Telemetry (published each tick) ────────────────────────────────
 
@@ -225,7 +232,7 @@ export interface CarTelemetry {
   /** Engine RPM. */
   readonly rpm: number;
   /** Current gear: -1 (reverse), 0 (neutral), or 1–6. */
-  readonly gear: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  readonly gear: Gear;
   /** Lateral acceleration in G. */
   readonly lateralG: number;
   /** Longitudinal acceleration in G. */

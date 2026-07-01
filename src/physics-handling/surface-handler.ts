@@ -269,10 +269,10 @@ export function enforceMinSurfaceSpeed(
   targetSpeed: number,
   minSurfaceSpeed: number
 ): number {
-  // FR-009: guard against negative or zero target speed (reverse gear).
+  // FR-009: guard against negative target speed (reverse gear).
   // When reversing, the car is intentionally moving backward, so the
   // minimum surface speed floor should not apply — it would pin the car
-  // at a forward speed.
+  // at a forward speed. Zero targetSpeed is still clamped upward.
   if (minSurfaceSpeed <= 0 || targetSpeed < 0) {
     return targetSpeed;
   }
