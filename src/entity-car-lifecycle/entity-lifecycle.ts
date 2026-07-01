@@ -235,10 +235,6 @@ export class EntityLifecycle {
   spawnGrid(container: AssetContainer, config: GridConfig): void {
     this._assertStateIs("Idle");
 
-    // Store container and config for GSM auto-replay
-    this._storedContainer = container;
-    this._storedGridConfig = config;
-
     const { teams, playerTeamId } = config;
     let aiIndex = 0;
 
@@ -286,6 +282,10 @@ export class EntityLifecycle {
         gridIndex,
       });
     }
+
+    // Store container and config for GSM auto-replay AFTER successful spawn
+    this._storedContainer = container;
+    this._storedGridConfig = config;
 
     // Transition to GridActive — all cars are in the scene
     this._state = "GridActive";

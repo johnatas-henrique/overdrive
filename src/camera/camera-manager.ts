@@ -160,6 +160,12 @@ export class CameraManager implements ICameraManager {
   private _activeShakes: ActiveShake[] = [];
 
   /**
+   * Xorshift32 state for deterministic shake offsets.
+   * Seeded with timestamp at construction — visual-only, not simulation-critical.
+   */
+  private _shakeRngState = Date.now() | 0;
+
+  /**
    * Shake transform node — sits between driver_eye and the cockpit camera.
    *
    * Created by `attachCockpitToCar()`. The cockpit camera is parented to
@@ -324,6 +330,11 @@ export class CameraManager implements ICameraManager {
    * @param _playerCarId — Player entity ID (stored for later stories)
    */
   init(_scene: Scene, _playerCarId: string): void {
+    // Idempotent: dispose previous cameras if init() called twice
+    if (this._gridCam) {
+      this.dispose();
+    }
+
     // Register camera config namespace with ConfigManager (Story 010 — AC-14a)
     if (this._configManager) {
       this._configManager.register("camera", this._config);
@@ -624,12 +635,12 @@ export class CameraManager implements ICameraManager {
       const shake = this._activeShakes[i];
       const current = shake.intensity * Math.exp(-shake.decay * shake.time);
 
-      // Random direction per frame — range [-current, +current] per axis
+      // Deterministic random direction per frame — range [-current, +current] per axis
       totalOffset.addInPlace(
         new Vector3(
-          (Math.random() - 0.5) * current * 2,
-          (Math.random() - 0.5) * current * 2,
-          (Math.random() - 0.5) * current * 2
+          (this._nextShakeRandom() - 0.5) * current * 2,
+          (this._nextShakeRandom() - 0.5) * current * 2,
+          (this._nextShakeRandom() - 0.5) * current * 2
         )
       );
 
@@ -971,7 +982,7 @@ export class CameraManager implements ICameraManager {
       "droneCam",
       0, // initial alpha
       Math.PI / 4, // initial beta (~45° above horizon)
-      8, // orbit distance
+      this._config.drone.distance, // orbit distance
       Vector3.Zero(), // target position
       this._scene
     );
@@ -988,7 +999,7 @@ export class CameraManager implements ICameraManager {
    * @see Story 010 — Camera Config HMR (AC-14c)
    */
   private _applyConfigToCameras(): void {
-    defined(this._chaseCam);
+    if (!this._chaseCam) return;
     this._chaseCam.radius = this._config.chase.distance;
     this._chaseCam.heightOffset = this._config.chase.height;
     this._chaseCam.rotationOffset = this._config.chase.offset;
@@ -1056,5 +1067,16 @@ export class CameraManager implements ICameraManager {
     if (droneMovement?.input?.inputMap) {
       droneMovement.input.inputMap.length = 0;
     }
+  }
+
+  /**
+   * Next pseudo-random float in [0, 1) for shake offsets.
+   * Uses xorshift32 — deterministic per seed, fast, no allocation.
+   */
+  private _nextShakeRandom(): number {
+    this._shakeRngState ^= this._shakeRngState << 13;
+    this._shakeRngState ^= this._shakeRngState >> 17;
+    this._shakeRngState ^= this._shakeRngState << 5;
+    return (this._shakeRngState >>> 0) / 0x100000000;
   }
 }
