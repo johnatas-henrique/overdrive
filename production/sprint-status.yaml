@@ -484,11 +484,11 @@ stories:
     name: "Story 010: Camera Config HMR"
     file: "production/epics/camera/story-010-camera-config-hmr.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   - id: "2-46"
     name: "Story 001: CarEntity Spawn & Lifecycle"
