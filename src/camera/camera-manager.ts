@@ -988,8 +988,7 @@ export class CameraManager implements ICameraManager {
    * @see Story 010 — Camera Config HMR (AC-14c)
    */
   private _applyConfigToCameras(): void {
-    if (!this._chaseCam) return;
-
+    defined(this._chaseCam);
     this._chaseCam.radius = this._config.chase.distance;
     this._chaseCam.heightOffset = this._config.chase.height;
     this._chaseCam.rotationOffset = this._config.chase.offset;
