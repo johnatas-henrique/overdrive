@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.6.0](https://github.com/johnatas-henrique/overdrive/compare/overdrive-v0.5.0...overdrive-v0.6.0) (2026-07-01)
+
+
+### Features
+
+* **physics:** add brakeMax to PhysicsConfig, remove liftOffRearFactor ([abb07b2](https://github.com/johnatas-henrique/overdrive/commit/abb07b27d52ad6cac40bed0d811b1d0dfc6c931c))
+* **physics:** add engine config fields and gradient to CarPhysicsState ([e162221](https://github.com/johnatas-henrique/overdrive/commit/e162221cdac141b9ab366172e82de21702ff1e32))
+* **physics:** add pitEntrySpeed to CarPhysicsState and pitSpeedTransitionTime to PhysicsConfig ([e5a867e](https://github.com/johnatas-henrique/overdrive/commit/e5a867e6116379c11b77a956a043d9985edf4c43))
+* **physics:** add type definitions for physics system ([c28718a](https://github.com/johnatas-henrique/overdrive/commit/c28718aee0750503ad65dea6d99036886ec4a442))
+* **physics:** complete Physics/Handling epic — 5 stories, 2044 tests, 100% coverage ([80bf943](https://github.com/johnatas-henrique/overdrive/commit/80bf943076a3c0015aefea942e3a0ab432522ff4))
+* **physics:** implement ArcadeGripModel replacing Phase1Stub ([d089508](https://github.com/johnatas-henrique/overdrive/commit/d089508a4f2b84e9015f82c797e680e8788db11c))
+* **physics:** implement engine model, auto-shift, drag, braking, and input integration ([8ef895f](https://github.com/johnatas-henrique/overdrive/commit/8ef895f06d8c286570b5eeb45ff3f664f4c81ad6))
+* **physics:** implement Event Bus integration, pit limiter, edge events, and pending updates ([ccd10f5](https://github.com/johnatas-henrique/overdrive/commit/ccd10f553b82e5900e95af9b92799abc34fd221d))
+* **physics:** implement PhysicsService with 3-phase pipeline ([50c540b](https://github.com/johnatas-henrique/overdrive/commit/50c540bc900f6a5fda8b6918b5d102d1b8cf7413))
+* **physics:** implement surface handling for off-track and kerb grip modifiers ([0b330c1](https://github.com/johnatas-henrique/overdrive/commit/0b330c12747cd0562984464ea005608ca64738d6))
+* **physics:** resolve TD-1 through TD-4 — topSpeedMs, input validation, pending map cleanup ([912c904](https://github.com/johnatas-henrique/overdrive/commit/912c904b075b91bf9bcc8e146ac9355aa74233ac))
+
+
+### Bug Fixes
+
+* **physics:** add createDefaultCarPhysicsState factory and [@throws](https://github.com/throws) JSDoc ([fbe39ad](https://github.com/johnatas-henrique/overdrive/commit/fbe39adbaca0f0e8d9edace3e010521fd1f404d0))
+* **physics:** add registerCar/removeCar API and update interface ([7a73684](https://github.com/johnatas-henrique/overdrive/commit/7a736849791d49a4d2b76c2db1f70f463dfb39b3))
+* **physics:** implement PR review fixes — pit limiter, brake direction, NaN guards ([250f712](https://github.com/johnatas-henrique/overdrive/commit/250f712e92d21385b9018e4b8d48ed002532624f))
+* **physics:** remove hot-path validation, fix reverse gear, add dt=0 guard ([d61edbd](https://github.com/johnatas-henrique/overdrive/commit/d61edbd0f5ada31317ae51e269d87225ba1466c9))
+* **physics:** tighten config types and add liftOffRefSpeedKmh ([6e1d8d8](https://github.com/johnatas-henrique/overdrive/commit/6e1d8d8e786a580a90699c37e5aab8c3a02ef265))
+
 ## [0.5.0](https://github.com/johnatas-henrique/overdrive/compare/overdrive-v0.4.1...overdrive-v0.5.0) (2026-06-30)
 
 
