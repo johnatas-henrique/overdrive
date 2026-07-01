@@ -421,6 +421,7 @@ describe("camera shake system (Story 007)", () => {
       // Manually set a mock shakeNode to verify the true branch
       const mockShakeNode = {
         position: { x: 0, y: 0, z: 0 },
+        rotation: { x: 0, y: 0, z: 0 },
         isDisposed: () => false,
         dispose: () => {},
       };
