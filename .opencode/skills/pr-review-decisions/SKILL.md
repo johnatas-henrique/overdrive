@@ -133,20 +133,20 @@ Show the summary and resolve DISCUSS items one by one.
 
 **Format:**
 ```
-## Resumo das Decisões
+## Decision Summary
 
-| Decisão | Qtd | IDs |
-| ------- | --- | --- |
+| Decision | Count | IDs |
+| -------- | ----- | --- |
 | FIX | N | FR-NNN |
 | SKIP | N | FR-NNN |
 | DISCUSS | N | FR-NNN |
 
-### Itens para DISCUSS
+### Items for DISCUSS
 
 **FR-NNN**: {Title}
 - Programmer: {decision} | QA: {decision} | Orchestrator: {decision}
 - {key argument for each side}
-- Minha posição: {recommendation}
+- My position: {recommendation}
 ```
 
 For each DISCUSS item:
@@ -176,9 +176,9 @@ For each finding:
 3. Update any affected tests
 
 After all changes:
-1. Run: npx vitest run
-2. Run: npx tsc --noEmit
-3. Run: npx biome check src/ tests/
+1. Run: npm exec vitest run
+2. Run: npm exec tsc --noEmit
+3. Run: npm exec biome check src/ tests/
 
 Report: which findings implemented, test results, any issues.
 ```
@@ -189,10 +189,10 @@ Report: which findings implemented, test results, any issues.
 
 After implementation completes, verify independently:
 
-1. `npx vitest run` — all tests pass
-2. `npx tsc --noEmit` — TypeScript clean
-3. `npx biome check src/ tests/` — lint clean
-4. `npx vitest run --coverage` — check for uncovered branches
+1. `npm exec vitest run` — all tests pass
+2. `npm exec tsc --noEmit` — TypeScript clean
+3. `npm exec biome check src/ tests/` — lint clean
+4. `npm exec vitest run --coverage` — check for uncovered branches
 5. If defensive branches exist without tests: write the test (per project rule)
 
 Report all results to user.
