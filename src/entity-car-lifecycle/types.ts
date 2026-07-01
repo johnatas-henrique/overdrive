@@ -1,4 +1,4 @@
-import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
+import type { Node } from "@babylonjs/core/node";
 import type { PhysicsAggregate } from "@babylonjs/core/Physics/v2/physicsAggregate";
 
 /**
@@ -24,8 +24,8 @@ export interface CarEntity {
   readonly teamId: string;
   /** Grid position — 0 = pole position */
   readonly gridIndex: number;
-  /** Root `TransformNode` or `Mesh` of the cloned car GLB in the scene */
-  readonly mesh: AbstractMesh;
+  /** Root `Node` (TransformNode or Mesh) of the cloned car GLB in the scene */
+  readonly mesh: Node;
   /**
    * Physics body — convex hull, 800 kg.
    * `null` before `spawnGrid()` is called or after `destroyAll()`.

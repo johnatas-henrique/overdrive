@@ -567,7 +567,7 @@ export class EntityLifecycle {
       return root;
     }
 
-    // (2) Scan all instantiated nodes
+    // (2) Scan root nodes from the instantiation result
     for (const node of result.rootNodes) {
       if (node instanceof Mesh && node.geometry) {
         return node;
