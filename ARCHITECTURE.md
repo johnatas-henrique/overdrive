@@ -6,7 +6,7 @@
 
 **Key Characteristics:**
 - 51 specialized agents organized in a 3-tier hierarchy (Directors → Leads → Specialists)
-- 77 skills (slash commands) routed through themed modules
+- 75 skills (slash commands) routed through themed modules
 - 3 OpenCode TypeScript plugins for lifecycle hooks, drift detection, and changelog generation
 - User-driven collaboration model — agents draft and propose, user decides
 
@@ -30,13 +30,13 @@
 - Purpose: Actual game code, scenes, assets, and Unity project configuration
 - Location: `Assets/`, `ProjectSettings/`, `Packages/`
 - Contains: Unity C# scripts, scenes, materials, sprites, input actions, render pipeline assets
-- Depends on: Unity 6 (6000.3.19f1), URP 17.3.0, Input System 1.19.0, AI Navigation 2.0.13
+- Depends on: Unity 6 (6000.3.19f1), URP 17.3.0, Input System 1.19.0, AI Navigation 2.0.14
 - Used by: Unity Editor, build pipeline
 
 **Design Layer:**
-- Purpose: Game design documentation — GDDs, quick specs, UX specs, entity registry
+- Purpose: Game design documentation — entity/formula registry, design standards
 - Location: `design/`
-- Contains: GDD files (`design/gdd/`), quick specs (`design/quick-specs/`), UX specs (`design/ux/`), entity/formula registry (`design/registry/entities.yaml`)
+- Contains: Entity/formula registry (`design/registry/entities.yaml`), design standards (`design/AGENTS.md`)
 - Depends on: OCGS design skills (`/design-system`, `/quick-design`, `/ux-design`)
 - Used by: Architecture skills, story creation, implementation validation
 
@@ -48,10 +48,10 @@
 - Used by: Plugin CI and game development validation
 
 **Tooling Layer:**
-- Purpose: Migration scripts, build utilities, MCP integrations
+- Purpose: Build utilities, MCP integrations, model assignment
 - Location: `tools/`
-- Contains: build utilities and the Aseprite MCP server (`tools/aseprite-mcp/`)
-- Depends on: Node.js, fs
+- Contains: Aseprite MCP server (`tools/aseprite-mcp/`, git submodule), model assignment utility (`tools/assign-models.js`)
+- Depends on: Node.js, Python/uv (for Aseprite MCP)
 - Used by: Asset pipeline and project tooling
 
 ## Data Flow
