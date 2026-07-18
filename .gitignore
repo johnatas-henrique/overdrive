@@ -73,3 +73,31 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+
+node_modules/
+*.log
+.env
+.env.*
+opencode-config-debug*.json
+opencode-debug-latest.json
+fixed-debug.json
+opencode-config-verify.json
+
+# Session data (private — contains design discussions)
+production/session-logs/
+production/session-state/
+
+# Git worktrees
+.worktrees/
+
+# OS junk
+Thumbs.db
+.DS_Store
+desktop.ini
+*.swp
+*.swo
+*~
+
+# Godot editor cache
+.godot/
