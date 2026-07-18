@@ -1,0 +1,73 @@
+root = true
+
+# Unity C# source only. Do not apply whitespace rules to Unity-serialized assets
+# such as .unity, .prefab, .asset, or .meta files.
+[Assets/{source,Tests,Editor}/**.cs]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+tab_width = 4
+max_line_length = 100
+
+# CSharpier-compatible import formatting.
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+
+# Prefer explicit braces for maintainable Unity lifecycle and gameplay code.
+csharp_prefer_braces = true:suggestion
+
+# Use var only when the assigned type is obvious at the declaration site.
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+# PascalCase is used for Unity callbacks, types, methods, properties, and events.
+dotnet_naming_rule.types_should_be_pascal_case.severity = suggestion
+dotnet_naming_rule.types_should_be_pascal_case.symbols = types
+dotnet_naming_rule.types_should_be_pascal_case.style = pascal_case
+
+dotnet_naming_symbols.types.applicable_kinds = class, struct, interface, enum, delegate
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+
+dotnet_naming_rule.methods_properties_events_should_be_pascal_case.severity = suggestion
+dotnet_naming_rule.methods_properties_events_should_be_pascal_case.symbols = methods_properties_events
+dotnet_naming_rule.methods_properties_events_should_be_pascal_case.style = pascal_case
+
+dotnet_naming_symbols.methods_properties_events.applicable_kinds = method, property, event
+
+# Public and protected fields remain PascalCase, matching Unity Inspector labels.
+dotnet_naming_rule.visible_fields_should_be_pascal_case.severity = suggestion
+dotnet_naming_rule.visible_fields_should_be_pascal_case.symbols = visible_fields
+dotnet_naming_rule.visible_fields_should_be_pascal_case.style = pascal_case
+
+dotnet_naming_symbols.visible_fields.applicable_kinds = field
+dotnet_naming_symbols.visible_fields.applicable_accessibilities = public, protected, protected_internal, internal
+
+# Private state is distinguished from public API and Inspector-facing members.
+dotnet_naming_rule.private_fields_should_be_underscore_camel_case.severity = suggestion
+dotnet_naming_rule.private_fields_should_be_underscore_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_should_be_underscore_camel_case.style = underscore_camel_case
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
+
+# Parameters and local variables are camelCase.
+dotnet_naming_rule.parameters_and_locals_should_be_camel_case.severity = suggestion
+dotnet_naming_rule.parameters_and_locals_should_be_camel_case.symbols = parameters_and_locals
+dotnet_naming_rule.parameters_and_locals_should_be_camel_case.style = camel_case
+
+dotnet_naming_symbols.parameters_and_locals.applicable_kinds = parameter, local
+dotnet_naming_style.camel_case.capitalization = camel_case
+
+# Assembly definition files are JSON managed by Unity.
+[Assets/**/*.asmdef]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 2
