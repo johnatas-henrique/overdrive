@@ -1,9 +1,18 @@
 # Unity 6.3 LTS — Optional Packages & Systems
 
-**Last verified:** 2026-02-13
+**Last verified:** 2026-07-19
 
-This document indexes **optional packages and systems** available in Unity 6.3 LTS.
-These are NOT part of the core engine but are commonly used for specific game types.
+This document indexes optional packages and systems available for Unity 6.3.
+Only the packages in the table below are part of this project today. All other entries are reference material, not approved dependencies.
+
+## Current Project Package State
+
+| Installed | Reference-only / not installed |
+|-----------|--------------------------------|
+| URP 17.3.0, Addressables 3.1.0 | Cinemachine, Entities/DOTS, VFX Graph |
+| Input System 1.19.0 | Animation Rigging, ProBuilder, Netcode for GameObjects |
+| AI Navigation 2.0.14 | ML-Agents, Recorder, Splines, Muse, Sentis |
+| Timeline 1.8.12, UGUI 2.0.0 | |
 
 ---
 
@@ -16,7 +25,7 @@ These are NOT part of the core engine but are commonly used for specific game ty
 
 ---
 
-## Production-Ready Packages (Detailed Docs Available)
+## Optional Packages (Reference Only Unless Installed)
 
 ### ✅ Cinemachine
 - **Purpose:** Virtual camera system (dynamic cameras, cutscenes, camera blending)
@@ -53,18 +62,18 @@ These are NOT part of the core engine but are commonly used for specific game ty
 
 ## Other Production-Ready Packages (Brief Overview)
 
-### 🟡 Input System (Already Covered)
+### 🟡 Input System (Installed)
 - **Purpose:** Modern input handling (rebindable, cross-platform)
-- **Status:** Production-Ready (default in Unity 6)
-- **Package:** `com.unity.inputsystem`
+- **Status:** Installed project standard
+- **Package:** `com.unity.inputsystem` 1.19.0
 - **Docs:** See [modules/input.md](../modules/input.md)
-- **Official:** https://docs.unity3d.com/Packages/com.unity.inputsystem@1.11/manual/index.html
+- **Official:** https://docs.unity3d.com/Packages/com.unity.inputsystem@1.19/manual/index.html
 
 ---
 
-### 🟡 UI Toolkit (Already Covered)
-- **Purpose:** Modern runtime UI (HTML/CSS-like, performant)
-- **Status:** Production-Ready (Unity 6)
+### 🟡 UI Toolkit (Available, Not the Runtime Default)
+- **Purpose:** UXML/USS UI system for editor tooling and selected runtime screens
+- **Status:** Available in Unity 6; uGUI is the project runtime default
 - **Package:** Built-in
 - **Docs:** See [modules/ui.md](../modules/ui.md)
 - **Official:** https://docs.unity3d.com/Packages/com.unity.ui@2.0/manual/index.html
@@ -76,7 +85,7 @@ These are NOT part of the core engine but are commonly used for specific game ty
 - **When to use:** Large-scale VFX, fire, smoke, magic, explosions
 - **Status:** Production-Ready
 - **Package:** `com.unity.visualeffectgraph` (URP/HDRP only)
-- **Official:** https://docs.unity3d.com/Packages/com.unity.visualeffectgraph@17.0/manual/index.html
+- **Official:** https://docs.unity3d.com/Packages/com.unity.visualeffectgraph@17.3/manual/index.html
 
 ---
 
@@ -85,7 +94,7 @@ These are NOT part of the core engine but are commonly used for specific game ty
 - **When to use:** Custom shaders without HLSL coding
 - **Status:** Production-Ready
 - **Package:** `com.unity.shadergraph` (URP/HDRP)
-- **Official:** https://docs.unity3d.com/Packages/com.unity.shadergraph@17.0/manual/index.html
+- **Official:** https://docs.unity3d.com/Packages/com.unity.shadergraph@17.3/manual/index.html
 
 ---
 
@@ -170,12 +179,12 @@ These are NOT part of the core engine but are commonly used for specific game ty
 
 ---
 
-## Preview/Experimental Packages (Use with Caution)
+## Additional Optional Packages (Not Installed)
 
-### ⚠️ Splines
+### 🟡 Splines
 - **Purpose:** Runtime spline creation and editing
 - **When to use:** Roads, paths, procedural content
-- **Status:** Production-Ready (Unity 6)
+- **Status:** Optional package; not installed
 - **Package:** `com.unity.splines`
 - **Official:** https://docs.unity3d.com/Packages/com.unity.splines@2.6/manual/index.html
 
@@ -197,23 +206,12 @@ These are NOT part of the core engine but are commonly used for specific game ty
 
 ---
 
-## Deprecated Packages (Avoid for New Projects)
+## Supported Systems and Project Standards
 
-### ❌ UGUI (Canvas UI)
-- **Deprecated:** Still supported, but UI Toolkit recommended
-- **Use Instead:** UI Toolkit
-
----
-
-### ❌ Legacy Particle System
-- **Deprecated:** Use Visual Effect Graph (VFX Graph)
-- **Use Instead:** VFX Graph
-
----
-
-### ❌ Legacy Animation
-- **Deprecated:** Use Animator (Mecanim)
-- **Use Instead:** Animator Controller
+- **UGUI:** Installed and recommended by Unity 6000.3 for runtime UI.
+- **UI Toolkit:** Alternative runtime system and the editor UI recommendation.
+- **ParticleSystem:** Supported. Evaluate VFX Graph only if its package is approved for a specific effect.
+- **Animation:** Use Animator for new gameplay animation. The legacy Animation component is retained for compatibility.
 
 ---
 
@@ -221,7 +219,7 @@ These are NOT part of the core engine but are commonly used for specific game ty
 
 For packages NOT listed above, use the following approach when users ask:
 
-1. **WebSearch** for latest documentation: `"Unity 6.3 [package name]"`
+1. Search official Unity documentation for the installed package version.
 2. Verify if package is:
    - Post-cutoff (beyond May 2025 training data)
    - Preview vs Production-Ready
@@ -245,6 +243,6 @@ For packages NOT listed above, use the following approach when users ask:
 
 ---
 
-**Last Updated:** 2026-02-13
-**Engine Version:** Unity 6.3 LTS
+**Last Updated:** 2026-07-19
+**Engine Version:** Unity 6000.3.19f1 (Unity 6.3 LTS)
 **LLM Knowledge Cutoff:** May 2025

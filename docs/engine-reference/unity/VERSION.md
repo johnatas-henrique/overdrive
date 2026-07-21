@@ -2,10 +2,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Engine Version** | Unity 6.3 LTS |
-| **Release Date** | December 2025 |
-| **Project Pinned** | 2026-02-13 |
-| **Last Docs Verified** | 2026-02-13 |
+| **Engine Version** | Unity 6000.3.19f1 (Unity 6.3 LTS) |
+| **Release Date** | July 1, 2026 |
+| **Project Pinned** | July 19, 2026 |
+| **Last Docs Verified** | July 19, 2026 |
 | **LLM Knowledge Cutoff** | May 2025 |
 
 ## Knowledge Gap Warning
@@ -15,43 +15,32 @@ Unity 6 release series (formerly Unity 2023 Tech Stream) introduced significant
 changes that the model does NOT know about. Always cross-reference this directory
 before suggesting Unity API calls.
 
-## Post-Cutoff Version Timeline
+## Project Package State
 
-| Version | Release | Risk Level | Key Theme |
-|---------|---------|------------|-----------|
-| 6.0 | Oct 2024 | HIGH | Unity 6 rebrand, new rendering features, Entities 1.3, DOTS improvements |
-| 6.1 | Nov 2024 | MEDIUM | Bug fixes, stability improvements |
-| 6.2 | Dec 2024 | MEDIUM | Performance optimizations, new input system improvements |
-| 6.3 LTS | Dec 2025 | HIGH | First LTS since 6.0, production-ready DOTS, enhanced graphics features |
+| System | Project State |
+|--------|---------------|
+| Universal Render Pipeline | Installed: 17.3.0 |
+| Input System | Installed: 1.19.0 |
+| AI Navigation | Installed: 2.0.14 |
+| Addressables | Installed: 3.1.0 |
+| Unity Test Framework | Installed: 1.6.0 |
+| UGUI | Installed: 2.0.0 |
+| Entities/DOTS, Netcode, Cinemachine, VFX Graph | Not installed |
 
-## Major Changes from 2022 LTS to Unity 6.3 LTS
+## Verified Compatibility Notes
 
-### Breaking Changes
-- **Entities/DOTS**: Major API overhaul in Entities 1.0+, complete redesign of ECS patterns
-- **Input System**: Legacy Input Manager deprecated, new Input System is default
-- **Rendering**: URP/HDRP significant upgrades, SRP Batcher improvements
-- **Addressables**: Asset management workflow changes
-- **Scripting**: C# 9 support, new API patterns
-
-### New Features (Post-Cutoff)
-- **DOTS**: Production-ready Entity Component System (Entities 1.3+)
-- **Graphics**: Enhanced URP/HDRP pipelines, GPU Resident Drawer
-- **Multiplayer**: Netcode for GameObjects improvements
-- **UI Toolkit**: Production-ready for runtime UI (replaces UGUI for new projects)
-- **Async Asset Loading**: Improved Addressables performance
-- **Web**: WebGPU support
-
-### Deprecated Systems
-- **Legacy Input Manager**: Use new Input System package
-- **Legacy Particle System**: Use Visual Effect Graph
-- **UGUI**: Still supported, but UI Toolkit recommended for new projects
-- **Old ECS (GameObjectEntity)**: Replaced by modern DOTS/Entities
+- **Input**: The project standard is the Input System. The legacy Input Manager remains functional and is not an obsolete API.
+- **Physics**: `Rigidbody.velocity`, `Rigidbody.drag`, and `Rigidbody.angularDrag` are obsolete in this editor; use `linearVelocity`, `linearDamping`, and `angularDamping`.
+- **UI**: Unity 6000.3 recommends uGUI for runtime UI. UI Toolkit is the alternative for runtime UI and the recommended system for editor tooling.
+- **Web**: WebGL2 is the default web graphics API. WebGPU is experimental and must not be a project dependency.
+- **Addressables**: Version 3.1.0 is installed. Start with local groups for the MVP; remote delivery remains a later content-distribution decision.
+- **Optional packages**: Documentation for uninstalled packages is reference-only. Do not use their APIs until the corresponding package is approved and installed.
 
 ## Verified Sources
 
-- Official docs: https://docs.unity3d.com/6000.0/Documentation/Manual/index.html
-- Unity 6 release: https://unity.com/releases/unity-6
-- Unity 6.3 LTS announcement: https://unity.com/blog/unity-6-3-lts-is-now-available
-- Migration guide: https://docs.unity3d.com/6000.0/Documentation/Manual/upgrade-guides.html
-- Unity 6 support: https://unity.com/releases/unity-6/support
-- C# API reference: https://docs.unity3d.com/6000.0/Documentation/ScriptReference/index.html
+- Unity 6000.3.19f1 release notes: https://unity.com/releases/editor/whats-new/6000.3.19f1
+- Official docs: https://docs.unity3d.com/6000.3/Documentation/Manual/index.html
+- Upgrade guides: https://docs.unity3d.com/6000.3/Documentation/Manual/upgrade-guides.html
+- C# API reference: https://docs.unity3d.com/6000.3/Documentation/ScriptReference/index.html
+- UI system comparison: https://docs.unity3d.com/6000.3/Documentation/Manual/UI-system-compare.html
+- WebGPU status: https://docs.unity3d.com/6000.3/Documentation/Manual/WebGPU.html
