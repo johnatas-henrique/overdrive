@@ -1,15 +1,16 @@
 # Unity 6.3 — Addressables
 
-**Last verified:** 2026-02-13
-**Status:** Production-Ready
-**Package:** `com.unity.addressables` (Package Manager)
+**Last verified:** 2026-07-19
+**Status:** Installed
+**Package:** `com.unity.addressables` 3.1.0
 
 ---
 
 ## Overview
 
-**Addressables** is Unity's advanced asset management system that replaces `Resources.Load()`
-with async loading, remote content delivery, and better memory control.
+**Addressables** is Unity's asset management system for asynchronous loading, dependency tracking,
+and controlled content delivery. It complements direct references and `Resources.Load()` rather than
+automatically replacing every existing asset reference.
 
 **Use Addressables for:**
 - Async asset loading (non-blocking)
@@ -26,11 +27,17 @@ with async loading, remote content delivery, and better memory control.
 
 ## Installation
 
-### Install via Package Manager
+### Project State
 
-1. `Window > Package Manager`
-2. Unity Registry > Search "Addressables"
-3. Install `Addressables`
+`com.unity.addressables` 3.1.0 is installed from the Unity Registry.
+
+For the MVP, start with local content groups. Do not configure remote catalogs, Unity CCD, or CDN delivery until a later content-distribution requirement is approved.
+
+### Version 3.x Notes
+
+- Version 3.1.0 is the project package version.
+- `WarnOnAddressablesUsageOutsidePlaymode` is available to expose unintended editor-time use.
+- The Auto Group Generator can be evaluated after the project has a stable asset taxonomy; do not generate groups before cars, tracks, and shared content have clear ownership.
 
 ---
 
@@ -360,13 +367,13 @@ async void CheckForUpdates() {
 
 ---
 
-## Migration from Resources
+## Migrating Selected Content from Resources
 
 ```csharp
-// ❌ OLD: Resources.Load (synchronous, blocks frame)
+// Existing Resources pattern.
 GameObject prefab = Resources.Load<GameObject>("Enemies/Goblin");
 
-// ✅ NEW: Addressables (async, non-blocking)
+// Addressables alternative for content selected for asynchronous loading.
 var handle = await Addressables.LoadAssetAsync<GameObject>("Enemies/Goblin").Task;
 GameObject prefab = handle.Result;
 ```
@@ -374,5 +381,5 @@ GameObject prefab = handle.Result;
 ---
 
 ## Sources
-- https://docs.unity3d.com/Packages/com.unity.addressables@2.0/manual/index.html
-- https://learn.unity.com/tutorial/addressables
+- https://docs.unity3d.com/Packages/com.unity.addressables@3.1/manual/index.html
+- https://docs.unity3d.com/Packages/com.unity.addressables@3.1/changelog/CHANGELOG.html
