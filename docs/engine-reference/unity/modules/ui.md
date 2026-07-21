@@ -1,6 +1,6 @@
 # Unity 6.3 — UI Module Reference
 
-**Last verified:** 2026-02-13
+**Last verified:** 2026-07-19
 **Knowledge Gap:** Unity 6 UI Toolkit is production-ready for runtime UI
 
 ---
@@ -8,13 +8,13 @@
 ## Overview
 
 Unity 6 UI systems:
-- **UI Toolkit** (RECOMMENDED): Modern, performant, HTML/CSS-like (production-ready in Unity 6)
-- **UGUI (Canvas)**: Legacy system, still supported but not recommended for new projects
-- **IMGUI**: Editor-only, deprecated for runtime UI
+- **UGUI (Unity UI / Canvas)** (RECOMMENDED for runtime): Production-proven GameObject-based UI
+- **UI Toolkit**: Runtime alternative with UXML/USS; recommended for editor tooling
+- **IMGUI**: Established editor UI alternative
 
 ---
 
-## UI Toolkit (Modern UI)
+## UI Toolkit (Runtime Alternative)
 
 ### Setup UI Document
 
@@ -191,7 +191,7 @@ void CreateUI() {
 
 ---
 
-## UGUI (Legacy Canvas UI)
+## UGUI (Canvas UI)
 
 ### Basic Setup (Still Works in Unity 6)
 
@@ -372,6 +372,6 @@ IEnumerator FadeIn(VisualElement element, float duration) {
 ---
 
 ## Sources
-- https://docs.unity3d.com/6000.0/Documentation/Manual/UIElements.html
+- https://docs.unity3d.com/6000.3/Documentation/Manual/UI-system-compare.html
 - https://docs.unity3d.com/Packages/com.unity.ui@2.0/manual/index.html
 - https://docs.unity3d.com/Packages/com.unity.ugui@2.0/manual/index.html

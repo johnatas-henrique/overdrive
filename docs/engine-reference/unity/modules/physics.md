@@ -1,27 +1,24 @@
 # Unity 6.3 — Physics Module Reference
 
-**Last verified:** 2026-02-13
-**Knowledge Gap:** Unity 6 physics improvements, solver changes
+**Last verified:** 2026-07-19
+**Knowledge Gap:** Unity 6 physics API changes
 
 ---
 
 ## Overview
 
-Unity 6.3 uses **PhysX 5.1** (improved from PhysX 4.x in 2022 LTS):
-- Better solver stability
-- Improved performance
-- Enhanced collision detection
+Unity 6.3 uses Unity's built-in 3D physics integration with NVIDIA PhysX.
 
 ---
 
 ## Key Changes from 2022 LTS
 
-### Default Solver Iterations Increased
-Unity 6 increased default solver iterations for better stability:
+### Default Solver Iterations
+
+`Physics.defaultSolverIterations` remains 6 by default. Raise it only after measuring a stability issue in a representative scene:
 
 ```csharp
-// Default changed from 6 to 8 iterations
-Physics.defaultSolverIterations = 8; // Check if relying on old behavior
+Physics.defaultSolverIterations = 8;
 ```
 
 ### Enhanced Collision Detection
@@ -39,12 +36,12 @@ rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 ### Rigidbody
 
 ```csharp
-// ✅ Best practice: Use AddForce, not direct velocity writes
+// Use forces for force-based motion.
 Rigidbody rb = GetComponent<Rigidbody>();
 rb.AddForce(Vector3.forward * 10f, ForceMode.Impulse);
 
-// ❌ Avoid: Direct velocity assignment (can cause instability)
-rb.velocity = new Vector3(0, 10, 0); // Only use when necessary
+// Unity 6000.3 property migration: velocity -> linearVelocity.
+rb.linearVelocity = new Vector3(0, 10, 0);
 ```
 
 ### Colliders
@@ -264,5 +261,5 @@ void OnDrawGizmos() {
 ---
 
 ## Sources
-- https://docs.unity3d.com/6000.0/Documentation/Manual/PhysicsOverview.html
+- https://docs.unity3d.com/6000.3/Documentation/Manual/PhysicsOverview.html
 - https://docs.unity3d.com/ScriptReference/Physics.html

@@ -1,6 +1,6 @@
 # Unity 6.3 — Rendering Module Reference
 
-**Last verified:** 2026-02-13
+**Last verified:** 2026-07-19
 **Knowledge Gap:** LLM trained on Unity 2022 LTS; Unity 6 has major rendering changes
 
 ---
@@ -10,7 +10,7 @@
 Unity 6.3 LTS uses **Scriptable Render Pipelines (SRP)** as the modern rendering architecture:
 - **URP (Universal Render Pipeline)**: Cross-platform, mobile-friendly (RECOMMENDED)
 - **HDRP (High Definition Render Pipeline)**: High-end PC/console, photorealistic
-- **Built-in Pipeline**: Deprecated, avoid for new projects
+- **Built-in Pipeline**: Not recommended for new project rendering
 
 ---
 
@@ -234,5 +234,5 @@ var colorTarget = cameraData.renderer.cameraColorTargetHandle;
 ---
 
 ## Sources
-- https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@17.0/manual/index.html
-- https://docs.unity3d.com/6000.0/Documentation/Manual/render-pipelines.html
+- https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@17.3/manual/index.html
+- https://docs.unity3d.com/6000.3/Documentation/Manual/render-pipelines.html

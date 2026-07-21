@@ -1,6 +1,6 @@
 # Unity 6.3 — Audio Module Reference
 
-**Last verified:** 2026-02-13
+**Last verified:** 2026-07-19
 **Knowledge Gap:** Unity 6 audio mixer improvements
 
 ---
@@ -280,5 +280,5 @@ listener.enabled = false;
 ---
 
 ## Sources
-- https://docs.unity3d.com/6000.0/Documentation/Manual/Audio.html
-- https://docs.unity3d.com/6000.0/Documentation/Manual/AudioMixer.html
+- https://docs.unity3d.com/6000.3/Documentation/Manual/Audio.html
+- https://docs.unity3d.com/6000.3/Documentation/Manual/AudioMixer.html

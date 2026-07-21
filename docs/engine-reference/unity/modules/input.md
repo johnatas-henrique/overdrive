@@ -1,7 +1,7 @@
 # Unity 6.3 — Input Module Reference
 
-**Last verified:** 2026-02-13
-**Knowledge Gap:** Unity 6 uses new Input System (legacy Input deprecated)
+**Last verified:** 2026-07-19
+**Project Standard:** Input System 1.19.0. The legacy Input Manager remains available but is not used for new project code.
 
 ---
 
@@ -9,16 +9,16 @@
 
 Unity 6 input systems:
 - **Input System Package** (RECOMMENDED): Cross-platform, rebindable, modern
-- **Legacy Input Manager**: Deprecated, avoid for new projects
+- **Legacy Input Manager**: Available for compatibility; do not introduce it into new project code
 
 ---
 
 ## Key Changes from 2022 LTS
 
-### Legacy Input Deprecated in Unity 6
+### Input System Is the Project Standard
 
 ```csharp
-// ❌ DEPRECATED: Input class
+// Legacy input approach: still functional, but not the project standard.
 if (Input.GetKeyDown(KeyCode.Space)) { }
 
 // ✅ NEW: Input System package
@@ -26,7 +26,7 @@ using UnityEngine.InputSystem;
 if (Keyboard.current.spaceKey.wasPressedThisFrame) { }
 ```
 
-**Migration Required:** Install `com.unity.inputsystem` package.
+**Project state:** `com.unity.inputsystem` 1.19.0 is already installed.
 
 ---
 
@@ -352,5 +352,5 @@ public class Player : MonoBehaviour {
 ---
 
 ## Sources
-- https://docs.unity3d.com/Packages/com.unity.inputsystem@1.11/manual/index.html
-- https://docs.unity3d.com/Packages/com.unity.inputsystem@1.11/manual/QuickStartGuide.html
+- https://docs.unity3d.com/Packages/com.unity.inputsystem@1.19/manual/index.html
+- https://docs.unity3d.com/Packages/com.unity.inputsystem@1.19/manual/QuickStartGuide.html
