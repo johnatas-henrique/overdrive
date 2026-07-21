@@ -5,13 +5,13 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 ## Technology Stack
 
-- **Engine**: Unity 6.0.3.19f1
+- **Engine**: Unity 6000.3.19f1 (Unity 6.3 LTS)
 - **Language**: C#
 - **Build System**: Unity Build Pipeline
 - **Rendering**: Universal Render Pipeline 17.3.0
 - **Input**: Unity Input System 1.19.0
 - **Navigation**: AI Navigation 2.0.14
-- **Asset Pipeline**: Unity AssetDatabase/import pipeline with Coplay MCP for
+- **Asset Pipeline**: Unity Asset Import Pipeline + Addressables + Coplay MCP for
   editor-assisted scene, asset, and visual verification workflows
 
 > **Note**: This project is developed exclusively for Unity. Use Unity-native
@@ -19,6 +19,10 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 > **Note**: Engine-specialist agents exist for Godot, Unity, Unreal, SFML 3,
 > and Raylib. Use the set matching your engine.
+
+## Engine Version Reference
+
+@docs/engine-reference/unity/VERSION.md
 
 ## Agent Model Policy
 

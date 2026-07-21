@@ -11,6 +11,8 @@
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
 *.log
+.env
+.env.*
 
 # MemoryCaptures can get excessive in size.
 # They also could contain extremely sensitive data
@@ -27,6 +29,9 @@
 
 # Visual Studio cache directory
 .vs/
+
+# VSCode
+.vscode/
 
 # Gradle cache directory
 .gradle/
@@ -101,3 +106,6 @@ desktop.ini
 
 # Godot editor cache
 .godot/
+
+# Submodule dependencies
+tools/aseprite-mcp/.venv/

@@ -6,7 +6,7 @@
 
 **Key Characteristics:**
 - 51 specialized agents organized in a 3-tier hierarchy (Directors → Leads → Specialists)
-- 75 skills (slash commands) routed through themed modules
+- 80 skills (slash commands) routed through themed modules
 - 3 OpenCode TypeScript plugins for lifecycle hooks, drift detection, and changelog generation
 - User-driven collaboration model — agents draft and propose, user decides
 
@@ -130,6 +130,6 @@
 
 **Coordination:** Vertical delegation (Directors → Leads → Specialists) with horizontal consultation allowed but non-binding. Conflict resolution escalates to shared parent or domain director.
 
-**Model Tier Assignment:** Three tiers — Haiku (read-only/simple), Sonnet (implementation/default), Opus (multi-document synthesis/high-stakes gates). Assigned per skill in frontmatter.
+**Model Tier Assignment:** Three tiers assigned per agent frontmatter — Lightweight (`opencode/deepseek-v4-flash-free`, simple read-only work), Default (`opencode/mimo-v2.5-free`, implementation and analysis), High-stakes (`opencode-go/minimax-m3` / `opencode-go/mimo-v2.5`, cross-system synthesis and gates).
 
 **Code Generation Guardrails:** Agents must ask "May I write this to [filepath]?" before using Write/Edit tools. Multi-file changes require explicit approval. No commits without user instruction.

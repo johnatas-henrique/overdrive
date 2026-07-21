@@ -7,6 +7,7 @@
 ├── AGENTS.md                    # Master framework configuration and reference
 ├── opencode.json                # OpenCode config (plugins, MCP servers, permissions)
 ├── overdrive.slnx               # Unity solution file
+├── cog.toml                     # Cocogitto conventional commit config
 ├── Assembly-CSharp.csproj       # Unity C# project (auto-generated)
 ├── Assembly-CSharp-Editor.csproj# Unity Editor C# project (auto-generated)
 ├── README.md                    # Project overview and quick start guide
@@ -100,7 +101,7 @@
     ├── workflows/               # CI pipelines
     │   ├── opencode.yml         # OpenCode CI
     │   ├── opencode-review.yml  # OpenCode review
-    │   ├── test.yml             # Test suite runner
+    │   ├── conventional-commits.yml # Conventional Commit validation (Cocogitto)
     │   └── stale.yml            # Stale issue management
     ├── ISSUE_TEMPLATE/          # Issue templates
     ├── PULL_REQUEST_TEMPLATE.md # PR template
@@ -167,8 +168,8 @@
 
 **Core Logic:**
 - `.opencode/agents/[name].md`: Agent definitions (51 agents)
-- `.opencode/skills/[name]/SKILL.md`: Skill workflows (75 skills)
-- `.opencode/commands/[name].md`: Slash command routing (54 commands)
+- `.opencode/skills/[name]/SKILL.md`: Skill workflows (80 skills)
+- `.opencode/commands/[name].md`: Slash command routing (53 commands)
 - `.opencode/plugins/ccgs-hooks.ts`: Primary lifecycle hooks plugin
 - `.opencode/plugins/drift-detector.ts`: Template drift detection
 - `.opencode/plugins/changelog-generator.ts`: Changelog generation
