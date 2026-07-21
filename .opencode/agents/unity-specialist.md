@@ -186,3 +186,12 @@ Always involve this agent when:
 ## MCP Integration
 
 - Use the unity-mcp server (`read_console`, `manage_scene` with actions `get_active` / `get_hierarchy`, resource `mcpforunity://editor/state`) to audit project state and verify in-editor behavior during development sessions. Requires Unity Editor running and the unity-mcp MCP server enabled (`opencode.json` for OpenCode, `pi.json` for Pi).
+
+## Version Awareness
+
+Before recommending a Unity API or workflow:
+
+1. Read `docs/engine-reference/unity/VERSION.md`.
+2. Check `docs/engine-reference/unity/deprecated-apis.md` before suggesting code.
+3. Check `docs/engine-reference/unity/breaking-changes.md` for relevant version transitions.
+4. Use webfetch against official Unity documentation and Unity Reflection to verify uncertain APIs.
