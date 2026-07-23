@@ -39,6 +39,19 @@
 ├── Packages/                    # Unity package manifest (URP, Input System, AI Nav, Timeline, etc.)
 ├── design/                      # Game design documents
 │   ├── AGENTS.md                # Design directory standards
+│   ├── gdd/                     # Game Design Documents (one per system)
+│   │   ├── game-concept.md      # Core identity, pitch, and creative brief
+│   │   ├── reviews/             # Design review logs
+│   │   │   └── game-concept-review-log.md
+│   │   ├── camera.md
+│   │   ├── content-pipeline.md
+│   │   ├── ghost-recording.md
+│   │   ├── input-system.md
+│   │   ├── multiplayer-architecture.md
+│   │   ├── settings.md
+│   │   ├── simulation-architecture.md
+│   │   ├── systems-index.md
+│   │   └── vehicle-physics.md
 │   └── registry/
 │       └── entities.yaml        # Single source of truth for cross-GDD game-world facts
 ├── docs/                        # Technical documentation
@@ -49,7 +62,7 @@
 │   │   ├── director-gates.md    # Shared review gate prompts
 │   │   ├── agent-roster.md      # Full agent inventory with model tiers
 │   │   ├── agent-coordination-map.md # Agent delegation relationships
-│   │   ├── skills-reference.md  # All 75 skills cataloged by phase
+│   │   ├── skills-reference.md  # All 80 skills cataloged by phase
 │   │   ├── coordination-rules.md # Agent delegation and conflict resolution
 │   │   ├── coding-standards.md  # Code review and testing standards
 │   │   ├── directory-structure.md # Canonical directory layout
@@ -67,6 +80,8 @@
 │   ├── registry/                # Architecture registry
 │   │   └── architecture.yaml    # Architecture registry data
 │   ├── research/                # Research documents
+│   │   ├── multiplayer-networking-comparison-2026.md
+│   │   └── unity-mcp-landscape-2026-07-16.md
 │   ├── AGENTS.md                # Docs directory standards
 │   ├── COLLABORATIVE-DESIGN-PRINCIPLE.md # User-driven collaboration model
 │   ├── COPLAY.md                # Coplay integration notes
@@ -86,8 +101,9 @@
 │   ├── session-logs/            # Session audit trail
 │   │   ├── agent-audit.log      # Plugin audit log
 │   │   └── session-log.md       # Human-readable session log
-│   └── session-state/           # Active session checkpoint
-│       └── active.md            # Living state file
+│   ├── session-state/           # Active session checkpoint
+│   │   └── active.md            # Living state file
+│   └── review-mode.txt          # Review mode state flag
 ├── dotnet-tools.json            # .NET tool manifest (csharpier)
 ├── .editorconfig                # Editor formatting rules
 ├── .gitattributes               # Git attributes (line endings, binary handling)
@@ -126,13 +142,13 @@
 
 **`design/`:**
 - Purpose: Game design documentation and cross-system registries
-- Contains: GDD standards, entity/formula registry
-- Key files: `registry/entities.yaml`, `AGENTS.md`
+- Contains: GDDs (`design/gdd/`), entity/formula registry, design standards
+- Key files: `gdd/game-concept.md`, `registry/entities.yaml`, `AGENTS.md`
 
 **`docs/`:**
-- Purpose: Technical documentation — architecture decisions, framework reference, workflow guides
-- Contains: ADRs, engine API snapshots, OCGS framework docs, examples
-- Key files: `framework/director-gates.md`, `framework/agent-roster.md`, `framework/skills-reference.md`, `framework/workflow-catalog.yaml`, `architecture/tr-registry.yaml`
+- Purpose: Technical documentation — architecture decisions, framework reference, workflow guides, research
+- Contains: ADRs, engine API snapshots, OCGS framework docs, examples, research
+- Key files: `framework/director-gates.md`, `framework/agent-roster.md`, `framework/skills-reference.md`, `framework/workflow-catalog.yaml`, `architecture/tr-registry.yaml`, `research/multiplayer-networking-comparison-2026.md`
 
 **`tests/`:**
 - Purpose: Unity/C# gameplay and integration tests
@@ -145,8 +161,8 @@
 
 **`production/`:**
 - Purpose: Production management — session logs, audit trails, active state
-- Contains: Session logs, agent audit log, session state checkpoint
-- Key files: `session-logs/agent-audit.log`, `session-logs/session-log.md`, `session-state/active.md`
+- Contains: Session logs, agent audit log, session state checkpoint, review mode state
+- Key files: `session-logs/agent-audit.log`, `session-logs/session-log.md`, `session-state/active.md`, `review-mode.txt`
 
 **`prototypes/`:**
 - Purpose: Throwaway prototypes isolated from main source
@@ -175,6 +191,9 @@
 - `.opencode/plugins/changelog-generator.ts`: Changelog generation
 
 **Design Documents:**
+- `design/gdd/` — Game Design Documents, one per system
+- `design/gdd/game-concept.md` — Core identity, pitch, and creative brief
+- `design/gdd/reviews/` — Design review logs
 - `design/registry/entities.yaml`: Cross-GDD entity/formula/constant registry
 - `docs/architecture/tr-registry.yaml`: Technical requirement ID persistence
 - `docs/registry/architecture.yaml`: Architecture registry data

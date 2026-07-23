@@ -30,13 +30,13 @@
 - Purpose: Actual game code, scenes, assets, and Unity project configuration
 - Location: `Assets/`, `ProjectSettings/`, `Packages/`
 - Contains: Unity C# scripts, scenes, materials, sprites, input actions, render pipeline assets
-- Depends on: Unity 6 (6000.3.19f1), URP 17.3.0, Input System 1.19.0, AI Navigation 2.0.14
+- Depends on: Unity 6 (6000.3.19f1), URP 17.3.0, Input System 1.19.0, AI Navigation 2.0.14, Addressables 3.1.0
 - Used by: Unity Editor, build pipeline
 
 **Design Layer:**
 - Purpose: Game design documentation — entity/formula registry, design standards
 - Location: `design/`
-- Contains: Entity/formula registry (`design/registry/entities.yaml`), design standards (`design/AGENTS.md`)
+- Contains: GDDs (`design/gdd/`), entity/formula registry (`design/registry/entities.yaml`), design standards (`design/AGENTS.md`)
 - Depends on: OCGS design skills (`/design-system`, `/quick-design`, `/ux-design`)
 - Used by: Architecture skills, story creation, implementation validation
 

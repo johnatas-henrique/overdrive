@@ -9,7 +9,7 @@
 - **Language**: C#
 - **Rendering**: Universal Render Pipeline 17.3.0
 - **Physics**: Unity Physics 3D. Vehicle simulation remains pending prototype evaluation.
-- **Networking**: Coherence 2.1 (multiplayer SDK). Free Starter tier for development (<$200k revenue). Client-side prediction with rollback. Server tick rate 30 Hz, client 60 Hz with local prediction. Built-in matchmaking (Rooms), relay, leaderboards (KV Database). Revenue share 3% for hosting above $15k/quarter.
+- **Networking**: Coherence 2.1 (multiplayer SDK). Free Starter tier for development (<$200k revenue). 60 Hz bidirectional (server send + client send). Client-side prediction with rollback via `CoherenceInputSimulation<TState>`. Kinematic state for cross-machine determinism (PhysX non-deterministic). Built-in matchmaking (Rooms), relay, leaderboards (KV Database), ghost storage (CloudStorage). Revenue share 3% for hosting above $15k/quarter.
 
 ## Input & Platform
 
