@@ -1,13 +1,26 @@
 # Track System
 
-> **Status**: In Design
+> **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-21
+> **Last Updated**: 2026-07-26
 > **Implements Pillar**: Every Short Race Matters, Speed You Can Feel
+
+## Phase Scope
+
+| Phase | Scope |
+|---|---|
+| MVP | Four tracks, spline data, surfaces, pit lane, grid positions, and local race geometry. |
+| MVP architecture constraints | Track content is data-driven through the conversion pipeline and spline arrays. |
+| Alpha | Four tracks. |
+| Beta | Eight or more tracks. |
+| Release | Sixteen tracks. |
+
+### Review Boundary
+Future track count and layouts are non-blocking unless MVP track data cannot scale beyond one track.
 
 ## Overview
 
-**Track System** defines the racing world — the spline the car follows, the surfaces it drives on, and the pit lane it enters. It provides the spatial foundation for every race: track length determines lap count, surface types affect tire wear and grip, and pit lane placement creates strategic decision points. The player experiences the track through every corner, every surface change, and every decision to pit or stay out. Without this system, the car has nowhere to go — the track IS the race.
+**Track System** defines the racing world — the spline the car follows, the surfaces it drives on, and the pit lane it enters. It provides the spatial foundation for every race: track length determines lap distance, Race Session Manager supplies the configured lap count, surface types affect tire wear and grip, and pit lane placement creates strategic decision points. The player experiences the track through every corner, every surface change, and every decision to pit or stay out. Without this system, the car has nowhere to go — the track IS the race.
 
 ## Player Fantasy
 
@@ -28,12 +41,12 @@
 **1. Track Data Format**
 
 Each track is stored as a JSON file containing:
-- **Spline:** Array of 3D points (longitude, latitude, altitude) defining the center line
+- **Spline:** Array of 3D local game-space points (meters) defining the center line. Source longitude/latitude/altitude values are converted before runtime JSON is emitted.
 - **Width:** Track width at each point (from TUMFTM data or manual)
 - **Surface zones:** Overlay zones defining surface types (asphalt, kerb, gravel, grass, runoff, pit_lane)
-- **Pit lane:** Separate spline with entry/exit points, speed limit zone
+- **Pit lane:** Separate spline with entry/exit points, speed limit zone, and per-sample `racing_spline_progress` mapping back to the main racing spline
 - **Grid positions:** Distance offsets from start/finish line along the spline
-- **Metadata:** Name, country, length, number of turns, altitude range, lap count
+- **Metadata:** Name, country, length, number of turns, altitude range, reference lap count, first corner direction (left/right), and track-specific race configuration
 
 **2. Track Generation Pipeline**
 
@@ -56,6 +69,8 @@ Step 6: Define pit lane (separate spline, entry/exit points, speed limit)
     ↓
 Step 7: Calculate grid positions (distance offsets from start/finish)
     ↓
+Step 8: Determine first corner direction for Grid & Start staggering
+    ↓
 Output: Track JSON file ready for the game
 ```
 
@@ -66,25 +81,27 @@ Output: Track JSON file ready for the game
 | Surface | Grip Modifier | Wear Modifier | Visual |
 |---------|--------------|---------------|--------|
 | **Asphalt** | 1.0 (base) | 1.0 (base) | Dark grey, smooth |
-| **Kerb** | 0.85 | 1.5 | Red/white stripes, raised |
-| **Gravel** | 0.4 | 3.0 | Brown/beige, loose |
-| **Grass** | 0.3 | 3.5 | Green, very loose |
-| **Runoff** | 0.6 | 2.0 | Grey/green, paved but low grip |
+| **Kerb** | 0.85 | 1.2 | Red/white stripes, raised |
+| **Gravel** | 0.4 | 2.5 | Brown/beige, loose |
+| **Grass** | 0.3 | 2.5 | Green, very loose |
+| **Runoff** | 0.6 | 2.5 | Grey/green, paved but low grip |
 | **Pit lane** | 1.0 | 1.0 | Same as asphalt, speed-limited |
 
 Surface zones are defined as distance ranges along the spline (e.g., "kerb from 1200m to 1280m"). Default surface is asphalt.
+
+**Note:** Track's surface grip modifiers are base values used by AI cars. For the player while off-track, Vehicle Physics overrides `surface_grip_multiplier` with DifficultyProfile values (Very Easy 0.60, Easy 0.50, Normal 0.40, Hard 0.30, Very Hard 0.25). On-track grip modifiers (Asphalt, Kerb) are not overridden.
 
 **4. Lap Counting**
 
 - **Start/finish line:** Distance 0 along the main spline
 - **Lap boundary:** When car crosses distance 0 (wraps from track length back to 0)
 - **Lap count:** Incremented at each crossing
-- **Race distance:** lap_count × track_length (e.g., Spa 44 laps × 7.004 km = 308 km)
+- **Race distance:** configured race_laps × track_length. Real-world reference lap counts are metadata only; MVP session rules supply the race lap count.
 
 **5. Grid Positions**
 
 - 16 starting positions defined as distance offsets from start/finish line
-- Standard F1 grid spacing: ~8m between rows, ~2m between columns
+- Standard F1 grid spacing: ~8m between rows, 3.5m between columns
 - Two-column layout (odd positions left, even positions right)
 - Positions computed from spline + offset (data-driven, not hardcoded)
 
@@ -97,12 +114,16 @@ Surface zones are defined as distance ranges along the spline (e.g., "kerb from 
 
 **7. Pit Lane**
 
-- **Entry/exit positions:** From track-atlas data (lap fractions, e.g., pit entry at 0.92, exit at 0.05)
+- **Entry/exit positions:** From track-atlas data as `pit_entry_progress` / `pit_exit_progress` lap fractions (e.g., entry 0.92, exit 0.05)
+- **Pit-entry zone:** Conversion generates a one-way trigger volume at `pit_entry_progress`, spanning the pit-entry corridor and validating forward travel against the authored racing-spline tangent. Vehicle Physics tests its final post-simulation transform against this zone.
 - **Default geometry:** Spline parallel to main track at 10m offset (right side), connecting pit_entry to pit_exit points
 - **Manual override:** Pit lane spline is stored as a separate editable asset — designers can adjust control points per track
-- **Speed limit:** 80 km/h (configurable per track) — enforced automatically when car is in pit lane zone
+- **Progress mapping:** Every pit-lane spline sample stores its mapped `racing_spline_progress`; Race Session Manager uses this mapping, rather than nearest-world-point projection, for position ranking and pit-lane lap completion.
+- **Lap-boundary helper:** Track exposes `CrossedLapBoundary(previousMappedProgress, currentMappedProgress)`, which evaluates authored main/pit mapping across the start/finish discontinuity even when one simulation step moves from e.g. 0.94 to 0.01.
+- **Speed limit:** 80 km/h fixed in MVP — enforced automatically when car is in pit lane zone
 - **Pit box positions:** 16 boxes, one per car, defined as distances along pit lane spline
 - **Pit stop zone:** Where refueling/tire change happens — all 16 boxes are serviced simultaneously, no queuing
+- **Track map:** Main spline, pit-lane spline and pit-entry marker are rendered on the Track Map.
 
 **8. Track Scaling**
 
@@ -125,12 +146,17 @@ The Track System itself has no runtime states — it's static data loaded at rac
 |--------|-----------|------|-------|
 | **Vehicle Physics** | Outbound | Surface type, grip modifier | Applied to lateral friction |
 | **Tire** | Outbound | Surface wear modifier | Applied to tire wear rate |
+| **VFX** | Outbound | Surface type, dust/spray cues | Drives track-side particles |
 | **Fuel** | Outbound | Pit lane state | Pit stop refuels fuel |
 | **Camera** | Outbound | Track geometry | Camera follows track spline |
 | **AI Rival** | Outbound | Track layout, racing line | AI drives on track |
 | **HUD** | Outbound | Track name, lap count, position | Displayed in race HUD |
 | **Content Pipeline** | Inbound | Track JSON file | Loaded per-race |
 | **Simulation Architecture** | Outbound | Spline position data | Car position along spline |
+| **Race Session Manager** | Outbound | Lap boundary, mapped racing progress, position ranking | RSM consumes Track's authored progress mapping and publishes session events |
+| **Pit Stop** | Outbound | Pit entry/exit geometry, pit boxes, speed-limit zone | Pit Stop consumes physical track zones and publishes service phase |
+| **Grid & Start** | Outbound | Validated grid positions and transforms | Applies the RSM-owned GridAssignment to authored starting slots |
+| **Qualifying** | Outbound | Reference flying-lap time | Qualifying uses Track's reference time for computed fuel load |
 
 ## Formulas
 
@@ -154,17 +180,17 @@ Where surface_modifier comes from the surface type table (1.0 for asphalt, 0.4 f
 
 `surface_wear = base_wear × surface_wear_modifier`
 
-Where surface_wear_modifier comes from the surface type table (1.0 for asphalt, 3.0 for gravel, etc.).
+Where surface_wear_modifier comes from the surface type table (1.0 for asphalt, 2.5 for gravel, etc.).
 
 ## Edge Cases
 
 - **If track JSON is missing or corrupted:** Fail to load race. Log error. Show "Track data missing" message.
 - **If car goes off-track at high speed:** Grip drops sharply (surface modifier), tire wear accelerates. Car may spin depending on speed and surface.
 - **If car enters pit lane above speed limit:** Speed is clamped to 80 km/h automatically. No penalty beyond lost time.
-- **If car enters pit lane from wrong side:** Pit entry is a zone, not a precise line. Car is redirected to pit lane spline.
+- **If car enters the pit-entry zone from the wrong side:** The one-way validation rejects the entry; no `PitEntry` event is emitted and the car remains on the racing route.
 - **If track length is 0 (corrupted data):** Fail to load. Log error.
 - **If pit lane spline intersects main track:** Validation error during track import. Must be fixed before the track can be used.
-- **If grid positions overlap:** Validate minimum spacing (2m between adjacent cars). If violated, space them out automatically.
+- **If grid positions overlap:** Import validation repairs the authored source before runtime JSON is emitted. Runtime loading rejects any remaining invalid grid assignment with a descriptive error; positions are not silently changed during a race.
 
 ## Dependencies
 
@@ -178,10 +204,16 @@ Where surface_wear_modifier comes from the surface type table (1.0 for asphalt, 
 | **HUD** | Outbound | Track name, lap count | Hard — display |
 | **Content Pipeline** | Inbound | Track JSON file | Hard — loading |
 | **Simulation Architecture** | Outbound | Spline position | Hard — car position |
+| **Race Session Manager** | Bidirectional | Lap boundary, mapped racing progress, pit events | Hard — owns race/session interpretation of Track data |
+| **Pit Stop** | Bidirectional | Pit zones, boxes, speed-limit zone | Hard — consumes physical pit geometry |
+| **Grid & Start** | Outbound | Validated grid positions | Hard — applies GridAssignment to Track slots |
+| **Qualifying** | Outbound | Reference flying-lap time | Hard — computes qualifying fuel load |
 
 ## Tuning Knobs
 
 All values below are per-track JSON files or global settings.
+
+**Authority note:** Track System owns the pit lane speed limit and pit-lane geometry; Pit Stop consumes the speed limit during service.
 
 | Knob | Current Value | Safe Range | Breaks If Too Low | Breaks If Too High |
 |------|--------------|------------|-------------------|-------------------|
@@ -191,7 +223,7 @@ All values below are per-track JSON files or global settings.
 | Gravel grip modifier | 0.4 | 0.2–0.6 | Instant spin | Gravel too grippy |
 | Grass grip modifier | 0.3 | 0.1–0.5 | Instant spin | Grass too grippy |
 | Grid row spacing | 8 m | 6–12 m | Cars overlap at start | Grid too spread out |
-| Grid column spacing | 2 m | 1.5–3 m | Cars overlap laterally | Grid too wide |
+| Grid column spacing | 3.5 m | 2.5–5 m | Cars overlap laterally | Grid too wide |
 
 ## Visual/Audio Requirements
 
@@ -204,7 +236,7 @@ All values below are per-track JSON files or global settings.
 ## UI Requirements
 
 - **Race HUD:** Track name, current lap / total laps, position (1st-16th), distance to rival ahead/behind.
-- **Minimap:** Optional. Shows car positions on track outline. Useful for situational awareness.
+- **Track Map:** Required in MVP. Shows the main spline, pit-lane spline, pit-entry marker, and car positions. Alternative minimap presentation is a later UI variation.
 - **Pre-race screen:** Track name, length, number of turns, elevation change, lap count.
 
 > **📌 UX Flag — Track System**: This system has UI requirements. In Phase 4 (Pre-Production), run `/ux-design` to create a UX spec for track selection and race HUD before writing epics.
@@ -218,14 +250,19 @@ All values below are per-track JSON files or global settings.
 - **GIVEN** a car crosses start/finish line, **WHEN** lap distance wraps, **THEN** lap count increments by 1.
 - **GIVEN** 16 grid positions, **WHEN** cars are spawned, **THEN** no two cars overlap (minimum 2m spacing).
 - **GIVEN** a track with elevation changes (Spa), **WHEN** the car drives uphill, **THEN** the camera tilts to convey the slope.
-- **GIVEN** a car drives off-track onto grass, **WHEN** tire wear is calculated, **THEN** wear rate is approximately 3.5× the on-track rate.
+- **GIVEN** a car drives off-track onto grass, **WHEN** tire wear is calculated, **THEN** the Track-provided surface wear modifier is 2.5× the on-track rate.
 - **GIVEN** a pit lane entry point (from track-atlas), **WHEN** the pit lane spline is generated, **THEN** it connects entry to exit at 10m offset from main track.
 - **GIVEN** a track JSON file with missing required fields, **WHEN** the game attempts to load it, **THEN** loading fails with a descriptive error message.
+- **GIVEN** runtime Track JSON is loaded, **WHEN** spline points are inspected, **THEN** coordinates are local game-space meters and contain no unconverted longitude/latitude values.
+- **GIVEN** an MVP build, **WHEN** track content is enumerated, **THEN** the four MVP tracks are loadable through the same Track JSON contract.
+- **GIVEN** a car crosses a pit-entry zone in the wrong travel direction, **WHEN** entry validation runs, **THEN** no `PitEntry` event is emitted and the car remains on the racing route.
+- **GIVEN** runtime grid positions violate the minimum spacing, **WHEN** content loads, **THEN** loading fails with a descriptive validation error rather than silently changing the race assignment.
+- **GIVEN** the Race HUD is active, **WHEN** track data is displayed, **THEN** the Track Map includes the racing spline, pit-lane spline, pit-entry marker, and car positions.
 
 ## Open Questions
 
-- **Track variations:** Should the game support multiple layouts per track (e.g., Silverstone GP vs. National circuit)? Or one layout per track?
-- **Track weather:** Should weather (rain, wet track) affect surface grip? Or is weather out of scope for MVP?
-- **Track boundaries:** How are track limits enforced? Invisible wall? Penalty system? Visual barrier that slows the car?
-- **Pit lane customization:** Should each track have a unique pit lane layout, or is the 10m-offset default sufficient for MVP?
-- **Track loading time:** How fast should tracks load? Addressables should keep it under 5 seconds for MVP.
+- **Track variations:** MVP uses one authored layout per track; alternate layouts are deferred.
+- **Track weather:** Weather and wet-surface modifiers are out of MVP scope.
+- **Track boundaries:** MVP uses authored physical barriers and surface zones; no penalty system is introduced.
+- **Pit lane customization:** MVP uses the 10m-offset default as a generator baseline with per-track manual overrides.
+- **Track loading time:** Content Pipeline owns the under-5-second loading target and reports failures to Simulation.

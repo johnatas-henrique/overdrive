@@ -1,13 +1,26 @@
 # Pit Stop
 
-> **Status**: In Design
+> **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-21
+> **Last Updated**: 2026-07-26
 > **Implements Pillar**: Every Short Race Matters
+
+## Phase Scope
+
+| Phase | Scope |
+|---|---|
+| MVP | Local pit entry, service sequence, refuel, tire change, and AI pit behavior. |
+| MVP architecture constraints | Pit events and service state remain explicit for race consumers. |
+| Alpha | Not designed. |
+| Beta | Not designed. |
+| Release | Not designed. |
+
+### Review Boundary
+All specified pit mechanics are MVP; unassigned pit extensions are non-blocking.
 
 ## Overview
 
-**Pit Stop** is the recovery mechanism that turns fuel and tire management into strategic decisions. It gives the player a choice: spend 8-10 seconds in the pit lane to refuel and change tires, or stay out and risk running out of fuel or losing grip. The pit stop is the consequence that makes resource management matter — without it, fuel and tire would be theoretical concerns rather than race-defining choices.
+**Pit Stop** is the recovery mechanism that turns fuel and tire management into strategic decisions. It gives the player a choice: spend 2-10 seconds in service, determined by tire swap plus fuel required, or stay out and risk running out of fuel or losing grip. The pit stop is the consequence that makes resource management matter — without it, fuel and tire would be theoretical concerns rather than race-defining choices.
 
 ## Player Fantasy
 
@@ -39,67 +52,74 @@ A pit stop is triggered when the player enters the pit lane zone. Pit stops are 
 2. **Navigation:** Car auto-navigates to assigned pit box (16 boxes, one per car).
 3. **Stop:** Car stops at pit box. Service begins.
 4. **Tire swap:** Binary — old tires removed, new tires installed. Duration: ~2 seconds.
-5. **Fuel fill:** Gradual — fills during the remaining 6-8 seconds. Full tank (8L) takes 8-10 seconds total.
-6. **Early exit (optional):** After tire swap completes (~2s), HUD shows "Hold [PIT EXIT] to leave early." Player holds button → car exits with current fuel level. If player does nothing, car waits full 8-10s and exits with full tank.
-7. **Exit:** Car auto-exits pit lane. Player regains control at pit exit point.
+5. **Fuel refill:** Starts at 0.8 L/s (1% tank per 0.1s) until the 8L tank is full.
+6. **Player exit:** After the 2s tire swap completes, the player may exit with the fuel loaded so far. If the player does not exit, the car auto-exits as soon as the tank is full.
+7. **AI exit:** AI never exits early in MVP; it auto-exits only with a full tank.
 
-**Total pit duration:** 8-10 seconds (tire swap + fuel fill happen in parallel, not sequentially).
+**Service duration:** `max(2s, missing_fuel_liters / 0.8 L/s)`. Tire swap and refuel run in parallel; pit-lane navigation and exit are separate transit phases.
 
 **3. Fuel Fill Mechanics**
 
-- Fuel fills gradually during the 8-10 second pit window.
-- Fill rate: 8L / 10s = 0.8 L/s (fills completely in 10 seconds).
-- If player exits early (after 2s tire swap), fuel is partial: ~1.6L added.
-- Player can see fuel level rising in real time on HUD during pit stop.
+- Fuel fills continuously at 0.8 L/s. A full empty-to-full refill takes 10s.
+- Tire swap always completes at 2s. Only after that point may the player exit with partial fuel.
+- AI waits until fuel is full; early AI exit is deferred beyond MVP.
 
 **4. Tire Change Mechanics**
 
-- Tire change is binary: old → new. Instant swap, ~2 seconds.
+- Tire change is binary: old → new and completes exactly at 2.0s.
 - Tire always resets to 0% wear (fresh tires).
 - No tire compound choice in MVP (fixed compound).
 
 **5. AI Pit Behavior**
 
-- AI pits when fuel OR tire crosses a threshold.
-- Threshold varies by difficulty:
-  - Very Easy: 40% fuel / 40% tire
-  - Normal: 30% fuel / 30% tire
-  - Hard: 20% fuel / 20% tire
-- **Lap remaining check:** If AI hits threshold with 1 lap remaining, it checks whether it can finish the race without pitting. If yes → skip pit. If no → pit. This prevents unnecessary pit stops on the last lap.
-- AI always waits full pit duration (no early exit).
+- AI first evaluates pit need after completing lap 1. It forecasts Fuel and Tire resources for the next lap using the first completed lap's actual consumption/wear plus a 10% margin.
+- Before beginning a non-final next lap, AI enters pit if its projected resource after the current lap would not cover the next lap's forecast. On the final lap, AI never enters pit.
+- AI waits until its tank is full in MVP.
+
+**5a. Player Pit Advisory**
+
+After the player completes lap 1, Pit Stop evaluates whether the player can begin the next non-final lap. It uses the player's last completed-lap Fuel/Tire deltas and the same 10% resource margin as AI. This is intentionally evaluated mid-lap so the player receives warning before pit entry; AI evaluates at the lap boundary.
+
+- `predicted_fuel_at_next_lap_start = current_fuel - last_lap_fuel_use × remaining_racing_progress`
+- `predicted_tire_life_at_next_lap_start = (1 - current_tire_wear_fraction) - last_lap_tire_wear_fraction × remaining_racing_progress`
+- `next_lap_fuel_required = 1.10 × last_lap_fuel_use`
+- `next_lap_tire_required = 1.10 × last_lap_tire_wear`
+
+If either predicted next-lap-start resource is insufficient, Pit Stop outputs `PitThisLap = true`. The HUD displays the transient `PIT THIS LAP` warning from `warning_start_progress` until the player crosses the pit-entry zone. No warning appears before lap 1, during the final lap, or while already in the pit lane.
 
 **6. Pit Stop State**
 
 | State | Duration | Description |
 |-------|----------|-------------|
-| **Approaching** | Variable | Car entering pit lane, speed clamped |
-| **Navigating** | ~2s | Car moving to pit box |
-| **Tire Swap** | ~2s | Old tires off, new tires on |
-| **Refueling** | 0-8s | Fuel filling (overlaps with tire swap) |
-| **Early Exit** | After ~2s | Player can leave with partial fuel |
-| **Exiting** | ~2s | Car leaving pit box, returning to track |
+| **Not Pitting** | — | Normal racing outside the pit-entry zone |
+| **Pit Transit** | Variable | Car crossed pit-entry zone; 80 km/h clamp and automatic navigation to assigned box; player driving input is disabled |
+| **In Pit Box** | `max(2s, missing_fuel / 0.8)` | Tire swap completes at 2s while fuel fills at 0.8 L/s; Confirm may exit after tire completion, AI waits full |
+| **Exiting** | ~2s | Car automatically leaves box and merges to track |
 
 ### States and Transitions
 
 | State | Entry Condition | Exit Condition |
 |-------|-----------------|----------------|
-| **Not Pitting** | Race start | Player enters pit lane zone |
-| **Approaching** | Car enters pit lane | Car reaches pit box |
-| **In Pit Box** | Car stops at box | Service complete OR early exit button pressed |
-| **Exiting** | Service complete / early exit | Car exits pit lane zone |
-| **Not Pitting** | Car exits pit lane | Race end OR player enters pit lane again |
+| **Not Pitting** | Race start or pit exit | Vehicle Physics crosses Track pit-entry zone and RSM publishes `PitEntry` |
+| **Pit Transit** | RSM `PitEntry` | Car reaches assigned pit box |
+| **In Pit Box** | Car stops at box | Confirm (Enter/South) after 2s, or tank becomes full |
+| **Exiting** | Player exit / full tank | RSM publishes `PitExit` after car exits pit lane |
 
 ### Interactions with Other Systems
 
 | System | Direction | Data | Notes |
 |--------|-----------|------|-------|
-| **Fuel** | Bidirectional | Pit trigger → fuel fill | Fuel fills during pit window |
-| **Tire** | Outbound | Pit trigger → tire swap | Tire resets to 0% wear |
+| **Fuel** | Bidirectional | Pit trigger → fuel fill; Fuel state → service result | Fuel fills only during service and publishes current fuel |
+| **Tire** | Bidirectional | Pit trigger → tire swap; Tire state → swap completion | Tire resets to 0% wear at completion |
 | **Track** | Inbound | Pit lane geometry, entry/exit points | Pit lane spline and speed limit |
-| **Vehicle Physics** | Outbound | Speed limit enforcement, auto-navigation | Car controlled by system during pit |
-| **HUD** | Outbound | Pit status, fuel fill progress, early exit prompt | Real-time feedback during pit |
-| **AI Rival** | Outbound | AI pit decision, threshold, lap check | AI pits based on difficulty threshold |
-| **Settings** | Inbound | Difficulty level | AI pit threshold scales with difficulty |
+| **Race Session Manager** | Inbound | `PitEntry`, `PitExit`, lap boundary and mapped racing progress | Vehicle Physics detects physical entry; RSM publishes the session event consumed by Pit Stop. |
+| **Vehicle Physics** | Bidirectional | Speed limit enforcement, auto-navigation, `PitPhase`, pit events | Pit Stop supplies phase/speed constraints; Vehicle Physics reports movement and pit events |
+| **HUD** | Outbound | Pit status, elapsed service time, `tireSwapComplete`, `PitThisLap` | Real-time feedback during pit and transient advisory during Racing |
+| **AI Rival** | Bidirectional | AI commits to pit-lane route, navigation and service completion; Pit Stop sends PitPhase and service completion | AI uses the same pit lane, speed cap, box and service flow as player |
+| **Camera** | Outbound | `PitPhase`, pit-box arrival/exit | Camera enters PitCamera only during `InPitBox` and returns when Exiting begins |
+| **Input System** | Inbound | Direct Confirm action in PitService | InputContextController disables generic UI-module routing in all pit phases and sends Confirm directly to Pit Stop only after tire-swap eligibility |
+| **Audio** | Outbound | PitTransit, InPitBox, Exiting events | Audio selects pit movement/service cues |
+| **Qualifying** | Inbound | RaceMode.Qualifying check | Hard — pit entry, service, and pit exit are blocked during qualifying; RSM does not publish PitEntry when RaceMode is Qualifying |
 
 ## Formulas
 
@@ -107,43 +127,48 @@ A pit stop is triggered when the player enters the pit lane zone. Pit stops are 
 
 ### Pit Stop Duration
 
-`pit_duration = max(tire_swap_time, fuel_fill_time)`
+`fuel_fill_rate = 0.8 L/s`
 
-Tire swap (~2s) and fuel fill (~8-10s) happen in parallel. Total duration is the longer of the two: 8-10 seconds.
+`service_duration = max(2.0s, (8.0L - current_fuel) / fuel_fill_rate)`
 
-### Fuel Fill Rate
+Tire swap completes at 2.0s. Player early exit is valid only after tire swap; AI waits through `service_duration` until 8.0L.
 
-`fuel_fill_rate = tank_capacity / max_fill_time`
+### Service Result
 
-With tank = 8L and max fill time = 10s: fill rate = 0.8 L/s.
+At tire-swap completion: `tire_wear_fraction = 0.0`. At service completion: `fuel = 8.0 L`. A player who exits after `service_elapsed_seconds >= 2.0` has `fuel = min(8.0L, fuel_at_entry + 0.8 L/s × service_elapsed_seconds)`.
 
-**Fuel added during pit:** `fuel_added = fuel_fill_rate × time_in_pit`
+### AI Pit Projection
 
-Early exit after 2s: ~1.6L added. Full 10s: 8L (full tank).
+`predicted_fuel_per_lap = fuel_consumed_in_last_completed_lap`
 
-### AI Pit Threshold
+`predicted_tire_wear_per_lap = tire_wear_gained_in_last_completed_lap`
 
-`pit_threshold = base_threshold × difficulty_modifier`
+`remaining_tire_life = 1.0 - current_tire_wear_fraction`
 
-| Difficulty | Base Threshold | Effective Range |
-|------------|---------------|-----------------|
-| Very Easy | 0.40 | Fuel ≤ 40% OR tire ≤ 40% |
-| Easy | 0.35 | Fuel ≤ 35% OR tire ≤ 35% |
-| Normal | 0.30 | Fuel ≤ 30% OR tire ≤ 30% |
-| Hard | 0.25 | Fuel ≤ 25% OR tire ≤ 25% |
-| Very Hard | 0.20 | Fuel ≤ 20% OR tire ≤ 20% |
+`fuel_required_for_next_lap = 1.10 × predicted_fuel_per_lap`
 
-**Lap remaining check:** `can_finish = (current_fuel / consumption_rate) > remaining_race_time`
+`tire_required_for_next_lap = 1.10 × predicted_tire_wear_per_lap`
 
-If true → skip pit. If false → pit.
+`pit_required_before_next_lap = NOT is_final_lap AND (fuel_after_current_lap < fuel_required_for_next_lap OR tire_life_after_current_lap < tire_required_for_next_lap)`
+
+Immediately after its first `LapCompleted` event and each later lap boundary, AI uses its measured fuel/tire deltas to decide whether to commit to the pit route for the upcoming non-final lap. It cannot commit before GO or on lap 1, and it never commits for the final lap.
+
+### Player Advisory Start Progress
+
+`warning_start_progress = min(0.80, max(0.0, pit_entry_progress - 0.05))`
+
+`remaining_racing_progress = 1.0 - racing_spline_progress` is the fraction of the current lap remaining, not the remaining race distance.
+
+The 0.05 lead guarantees that a track whose pit entry occurs before 80% still warns before the entry. `PitThisLap` clears immediately when the player crosses the physical pit-entry zone.
 
 ## Edge Cases
 
 - **If player enters pit lane with fuel > 80%:** Pit stop still refuels to full. Player wastes time but gains no advantage. Should be rare.
 - **If player enters pit lane with tire > 80%:** Pit stop still swaps tires. Player wastes tire life but gains no advantage.
-- **If player exits early with very low fuel:** Car may run out of fuel shortly after pit exit. Player must manage the trade-off.
-- **If two AI rivals hit threshold on same lap:** Both pit. 16 boxes, simultaneous service. No conflict.
-- **If AI can finish race without pitting (lap remaining check):** AI skips pit. Stays out with low fuel/tire. May lose positions but finishes.
+- **If two AI rivals require pit on the same lap:** Both pit. 16 boxes, simultaneous service. No conflict.
+- **If player exits after 2s:** Tires are fresh; fuel equals the amount accumulated at 0.8 L/s and can be partial.
+- **If the final lap begins:** AI does not enter pit, even if its projection would otherwise request it.
+- **If AI projected resources cover remaining laps:** AI skips pit. It may finish with low fuel/tire but does not pit unnecessarily.
 - **If player never pits:** Fuel degrades to 0 (car coasts), tire degrades to 0.20 grip floor. Car is drivable but very slow. May lose many positions.
 - **If pit lane is blocked (car stopped on track in pit lane):** Not possible in MVP — 16 boxes, one per car, simultaneous service.
 
@@ -152,35 +177,33 @@ If true → skip pit. If false → pit.
 | System | Direction | Type | Nature |
 |--------|-----------|------|--------|
 | **Fuel** | Bidirectional | Fuel fill | Hard — pit refuels fuel |
-| **Tire** | Outbound | Tire swap | Hard — pit changes tires |
+| **Tire** | Bidirectional | Pit trigger → tire swap; Tire state → swap completion | Hard — pit changes tires and reads swap status |
 | **Track** | Inbound | Pit lane geometry | Hard — pit lane is part of track |
-| **Vehicle Physics** | Outbound | Speed limit, auto-nav | Hard — car controlled during pit |
+| **Vehicle Physics** | Bidirectional | Speed limit, auto-nav, PitPhase, pit events | Hard — Pit Stop supplies constraints; Vehicle Physics reports movement and events |
 | **HUD** | Outbound | Pit status display | Hard — player needs feedback |
-| **AI Rival** | Outbound | AI pit decisions | Hard — AI must pit strategically |
-| **Settings** | Inbound | Difficulty threshold | Hard — AI behavior scales |
+| **AI Rival** | Bidirectional | AI commits to pit-lane route, navigation and service completion | Hard — AI uses the same pit lane, speed cap, box and service flow as player |
+| **Race Session Manager** | Inbound | PitEntry, PitExit, lap boundary, mapped progress | Hard — owns race/session events consumed by Pit Stop |
+| **Camera** | Outbound | PitPhase and pit-box anchors | Hard — owns PitCamera presentation |
+| **Input System** | Inbound | Direct Confirm action in PitService | Hard — generic UI Submit/Cancel/navigation remain disabled; direct Confirm permits manual player exit |
+| **Audio** | Outbound | Pit phase events | Soft — plays pit movement/service cues |
 
 ## Tuning Knobs
 
-| Knob | Current Value | Safe Range | Breaks If Too Low | Breaks If Too High |
-|------|--------------|------------|-------------------|-------------------|
-| Pit stop duration | 8-10 s | 6-15 s | Pits too fast (no penalty) | Pits too slow (always costly) |
-| Tire swap time | 2 s | 1-4 s | Instant (no spectacle) | Too slow |
-| Fuel fill rate | 0.8 L/s | 0.5-2.0 L/s | Takes forever | Fuel fills too fast |
-| AI threshold (Normal) | 30% | 20-40% | AI never pits | AI pits every lap |
-| Early exit available after | 2 s | 1-3 s | Before tires done | Too long to wait |
-| Pit lane speed limit | 80 km/h | 60-120 km/h | Pits too slow | Speeding in pits |
+**Authority note:** Track System owns `pit_lane_speed_limit`, Fuel System owns `fuel_fill_rate`, and Tire System owns `tire_swap_time`; Pit Stop applies all three during service.
+
+Pit Stop does not own unique tuning knobs in MVP. See Fuel, Tire, Track, and AI Rival for the authoritative values it consumes during service.
 
 ## Visual/Audio Requirements
 
 - **Pit lane approach:** Visual markers (banners, lines) indicating pit entry. Audio cue: "Box this lap" radio message (optional).
-- **Pit stop animation:** Camera punches in. Crew swaps tires (2s), fuel nozzle attached (8-10s). Lollipop man holds sign, drops when ready.
-- **HUD during pit:** Fuel bar filling in real time. Tire bar reset to 100%. "Hold [PIT EXIT] to leave early" prompt after 2s.
+- **Pit stop animation:** On entering InPitBox, Camera blends to PitCamera. Crew swaps tires (2s), fuel nozzle fills at 0.8 L/s, and the lollipop man drops when player exits after 2s or fuel reaches full. Exiting blends back to the player-selected camera.
+- **HUD during pit:** Fuel fill progress, tire-swap status, and an exit prompt after 2s. AI has no early-exit UI.
 - **Pit exit:** Camera pulls back. Car merges onto track. Audio: engine revs up.
 
 ## UI Requirements
 
-- **Race HUD:** Pit indicator (distance to pit entry, recommended pit window).
-- **Pit stop HUD:** Fuel fill progress, tire swap status, early exit button prompt.
+- **Race HUD:** Track Map receives pit-lane spline and entry marker directly from Track. `PIT THIS LAP` is a transient advisory when Pit Stop predicts the player cannot begin the next non-final lap with Fuel or Tire resources plus 10% margin.
+- **Pit stop HUD:** Fuel fill progress, tire-swap status and early-exit prompt after 2s.
 - **Pre-race:** Pit strategy recommendation (optional).
 
 > **📌 UX Flag — Pit Stop**: This system has UI requirements. In Phase 4 (Pre-Production), run `/ux-design` to create a UX spec for the pit stop HUD before writing epics.
@@ -188,20 +211,29 @@ If true → skip pit. If false → pit.
 ## Acceptance Criteria
 
 - **GIVEN** a car entering pit lane, **WHEN** speed is checked, **THEN** speed is clamped to 80 km/h or less.
-- **GIVEN** a pit stop, **WHEN** tire swap begins, **THEN** tires are at 100% within 2 seconds ± 0.5s.
-- **GIVEN** a pit stop, **WHEN** fuel fill begins, **THEN** fuel increases at 0.8 L/s ± 0.1.
-- **GIVEN** a pit stop with early exit after 2s, **WHEN** car exits pit, **THEN** fuel is approximately 1.6L (not full).
-- **GIVEN** a pit stop with full duration (10s), **WHEN** car exits pit, **THEN** fuel is 8L (full tank).
-- **GIVEN** AI with Normal difficulty and fuel at 30%, **WHEN** pit decision is evaluated, **THEN** AI pits.
-- **GIVEN** AI with Normal difficulty and fuel at 30% with 1 lap remaining, **WHEN** lap remaining check runs, **THEN** AI skips pit if it can finish.
+- **GIVEN** an empty tank enters pit, **WHEN** 10s of service elapse, **THEN** fuel is exactly 8.0L and tire wear is 0%.
+- **GIVEN** a player enters pit with 4.0L, **WHEN** 2.0s elapse and the player exits, **THEN** tire wear is 0% and fuel is 5.6L ± 0.01L.
+- **GIVEN** a player presses exit before 2.0s, **WHEN** tire swap is incomplete, **THEN** no exit occurs.
+- **GIVEN** a player reaches the pit-entry zone, **WHEN** Vehicle Physics reports crossing after `Physics.Simulate()`, **THEN** the next tick starts Pit Transit automatically without a gameplay input.
+- **GIVEN** Pit Transit is active, **WHEN** Accelerate, Brake, or Steer is pressed, **THEN** no player driving input changes the automated pit route.
+- **GIVEN** PitTransit, InPitBox, or Exiting is active, **WHEN** generic UI navigation, Submit, or Cancel is attempted, **THEN** `InputSystemUIInputModule` remains disabled and no UI handler executes.
+- **GIVEN** InPitBox tire swap is complete, **WHEN** Enter/South rises, **THEN** InputContextController delivers one direct Confirm to Pit Stop and Exiting begins without a generic UI Submit event.
+- **GIVEN** tire swap reaches exactly 2.0s, **WHEN** PitService is displayed, **THEN** its Enter/South exit prompt becomes active and `tireSwapComplete` is true.
+- **GIVEN** the player does not press Enter/South, **WHEN** fuel reaches 8.0L, **THEN** Exiting begins automatically.
+- **GIVEN** a car is in Pit Transit, In Pit Box, or Exiting, **WHEN** Fuel and Tire update, **THEN** driving fuel consumption and Tire wear do not accumulate; In Pit Box fuel refill at 0.8 L/s remains active.
+- **GIVEN** an AI enters pit with 4.0L, **WHEN** 2.0s elapse, **THEN** it remains in service until fuel is exactly 8.0L.
+- **GIVEN** an AI has completed lap 1 and its post-current-lap Fuel or Tire projection cannot cover the next lap plus 10%, **WHEN** the next lap is not final, **THEN** AI pits regardless of difficulty.
+- **GIVEN** an AI is about to begin the final lap, **WHEN** Fuel or Tire projection cannot cover that lap, **THEN** AI does not enter pit.
+- **GIVEN** the player has completed lap 1, is not on the final lap, and predicted next-lap-start Fuel or Tire cannot cover the next lap plus 10%, **WHEN** racing spline progress reaches `warning_start_progress`, **THEN** `PIT THIS LAP` displays.
+- **GIVEN** pit entry occurs at 0.72 progress, **WHEN** the player needs pit, **THEN** `warning_start_progress` is 0.67 and the warning appears before pit entry.
+- **GIVEN** `PIT THIS LAP` is visible, **WHEN** the player crosses the pit-entry zone, **THEN** the warning clears immediately.
+- **GIVEN** the player is on lap 1 or the final lap, **WHEN** Fuel or Tire would otherwise trigger advisory, **THEN** `PIT THIS LAP` does not display.
 - **GIVEN** a player who never pits, **WHEN** fuel reaches 0%, **THEN** car coasts and can still reach pit lane by momentum.
 - **GIVEN** 16 cars pitting simultaneously, **WHEN** all boxes are occupied, **THEN** all 16 are serviced without conflict.
-- **GIVEN** a pit stop, **WHEN** the player presses [PIT EXIT] before 2s, **THEN** nothing happens (button not active yet).
 
 ## Open Questions
 
-- **Pit stop visual fidelity:** Should the pit stop show a full crew animation (realistic) or a simplified graphic (arcade)? Affects art production scope.
-- **Pit lane audio:** Should the player hear other cars pitting? Or just their own pit stop audio?
-- **Pit strategy UI:** Should the HUD show recommended pit window (e.g., "Pit in 2 laps")? Or leave it to the player?
-- **Multiple pit stops:** Should the game support/optimize for 2-stop strategies? Or is 0-stop vs 1-stop the intended decision space?
-- **Pit stop penalty:** Should there be a penalty for unsafe pit exit (e.g., cutting across the track)? Or is pit exit always safe?
+- **Pit stop visual fidelity:** MVP requires the service states and camera presentation; exact crew animation fidelity is an art-production detail.
+- **Pit lane audio:** MVP guarantees the player's own pit cues; other-car pit audio is optional ambient detail.
+- **Multiple pit stops:** Multiple stops are allowed; MVP does not impose a separate two-stop strategy rule.
+- **Pit stop penalty:** Pit exit is safe in MVP; no unsafe-exit penalty or collision rule is introduced.
