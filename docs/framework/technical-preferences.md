@@ -64,7 +64,7 @@
 ## Architecture Decisions Log
 
 <!-- Quick reference linking to full ADRs in docs/architecture/ -->
-- [No ADRs yet — use /architecture-decision to create one]
+- [ADR-0001 — Manual Simulation Authority and Determinism Boundary](../architecture/adr-0001-manual-simulation-authority-and-determinism-boundary.md)
 
 ## Engine Specialists
 

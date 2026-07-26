@@ -43,21 +43,38 @@
 │   │   ├── game-concept.md      # Core identity, pitch, and creative brief
 │   │   ├── reviews/             # Design review logs
 │   │   │   └── game-concept-review-log.md
+│   │   ├── ai-rival.md
+│   │   ├── audio-system.md
 │   │   ├── camera.md
+│   │   ├── car-definition-data.md
 │   │   ├── content-pipeline.md
+│   │   ├── fuel-system.md
+│   │   ├── gdd-cross-review-2026-07-25.md
 │   │   ├── ghost-recording.md
+│   │   ├── grid-start.md
+│   │   ├── hud.md
 │   │   ├── input-system.md
 │   │   ├── multiplayer-architecture.md
+│   │   ├── pit-stop.md
+│   │   ├── qualifying.md
+│   │   ├── race-session-manager.md
 │   │   ├── settings.md
 │   │   ├── simulation-architecture.md
 │   │   ├── systems-index.md
-│   │   └── vehicle-physics.md
-│   └── registry/
-│       └── entities.yaml        # Single source of truth for cross-GDD game-world facts
+│   │   ├── tire-system.md
+│   │   ├── track-system.md
+│   │   ├── ui-menu.md
+│   │   ├── vehicle-physics.md
+│   │   └── vfx.md
+│   ├── registry/
+│   │   └── entities.yaml        # Single source of truth for cross-GDD game-world facts
+│   └── reviews/
+│       └── cross-gdd-consistency-report.md # Cross-GDD consistency analysis
 ├── docs/                        # Technical documentation
 │   ├── architecture/            # Architecture Decision Records + TR-ID registry
 │   │   └── tr-registry.yaml     # Technical requirement ID persistence
 │   ├── engine-reference/        # Curated engine API snapshots (version-pinned)
+│   │   ├── super-monaco-gp-teams.md
 │   ├── framework/               # OCGS framework reference
 │   │   ├── director-gates.md    # Shared review gate prompts
 │   │   ├── agent-roster.md      # Full agent inventory with model tiers
@@ -141,9 +158,9 @@
 - Key files: `InputSystem_Actions.inputactions`, `Settings/PC_RPAsset.asset`, `TutorialInfo/Readme.cs`
 
 **`design/`:**
-- Purpose: Game design documentation and cross-system registries
-- Contains: GDDs (`design/gdd/`), entity/formula registry, design standards
-- Key files: `gdd/game-concept.md`, `registry/entities.yaml`, `AGENTS.md`
+- Purpose: Game design documentation, cross-system registries, and cross-GDD consistency analysis
+- Contains: GDDs (`design/gdd/`), entity/formula registry, design standards, cross-GDD reviews
+- Key files: `gdd/game-concept.md`, `registry/entities.yaml`, `AGENTS.md`, `reviews/cross-gdd-consistency-report.md`
 
 **`docs/`:**
 - Purpose: Technical documentation — architecture decisions, framework reference, workflow guides, research
@@ -195,6 +212,7 @@
 - `design/gdd/game-concept.md` — Core identity, pitch, and creative brief
 - `design/gdd/reviews/` — Design review logs
 - `design/registry/entities.yaml`: Cross-GDD entity/formula/constant registry
+- `design/reviews/cross-gdd-consistency-report.md`: Cross-GDD consistency analysis
 - `docs/architecture/tr-registry.yaml`: Technical requirement ID persistence
 - `docs/registry/architecture.yaml`: Architecture registry data
 - `docs/framework/workflow-catalog.yaml`: Phase definitions and artifact checks

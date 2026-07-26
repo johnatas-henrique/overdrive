@@ -73,7 +73,7 @@ The primary feel is high-speed, accessible arcade racing: strong grip, readable 
 - **Recovery:** Loss of traction is recoverable within 1–2 seconds. No unrecoverable spins from normal driving. Wall contact slows the car but does not stop it.
 - **Skill expression:** Faster lap times come from optimal racing line, braking points, fuel/tire management, and strategic timing — not from controlling slides or managing oversteer.
 - **Speed perception:** Velocity is communicated through Directional Velocity visual language (streaks, blur, camera shake) and audio feedback, not through physics instability.
-- **Deterministic:** The simulation uses a fixed timestep (60 Hz) with deterministic physics within the same platform. Cross-platform determinism is not required — client prediction and interpolation handle discrepancies for arcade gameplay. Architecture is designed from the start to support multiplayer: simulation separated from rendering, input recording for replay/ghost, fixed timestep for determinism. Async multiplayer (ghosts, leaderboards) enters in Alpha via Coherence Cloud free tier. Real-time multiplayer enters in Beta via Coherence Rooms + relay.
+- **Deterministic:** The simulation uses a fixed timestep (60 Hz) with deterministic physics within the same platform. Cross-platform determinism is not required — client prediction and interpolation handle discrepancies for arcade gameplay. Architecture is designed from the start to support multiplayer: simulation separated from rendering, input recording for replay/ghost, fixed timestep for determinism. Async ghost sharing enters in Alpha via Coherence CloudStorage. Real-time multiplayer enters in Beta via Coherence Rooms + relay. A global ranked leaderboard is deferred until a dedicated service and integrity architecture are selected.
 
 ### Five-Minute Race Loop
 
@@ -254,7 +254,7 @@ Based on Super Monaco GP (1990). 16 teams, 1 car each, 16 cars on grid.
 - Intra-tier challenges (Tier 1: Madonna vs Firenze for grid position).
 - Save/load system.
 - Basic rival memory.
-- Async multiplayer (ghosts + leaderboards via Coherence Cloud free tier).
+- Async ghost sharing via Coherence CloudStorage. A global ranked leaderboard is deferred until a dedicated service and integrity architecture are selected.
 
 ### Tier System
 - Each team has stats that transfer to the car: Tier 1 teams have the best cars, Tier 4 the worst.
@@ -265,7 +265,7 @@ Based on Super Monaco GP (1990). 16 teams, 1 car each, 16 cars on grid.
 
 ### Fuel Model
 
-Fuel consumption is throttle-proportional: full throttle consumes fuel at the base rate; lifting off the throttle reduces or eliminates consumption. In most 5-lap races, the player must pit to refuel — the tank does not last the full race at full throttle. The strategic decision is whether to save fuel (lift-and-coast on straights) to delay or avoid the pit stop, trading lap time for fewer seconds lost in the pits. Fuel load affects car weight — a heavier car (full tank) corners slightly slower than a lighter car (low tank), creating a secondary trade-off. At 0% fuel, the car loses power proportionally and eventually stops — the player cannot finish the race without refueling.
+Fuel consumption is throttle-proportional: full throttle consumes fuel at the base rate; lifting off the throttle reduces or eliminates consumption. In most 5-lap races, the player must pit to refuel — the tank does not last the full race at full throttle. The strategic decision is whether to save fuel (lift-and-coast on straights) to delay or avoid the pit stop, trading lap time for fewer seconds lost in the pits. Vehicle mass remains constant regardless of fuel. Below 25% fuel, a +1% top-speed perception bonus provides a small “second wind” without changing handling. At 0% fuel, the car loses power and eventually stops — the player must refuel to resume racing. A patient driver using lift-and-coast can finish a 5-lap race without pitting, but most aggressive driving styles require at least one pit stop.
 
 ### Tire Model
 
@@ -273,7 +273,7 @@ Tire wear is distance-based with multipliers for driving style and surface conta
 
 ### Pit Stops
 
-Pit stops are available in all races. The player can choose to pit at any point during a race. Pit actions: refuel (scales with amount), change tires (fixed duration). Both can be performed simultaneously. Pit stop duration is approximately 8-10 seconds (pit lane transit + service + exit). In a 5-lap race (~375 seconds), a pit stop costs approximately 2-3% of total race time. AI rivals also pit, with timing based on their personality and strategy — the player can observe rivals entering the pits and adjust accordingly. Pit strategy is the primary strategic variable in the race: the decision of when to pit (or whether fuel savings can avoid a stop entirely) creates the mid-race arc that the five-lap format is designed to support.
+Pit stops are available in all races. The player can choose to pit at any point during a race. Tires complete their binary swap after 2 seconds while fuel fills at 0.8 L/s; after the tire swap, the player may leave with partial fuel or wait for a full 8L tank. AI waits for full fuel in MVP. AI evaluates Fuel and Tire after lap 1 and pits before a non-final next lap only if a 10%-margin forecast cannot cover that lap. Pit strategy is the primary strategic variable in the race: the decision of when to pit, how much fuel to take, or whether fuel savings can avoid a stop entirely creates the mid-race arc that the five-lap format is designed to support.
 
 ### Qualifying
 
@@ -289,12 +289,12 @@ A session consists of 3 races (approximately 25-30 minutes total including menus
 
 - 16 F1 teams (1 car each, 16 cars on grid).
 - Player starts on Zeroforce (slowest team).
-- 1 track for testing.
+- 4 tracks in the MVP corpus.
 - 5-lap races with qualifying.
-- Fuel, tire wear, and pit stops (mandatory pit in most races, 8-10s stop).
+- Fuel, tire wear, and pit stops (pit required for most driving styles; lift-and-coast can finish without pit, 8-10s stop).
 - AI rivals with distinct behavior.
 - Directional Velocity race layer with legible HUD.
-- Difficulty scales tier performance gaps (3-5 levels).
+- Difficulty scales tier performance gaps (5 levels: Very Easy through Very Hard).
 - **Success state:** Win races. The player competes to win each standalone race. Success = victory. Failure = learn and try again in the next race.
 - Architecture: fixed timestep 60 Hz, deterministic physics, simulation separated from rendering, input recording for future ghost system.
 
@@ -307,7 +307,7 @@ A session consists of 3 races (approximately 25-30 minutes total including menus
 - Championship standings persist across races.
 - Save/load system.
 - Basic rival memory.
-- Async multiplayer (ghosts + leaderboards via Coherence Cloud free tier).
+- Async ghost sharing via Coherence CloudStorage. A global ranked leaderboard is deferred until a dedicated service and integrity architecture are selected.
 - Web/Browser build for investor access.
 - More tracks added progressively.
 
