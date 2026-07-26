@@ -2,7 +2,7 @@
 
 > **Status**: Draft
 > **Created**: 2026-07-21
-> **Last Updated**: 2026-07-21
+> **Last Updated**: 2026-07-26
 > **Source Concept**: design/gdd/game-concept.md
 
 ## Systems Enumeration
@@ -24,12 +24,31 @@
 | 13 | Pit Stop | Core | Core | Refuel + tire change, 8-10s, AI pit behavior | Explicit |
 | 14 | Qualifying | Core | Core | Single attempt, fixed fuel load, grid position | Explicit |
 | 15 | AI Rival | Core | Core | 16 fixed personalities (MVP), distinct behavior | Explicit |
-| 16 | Track | Core | Core | 1 track (MVP), spline architecture, surface types | Explicit |
+| 16 | Track | Core | Core | 4 tracks (MVP), spline architecture, surface types | Explicit |
 | 17 | Car Definition Data | Core | Core | 16 F1 teams (1 car each), stats transfer to car, stat→behavior mapping | Explicit |
 | 18 | Race Session Manager | Core | Core | Qualifying → race → results flow | Implicit |
 | 19 | Grid & Start | Core | Core | Standing start, 16-car grid, lapped traffic | Implicit |
 | 20 | VFX | Presentation | Presentation | Directional Velocity — streaks, blur, camera shake | Explicit |
 | 21 | UI Menu | Presentation | Presentation | Title → Single Race/Settings → sub-screens → race | Explicit |
+
+## Phase Scope Matrix
+
+`design/gdd/game-concept.md` is the authoritative phase definition. This matrix classifies each system GDD for review and implementation planning; it does not replace detailed rules inside the GDDs.
+
+| System | MVP active scope | MVP architecture constraint | Alpha | Beta | Release |
+|--------|------------------|-----------------------------|-------|------|---------|
+| Input | Local race input | `SimulationInput` per tick | Replay | Not designed | Not designed |
+| Simulation Architecture | Local 60 Hz simulation | Sim/render separation, explicit state boundaries | Ghost replay | Network driver | Not designed |
+| Settings | Local settings | Versioned schema | Cloud sync | Not designed | Not designed |
+| Content Pipeline | Local race assets | Addressable race boundaries | Remote content | Not designed | Not designed |
+| Ghost Recording | No player-facing ghost feature | Per-tick recordable input boundary | Replay and sharing | Continues | Not designed |
+| Multiplayer Architecture | Offline only | Gameplay has no transport dependency | Async CloudStorage | Real-time multiplayer | Complete multiplayer |
+| Vehicle Physics, Camera, HUD, Audio, VFX | Core local presentation | Explicit local interfaces | Per-GDD additions only | Per-GDD additions only | Per-GDD additions only |
+| Fuel, Tire, Pit Stop, Qualifying, AI Rival, Track, Car Data, Race Session, Grid & Start, UI Menu | Standalone race loop | Data/event boundaries remain extensible | Per-GDD additions only | Per-GDD additions only | Per-GDD additions only |
+
+### Review Rule
+
+For an MVP review, Alpha, Beta, and Release behavior is compatibility context only. It blocks MVP approval only when an MVP rule violates an explicit MVP architecture constraint in the relevant GDD. Future-phase mechanics, networking APIs, persistence flows, and release content are not MVP review blockers.
 
 ## Dependency Layers
 
@@ -73,7 +92,7 @@
 | 9 | HUD + Audio | See speed/position, hear engine — feedback loop complete |
 | 10 | Qualifying | Grid determination — feeds into race |
 | 11 | AI Rival | 16 opponents — the grid needs behavior |
-| 12 | Track | 1 track — the world the car drives in |
+| 12 | Track | 4 tracks — the worlds the car drives in |
 | 13 | Car Definition Data | 16 F1 teams with stats — feeds into Vehicle Physics |
 | 14 | Race Session Manager | Orchestration — qualifying → race → results |
 | 15 | Grid & Start | 16-car spawn, standing start, lapped traffic |
@@ -93,24 +112,24 @@
 
 | System | Status | GDD | Review |
 |--------|--------|-----|--------|
-| Input | Designed | design/gdd/input-system.md | — |
-| Simulation Architecture | Designed | design/gdd/simulation-architecture.md | — |
-| Settings | Designed | design/gdd/settings.md | — |
-| Content Pipeline | Designed | design/gdd/content-pipeline.md | — |
-| Ghost Recording | Designed | design/gdd/ghost-recording.md | — |
-| Multiplayer Architecture | Designed | design/gdd/multiplayer-architecture.md | — |
-| Vehicle Physics | Designed | design/gdd/vehicle-physics.md | — |
-| Camera | Designed | design/gdd/camera.md | — |
-| HUD | Designed | design/gdd/hud.md | — |
-| Audio | Designed | design/gdd/audio-system.md | — |
-| Fuel | Designed | design/gdd/fuel-system.md | — |
-| Tire | Designed | design/gdd/tire-system.md | — |
-| Pit Stop | Designed | design/gdd/pit-stop.md | — |
-| Qualifying | Designed | design/gdd/qualifying.md | — |
-| AI Rival | Designed | design/gdd/ai-rival.md | — |
-| Track | Designed | design/gdd/track-system.md | — |
-| Car Definition Data | Designed | design/gdd/car-definition-data.md | — |
-| Race Session Manager | Designed | design/gdd/race-session-manager.md | — |
-| Grid & Start | Designed | design/gdd/grid-start.md | — |
-| VFX | Designed | design/gdd/vfx.md | — |
-| UI Menu | Designed | design/gdd/ui-menu.md | — |
+| Input | Approved | design/gdd/input-system.md | Lean review — APPROVED — 2026-07-25 |
+| Simulation Architecture | Approved | design/gdd/simulation-architecture.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
+| Settings | Approved | design/gdd/settings.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
+| Content Pipeline | Approved | design/gdd/content-pipeline.md | Lean review — APPROVED — 2026-07-25 — zero cross-GDD issues |
+| Ghost Recording | Approved | design/gdd/ghost-recording.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + one recommended issue remaining (future-service dependency labeling) |
+| Multiplayer Architecture | Approved | design/gdd/multiplayer-architecture.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
+| Vehicle Physics | Approved | design/gdd/vehicle-physics.md | Lean review — APPROVED — 2026-07-25 — zero cross-GDD issues |
+| Camera | Approved | design/gdd/camera.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
+| HUD | Needs Revision | design/gdd/hud.md | Formal review — CONCERNS — 2026-07-26 — tire numeric readout missing |
+| Audio | Approved | design/gdd/audio-system.md | Lean review — APPROVED — 2026-07-25 — zero cross-GDD issues |
+| Fuel | Needs Revision | design/gdd/fuel-system.md | Formal review — CONCERNS — 2026-07-26 — Vehicle Physics dependency table is one-directional |
+| Tire | Approved | design/gdd/tire-system.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
+| Pit Stop | Needs Revision | design/gdd/pit-stop.md | Formal review — CONCERNS — 2026-07-26 — 16-car simultaneous service assumes unspecified pit geometry |
+| Qualifying | Approved | design/gdd/qualifying.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
+| AI Rival | Approved | design/gdd/ai-rival.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
+| Track | Needs Revision | design/gdd/track-system.md | Formal review — CONCERNS — 2026-07-26 — lap anti-cut note missing; row-spacing range conflict |
+| Car Definition Data | Approved | design/gdd/car-definition-data.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
+| Race Session Manager | Needs Revision | design/gdd/race-session-manager.md | Formal review — CONCERNS — 2026-07-26 — finish projection ignores pit/resource state |
+| Grid & Start | Needs Revision | design/gdd/grid-start.md | Formal review — CONCERNS — 2026-07-26 — grid row-spacing range conflicts with Track |
+| VFX | Approved | design/gdd/vfx.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
+| UI Menu | Approved | design/gdd/ui-menu.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
