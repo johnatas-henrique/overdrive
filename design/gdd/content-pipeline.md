@@ -1,9 +1,25 @@
 # Content Pipeline
 
-> **Status**: In Design
+> **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-21
+> **Last Updated**: 2026-07-26
 > **Implements Pillar**: Every Short Race Matters
+
+## Phase Scope
+
+| Phase | Scope |
+|---|---|
+| MVP | Local Addressable loading of one race's track, cars, shared assets, and unload lifecycle. |
+| MVP architecture constraints | Content is grouped at race boundaries so later content can be loaded and unloaded independently. |
+| Alpha | Optional remote Addressable content updates. |
+| Beta | Not designed. |
+| Release | Not designed. |
+
+### Unassigned / Open Phase Decisions
+- Track streaming and audio streaming have no assigned phase.
+
+### Review Boundary
+For MVP review, remote delivery is non-blocking. It blocks MVP approval only if local grouping prevents later independent content loading.
 
 ## Overview
 
@@ -54,15 +70,15 @@ Player selects race
 → Load Track bundle (async)
 → Load 16 Car bundles (async, parallel)
 → Show loading screen with progress bar
-→ When all loaded: instantiate track, spawn 16 cars on grid
-→ Transition to Countdown state
+→ When all loaded: instantiate the requested track/car runtime
+→ Emit mode-specific readiness; Simulation selects Racing for Qualifying or Countdown for Race
 ```
 
 Loading screen progress is derived from byte counts of pending bundles.
 
 **3. Memory Budget**
 
-| Component | PC (8-16GB RAM) | WebGL (512MB-1GB heap) |
+| Component | PC (8-16GB RAM) | WebGL (768MB-1GB heap) |
 |-----------|----------------|----------------------|
 | Runtime Unity | ~200-300 MB | ~180-250 MB |
 | Shared (UI, HUD, shaders, audio) | ~40-60 MB | ~25-40 MB |
@@ -72,7 +88,7 @@ Loading screen progress is derived from byte counts of pending bundles.
 | Audio (engines, SFX) | ~40-60 MB | ~20-30 MB |
 | **Total per race** | **~730-1320 MB** | **~415-670 MB** |
 
-**Per-car budget:**
+**Per-car runtime memory footprint:**
 | Component | PC | WebGL |
 |-----------|-----|-------|
 | Model (LOD0 + LOD1 + LOD2) | ~3-5 MB | ~1.5-2.5 MB |
@@ -83,7 +99,7 @@ Loading screen progress is derived from byte counts of pending bundles.
 
 **4. Unloading Strategy**
 
-- Full unload after every race — even if next race uses the same track
+- Full unload when race resources are no longer needed — before the next race or after Results returns to Idle — even if the next race uses the same track
 - Unload order: destroy instances first (`Addressables.ReleaseInstance`), then release base handles (`Addressables.Release`)
 - Safety: `UnloadRace()` called at start of every `LoadRace()` — ensures previous race is fully unloaded before loading new one
 - Never use `Destroy()` directly on Addressable instances — always `ReleaseInstance`
@@ -94,7 +110,7 @@ Loading screen progress is derived from byte counts of pending bundles.
 - **Textures:** ASTC 6×6 compression, 1024px max for cars
 - **LODs:** Mandatory 3 levels (LOD0 ~15-20K tri, LOD1 ~8-10K, LOD2 ~3-5K)
 - **Bundle size:** Each car bundle ≤ 3MB in WebGL build
-- **Quality profiles:** Low (WebGL) and High (PC) with different texture resolutions and post-processing
+- **Quality profiles:** Medium is the WebGL default and High is the PC default; Low is an automatic fallback when memory or performance protection requires reduced quality, with different texture resolutions and post-processing
 - **No graceful OOM recovery:** WebGL heap is fixed — `malloc` failure = crash
 
 **6. Loading Screen**
@@ -112,27 +128,34 @@ Loading screen progress is derived from byte counts of pending bundles.
 | `Idle` | No race loaded; Shared only | No | No |
 | `Loading Track` | Track bundle loading async | Track only | No |
 | `Loading Cars` | 16 car bundles loading async (parallel with track) | Track + Cars | No |
-| `Ready` | All assets loaded, instantiated on grid | Complete | No (countdown pending) |
+| `Ready` | All required assets loaded and requested mode setup instantiated | Complete | No (awaits `RaceLoadReady(mode)` acceptance) |
 | `Racing` | Active race; all systems running | Complete | Yes |
+| `Race Reconfigure` | Cached track/car assets retained; Race-mode runtime state reset after Qualifying Results | Complete | No |
 | `Unloading` | Destroying instances, releasing handles | Releasing | No |
+
+**Note:** Content Pipeline states (`Idle`, `Racing`, `Ready`, etc.) are distinct from Simulation Architecture states with the same names. In cross-GDD references and implementation artifacts, prefix Content Pipeline states with `CP_` (e.g., `CP_Idle`, `CP_Racing`, `CP_Ready`) to avoid confusion.
 
 **Transition rules:**
 
 | From | To | Trigger |
 |------|----|---------|
-| `Idle` | `Loading Track` | Player selects race |
+| `Idle` | `Loading Track` | Simulation accepts a race selection and enters Loading |
 | `Loading Track` | `Loading Cars` | Track loaded (or parallel — both start together) |
 | `Loading Cars` | `Ready` | All 16 cars loaded |
-| `Ready` | `Racing` | Countdown reaches zero ("GO") |
-| `Racing` | `Unloading` | Race finishes (all cars complete) |
-| `Unloading` | `Idle` | All handles released, instances destroyed |
-| Any | `Unloading` | Player returns to menu (abort race) |
+| `Ready` | `Racing` | Simulation accepts `RaceLoadReady(mode)`; Content remains fully loaded while Simulation runs Countdown for Race or Racing for Qualifying |
+| `Racing` | `Race Reconfigure` | Simulation enters Loading after RSM accepts `StartRaceRequested` from Grid Display (after qualifying or skip) and sends `ContentLoadRequest(Race, gridAssignment)` |
+| `Racing` | `Loading Track` | Simulation sends `ContentLoadRequest(RaceMode.Race, gridAssignment)` for Next Race (not qualifying→race transition); Content Pipeline unloads current race and loads new one |
+| `Race Reconfigure` | `Ready` | Emit `RaceReconfigureStart` signal for domain owners (Fuel, Tire, AI, RSM) to reset their own state; instantiate cars from locked `gridAssignment`; re-emit `RaceLoadReady(RaceMode.Race, gridAssignment)` without unloading assets |
+| `Racing` | `Unloading` | Simulation remains Results after Continue/Back and sends `ContentUnloadRequest` |
+| `Unloading` | `Idle` | All handles released and instances destroyed; Content emits `ContentUnloadComplete`, after which Simulation may enter Idle/Title |
+| `Loading Track` or `Loading Cars` | `Unloading` | ContentLoadError; release partial handles and emit `ContentLoadError` to Simulation |
+| `Racing` or `Race Reconfigure` | `Unloading` | Simulation sends `ContentUnloadRequest` from Results or a load-failure cleanup boundary; Content owns cleanup, not SimulationState |
 
 ### Interactions with Other Systems
 
 | System | Data Flow | Timing |
 |--------|-----------|--------|
-| **Simulation Architecture** | Content Pipeline → SimArch: "assets ready" signal; SimArch starts countdown | On Ready state |
+| **Simulation Architecture** | Simulation → Content Pipeline: `ContentLoadRequest(RaceMode.Qualifying)`, `ContentLoadRequest(RaceMode.Race, gridAssignment)`, or `ContentUnloadRequest`; Content Pipeline → Simulation: `RaceLoadReady(RaceMode.Qualifying)`, `RaceLoadReady(RaceMode.Race, gridAssignment)`, `ContentLoadError`, or `ContentUnloadComplete`. Simulation alone selects Countdown for Race, Racing for Qualifying, and Idle after unload completion. | Request during Loading or Results; readiness/complete on Content lifecycle boundary |
 | **Vehicle Physics** | Content Pipeline → Physics: car prefab references for spawning | During Loading Cars |
 | **Track System** | Content Pipeline → Track: track instance reference | During Loading Track |
 | **Audio** | Content Pipeline → Audio: audio clip references per car/track | During Loading Cars/Track |
@@ -162,16 +185,16 @@ Loading screen progress is derived from byte counts of pending bundles.
 | Used Memory | used_memory | uint64 | 0–available | Current heap usage |
 | Available Memory | available_memory | uint64 | >0 | Platform-dependent (PC: 8-16GB, WebGL: 768MB) |
 
-**Output Range:** 0.0 to 1.0
+**Output Range:** 0.0 to ∞; values above 1.0 indicate usage beyond the available-memory budget.
 **Behavior:** < 0.85 = normal, 0.85–0.95 = warning (reduce quality), > 0.95 = critical (abort race load)
 
 ## Edge Cases
 
 - **If Addressables catalog fails to initialize:** Show error dialog. Retry once. If retry fails, close application. No game is possible without the catalog.
 - **If a car bundle fails to load:** Skip that car. Fill grid position with a "missing car" placeholder (visible but non-interactive). Log error. Race continues with 15 cars.
-- **If track bundle fails to load:** Abort race load. Return to race selection menu. Show error: "Track failed to load. Please try again."
-- **If memory exceeds 95% threshold during load:** Abort race load. Unload everything. Show error: "Not enough memory to run this race. Try lowering quality settings."
-- **If player returns to menu mid-load:** Cancel all pending async operations. Release any partially loaded handles. Return to Idle state. No memory leak.
+- **If track bundle fails to load:** Emit `ContentLoadError`, release partial handles, return Simulation to Idle/Title, and show error: "Track failed to load. Please try again."
+- **If memory exceeds 95% threshold during load:** Emit `ContentLoadError`, unload everything, return Simulation to Idle/Title, and show error: "Not enough memory to run this race. Try lowering quality settings."
+- **If player presses Cancel or Back mid-load:** Ignore the input after loading begins; the loading screen blocks navigation until `RaceLoadReady` or an explicit Content error. No pending async operation is cancelled by normal player input.
 - **If two races are requested simultaneously (double-click):** Second request is ignored. Loading screen blocks input.
 - **If WebGL tab is backgrounded during load:** Browser may throttle or pause JS execution. Loading pauses. When tab returns, loading resumes from where it stopped. No corruption.
 - **If car prefab is missing from bundle (corrupted build):** Instantiate a "missing car" red box placeholder. Log error. Race continues.
@@ -182,13 +205,13 @@ Loading screen progress is derived from byte counts of pending bundles.
 
 | System | Direction | Type | Data Flow |
 |--------|-----------|------|-----------|
-| Simulation Architecture | Outbound | Hard | Content Pipeline → SimArch: "assets ready" signal to start countdown |
+| Simulation Architecture | Bidirectional | Hard | Simulation → Content Pipeline: `ContentLoadRequest(RaceMode.Qualifying)`, `ContentLoadRequest(RaceMode.Race, gridAssignment)`, or `ContentUnloadRequest`; Content Pipeline → Simulation: `RaceLoadReady(RaceMode.Qualifying)`, `RaceLoadReady(RaceMode.Race, gridAssignment)`, `ContentLoadError`, or `ContentUnloadComplete`. Content never writes SimulationState or starts Countdown/Idle directly. |
 | Vehicle Physics | Outbound | Hard | Content Pipeline → Physics: car prefab references for spawning |
 | Track System | Outbound | Hard | Content Pipeline → Track: track instance reference |
 | Audio | Outbound | Hard | Content Pipeline → Audio: audio clip references per car/track |
 | HUD | Outbound | Soft | Content Pipeline → HUD: loading progress percentage |
 | Ghost Recording | Outbound | Soft | Content Pipeline → Ghost: track data reference for replay |
-| Settings | Indirect | Soft | Settings → Content Pipeline: quality level (affects which texture/LOD variants load) |
+| Settings | Indirect | Soft | Settings → Content Pipeline: Medium WebGL or High PC default quality; Low fallback when memory/performance protection requests reduced quality |
 
 ## Tuning Knobs
 
@@ -236,9 +259,9 @@ No player interaction during loading — all input is blocked.
 - **AC-LO3:** Given all bundles are loaded, When loading completes, Then the track is instantiated first, then all 16 cars are spawned on grid positions.
 - **AC-LO4:** Given Content Pipeline is in Idle, When player selects race, Then state transitions to Loading Track.
 - **AC-LO5:** Given Content Pipeline is in Loading Cars, When all 16 car bundles finish, Then state transitions to Ready.
-- **AC-LO6:** Given Content Pipeline is in Ready, When countdown reaches zero, Then state transitions to Racing.
-- **AC-LO7:** Given Content Pipeline is in Racing, When all cars complete the race, Then state transitions to Unloading.
-- **AC-LO8:** Given Content Pipeline is in Unloading, When all handles released, Then state transitions to Idle.
+- **AC-LO6:** Given Content Pipeline is in Ready, When Simulation accepts `RaceLoadReady(RaceMode.Qualifying)` or `RaceLoadReady(RaceMode.Race, gridAssignment)`, Then Content transitions to its fully loaded active state and remains loaded while Simulation runs Qualifying or Countdown/Racing.
+- **AC-LO7:** Given Simulation is in Results and sends `ContentUnloadRequest`, When Content receives it, Then Content transitions to Unloading without requiring Simulation to enter Idle first.
+- **AC-LO8:** Given Content Pipeline is in Unloading, When all handles and instances are released, Then Content emits `ContentUnloadComplete`; only after that signal may Simulation enter Idle.
 
 ### 3. Memory Budgets
 
@@ -247,12 +270,12 @@ No player interaction during loading — all input is blocked.
 - **AC-MB3:** Given memory pressure below 0.85, When loading proceeds, Then no warnings are shown.
 - **AC-MB4:** Given memory pressure at 0.85–0.95, When detected, Then a warning is logged and quality reduction is attempted.
 - **AC-MB5:** Given memory pressure exceeds 0.95, When detected, Then race load is aborted and error message is shown.
-- **AC-MB6:** Given any car bundle on PC, When measured, Then total size is between 14 MB and 22 MB.
-- **AC-MB7:** Given any car bundle on WebGL, When measured, Then total size is between 6 MB and 10.5 MB.
+- **AC-MB6:** Given any car's loaded runtime assets on PC, When measured, Then its runtime memory footprint is between 14 MB and 22 MB.
+- **AC-MB7:** Given any car's loaded runtime assets on WebGL, When measured, Then its runtime memory footprint is between 6 MB and 10.5 MB.
 
 ### 4. Unloading
 
-- **AC-UL1:** Given a race finishes, When UnloadRace() is called, Then all instances are destroyed via ReleaseInstance and handles via Release.
+- **AC-UL1:** Given Simulation remains Results after Continue/Back and sends ContentUnloadRequest, When UnloadRace() executes, Then all instances are destroyed via ReleaseInstance and handles via Release before ContentUnloadComplete.
 - **AC-UL2:** Given unloading completes, When memory is measured, Then only Shared group assets remain.
 - **AC-UL3:** Given LoadRace() is called for a new race, When the method begins, Then UnloadRace() is called first.
 - **AC-UL4:** Given two consecutive races use the same track, When the second loads, Then the track is fully unloaded and reloaded.
@@ -277,15 +300,15 @@ No player interaction during loading — all input is blocked.
 - **AC-WG2:** Given WebGL build, When car textures inspected, Then all use ASTC 6×6 and are ≤ 1024px.
 - **AC-WG3:** Given any car model in WebGL, When LODs inspected, Then 3 levels exist (LOD0 ~15-20K, LOD1 ~8-10K, LOD2 ~3-5K tris).
 - **AC-WG4:** Given WebGL build, When any car bundle measured, Then bundle ≤ 3 MB.
-- **AC-WG5:** Given WebGL build, When quality settings loaded, Then Low profile applied by default.
-- **AC-WG6:** Given WebGL OOM, When malloc fails, Then app crashes gracefully with no corrupt state.
+- **AC-WG5:** Given WebGL build, When quality settings load, Then Medium profile applies by default; Low profile is available as the memory/performance fallback.
+- **AC-WG6:** Given WebGL OOM, When malloc fails, Then the runtime may terminate because no graceful OOM recovery is guaranteed; Content Pipeline makes no claim that race state can be recovered after termination.
 
 ### 7. State Machine
 
 - **AC-SM1:** Given app initializes, When Content Pipeline starts, Then initial state is Idle with only Shared loaded.
 - **AC-SM2:** Given Idle state, When no race selected, Then no car or track bundles loaded.
-- **AC-SM3:** Given any state, When player aborts, Then state transitions to Unloading.
-- **AC-SM4:** Given Loading Track state, When player aborts, Then async operations cancelled, handles released, state reaches Idle.
+- **AC-SM3:** Given Simulation remains Results and sends `ContentUnloadRequest`, When Content receives it, Then state transitions to Unloading while Simulation stays Results.
+- **AC-SM4:** Given Loading Track or Loading Cars state, When Content emits `ContentLoadError`, Then pending handles are released, state reaches Unloading, and then transitions to Idle after cleanup; player Cancel/Back does not cancel the load.
 - **AC-SM5:** Given Ready state, When no countdown trigger, Then state remains Ready.
 
 ### 8. Edge Cases
@@ -294,7 +317,7 @@ No player interaction during loading — all input is blocked.
 - **AC-EC2:** Given car bundle fails to load, When detected, Then car skipped, placeholder fills position, error logged, race continues with 15 cars.
 - **AC-EC3:** Given track bundle fails to load, When detected, Then race load aborted, player returns to menu with error.
 - **AC-EC4:** Given memory exceeds 95% during load, When detected, Then race load aborted, error shown.
-- **AC-EC5:** Given player returns to menu mid-load, When abort triggered, Then all async cancelled, handles released, no leak.
+- **AC-EC5:** Given player presses Cancel or Back mid-load, When loading has already begun, Then the request is ignored and the load continues until `RaceLoadReady` or `ContentLoadError`; no async operation is cancelled by normal player input.
 - **AC-EC6:** Given player double-clicks Start Race, When second click fires, Then second request ignored.
 - **AC-EC7:** Given WebGL tab backgrounded during load, When browser throttles, Then loading pauses and resumes on foreground with no corruption.
 - **AC-EC8:** Given car prefab missing from bundle, When instantiation attempted, Then red box placeholder used, error logged, race continues.
@@ -309,8 +332,8 @@ No player interaction during loading — all input is blocked.
 
 ### 10. Quality Profiles
 
-- **AC-QP1:** Given Settings provides quality = Low (WebGL), When content loads, Then car textures use lower resolution and post-processing reduced.
-- **AC-QP2:** Given Settings provides quality = High (PC), When content loads, Then car textures use full resolution and full post-processing.
+- **AC-QP1:** Given Settings provides quality = Low (WebGL), When content loads, Then car textures use lower resolution (via Unity's `QualitySettings.globalTextureMipmapLimit` per quality level) and post-processing reduced.
+- **AC-QP2:** Given Settings provides quality = High (PC), When content loads, Then car textures use full resolution (via Unity's `QualitySettings.globalTextureMipmapLimit` = 0) and full post-processing.
 
 ## Open Questions
 
