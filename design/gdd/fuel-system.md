@@ -1,9 +1,22 @@
 # Fuel System
 
-> **Status**: In Design
+> **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-21
+> **Last Updated**: 2026-07-26
 > **Implements Pillar**: Every Short Race Matters
+
+## Phase Scope
+
+| Phase | Scope |
+|---|---|
+| MVP | Throttle-proportional fuel consumption, fuel states, pit refueling, and HUD feedback. |
+| MVP architecture constraints | Fuel values are data-driven and exposed through the local race-state contract. |
+| Alpha | Not designed. |
+| Beta | Not designed. |
+| Release | Not designed. |
+
+### Review Boundary
+All defined fuel behavior is MVP; unassigned open questions are not implied future commitments.
 
 ## Overview
 
@@ -35,20 +48,25 @@ All cars have the same fuel tank: **8.0 liters**. Fixed across all tiers, all di
 
 Fuel is consumed proportionally to throttle input. The consumption rate is:
 
-`fuel_rate = base_rate × throttle_input × efficiency_modifier × difficulty_modifier`
+`fuel_rate = base_rate × accelerateOut × efficiency_modifier`
 
-- **throttle_input:** 0.0 (off) to 1.0 (full). Partial throttle = partial consumption. The skill mechanic: lifting off reduces consumption dramatically.
+- **accelerateOut:** 0.0 (off) to 1.0 (full). Partial throttle = partial consumption. The skill mechanic: lifting off reduces consumption dramatically. Value comes from `ResolvedCarInput[carId].accelerateOut` at Tick Step 5.
 - **efficiency_modifier:** `(1 - stat × 0.025)` where stat is the car's Efficiency (0-20). At stat 20: modifier = 0.5 (half consumption). At stat 4: modifier = 0.9 (near full). Spread is 1.8x — noticeable but not game-breaking.
-- **difficulty_modifier:** Scales the consumption spread. Very Easy = compressed (fuel barely matters). Hard = expanded (fuel is critical).
-- **base_rate:** Calibrated so full-throttle driving with Efficiency 4 (worst) needs a pit stop, while Efficiency 20 (best) can almost finish without one.
+- **base_rate:** 0.06 L/s in the MVP before throttle and Efficiency modifiers. It is the operational base rate for all cars and difficulties.
+
+At full throttle, the per-car reference rate is `fuel_rate_for_car = base_rate × efficiency_modifier`. Qualifying uses that full-throttle reference rate to initialize its load.
+
+Difficulty does not modify fuel rules in MVP. Difficulty changes AI competence and race behavior, not tank capacity, consumption formulas, or resource thresholds.
+
+During `RaceMode.Qualifying`, Fuel initializes the computed load supplied by Qualifying: `min(8.0L, fuel_rate_for_car × reference_flying_lap_time × 1.10)`. The player does not manage or monitor this load, and qualifying does not refuel.
 
 **3. Fuel States**
 
 | State | Fuel Level | Behavior |
 |-------|-----------|----------|
-| **Full** | 100%–50% | Full power. No performance difference. |
+| **Full** | > 50% | Full power. No performance difference. |
 | **Conserving** | 50%–25% | Full power. Visual fuel warning begins (yellow bar). Player decides: push or conserve. |
-| **Critical** | 25%–1% | Full power. Visual warning intensifies (red bar, audio cue). Player must decide: pit now or risk it. |
+| **Critical** | < 25% | Full power. Visual warning intensifies (red bar, audio cue). Player must decide: pit now or risk it. |
 | **Empty** | 0% | Engine cuts. Car coasts on inertia. No throttle response. Player must reach pit lane or retire. |
 
 **4. Empty Fuel Behavior**
@@ -64,44 +82,54 @@ When fuel hits 0:
 
 Ignored. Cars do not change weight based on fuel level. Weight is constant 505 kg for all cars at all times.
 
-**6. Low Fuel Speed Bonus (Optional)**
+**6. Low Fuel Speed Bonus**
 
-As fuel decreases, the car becomes marginally faster due to reduced mass (even though weight is constant for physics, the *feel* can be faked). Implementation: when fuel < 25%, apply a +1-2% top speed bonus. This is a perception hack, not a physics change. Adds the "second wind" sensation without affecting cornering or handling.
+When fuel < 25%, apply a +1% top speed bonus. This is a perception hack, not a physics change: vehicle mass remains constant and cornering/handling do not change.
 
 **7. Pit Stop Refueling**
 
-- Pit stop duration: 8-10 seconds (fixed, not proportional to fuel added).
-- Refueling is instant within the pit window — the car leaves with a full tank.
-- Player cannot choose how much fuel to add — always refills to full.
+- Fuel fills at 0.8 L/s (1% tank per 0.1s); an empty-to-full refill takes 10s. This is the empty-entry case; actual service duration depends on entry fuel.
+- Tire swap completes after 2s. Player may then exit with the current partial fuel level; AI waits until full in MVP.
+- Service duration is `max(2s, missing_fuel_liters / 0.8 L/s)`.
+
+**Authority note:** Fuel System owns `fuel_rate_for_car` and `fuel_fill_rate`; Pit Stop consumes both during service.
+
+**Countdown:** Fuel does not consume or change state while SimulationState is Countdown. Race consumption begins on the first Racing tick after GO.
 - Pit stop is optional. Player can skip it entirely if they manage fuel well.
 
 **8. Display**
 
 - HUD fuel bar: horizontal bar, 0-100%, positioned bottom-left of race HUD.
-- Color states: green (>50%), yellow (50-25%), red (25-1%).
+- Color states: green (>50%), yellow (50-25%), red (<25%).
 - Numeric readout: "X.X L" below the bar.
-- Audio cue: engine pitch drops subtly as fuel decreases (perception, not physics).
+- Audio cue: A discrete Critical stinger plays once when fuel first drops below 25%; Audio System owns the exact continuous `fuel_factor` curve.
 
 ### States and Transitions
 
 | State | Fuel Range | Entry Condition | Exit Condition |
 |-------|-----------|-----------------|----------------|
-| **Full** | 100%–50% | Race start | Fuel drops below 50% |
-| **Conserving** | 50%–25% | Fuel drops below 50% | Fuel drops below 25% OR fuel refilled (pit) |
-| **Critical** | 25%–1% | Fuel drops below 25% | Fuel drops to 0% OR fuel refilled (pit) |
+| **Full** | > 50% | Race start | Fuel drops to 50% |
+| **Conserving** | 50%–25% | Fuel drops to 50% | Fuel drops below 25% OR fuel refilled (pit) |
+| **Critical** | < 25% | Fuel drops below 25% | Fuel drops to 0% OR fuel refilled (pit) |
 | **Empty** | 0% | Fuel hits 0% | Fuel refilled (pit) OR car retires |
+
+State evaluation happens after the Fuel tick updates the current value. Exact 25.0% remains Conserving until the value drops below 25.0%, so the HUD does not flicker across the boundary within a race tick.
 
 ### Interactions with Other Systems
 
 | System | Direction | Data | Notes |
 |--------|-----------|------|-------|
-| **Vehicle Physics** | Inbound | Throttle input (0-1) | Consumed every physics tick |
+| **Vehicle Physics** | Inbound | `accelerateOut` from `ResolvedCarInput[carId]` at Tick Step 5 (before physics) | Consumed every physics tick |
 | **Car Definition Data** | Inbound | Efficiency stat | Modifies consumption rate |
-| **Settings** | Inbound | Difficulty level | Scales consumption spread |
 | **HUD** | Outbound | Fuel level (0-100%), state | Displayed as bar + numeric |
-| **Pit Stop** | Bidirectional | Pit trigger → refuel → full tank | Pit stops refuel to 100% |
-| **AI Rival** | Outbound | Fuel level (AI consumption) | AI manages fuel based on difficulty |
-| **Ghost Recording** | Outbound | Fuel level per tick | Recorded for ghost replay |
+| **Pit Stop** | Bidirectional | Pit trigger → 0.8 L/s refuel → partial/full exit | Player may exit after 2s; AI exits full in MVP. |
+| **AI Rival** | Bidirectional | Fuel level and last-lap consumption | AI evaluates after lap 1 for next-lap forecast +10%. |
+| **Qualifying** | Inbound | `qualifying_fuel_load` request and reference lap estimate | Initializes the minimum load needed for one flying lap plus the approved margin. |
+| **Ghost Recording** | Indirect | Fuel state derived from replay (not recorded per tick); initial fuel state captured in ReplayInitialState | Ghost replay recalculates fuel from input using same formula |
+| **Audio** | Outbound | Critical stinger and continuous fuel pitch curve | Plays the one-shot 25% warning stinger and the continuous pitch curve owned by Audio System |
+| **UI Menu** | Outbound | Fuel rate comparison data | Displays the pre-race fuel comparison. |
+
+At each `LapCompleted`, Fuel snapshots `last_lap_fuel_use = max(0, fuel_at_previous_lap_boundary - fuel_at_current_lap_boundary)`, then resets its per-lap accumulator. Pit Stop and AI consume this Fuel-owned value; Race Session Manager does not calculate Fuel consumption.
 
 ## Formulas
 
@@ -111,31 +139,28 @@ As fuel decreases, the car becomes marginally faster due to reduced mass (even t
 
 The **fuel_rate** formula is defined as:
 
-`fuel_rate = base_rate × throttle_input × efficiency_modifier × difficulty_modifier`
+`fuel_rate = base_rate × accelerateOut × efficiency_modifier`
 
 **Variables:**
 | Variable | Symbol | Type | Range | Description |
 |----------|--------|------|-------|-------------|
-| base_rate | — | float | calibrated per difficulty | Base consumption per second at full throttle |
-| throttle_input | — | float | 0.0–1.0 | Player's throttle input |
+| base_rate | — | float | 0.06 L/s in MVP | Operational base consumption per second at full throttle |
+| accelerateOut | — | float | 0.0–1.0 | Player's throttle input from `ResolvedCarInput[carId].accelerateOut` at Tick Step 5 |
 | efficiency_modifier | — | float | 0.5–0.9 | `(1 - stat × 0.025)`, stat 20 = 0.5, stat 4 = 0.9 |
-| difficulty_modifier | — | float | 0.7–1.5 | Scales spread: Very Easy = 0.7, Hard = 1.5 |
 
-**Output Range:** 0 (coasting) to base_rate × 0.9 × 1.5 (full throttle, worst Efficiency, Hard).
-**Example:** base_rate = 0.02, throttle = 1.0, stat 4, Hard → 0.02 × 1.0 × 0.9 × 1.5 = 0.027 L/s. 8L tank lasts 296s (~5 min).
+**Output Range:** 0 (coasting) to `base_rate × 0.9` (full throttle, worst Efficiency) = 0.054 L/s.
+**Example:** base_rate = 0.06, throttle = 1.0, stat 4 → 0.06 × 1.0 × 0.9 = 0.054 L/s. An 8L tank lasts 148s (2.5 min).
 
 ### Time to Empty (Reference)
 
-| Efficiency | Throttle | Difficulty | Rate (L/s) | Time to Empty |
-|------------|----------|------------|------------|---------------|
-| 20 (best) | 100% | Normal | 0.010 | 800s (13.3 min) |
-| 20 (best) | 100% | Hard | 0.015 | 533s (8.9 min) |
-| 4 (worst) | 100% | Normal | 0.018 | 444s (7.4 min) |
-| 4 (worst) | 100% | Hard | 0.027 | 296s (4.9 min) |
-| 20 (best) | 50% (lift) | Normal | 0.005 | 1600s (26.7 min) |
-| 4 (worst) | 50% (lift) | Normal | 0.009 | 889s (14.8 min) |
+| Efficiency | Throttle | Rate (L/s) | Time to Empty |
+|------------|----------|------------|---------------|
+| 20 (best) | 100% | 0.030 | 267s (4.4 min) |
+| 4 (worst) | 100% | 0.054 | 148s (2.5 min) |
+| 20 (best) | 50% (lift) | 0.015 | 533s (8.9 min) |
+| 4 (worst) | 50% (lift) | 0.027 | 296s (4.9 min) |
 
-**Key insight:** Full throttle with worst Efficiency on Hard barely fits in a 5-lap race (~5 min). Lift-and-coast comfortably finishes without pit. This creates the strategic decision.
+**Key insight:** Full throttle with even the best Efficiency exhausts the tank during a 5-lap race. Lift-and-coast can still finish without pit, but it now carries a real time-vs-refuel trade-off.
 
 ### Low Fuel Speed Bonus
 
@@ -148,13 +173,13 @@ When fuel < 25%: apply +1% to max_velocity (top speed bonus only, not accelerati
 ## Edge Cases
 
 - **If fuel hits 0 mid-corner:** Car coasts through corner on momentum. Player can still steer and brake. No throttle response until pit stop.
-- **If player pits with fuel > 50%:** Pit stop still refuels to full. Player wastes time but gains no strategic advantage. Should be rare.
+- **If player pits with fuel > 50%:** Player may exit after tire swap with useful partial fuel or wait to full; pit time still creates a trade-off.
 - **If player skips pit entirely:** Must manage fuel through lift-and-coast. If fuel runs out, car coasts to a stop. Can still retire gracefully.
-- **If AI runs out of fuel:** AI coasts toward pit lane. If AI stops on track, it retires. AI fuel management scales with difficulty.
-- **If difficulty is changed mid-race:** Difficulty modifier applies to the NEXT race, not the current one. No mid-race changes.
+- **If AI runs out of fuel:** AI coasts toward pit lane. If AI stops on track, it retires. AI pit decisions use projected resources, not difficulty.
+- **If Difficulty changes between races:** Fuel keeps the same base rate, efficiency formula, and fixed tank rules because DifficultyProfile contains no Fuel field.
 - **If Efficiency stat is corrupted (0 or >20):** Clamp to nearest valid (4-20). Log warning.
 - **If base_rate is 0 (corrupted):** Fuel never depletes. Log warning. Treat as infinite fuel.
-- **If throttle_input is held at 100% for entire race (Hard difficulty, worst Efficiency):** Fuel runs out around lap 3-4. Player must pit or retire. This is the intended behavior.
+- **If accelerateOut is held at 100% for entire race (worst Efficiency):** Fuel runs out around lap 3-4. Player must pit or retire. This behavior is independent of DifficultyProfile.
 - **If lift-and-coast is used for entire race:** Fuel lasts well beyond race end. No pit needed. This is the intended "Ice Vein" path.
 
 ## Dependencies
@@ -162,12 +187,12 @@ When fuel < 25%: apply +1% to max_velocity (top speed bonus only, not accelerati
 | System | Direction | Type | Nature |
 |--------|-----------|------|--------|
 | **Vehicle Physics** | Inbound | Throttle input | Hard — fuel consumption depends on throttle |
+| **Simulation Architecture** | Indirect via Simulation | Hard | Assembles `ResolvedCarInput[carId]` at Tick Step 2; Fuel consumes `accelerateOut` at Tick Step 5 |
 | **Car Definition Data** | Inbound | Efficiency stat | Hard — determines consumption rate |
-| **Settings** | Inbound | Difficulty level | Hard — scales consumption spread |
 | **HUD** | Outbound | Fuel level + state | Hard — player needs to see fuel |
 | **Pit Stop** | Bidirectional | Pit trigger ↔ refuel | Hard — pit stops are the recovery mechanism |
-| **AI Rival** | Outbound | Fuel level (AI) | Soft — AI fuel management |
-| **Ghost Recording** | Outbound | Fuel level per tick | Soft — ghost replay shows fuel state |
+| **AI Rival** | Bidirectional | Fuel level (AI) | Hard — AI fuel management |
+| **Ghost Recording** | Indirect | Fuel state derived from replay (not recorded per tick) | Soft — ghost replay shows fuel state |
 
 ## Tuning Knobs
 
@@ -176,20 +201,19 @@ All values below are serialized fields in `CarConfig.asset` (ScriptableObject).
 | Knob | Current Value | Safe Range | Breaks If Too Low | Breaks If Too High |
 |------|--------------|------------|-------------------|-------------------|
 | Tank capacity | 8.0 L | 6.0–12.0 L | Races too short (always pit) | Fuel never runs out |
-| Base rate (Normal) | 0.02 L/s | 0.01–0.04 L/s | Fuel too conservative | Fuel runs out too fast |
+| Base rate (MVP) | 0.06 L/s | 0.05–0.07 L/s | Fuel too conservative | Fuel runs out too fast |
 | Efficiency modifier spread | 0.5–0.9 | 0.3–1.0 | All cars consume same | Worst car unplayable |
-| Difficulty modifier range | 0.7–1.5 | 0.5–2.0 | No difficulty difference | Extreme punishment on Hard |
 | Low fuel speed bonus | +1% | 0–3% | No perceptible boost | Noticeable speed change |
 | Low fuel threshold | 25% | 15–35% | Bonus too late to matter | Bonus kicks in too early |
-| Pit stop duration | 8-10 s | 6–15 s | Pits too fast (no penalty) | Pits too slow (always costly) |
+| Fuel fill rate | 0.8 L/s | Fixed MVP value | Fuel timing unclear | Breaks standard pit timing |
 
 ## Visual/Audio Requirements
 
-- **Fuel bar:** Horizontal bar, 0-100%, color-coded (green > 50%, yellow 50-25%, red 25-1%). Positioned bottom-left of race HUD.
+- **Fuel bar:** Horizontal bar, 0-100%, color-coded (green > 50%, yellow 50-25%, red < 25%). Positioned bottom-left of race HUD.
 - **Numeric readout:** "X.X L" below the bar. Updates in real time.
-- **Audio cue:** Engine pitch drops subtly as fuel decreases (perception hack, not physics). Audio director to define the exact pitch curve.
+- **Audio cue:** A discrete Critical stinger plays once when fuel first drops below 25%; Audio System owns the exact continuous `fuel_factor` curve.
 - **Empty fuel:** Engine sound cuts. Only wind and tire noise remain. Strong audio feedback that fuel is gone.
-- **Pit stop visual:** Fuel nozzle animation, 2-3 seconds of the 8-10 second stop.
+- **Pit stop visual:** Fuel nozzle animation continues at 0.8 L/s through variable 2-10 second service; tire swap completes at 2s.
 
 ## UI Requirements
 
@@ -201,21 +225,29 @@ All values below are serialized fields in `CarConfig.asset` (ScriptableObject).
 
 ## Acceptance Criteria
 
-- **GIVEN** a car with Efficiency 4, **WHEN** full throttle is held for 5 laps at Hard difficulty, **THEN** fuel runs out before race end (pit stop required).
-- **GIVEN** a car with Efficiency 20, **WHEN** lift-and-coast is used for 5 laps at Normal difficulty, **THEN** fuel remains above 0% at race end (no pit needed).
+- **GIVEN** a car with Efficiency 4, **WHEN** full throttle is held from GO through a 5-lap reference race (75s/lap), **THEN** fuel reaches 0% before lap 3 begins (148.1s ± 0.5s).
+- **GIVEN** a car with Efficiency 20, **WHEN** full throttle is held from GO through a 5-lap reference race (75s/lap), **THEN** fuel reaches 0% during lap 4 and before lap 5 begins (266.7s ± 0.5s).
+- **GIVEN** a car with Efficiency 20, **WHEN** throttle is held at 50% for the full 5-lap reference race, **THEN** fuel remains above 0% at race end.
 - **GIVEN** any car, **WHEN** fuel level is checked at race start, **THEN** tank is exactly 8.0 L.
 - **GIVEN** fuel level at 0%, **WHEN** throttle input is applied, **THEN** car does not accelerate (coasts on momentum).
 - **GIVEN** fuel level at 0%, **WHEN** brake is applied, **THEN** car decelerates normally (brakes are hydraulic).
-- **GIVEN** fuel level at 25%, **WHEN** the low fuel speed bonus is applied, **THEN** max_velocity increases by 0.5-1.0%.
-- **GIVEN** a pit stop, **WHEN** the car enters pit lane, **THEN** fuel is refilled to 8.0 L and pit takes 8-10 seconds.
-- **GIVEN** fuel level at 50%, **WHEN** the player pits, **THEN** fuel is still refilled to 100% (no partial refuel option).
-- **GIVEN** difficulty set to Very Easy, **WHEN** fuel consumption is calculated, **THEN** the spread between best and worst Efficiency is compressed (fuel barely matters).
-- **GIVEN** difficulty set to Hard, **WHEN** fuel consumption is calculated, **THEN** the spread between best and worst Efficiency is expanded (fuel is critical).
+- **GIVEN** fuel transitions from 50.1% to 49.9%, **WHEN** state is evaluated, **THEN** the state becomes Conserving and the HUD fuel bar is yellow.
+- **GIVEN** fuel transitions from 25.1% to 24.9%, **WHEN** state is evaluated, **THEN** the state becomes Critical, the HUD fuel bar is red, and the Critical stinger plays once.
+- **GIVEN** fuel level at 10%, **WHEN** the low fuel speed bonus is applied, **THEN** max_velocity bonus is exactly 0.6%.
+- **GIVEN** Countdown runs for 300 ticks, **WHEN** fuel is observed before GO, **THEN** fuel equals its Countdown-entry value.
+- **GIVEN** fuel level changes, **WHEN** Vehicle Physics reads car mass, **THEN** mass remains exactly 505 kg.
+- **GIVEN** any difficulty, **WHEN** base fuel rate is read before modifiers, **THEN** it is exactly 0.06 L/s.
+- **GIVEN** an empty tank enters pit, **WHEN** 10s of service elapse, **THEN** fuel is exactly 8.0 L.
+- **GIVEN** fuel level at 50%, **WHEN** 2s of pit service elapse and player exits, **THEN** fuel is 70% (5.6 L) ± 0.01L.
+- **GIVEN** any difficulty, **WHEN** fuel consumption is calculated for the same car and throttle sequence, **THEN** the fuel rate is identical; difficulty does not modify Fuel rules.
+- **GIVEN** a car with corrupted Efficiency stat 0, **WHEN** fuel consumption is calculated, **THEN** efficiency_modifier clamps to the stat-4 value (0.9) and a warning is logged.
+- **GIVEN** a completed lap that includes a pit stop, **WHEN** LapCompleted fires, **THEN** last_lap_fuel_use is clamped to a non-negative value and is available to Pit Stop and AI Rival.
+- **GIVEN** a replay tick stream, **WHEN** Fuel is reconstructed during replay, **THEN** the replayed fuel state matches the live simulation for the same SimulationInput stream.
 
 ## Open Questions
 
-- **Fuel display in mirrors:** Should the fuel bar be visible in cockpit view mirrors? Or only in HUD overlay?
-- **Pit lane automation:** Should the pit stop be fully automated (car enters pit, stops, refuels, exits) or should the player have some control (choose pit box, manage pit entry speed)?
-- **Fuel strategy for AI:** Should AI rivals have visible fuel levels? Or is their fuel management hidden from the player?
-- **Multiple pit stops:** Should the game allow/optimize for 2-stop strategies? Or is 0-stop vs 1-stop the intended decision space?
-- **Fuel warning timing:** Should the audio cue for critical fuel start at 25% or later (e.g., 15%)?
+- **Fuel display in mirrors:** Deferred to the Cockpit HUD UX specification; the authoritative fuel bar remains in the HUD/overlay.
+- **Pit lane automation:** Resolved for MVP: physical pit-zone entry is automatic; Pit Stop handles service; the player may press Confirm after 2s to exit with partial fuel, otherwise service continues to full.
+- **Fuel strategy for AI:** AI fuel levels remain hidden from the player; HUD exposes only the player's fuel state.
+- **Multiple pit stops:** Multiple physical pit entries are allowed; MVP does not add a separate pit-count rule. AI avoids a final-lap pit through its own projection rule.
+- **Fuel warning timing:** Critical fuel audio begins at the existing 25% Critical threshold; no second warning threshold is introduced.
