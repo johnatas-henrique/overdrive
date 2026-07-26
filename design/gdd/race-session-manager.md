@@ -1,9 +1,22 @@
 # Race Session Manager
 
-> **Status**: In Design
+> **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-22
+> **Last Updated**: 2026-07-26
 > **Implements Pillar**: Every Short Race Matters
+
+## Phase Scope
+
+| Phase | Scope |
+|---|---|
+| MVP | Standalone qualifying-to-race-to-results flow, local timers, positions, laps, and finish events. |
+| MVP architecture constraints | Race events and results are explicit so later sessions can consume them without changing race rules. |
+| Alpha | Three-race sessions and persistent standings. |
+| Beta | Not designed. |
+| Release | Full championship flow. |
+
+### Review Boundary
+Session/championship behavior is non-blocking unless MVP events cannot support later orchestration.
 
 ## Overview
 
@@ -29,13 +42,22 @@
 
 | Field | Type | Range | Description |
 |-------|------|-------|-------------|
-| `lapCount` | int | 0–5 | Laps completed by this car. Increments at start/finish line crossing. |
-| `position` | int | 1–16 | Current race position. Recalculated every sim step. |
-| `raceTime` | float | 0.0–∞ | Elapsed race time in seconds. Starts at countdown end. |
-| `lapTimes` | float[] | 0–5 entries | Individual lap times. Populated on each lap completion. |
-| `totalDistance` | float | 0.0–∞ | Cumulative distance traveled in meters. Primary position metric. |
-| `isFinished` | bool | false/true | Set true when car crosses finish line on lap 5. |
+| `lapCount` | int | 0–`totalLaps` | Laps completed by this car. `totalLaps` is the current race configuration, 5 in MVP. |
+| `position` | int / null | 1–16 or null | Current race position. Recalculated every sim step; null for a Forfeit result. |
+| `positionEntryStep` | uint | 0–∞ | Simulation step at which the car first reached its current tied spline position; used only for deterministic ties. |
+| `raceTime` | float | 0.0–∞ | Derived from Simulation `activeRaceStepCount × FIXED_DT`; starts at GO and never advances during Countdown or Paused. |
+| `lapTimes` | float[] | 0–`totalLaps` entries | Individual lap times. Populated on each lap completion. |
+| `totalDistance` | float | 0.0–∞ | Cumulative distance traveled in meters. Used for anti-cut validation and telemetry; never for live position ranking. |
+| `isFinished` | bool | false/true | Set true when car crosses finish line on `totalLaps`. |
 | `isPitting` | bool | false/true | Set true when car enters pit lane, false on exit. |
+| `raceMode` | `Race` / `Qualifying` | Session mode | Owns session-specific rules while Simulation remains in its shared Racing state. |
+| `resultKind` | `Qualifying` / `Race` | Result presentation kind | Selects Grid Results after Qualifying or Race Results after a race. |
+| `resultClassification` | `Finished` / `DNF` / `Forfeit` | Result outcome | `Forfeit` is voluntary Return to Menu before Finished; it has no final position and never invokes FinishOrderResolver. |
+| `forfeitLapCount` | int | Forfeit-only result value | Copies the player's completed `lapCount` when `resultClassification = Forfeit`. |
+| `raceTimeAtForfeit` | float | Forfeit-only result value | Copies the player's current `raceTime` when `resultClassification = Forfeit`. |
+| `resolutionComplete` | bool | false/true | HUD/UI use it to enable Continue; Results may open only after it is true and terminal presentation is dismissed. |
+| `projectedFinishTime` | float / DNF | Result-only value | FinishOrderResolver assigns unfinished trailing AI from remaining distance and pre-established race pace. |
+| `gridAssignment` | `carId → gridSlot[1..16]` | Locked before race setup | RSM creates it from qualifying times or skip rule, carries it through QualifyingComplete TransitionRequest, and Grid & Start consumes it. |
 
 **2. Position Calculation**
 
@@ -43,9 +65,9 @@ Position is determined by ranking all 16 cars using spline position (where the c
 
 `position = rank(car) by: 1. lapCount DESC, 2. splinePosition DESC (within same lapCount)`
 
-Spline position is the car's projection onto the racing spline (0.0–1.0), regardless of whether the car is on the racing surface or in the pit lane. This reflects the car's actual position on the track.
+Spline position is main-spline progress (0.0–1.0). On the racing surface it is the car's racing-spline projection; in pit lane it is Track's authored `pitSpline → racingSpline` mapping. This reflects progress consistently without nearest-world-point ambiguity.
 
-Tiebreaker: if two cars have identical lapCount AND splinePosition (within 0.001 tolerance), the car that reached that position first ranks higher.
+Tiebreaker: if two cars have identical lapCount AND splinePosition (within 0.001 tolerance), the car with the lower recorded `positionEntryStep` ranks higher. If that is also identical, stable `carId` breaks the tie.
 
 **3. Track Progress Measurement**
 
@@ -53,7 +75,7 @@ Tiebreaker: if two cars have identical lapCount AND splinePosition (within 0.001
 
 `totalDistance += distance_traveled_this_step`
 
-Distance traveled = magnitude of position delta between sim steps.
+Forward distance traveled = `max(0, mapped_progress_delta × trackLength)`, with one wrap adjustment when progress crosses 1.0 → 0.0. Reverse movement and lateral movement do not increase the anti-cut accumulator.
 
 **4. Lap Detection**
 
@@ -61,20 +83,24 @@ A lap counts when the car crosses the start/finish line. The car's position is a
 
 | Condition | Check | Rationale |
 |-----------|-------|-----------|
-| Car crosses start/finish line | `previousSplinePosition > 0.95 AND currentSplinePosition < 0.05` | Primary detection — works for racing surface and pit lane |
+| Car crosses start/finish line | Track `CrossedLapBoundary(previousMappedProgress, currentMappedProgress)` | Authoritative wrap test over main-spline or authored pit-spline mapping; works even when one tick crosses from 0.94 to 0.01 |
 | Minimum distance traveled | `distanceSinceLastLap > trackLength × 0.90` | Anti-cut: must traverse 90% of track |
 
-**Output:** `LapCompleted(carId, lapNumber, lapTime)` event fires when all conditions met.
+**Output:** `LapCompleted(carId, lapNumber, lapTime)` event fires when all conditions are met. Fuel and Tire independently snapshot their own per-lap deltas at this boundary; AI Rival and Pit Stop consume those owner-published values for next-lap forecasting.
 
-**Pit lane behavior:** The racing spline is the single source of truth for lap progress. When a car enters the pit lane, its spline position continues to advance. The line crossing inside the pit lane counts as a lap completion. This is consistent with F1 timing — the position is determined at the moment of crossing.
+**Pit lane behavior:** The racing spline is the single source of truth for lap progress. Track maps every pit-spline sample to main-spline progress and exposes `CrossedLapBoundary`; the line crossing inside pit lane counts as a lap completion.
 
 **5. Finish Conditions**
 
 | Condition | Meaning |
 |-----------|---------|
-| Player car crosses finish line on lap 5 | Race ends for player → transition to Results |
-| All 16 cars finish OR 30s elapse after player finishes | Race ends for all → force-finish remaining cars |
-| Player retires (fuel empty + stopped on track) | Race ends for player → DNF result |
+| Player car crosses finish line on `totalLaps` | RSM returns `FinishDetected`; Simulation captures PostFinishSnapshot, then transition to Finished resolves only trailing AI |
+| Player result is locked | RSM's FinishOrderResolver projects unfinished trailing AI once from Simulation-captured PostFinishSnapshot |
+| Player retires (fuel empty + stopped on track) | RSM returns `FinishDetected` with player DNF; Simulation enters Finished and resolver projects all non-DNF unfinished AI without waiting |
+
+**PostFinishSnapshot:** Simulation captures this immutable final post-physics snapshot when RSM returns `FinishDetected`. It contains all 16 CarStates, RSM lap/position state, `playerFinishTime`, `resultKind`, player classification, existing DNF state and tick counters. RSM receives it once for FinishOrderResolver, which returns `ResolvedFinishOrder { entriesByPosition[] }`; every entry carries `carId`, final classification (`Finished` or `DNF`), finish position, and final/projected time. The resolver never re-runs PhysX, Fuel, Tire, Pit, collisions or tactical AI.
+
+**Expected race pace:** For each unfinished AI, FinishOrderResolver uses `expectedRacePace` in metres per second. If the AI has two completed laps, use `trackLength / mean(lastTwoCompletedLapTimes)`. Otherwise, use `trackLength / sessionTargetLapTime`, where `sessionTargetLapTime` is that AI's pre-generated qualifying time for the current track and difficulty. This fallback exists before racing begins, including when the player skips Qualifying.
 
 **6. Race Timer**
 
@@ -82,56 +108,70 @@ A lap counts when the car crosses the start/finish line. The car's position is a
 |-------|-------|------|---------|
 | `raceTime` | Countdown ends ("GO") | Player finishes or retires | HUD display, lap time calculation |
 | `lapTime[N]` | Previous lap finish (or race start for lap 1) | Current lap finish | HUD display, ghost comparison |
-| `countdownTimer` | Scene loaded | Reaches 0.0 | Countdown HUD, input gate |
+| `countdownTimer` | Countdown entry | Derived from `countdownRemainingTicks × FIXED_DT` | Countdown HUD only; Simulation owns the tick counter and GO transition. |
 
 ### States and Transitions
 
 | State | Description | RSM Behavior | Events Fired |
 |-------|-------------|--------------|--------------|
 | `Idle` | No race active | No tracking | None |
-| `Countdown` | 3-2-1-GO | Initialize all car state | None |
+| `Qualifying` | Single-lap qualifying session | Sets `raceMode = Qualifying`; Simulation runs as Racing | QualifyingStarted, QualifyingCompleted |
+| `Countdown` | 5-second lights sequence; observes Simulation-owned 300-tick countdown | Derives countdownTimer for HUD from published ticks; never writes GO state |
 | `Racing` | Active race | Recalculate positions, detect laps | RaceStarted, LapCompleted, PositionChanged, PitEntry, PitExit |
 | `Paused` | Player paused | Freeze all timers | None |
-| `Finished` | Race complete for player | Continue tracking AI | RaceFinished per car |
+| `Finished` | Player objective complete | Locks player result, runs FinishOrderResolver once from PostFinishSnapshot, starts terminal presentation; returns `TransitionRequest` without writing SimulationState | RaceFinished per car, TransitionRequest |
 | `Results` | Post-race | No tracking | None |
 
 **Transition Rules:**
 
 | From | To | Trigger |
 |------|----|---------|
-| Idle | Countdown | Scene loaded, all cars spawned |
-| Countdown | Racing | Countdown timer reaches 0.0 |
+| Idle | Countdown | Content emits `RaceLoadReady(RaceMode.Race, gridAssignment)` and Simulation accepts it for a Race-mode load |
+| Idle | Qualifying | Player starts qualifying; RSM sets `raceMode = Qualifying` and returns `TransitionRequest(Loading, QualifyingStartRequested)` while Simulation performs Loading before the first Qualifying tick |
+| Idle | Idle | Grid Display sends `StartRaceRequested`; RSM locks the existing qualifying/skip `gridAssignment` or creates the skip assignment, returns `TransitionRequest(Loading, RaceStartRequested, gridAssignment)`, and remains Idle while Simulation performs Loading |
+| Qualifying | Paused | Player presses Pause; retain `raceMode = Qualifying` |
+| Paused | Qualifying | Player resumes qualifying; retain `raceMode = Qualifying` |
+| Qualifying | Finished | Flying lap completes or fails; set `resultKind = Qualifying`, lock grid result and request Simulation Finished |
+| Finished | Results | `resultKind = Qualifying`, `resolutionComplete = true`, and player dismisses terminal presentation; Simulation opens Qualifying Results/Grid Display |
+| Results | Results | Qualifying Results/Grid Display sends `StartRaceRequested`; RSM locks `gridAssignment`, sets `raceMode = Race`, and returns `TransitionRequest(Loading, QualifyingComplete, gridAssignment)` while Simulation begins Loading |
+| Countdown | Racing | Simulation-owned `countdownRemainingTicks` reaches 0 (GO) |
+| Countdown | Paused | Player presses Pause; countdownTimer freezes |
+| Paused | Countdown | Player resumes before GO; countdownTimer continues from remaining time |
 | Racing | Paused | Player presses Pause |
 | Paused | Racing | Player resumes |
-| Racing | Finished | Player crosses finish line on lap 5 |
-| Finished | Results | All cars finish OR 30s timeout |
-| Paused | Results | Player quits mid-race (forfeit) |
+| Racing | Finished | Player crosses finish line on `totalLaps` or retires; return `FinishDetected`, receive Simulation-captured PostFinishSnapshot, run FinishOrderResolver, and return `TransitionRequest(Finished, resolvedFinishOrder)` |
+| Finished | Results | `resultKind = Race`, `resolutionComplete = true`, and player dismisses terminal presentation |
+| Paused | Results | Player selects Return to Menu before Finished; set `resultClassification = Forfeit`, retain `forfeitLapCount` and `raceTimeAtForfeit`, omit final position, and fire `RaceAborted(Forfeit)` |
+| Results | Idle | Continue/Back to Title only after Content emits `ContentUnloadComplete` and Simulation accepts the lifecycle transition |
+| Results | Results | Next Race request; RSM returns a Loading TransitionRequest while Simulation performs Loading without an intermediate Idle state |
 
 ### Race Events
 
 | Event | Payload | Fired When | Consumers |
 |-------|---------|------------|-----------|
 | `RaceStarted` | none | Countdown ends | Ghost Recording, HUD, AI Rival |
+| `QualifyingStarted` | DifficultyProfile ID, race seed | Simulation accepts `RaceLoadReady(RaceMode.Qualifying)` | Qualifying, HUD, AI Rival |
 | `LapCompleted` | carId, lapNumber, lapTime, position | Car crosses finish line | HUD, Fuel, Tire, AI Rival, Ghost Recording |
 | `PositionChanged` | carId, oldPosition, newPosition | Position recalculated | HUD, AI Rival |
-| `PitEntry` | carId, raceTime | Car enters pit lane | Fuel, Tire, HUD, AI Rival |
-| `PitExit` | carId, raceTime | Car exits pit lane | Fuel, Tire, HUD, AI Rival |
-| `RaceFinished` | carId, position, totalTime, lapTimes[] | Car completes lap 5 | HUD, Ghost Recording, Results |
-| `RaceAborted` | reason | Player quits or car retired | Ghost Recording, HUD |
+| `PitEntry` | carId, raceTime | Car enters pit lane | Fuel, Tire, Pit Stop, HUD, AI Rival |
+| `PitExit` | carId, raceTime | Car exits pit lane | Fuel, Tire, Pit Stop, HUD, AI Rival |
+| `TransitionRequest` | targetSimulationState, reason, resultKind, `resolvedFinishOrder` when target is Finished, `gridAssignment` when reason is QualifyingComplete | RSM completes final-state evaluation | Simulation Architecture |
+| `RaceFinished` | carId, position, totalTime, `lapTimes[totalLaps]` | Car completes `totalLaps` | HUD, Ghost Recording, Results |
+| `RaceAborted` | reason, resultClassification, forfeitLapCount, raceTimeAtForfeit | Player selects Return to Menu before Finished | Ghost Recording, HUD, Results |
 
 ### Interactions with Other Systems
 
 | System | Consumes Events | Produces Data for RSM | Interface |
 |--------|----------------|----------------------|-----------|
-| **Simulation Architecture** | — | sim_time, car positions | RSM reads per step |
-| **Vehicle Physics** | — | car.position, car.forwardDot | RSM reads for distance |
-| **Fuel System** | LapCompleted, PitEntry, PitExit | — | Fuel resets on pit exit |
-| **Tire System** | LapCompleted, PitEntry, PitExit | — | Tire resets on pit exit |
+| **Simulation Architecture** | — | TickStartSnapshot, sim_time, SimulationState | RSM evaluates final post-physics CarState in Simulation step 10 and returns `TransitionRequest` for Simulation to consume before the current snapshot publishes. |
+| **Vehicle Physics** | — | final `CarState` per car | RSM reads final post-physics CarState in Simulation step 10 before the current tick snapshot publishes. |
+| **Fuel System** | LapCompleted, PitEntry, PitExit | — | Fuel snapshots lap deltas at LapCompleted and fills during InPitBox; PitExit resumes normal driving consumption. |
+| **Tire System** | LapCompleted, PitEntry, PitExit | — | Tire snapshots lap deltas at LapCompleted, resets at InPitBox 2s, and resumes normal wear after PitExit. |
 | **AI Rival** | PositionChanged, LapCompleted, PitEntry, PitExit | — | AI adjusts strategy |
 | **HUD** | PositionChanged, LapCompleted, RaceFinished | — | HUD displays state |
 | **Ghost Recording** | RaceStarted, LapCompleted, RaceFinished | — | Ghost marks splits |
 | **Pit Stop** | PitEntry, PitExit | — | Pit manages service |
-| **Qualifying** | — | grid positions | RSM initializes positions |
+| **Qualifying** | — | qualifying result and grid-order candidates | RSM creates the immutable final assignment |
 | **Track** | — | trackLength, spline data | RSM reads for distance |
 
 ## Formulas
@@ -140,7 +180,9 @@ A lap counts when the car crosses the start/finish line. The car's position is a
 
 ### Position Ranking
 
-`position = rank(cars, by: lapCount DESC, totalDistance DESC)`
+`position = rank(cars, by: lapCount DESC, splinePosition DESC, positionEntryStep ASC, carId ASC)`
+
+When a car first enters its current tied spline-position bucket, RSM stores the current `simulationStepCount` as `positionEntryStep`.
 
 **Output Range:** 1 (leading) to 16 (last).
 
@@ -150,18 +192,18 @@ A lap counts when the car crosses the start/finish line. The car's position is a
 
 **Output Range:** ~70–80s per lap (track-dependent).
 
-### Pit Delta (F1 formula)
+### Pit Delta (deferred telemetry)
 
-`pit_delta = (pit_in_lap_time + pit_out_lap_time) - (2 × standard_lap_time)`
+`pit_delta` is not used by MVP race resolution. If telemetry is added later, it is derived from recorded pit-in/pit-out timestamps; it does not affect position, lap counting, or results.
 
-**Output Range:** ~20–25s (track-dependent).
+This is deferred telemetry only and has no MVP output or gameplay effect.
 
 ## Edge Cases
 
 - **Two cars cross finish line same step:** Tiebreaker: car with higher spline position at previous step ranks first.
 - **Car reverses across start/finish:** Distance check prevents counting (must traverse 90% of track forward).
 - **Car cuts chicane:** Minimum distance check fails → lap not counted.
-- **Player retires mid-race:** RaceAborted fires. Race continues for AI. Results show DNF.
+- **Player retires mid-race:** `FinishDetected` fires with player classification `DNF`. Race resolution continues for AI; Results show DNF.
 - **Player pauses during countdown:** Countdown timer pauses. Resume continues from paused time.
 - **All AI finish before player:** Race continues for player. Finished AI positions locked.
 - **Car is lapped:** No special handling. Position calculation works identically.
@@ -172,25 +214,26 @@ A lap counts when the car crosses the start/finish line. The car's position is a
 
 | System | Direction | Type | Nature |
 |--------|-----------|------|--------|
-| **Simulation Architecture** | Inbound | sim_time, car positions | Hard — RSM reads per step |
-| **Vehicle Physics** | Inbound | car.position, forwardDot | Hard — RSM reads for distance |
+| **Simulation Architecture** | Bidirectional | sim_time, car positions, TransitionRequest consumption | Hard — RSM reads per step and submits lifecycle requests |
+| **Vehicle Physics** | Inbound | final `CarState` and Track-mapped spline progress | Hard — RSM reads post-physics state for distance and ranking |
 | **Fuel** | Outbound | LapCompleted, PitEntry, PitExit | Hard — Fuel consumes per lap |
 | **Tire** | Outbound | LapCompleted, PitEntry, PitExit | Hard — Tire wears per lap |
-| **AI Rival** | Outbound | PositionChanged, LapCompleted | Hard — AI adjusts strategy |
+| **AI Rival** | Bidirectional | PositionChanged, LapCompleted | Hard — AI adjusts strategy |
 | **HUD** | Outbound | PositionChanged, LapCompleted, RaceFinished | Hard — HUD displays state |
-| **Ghost Recording** | Outbound | RaceStarted, LapCompleted, RaceFinished | Soft — Ghost marks splits |
+| **Ghost Recording** | Outbound | RaceStarted, LapCompleted, RaceFinished | Hard — Ghost marks splits |
 | **Pit Stop** | Outbound | PitEntry, PitExit | Hard — Pit manages service |
 | **Qualifying** | Inbound | grid positions | Hard — RSM initializes positions |
 | **Track** | Inbound | trackLength, spline | Hard — RSM reads for distance |
+| **Grid & Start** | Outbound | immutable `GridAssignment` | Hard — RSM creates the assignment consumed during loading |
+| **Content Pipeline** | Bidirectional | RaceLoadReady / ContentLoadError; ContentLoadRequest through Simulation | Hard — loading gates session start |
 
 ## Tuning Knobs
 
 | Knob | Current Value | Safe Range | Breaks If Too Low | Breaks If Too High |
 |------|--------------|------------|-------------------|-------------------|
 | Race laps | 5 | 3–10 | Too short (no strategy) | Too long (boring) |
-| Finish timeout | 30s | 15–60s | AI forced too early | Race drags on |
 | Anti-cut threshold | 90% | 80–95% | Cuts not detected | legitimate shortcuts fail |
-| Countdown duration | 3.0s | 2–5s | Too fast (no prep) | Too slow (boring) |
+| Countdown duration | 5.0s / 300 ticks | Fixed for MVP; changes require design review | Too fast (no prep) | Too slow (boring) |
 
 ## Visual/Audio Requirements
 
@@ -206,18 +249,25 @@ A lap counts when the car crosses the start/finish line. The car's position is a
 
 ## Acceptance Criteria
 
-- **GIVEN** a car crosses start/finish line on lap 3, **WHEN** lapCount is checked, **THEN** it is 3.
-- **GIVEN** two cars with identical lapCount and totalDistance, **WHEN** tiebreak runs, **THEN** car that reached distance first ranks higher.
-- **GIVEN** player crosses finish line on lap 5, **WHEN** state is checked, **THEN** state is Finished.
-- **GIVEN** player finishes and 30s elapse, **WHEN** remaining AI are checked, **THEN** they are force-finished.
-- **GIVEN** player retires (fuel empty), **WHEN** race state is checked, **THEN** RaceAborted fires and result is DNF.
-- **GIVEN** car enters pit lane, **WHEN** PitEntry event fires, **THEN** Fuel and Tire systems receive the event.
-- **GIVEN** car exits pit lane, **WHEN** PitExit event fires, **THEN** Fuel and Tire systems reset.
+- **GIVEN** a car crosses start/finish line on lap 3 of a 5-lap race, **WHEN** lapCount is checked, **THEN** it is 3.
+- **GIVEN** two cars with identical lapCount and splinePosition within 0.001, **WHEN** tiebreak runs, **THEN** the car with the lower `positionEntryStep` ranks higher; stable `carId` breaks an exact tie.
+- **GIVEN** Countdown starts, **WHEN** 300 unpaused simulation ticks complete, **THEN** RSM observes the GO boundary and publishes RaceStarted; Simulation owns the Countdown → Racing state transition.
+- **GIVEN** player crosses finish line on `totalLaps`, **WHEN** state is checked, **THEN** RSM returns FinishDetected and Simulation enters Finished.
+- **GIVEN** player finishes, **WHEN** FinishOrderResolver consumes PostFinishSnapshot, **THEN** it runs once, preserves completed/DNF drivers, projects only trailing AI, and sets `resolutionComplete = true`.
+- **GIVEN** player retires (fuel empty and stopped), **WHEN** race state is checked, **THEN** FinishDetected fires with resultClassification DNF; RaceAborted is reserved for Forfeit.
+- **GIVEN** car enters pit lane, **WHEN** PitEntry event fires, **THEN** Fuel, Tire, Pit Stop, HUD, and AI Rival receive the event.
+- **GIVEN** car exits pit lane, **WHEN** PitExit event fires, **THEN** Fuel, Tire, Pit Stop, HUD, and AI Rival receive the event.
 - **GIVEN** position changes from P4 to P3, **WHEN** PositionChanged fires, **THEN** HUD updates and AI Rival receives event.
+- **GIVEN** Qualifying completes, **WHEN** RSM creates `gridAssignment`, **THEN** the immutable carId → gridSlot list travels through `TransitionRequest(Loading, QualifyingComplete, gridAssignment)` and is not recalculated by Grid & Start.
+- **GIVEN** player starts Qualifying, **WHEN** RSM accepts the request, **THEN** it returns `TransitionRequest(Loading, QualifyingStartRequested)`; Simulation enters Racing/GameplayQualifying only after `RaceLoadReady(RaceMode.Qualifying)` and no Countdown event is emitted.
+- **GIVEN** Qualifying Finished Presentation is dismissed, **WHEN** `resolutionComplete = true`, **THEN** Simulation enters Results with `resultKind = Qualifying`; RSM does not return to Idle before the Start Race or unload decision.
+- **GIVEN** Results Continue/Back requests a return to Title, **WHEN** Content unloading is incomplete, **THEN** RSM remains Results; Idle becomes valid only after `ContentUnloadComplete`.
+- **GIVEN** the player selects Return to Menu while Countdown or Racing is paused, **WHEN** the request is accepted, **THEN** resultClassification is Forfeit, final position is null, and RaceAborted(Forfeit) is emitted without resuming simulation.
+- **GIVEN** a race load is in progress, **WHEN** Cancel or Back is pressed, **THEN** RSM does not abort the load; it waits for RaceLoadReady or ContentLoadError.
 
 ## Open Questions
 
-- **Lapped traffic:** Should lapped cars be blue-flagged and forced to yield? Or is it pure position-based?
-- **Safety car:** Should MVP include safety car mechanics? Or is it Alpha+?
-- **Photo finish UI:** Should there be a special UI for close finishes (within 0.1s)?
-- **Retirement animation:** When a car retires, should there be a visual indication (car stops, smoke, etc.)?
+- **Lapped traffic:** MVP remains pure position-based; no blue-flag behavior is introduced.
+- **Safety car:** Safety-car mechanics are out of MVP scope.
+- **Photo finish UI:** MVP uses deterministic tiebreak data and ordinary Results presentation; no special photo-finish screen.
+- **Retirement animation:** VFX owns the visual indication; RSM emits DNF state and does not prescribe the effect.

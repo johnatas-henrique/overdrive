@@ -1,13 +1,26 @@
 # Grid & Start
 
-> **Status**: In Design
+> **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-22
+> **Last Updated**: 2026-07-26
 > **Implements Pillar**: Every Short Race Matters
+
+## Phase Scope
+
+| Phase | Scope |
+|---|---|
+| MVP | Grid formation, lights, grid lock, Perfect Start, and local launch behavior. |
+| MVP architecture constraints | Grid state and GO event are explicit local race contracts. |
+| Alpha | Not designed. |
+| Beta | Not designed. |
+| Release | Not designed. |
+
+### Review Boundary
+All defined grid/start behavior is MVP; future presentation additions are non-blocking.
 
 ## Overview
 
-**Grid & Start** places 16 cars on the starting grid based on qualifying results and manages the standing start sequence. The system handles grid formation (2-wide formation), countdown (3-2-1-GO), and the transition from stationary to racing. Grid position is determined by qualifying time — faster qualifier starts ahead. Standing start means all cars are stationary until the "GO" signal. Without this system, cars would appear randomly on the track with no race start.
+**Grid & Start** places 16 cars on the starting grid from the immutable `GridAssignment` produced by Race Session Manager and manages the standing start presentation. The system handles grid formation, the five-light/five-beep Countdown, and the transition from stationary to racing at the Simulation-owned GO boundary. Standing start means all cars remain grid-locked until the 300th Countdown tick. Without this system, cars would appear randomly on the track with no race start.
 
 ## Player Fantasy
 
@@ -37,39 +50,40 @@ Row spacing: 8.0m. Column spacing: 3.5m. Stagger offset: 3-5m.
 
 **2. Grid Display Phase**
 
-After qualifying (or skip), a grid display screen shows all16 positions with car names and qualifying times. Duration: 5 seconds OR player presses button to skip. Camera shows the grid from above.
+After qualifying (or skip), a grid display screen shows all 16 positions with car names and qualifying times or `DNQ`. The screen waits for the player to press Confirm; there is no timeout or Back/Cancel path. Camera shows the grid from a static top-down view in MVP.
 
 **3. Countdown Sequence**
 
 ```
-GRID DISPLAY: 5s (or skip)
+GRID DISPLAY: Confirm only
     ↓
 LIGHTS SEQUENCE: 5s
     - Camera moves to grid level
-    - Red lights illuminate one by one (1s intervals)
-    - All lights on → 1s pause → all lights off = GO!
-    - Player can accelerate at any time
-    - Accelerating at the EXACT moment of GO → 10s acceleration bonus
+    - Five red lights illuminate one by one at 1s intervals
+    - The fifth light turns off immediately at the fifth second = GO
+    - Player controls remain active; cars remain grid-locked until GO
+    - A correctly armed throttle at GO → 10s acceleration bonus
 ```
 
 **4. Perfect Start Mechanic**
 
-- Player can accelerate at any time before/during/after GO
-- If player accelerates within ±0.2s of the GO signal → **10s acceleration bonus** (+15% acceleration)
-- If player accelerates before GO → normal start, no bonus
-- If player accelerates after GO → normal start, no bonus
-- Bonus applies to Vehicle Physics acceleration modifier
+- Accelerate, Brake, and Steer remain active before/during/after GO; grid lock prevents movement before GO
+- From `GO_tick - 12` through `GO_tick - 1`, Input System arms Perfect Start if `rawThrottlePostDeadZone > 0.5` and `rawBrakePostDeadZone == 0` on any tick.
+- On the GO tick, the same raw condition must still hold. If it does and Perfect Start is armed, apply the **10s acceleration bonus** (+15% drive force).
+- A player who does not satisfy the condition during the 12-tick pre-GO window and at GO receives a normal start with no bonus. Beginning to accelerate earlier is allowed if the valid condition is present again during the approved window and at GO.
+- Bonus applies `perfectStartDriveForceMultiplier = 1.15` to Vehicle Physics `longitudinalDriveForceFinal` for 600 simulation ticks
+- At GO, Grid & Start publishes immutable `PerfectStartResult { active, remainingTicks }`; `remainingTicks` is 600 when active and 0 otherwise. Simulation copies this result into ReplayInitialState before the first Racing tick.
 
 **5. Launch Mechanics**
 
 - All cars are stationary until GO
-- Player input is blocked during countdown (except throttle for perfect start timing)
-- At GO: full input unlocked, all cars accelerate
-- AI launches based on archetype: Aggressive = faster launch, Cautious = slower launch
+- Accelerate, Brake, Steer, and Pause function during countdown; Settings remains blocked and grid lock prevents pit-lane entry
+- At GO: grid lock releases and the current control state drives all cars
+- AI launches based on archetype: Aggressive = faster launch, Cautious = slower launch. AI never receives the player-only Perfect Start multiplier in MVP.
 
 **6. Grid Position Calculation**
 
-`grid_position = rank(qualifying_times, ascending)` — fastest = P1.
+`grid_position = rank(qualifying_times, ascending, stable_car_id)` — fastest = P1; stable `carId` breaks equal-time ties.
 
 If player skips qualifying: `grid_position = 16`.
 
@@ -79,38 +93,39 @@ AI qualifying times are pre-generated before grid display (from Qualifying syste
 
 | State | Description | Duration | Player Control |
 |-------|-------------|----------|----------------|
-| **Grid Display** | Show grid positions and times | 5s or skip | Yes — skip button |
-| **Countdown** | Lights sequence | 5s | Throttle only (for timing) |
+| **Grid Display** | Show grid positions and times | Confirm only | No |
+| **Countdown** | Lights sequence; cars grid-locked | 5s | Accelerate, Brake, Steer, Pause |
 | **Racing** | Race active | Until finish | Full control |
 
 ### Interactions with Other Systems
 
 | System | Direction | Data | Notes |
 |--------|-----------|------|-------|
-| **Qualifying** | Inbound | AI qualifying times, grid positions | Determines grid order |
+| **Qualifying** | Inbound | AI qualifying times | Informs final race order |
+| **Race Session Manager** | Inbound | `GridAssignment { carId → gridSlot[1..16] }`, race mode | Locked after Qualifying or skip; Grid & Start applies it before Countdown |
 | **Track** | Inbound | First corner direction | Determines column stagger |
-| **Vehicle Physics** | Outbound | Perfect start bonus (15% acceleration for 10s) | Affects launch |
+| **Vehicle Physics** | Outbound | grid_lock, `perfectStartDriveForceMultiplier` | Holds cars before GO; multiplies `longitudinalDriveForceFinal` by 1.15 for 600 ticks after a valid start |
 | **AI Rival** | Outbound | Grid positions, AI launch behavior | AI starts from grid |
-| **Race Session Manager** | Outbound | Race start event | RSM starts countdown |
+| **Simulation Architecture** | Inbound | Countdown ticks, GO boundary, grid-lock lifecycle | Simulation releases grid lock on tick 300 and publishes the first Racing snapshot |
+| **Input System** | Inbound | Accelerate, Brake, Steer, Pause, Confirm | Player controls remain active during Countdown; Confirm advances Grid Display |
 | **HUD** | Outbound | Grid display, countdown, perfect start indicator | Player feedback |
 | **Audio** | Outbound | Countdown beeps, launch sounds | Audio cues |
-| **Settings** | Inbound | Difficulty | May affect AI launch |
 
 ## Formulas
 
 ### Perfect Start Window
 
-`perfect_start_window = GO_time ± 0.2s`
+`perfect_start_arming_window = [GO_tick - 12, GO_tick - 1]`
 
-If player throttle input > 0 within this window → bonus active.
+`perfect_start = armed AND rawThrottlePostDeadZone(GO_tick) > 0.5 AND rawBrakePostDeadZone(GO_tick) == 0`
 
 ### Acceleration Bonus
 
-`acceleration_modifier = 1.15` for 10 seconds after perfect start.
+`longitudinalDriveForceFinal *= 1.15` for 600 ticks after a valid perfect start.
 
 ### Grid Position
 
-`grid_position = rank(qualifying_times, ascending)`
+`grid_position = rank(qualifying_times, ascending, stable_car_id)`
 
 If player skips: `grid_position = 16`.
 
@@ -118,9 +133,9 @@ If player skips: `grid_position = 16`.
 
 - **If player doesn't accelerate at all:** Car stays stationary. Other cars leave. Player starts last.
 - **If player accelerates 1s before GO:** Normal start, no bonus. No penalty.
-- **If two players in multiplayer (Alpha):** Both can get perfect start independently.
-- **If AI tier spans multiple grid rows:** AI positions based on qualifying times, not tier. Tier1 cars naturally qualify P1-P4 due to faster stats.
-- **If qualifying times are identical:** Tiebreak by tier (higher tier gets better position), then random.
+- **If two players in multiplayer (Alpha):** Deferred; MVP has one player and AI never receives the Perfect Start multiplier.
+- **If AI tier spans multiple grid rows:** AI positions are based on qualifying times, not a fixed tier range.
+- **If qualifying times are identical:** Tiebreak by stable `carId`; no random ordering is used.
 - **If track has no clear first corner direction:** Default to right column in front.
 
 ## Dependencies
@@ -131,7 +146,9 @@ If player skips: `grid_position = 16`.
 | **Track** | Inbound | First corner direction | Hard — determines stagger |
 | **Vehicle Physics** | Outbound | Perfect start bonus | Hard — affects launch |
 | **AI Rival** | Outbound | Grid positions, launch behavior | Hard — AI starts from grid |
-| **Race Session Manager** | Outbound | Race start event | Hard — triggers countdown |
+| **Race Session Manager** | Inbound | immutable `GridAssignment`, race mode | Hard — supplies the locked order |
+| **Simulation Architecture** | Bidirectional | GO tick and grid-lock state in; immutable PerfectStartResult out | Hard — Simulation owns the lifecycle boundary and copies the result into ReplayInitialState |
+| **Input System** | Inbound | Confirm and gameplay controls | Hard — owns skip and pre-GO input |
 | **HUD** | Outbound | Grid display, countdown | Hard — player feedback |
 | **Audio** | Outbound | Countdown sounds | Soft — audio cues |
 
@@ -142,10 +159,10 @@ If player skips: `grid_position = 16`.
 | Row spacing | 8.0m | 6–10m | Cars too close (collision) | Cars too spread out |
 | Column spacing | 3.5m | 2.5–5m | Cars overlap | Grid too wide |
 | Stagger offset | 3–5m | 2–7m | Minimal offset | Too much offset |
-| Perfect start window | ±0.2s | ±0.1–0.5s | Too hard to time | Too easy |
+| Perfect start window | 12 pre-GO ticks + GO tick | Fixed for MVP; changes require design review | Too hard to time | Too easy |
 | Acceleration bonus | 15% for 10s | 10–20%, 5–15s | Bonus negligible | Bonus too strong |
-| Countdown duration | 5s | 3–8s | Too fast (no prep) | Too slow (boring) |
-| Grid display duration | 5s | 3–10s | Too fast to read | Too long |
+| Countdown duration | 5s / 300 ticks | Fixed for MVP; changes require design review | Too fast (no prep) | Too slow (boring) |
+| Grid display duration | Confirm only | Fixed for MVP; changes require design review | Too fast to read | Too long |
 
 ## Visual/Audio Requirements
 
@@ -163,15 +180,18 @@ If player skips: `grid_position = 16`.
 - **GIVEN** qualifying results, **WHEN** grid is formed, **THEN** P1 has fastest qualifying time and P16 has slowest.
 - **GIVEN** player skips qualifying, **WHEN** grid is formed, **THEN** player is at P16.
 - **GIVEN** first corner is right, **WHEN** grid is formed, **THEN** left column is in front (staggered).
-- **GIVEN** player accelerates within ±0.2s of GO, **WHEN** race starts, **THEN** acceleration bonus is active for 10s.
-- **GIVEN** player accelerates 1s before GO, **WHEN** race starts, **THEN** normal start, no bonus.
-- **GIVEN** countdown at 3s, **WHEN** lights are shown, **THEN** 3 red lights are illuminated.
-- **GIVEN** countdown at GO, **WHEN** lights are shown, **THEN** all lights off and input unlocked.
-- **GIVEN** AI Tier1 car, **WHEN** grid is formed, **THEN** car is in P1-P4 range.
+- **GIVEN** first corner is left, **WHEN** grid is formed, **THEN** right column is in front (staggered).
+- **GIVEN** the valid raw condition occurred at least once during GO-12 through GO-1 and still holds on GO, **WHEN** race starts, **THEN** `perfectStartDriveForceMultiplier = 1.15`, `PerfectStartResult.active = true`, and `remainingTicks = 600` before the first Racing tick.
+- **GIVEN** the GO tick has raw Brake above its dead-zone threshold, **WHEN** race starts, **THEN** no Perfect Start bonus activates even if raw Throttle is above 0.5.
+- **GIVEN** player accelerates 1s before GO but releases before the 12-tick arming window or is not holding the valid condition at GO, **WHEN** race starts, **THEN** normal start, no bonus.
+- **GIVEN** the 5-second countdown reaches GO on tick 300, **WHEN** lights are shown, **THEN** all five lights are off, the GO event is published, and grid lock releases.
+- **GIVEN** Countdown is active and player steers or brakes, **WHEN** simulation ticks, **THEN** the controls are consumed while the car remains stationary under grid lock.
+- **GIVEN** an AI car with a faster qualifying time than another car, **WHEN** grid is formed, **THEN** it receives the earlier grid slot; no fixed tier-to-position range is assumed after excluding the player car.
+- **GIVEN** two qualifying times are identical, **WHEN** grid is formed, **THEN** stable `carId` determines their order without randomization.
 
 ## Open Questions
 
-- **Grid display camera angle:** Should it be a cinematic pan over the grid, or a static top-down view?
-- **Perfect start audio cue:** Should there be a specific sound when the bonus activates?
-- **AI perfect start:** Should AI also get perfect start bonuses? Or is it player-only?
-- **Grid formation animation:** Should cars drive to their grid positions, or spawn already placed?
+- **Grid display camera angle:** MVP uses a static top-down view.
+- **Perfect start audio cue:** Audio may add a dedicated activation cue; the gameplay contract does not depend on it.
+- **AI perfect start:** Resolved for MVP: player-only.
+- **Grid formation animation:** Cars spawn at their validated assigned grid transforms; no drive-to-grid animation is required in MVP.
