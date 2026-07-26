@@ -100,7 +100,23 @@ interfaces: []
 # Register a budget when an ADR explicitly claims a frame time allocation.
 # The registry lets /architecture-review verify the total doesn't exceed the target.
 
-performance_budgets: []
+performance_budgets:
+  - target_fps: 60
+    total_frame_budget_ms: 16.667
+    platform: PC
+    adr: docs/architecture/adr-0001-manual-simulation-authority-and-determinism-boundary.md
+    added: 2026-07-24
+    revised: ""
+  - system: simulation
+    status: pending_empirical_baseline
+    budget_ms_p95: 6.0
+    maximum_observed_ms: 8.0
+    measurement_scope: "Complete fixed pipeline Steps 1–13 including input, domain updates, Physics.Simulate, readout, RSM, snapshots and next-tick AI; excludes rendering and UI."
+    adr: docs/architecture/adr-0001-manual-simulation-authority-and-determinism-boundary.md
+    referenced_by:
+      - design/gdd/simulation-architecture.md
+    added: 2026-07-24
+    revised: ""
 
 # Example:
 #

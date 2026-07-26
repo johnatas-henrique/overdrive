@@ -38,7 +38,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-07-22"
+last_updated: "2026-07-26"
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -462,16 +462,16 @@ formulas:
     referenced_by:
       - design/gdd/fuel-system.md
       - design/gdd/car-definition-data.md
+      - design/gdd/vehicle-physics.md
     variables:
       - base_rate
       - throttle_input
       - efficiency_modifier
-      - difficulty_modifier
-    output_range: [0.0, null]
-    expression: "base_rate × throttle_input × (1 - efficiency_stat × 0.025) × difficulty_modifier"
-    notes: "Fuel System GDD defines the full expression. Car Definition Data provides efficiency stat (0-20 scale) and defines efficiency_modifier as base × (1 - stat × 0.03). The two expressions differ in the constant (0.025 vs 0.03) -- this is a potential inconsistency flagged for review."
+    output_range: [0.0, 0.054]
+    expression: "0.06 L/s × throttle_input × efficiency_modifier"
+    notes: "Fuel System owns base_rate = 0.06 L/s for MVP. Car Definition Data supplies only the dimensionless efficiency_modifier = (1 - stat × 0.025); Vehicle Physics consumes Fuel output. Difficulty does not modify Fuel rules."
     added: 2026-07-22
-    revised: ""
+    revised: 2026-07-24
 
   - name: tire_wear_rate
     status: active
@@ -485,12 +485,60 @@ formulas:
       - aggression
       - surface_penalty
       - efficiency_modifier
-      - difficulty_modifier
+      - wearRateMultiplier
     output_range: [0.0, null]
-    expression: "base_rate × distance_factor × aggression × surface_penalty × efficiency_modifier × difficulty_modifier"
-    notes: "Tire System GDD defines the full expression. Car Definition Data provides efficiency stat that feeds into efficiency_modifier."
+    expression: "base_rate × distance_factor × aggression × surface_penalty × efficiency_modifier × wearRateMultiplier"
+    notes: "Tire System GDD defines the full expression. Car Definition Data provides efficiency stat that feeds into efficiency_modifier. wearRateMultiplier is 1.0 in MVP. Difficulty does not modify Tire rules."
     added: 2026-07-22
-    revised: ""
+    revised: "2026-07-24"
+
+  # was: name was ai_pit_projection before 2026-07-25
+  - name: pit_required_before_next_lap
+    status: active
+    source: design/gdd/pit-stop.md
+    referenced_by:
+      - design/gdd/pit-stop.md
+      - design/gdd/ai-rival.md
+      - design/gdd/race-session-manager.md
+    variables:
+      - fuel_consumed_in_last_completed_lap
+      - tire_wear_gained_in_last_completed_lap
+      - fuel_after_current_lap
+      - tire_life_after_current_lap
+      - is_final_lap
+      - predicted_fuel_per_lap
+      - predicted_tire_wear_per_lap
+    output_range: [0.0, 1.0]
+    expression: "pit_required_before_next_lap = fuel_after_current_lap < 1.10 × predicted_fuel_per_lap OR tire_life_after_current_lap < 1.10 × predicted_tire_wear_per_lap; evaluate only after LapCompleted(1), never before final lap"
+    notes: "AI Rival owns the request. Fuel and Tire publish measured completed-lap deltas; Race Session Manager publishes lap boundaries and final-lap state."
+    added: 2026-07-23
+    revised: "2026-07-25"
+
+  - name: player_pit_advisory
+    status: active
+    source: design/gdd/pit-stop.md
+    referenced_by:
+      - design/gdd/pit-stop.md
+      - design/gdd/hud.md
+      - design/gdd/track-system.md
+      - design/gdd/race-session-manager.md
+    variables:
+      - current_fuel
+      - current_tire_wear_fraction
+      - last_lap_fuel_use
+      - last_lap_tire_wear_fraction
+      - racing_spline_progress
+      - pit_entry_progress
+      - is_final_lap
+      - remaining_racing_progress
+      - predicted_fuel_per_lap
+      - predicted_tire_wear_per_lap
+    output_range: [0.0, 1.0]
+    # was: expression used undefined `progress` in both forecast terms before 2026-07-24
+    expression: "PitThisLap = after LapCompleted(1) AND not final lap AND (current_fuel - last_lap_fuel_use × remaining_racing_progress < 1.10 × last_lap_fuel_use OR (1 - current_tire_wear_fraction) - last_lap_tire_wear_fraction × remaining_racing_progress < 1.10 × last_lap_tire_wear_fraction); warning_start = min(0.80, max(0.0, pit_entry_progress - 0.05))"
+    notes: "Pit Stop owns evaluation; HUD renders only the transient output; Track supplies pit-entry progress and RSM supplies mapped racing progress."
+    added: 2026-07-23
+    revised: "2026-07-24"
 
   - name: grip_stacking
     status: active
@@ -503,11 +551,11 @@ formulas:
       - tire_multiplier
       - surface_modifier
       - stability_modifier
-    output_range: [0.20, 1.0]
+    output_range: [0.20, 1.20]
     expression: "base_grip × tire_multiplier × surface_modifier × stability_modifier"
-    notes: "Tire System outputs grip_multiplier = 1.0 - (wear_percent × (1.0 - grip_floor)) where grip_floor = 0.20. Vehicle Physics consumes this multiplier in grip_stacking formula."
+    notes: "Tire System outputs tire_runtime_grip_multiplier = grip_base × (1.0 - (wear_fraction × (1.0 - grip_floor))) where grip_floor = 0.20. Vehicle Physics consumes this multiplier in the multiplicative stack and clamps the final result to 0.20–1.20."
     added: 2026-07-22
-    revised: ""
+    revised: "2026-07-24"
 
   - name: vfx_intensity
     status: active
@@ -517,12 +565,14 @@ formulas:
       - design/gdd/car-definition-data.md
     variables:
       - speed
+      - streak_onset_speed
       - global_max_velocity
     output_range: [0.0, 1.0]
-    expression: "clamp(speed / global_max_velocity, 0, 1)"
-    notes: "Used for streak_intensity (0-1), blur_amount (0-0.5), and vignette_intensity (0-0.4). global_max_velocity is read from Car Definition Data at runtime as max(all car top speeds)."
+    # was: expression treated streak_intensity as clamp(speed / global_max_velocity, 0, 1) before 2026-07-24
+    expression: "base_speed_intensity = clamp(speed / global_max_velocity, 0, 1); streak_intensity = clamp((speed - streak_onset_speed) / (global_max_velocity - streak_onset_speed), 0, 1); blur_amount = 0 when Motion Blur is Off or Reduced Motion is active, else clamp(speed / global_max_velocity, 0, 1) × 0.5; vignette_intensity = clamp((speed / global_max_velocity) - 0.6, 0, 0.4)"
+    notes: "streak_onset_speed = 100 km/h. global_max_velocity is read from Car Definition Data at runtime as max(all car top speeds). Runtime precedence is PerformanceReduced > Reduced Motion > Settings preference; overrides never rewrite saved values."
     added: 2026-07-22
-    revised: ""
+    revised: "2026-07-25"
 
   - name: qualifying_time
     status: active
@@ -530,16 +580,53 @@ formulas:
     referenced_by:
       - design/gdd/qualifying.md
       - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
     variables:
-      - base_time
+      - track_reference_lap_time
       - tier_modifier
-      - difficulty_modifier
-      - variance
+      - ai_precision
+      - ai_error_multiplier
+      - pace_noise
     output_range: [null, null]
-    expression: "ai_time = base_time × tier_modifier × difficulty_modifier × variance"
-    notes: "Tier modifier: T1=1.00, T2=1.015, T3=1.035, T4=1.055. Difficulty modifier: Easy=1.01, Normal=1.00, Hard=0.99. Variance: ±0.8%. Output feeds into Grid & Start for grid_position."
+    expression: "ai_time = track_reference_lap_time × tier_modifier × (1 + (1-ai_precision) + PCG32Float01×0.005×ai_error_multiplier + PCG32Range(-pace_noise,+pace_noise))"
+    # was: note stated that raw qualifying time directly fed Grid & Start before 2026-07-24
+    notes: "Tier modifier: T1=1.00, T2=1.015, T3=1.035, T4=1.055. DifficultyProfile supplies precision, error multiplier and pace noise. Lower tiers may outqualify higher tiers when deterministic profile variation crosses the base tier spread. Qualifying outputs times to RSM, which creates immutable GridAssignment; stable-car tie rules apply only to exact equal times."
     added: 2026-07-22
-    revised: ""
+    revised: "2026-07-25"
+
+  - name: ema_smoothing
+    status: active
+    source: design/gdd/input-system.md
+    referenced_by:
+      - design/gdd/input-system.md
+      - design/gdd/settings.md
+      - design/gdd/simulation-architecture.md
+    variables:
+      - alpha
+      - raw_input
+      - previous_output
+    output_range: [-1.0, 1.0]
+    expression: "output = alpha × raw_input + (1 - alpha) × previous_output"
+    notes: "Executed once per 60 Hz simulation tick. Accelerate and Brake use range 0.0–1.0; Steer uses range -1.0–1.0. Defaults: alpha=0.3 for Accelerate/Brake and alpha=0.5 for Steer."
+    added: 2026-07-23
+    revised: "2026-07-24"
+
+  - name: dead_zone_normalization
+    status: active
+    source: design/gdd/input-system.md
+    referenced_by:
+      - design/gdd/input-system.md
+      - design/gdd/settings.md
+      - design/gdd/simulation-architecture.md
+    variables:
+      - raw_value
+      - inner_threshold
+      - outer_threshold
+    output_range: [-1.0, 1.0]
+    expression: "stick: normalize(v) × clamp((|v| - inner) / (outer - inner), 0, 1); trigger: clamp((t - inner) / (1 - inner), 0, 1)"
+    notes: "MVP defaults: stick inner=0.15, outer=0.95; trigger inner=0.05. Settings may tune stick thresholds only; trigger inner remains Input-owned tuning. Profiles validate 0≤inner<outer≤1 before use. Keyboard and mouse pointer input have no dead zone."
+    added: 2026-07-23
+    revised: "2026-07-25"
 
   - name: position_ranking
     status: active
@@ -550,12 +637,14 @@ formulas:
     variables:
       - lapCount
       - splinePosition
-      - totalDistance
+      - positionEntryStep
+      - carId
     output_range: [1, 16]
-    expression: "rank(cars) by: 1. lapCount DESC, 2. splinePosition DESC (within same lap), tiebreaker by time reaching position"
-    notes: "Race Session Manager uses this for live race position. Grid & Start uses a different ranking (rank(qualifying_times, ascending)) for grid position, but both are position-ranking formulas operating on 16 cars."
+    # was: tiebreaker used time reaching position before 2026-07-24
+    expression: "rank(cars) by: 1. lapCount DESC, 2. splinePosition DESC (within same lap), 3. positionEntryStep ASC, 4. carId ASC"
+    notes: "Race Session Manager uses this for live race position. Grid & Start uses the finalized GridAssignment after qualifying; its qualifying-time ordering and stable-car tie rules are separate from live position ranking."
     added: 2026-07-22
-    revised: ""
+    revised: "2026-07-24"
 
 
 # ─── CONSTANTS ───────────────────────────────────────────────────────────────
@@ -600,9 +689,9 @@ constants:
       - design/gdd/race-session-manager.md
       - design/gdd/fuel-system.md
       - design/gdd/tire-system.md
-    value: "8-10"
+    value: "2-10"
     unit: seconds
-    notes: "Tire swap (~2s) and fuel fill (~8-10s) run in parallel. Total duration = max(tire_swap_time, fuel_fill_time) = 8-10s."
+    notes: "Tire swap completes in 2s while fuel fills at 0.8 L/s. Service duration = max(2s, missingFuelLiters / 0.8 L/s): 2–10s. Player may exit after tire swap; AI waits full in MVP."
     added: 2026-07-22
     revised: ""
 
@@ -627,7 +716,7 @@ constants:
       - design/gdd/pit-stop.md
     value: 8.0
     unit: liters
-    notes: "Fixed across all tiers and difficulties. Pit Stop uses this for fuel_fill_rate = tank_capacity / max_fill_time = 0.8 L/s."
+    notes: "Fixed across all tiers and difficulties. Pit Stop fills at 0.8 L/s; player may exit after the 2s tire swap with partial fuel, while AI waits until this full 8.0L value is restored in MVP."
     added: 2026-07-22
     revised: ""
 
@@ -639,9 +728,10 @@ constants:
       - design/gdd/car-definition-data.md
     value: "max(all car top speeds)"
     unit: km/h
-    notes: "Computed at runtime as the maximum top speed across all 16 cars on the current grid. Tier 1 max = ~310 km/h. Used as denominator in VFX intensity formulas (streak_intensity, blur_amount, vignette_intensity)."
+    # was: note stated that every VFX intensity used only global_max_velocity before 2026-07-24
+    notes: "Computed at runtime as the maximum top speed across all 16 cars on the current grid. Tier 1 max = ~310 km/h. Used as the denominator in blur/vignette mappings and as the upper bound in the onset-adjusted streak_intensity formula."
     added: 2026-07-22
-    revised: ""
+    revised: "2026-07-24"
 
   - name: fixed_timestep
     status: active
