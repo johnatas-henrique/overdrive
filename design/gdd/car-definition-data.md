@@ -1,13 +1,26 @@
 # Car Definition Data
 
-> **Status**: In Design
+> **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-21
+> **Last Updated**: 2026-07-26
 > **Implements Pillar**: Earn the Next Seat, Rivals Make the Grid Personal
+
+## Phase Scope
+
+| Phase | Scope |
+|---|---|
+| MVP | Six fixed stats plus engine audio-profile fields for 16 teams, tier data, and local car-definition assets. |
+| MVP architecture constraints | Car data is externalized so later condition or stat extensions do not require vehicle-code changes. |
+| Alpha | Car condition/stat variation if approved. |
+| Beta | Not designed. |
+| Release | Not designed. |
+
+### Review Boundary
+Future car progression is non-blocking unless MVP data schema prevents extension.
 
 ## Overview
 
-**Car Definition Data** is the data layer that defines the mechanical identity of each of the 16 F1 teams — 6 stats per car (Top Speed, Acceleration, Brake Power, Grip Level, Stability, Efficiency) on a 0–20 scale, identified by stable IDs (`team_tier1_a` through `team_tier4_d`). It is consumed by Vehicle Physics (motion), Fuel (consumption rate), Tire (wear rate), AI Rival (performance ceiling), and Car Differentiation (feel contrast). The player never reads this data directly — they feel it through how each car responds to their input. Without it, every car drives identically, the seat-ascension progression loses meaning, and the grid becomes a texture swap instead of a hierarchy.
+**Car Definition Data** is the data layer that defines the mechanical identity of each of the 16 F1 teams — 6 stats per car (Top Speed, Acceleration, Brake Power, Grip Level, Stability, Efficiency) on a 0–20 scale, plus the car's audio profile, identified by stable IDs (`team_tier1_a` through `team_tier4_d`). It is consumed by Vehicle Physics (motion), Fuel (consumption rate), Tire (wear rate), Audio (engine profile), and AI Rival (performance ceiling). The player never reads this data directly — they feel it through how each car responds to their input and sounds at speed. Without it, every car drives identically, the seat-ascension progression loses meaning, and the grid becomes a texture swap instead of a hierarchy.
 
 ## Player Fantasy
 
@@ -42,7 +55,7 @@ Every car has exactly 6 stats on a 0–20 scale. Higher is better. Weight is a c
 | **Brake Power** | BRA | Deceleration rate | Later braking points |
 | **Grip Level** | TIRE | Tire adhesion, cornering grip | More planted in corners |
 | **Stability** | SUS | Bump handling, resistance to loss of control | Less likely to lose control |
-| **Efficiency** | New | Base fuel consumption + base tire wear rate | Lower resource drain |
+| **Efficiency** | New | Dimensionless Fuel/Tire efficiency modifier | Lower resource drain |
 
 **Constant:** Weight = 505 kg for all cars. Not a differentiating stat — exists for physics calculations only.
 
@@ -121,7 +134,9 @@ Each team is stored as a ScriptableObject asset:
 Assets/Data/Cars/team_tier1_a.asset
 ```
 
-ScriptableObject fields: `teamId` (string), `tier` (int), `topSpeed` (int), `acceleration` (int), `brakePower` (int), `gripLevel` (int), `stability` (int), `efficiency` (int). Weight is a global constant, not per-car.
+ScriptableObject fields: `teamId` (string), `tier` (int), `topSpeed` (int), `acceleration` (int), `brakePower` (int), `gripLevel` (int), `stability` (int), `efficiency` (int), `engineCylinders` (int, 6–12), `engineType` (string identifier). Weight is a global constant, not per-car. The concrete audio-profile values for each team are assigned in the Car Definition review; Audio consumes them without duplicating ownership.
+
+MVP default audio profile: `engineCylinders = 10`, `engineType = V10`. A team asset may override these fields within the declared range; missing audio fields fall back to this default without affecting vehicle performance.
 
 Loading: Addressables group `Cars/` — loaded per-race based on grid composition.
 
@@ -137,6 +152,8 @@ Loading: Addressables group `Cars/` — loaded per-race based on grid compositio
 | `grip_level` | int | 0–20 | Vehicle Physics → lateral friction |
 | `stability` | int | 0–20 | Vehicle Physics → loss-of-control threshold |
 | `efficiency` | int | 0–20 | Fuel → consumption rate, Tire → wear rate |
+| `engine_cylinders` | int | 6–12 | Audio → procedural engine frequency |
+| `engine_type` | string | Project-defined identifier | Audio → oscillator/timbre profile |
 
 ### States and Transitions
 
@@ -146,13 +163,13 @@ This system is static data — no runtime states. Car definitions are loaded at 
 
 | System | Direction | Data | Notes |
 |--------|-----------|------|-------|
-| **Vehicle Physics** | Inbound | 6 stats | Primary consumer — translates stats to motion |
-| **Fuel** | Inbound | Efficiency stat | Determines base fuel consumption rate |
-| **Tire** | Inbound | Efficiency stat | Determines base tire wear rate |
-| **AI Rival** | Inbound | All 6 stats | Performance ceiling for AI behavior |
-| **Car Differentiation** | Inbound | All 6 stats | Defines what makes each team feel distinct |
+| **Vehicle Physics** | Outbound | 6 stats | Primary consumer — translates stats to motion |
+| **Fuel** | Outbound | Efficiency stat | Determines base fuel consumption rate |
+| **Tire** | Outbound | Efficiency stat | Determines base tire wear rate |
+| **AI Rival** | Outbound | All 6 stats | Performance ceiling for AI behavior |
 | **Content Pipeline** | Outbound | team_id → asset path | Loads correct car prefab, materials, audio |
-| **Settings** | Inbound | Difficulty level | May scale stats for difficulty (future) |
+| **Audio** | Outbound | engine_cylinders, engine_type | Supplies the procedural engine profile |
+| **Settings** | Not consumed at runtime | Difficulty | Difficulty changes AI competence, not car-definition stat formulas |
 
 ## Formulas
 
@@ -167,12 +184,12 @@ The **max_velocity** formula is defined as:
 **Variables:**
 | Variable | Symbol | Type | Range | Description |
 |----------|--------|------|-------|-------------|
-| min | — | float | 230–270 km/h | Difficulty-dependent floor |
+| min | — | float | 250 km/h | Fixed MVP baseline inherited from the Normal tuning value |
 | max | — | float | 310 km/h | Constant ceiling |
 | stat | top_speed | int | 0–20 | Car's Top Speed stat |
 
-**Output Range:** 230–310 km/h depending on difficulty and stat.
-**Example:** stat 20 = 310 km/h (always). stat 4 = 250 km/h (Normal), 270 km/h (Very Easy), 230 km/h (Very Hard).
+**Output Range:** 250–310 km/h depending on stat; Difficulty does not alter this formula.
+**Example:** stat 20 = 310 km/h. stat 16 = 298 km/h. stat 4 = 262 km/h.
 
 ### Acceleration
 
@@ -208,13 +225,15 @@ The **brake_distance** formula is defined as:
 | stat | brake_power | int | 0–20 | Car's Brake Power stat |
 
 **Output Range:** 30–80 m (stopping from 200 km/h).
-**Example:** stat 20 = 30 m. stat 4 = 64 m. stat 8 = 56 m.
+**Example:** stat 20 = 30 m. stat 4 = 70 m. stat 8 = 60 m.
 
 ### Grip Level
 
 The **cornering_speed** formula is defined as:
 
 `cornering_speed = min + (stat / 20) × (max - min)`
+
+**Note:** Vehicle Physics consumes Grip Level stat as `grip_base` in its effective_grip multiplicative stack. The `cornering_speed` formula above defines the player-facing cornering performance; `grip_base` is the internal physics input derived from the same stat. Both use the same stat value (0–20) but produce different outputs for different consumption contexts.
 
 **Variables:**
 | Variable | Symbol | Type | Range | Description |
@@ -224,7 +243,7 @@ The **cornering_speed** formula is defined as:
 | stat | grip_level | int | 0–20 | Car's Grip Level stat |
 
 **Output Range:** 120–200 km/h (sustained cornering speed).
-**Example:** stat 20 = 200 km/h. stat 4 = 144 km/h. stat 12 = 168 km/h.
+**Example:** stat 20 = 200 km/h. stat 4 = 136 km/h. stat 12 = 168 km/h.
 
 ### Stability
 
@@ -237,53 +256,51 @@ The **control_threshold** formula is defined as:
 |----------|--------|------|-------|-------------|
 | stat | stability | int | 0–20 | Car's Stability stat |
 
-**Output Range:** 0.2–1.0 (dimensionless multiplier). Higher = harder to lose control.
+**Output Range:** 0.2–1.0 (dimensionless multiplier for valid stat values 4–20). Higher = harder to lose control.
 **Example:** stat 20 = 1.0 (almost never loses control). stat 4 = 0.2 (easily loses control). stat 12 = 0.6.
 
-### Efficiency (Fuel)
+### Efficiency Modifier (Fuel)
 
-The **fuel_rate** formula is defined as:
+The **efficiency_modifier** formula is defined as:
 
-`fuel_rate = base × (1 - stat × 0.025)`
+`efficiency_modifier = 1 - stat × 0.025`
 
 ⚠️ **Inverted:** higher stat = lower consumption (better).
 
 **Variables:**
 | Variable | Symbol | Type | Range | Description |
 |----------|--------|------|-------|-------------|
-| base | — | float | 1.0 L/s | Base consumption at full throttle |
 | stat | efficiency | int | 0–20 | Car's Efficiency stat |
 
-**Output Range:** 0.4–0.88 L/s.
-**Example:** stat 20 = 0.40 L/s. stat 4 = 0.88 L/s. stat 12 = 0.64 L/s.
+**Output Range:** 0.50–0.90 (dimensionless).
+**Example:** stat 20 = 0.50. stat 4 = 0.90. stat 12 = 0.70. Fuel System owns the operational `base_rate = 0.05 L/s` for all difficulties.
 
-### Efficiency (Tire Wear)
+### Efficiency Modifier (Tire Wear)
 
-The **tire_rate** formula is defined as:
+The same **efficiency_modifier** applies to Tire System wear calculations:
 
-`tire_rate = base × (1 - stat × 0.025)`
+`efficiency_modifier = 1 - stat × 0.025`
 
 ⚠️ **Inverted:** higher stat = lower wear (better).
 
 **Variables:**
 | Variable | Symbol | Type | Range | Description |
 |----------|--------|------|-------|-------------|
-| base | — | float | 0.8 %/s | Base wear rate |
 | stat | efficiency | int | 0–20 | Car's Efficiency stat |
 
-**Output Range:** 0.32–0.70 %/s.
-**Example:** stat 20 = 0.32 %/s. stat 4 = 0.70 %/s. stat 12 = 0.51 %/s.
+**Output Range:** 0.50–0.90 (dimensionless). Tire System owns operational base wear and all race-condition modifiers.
 
 ## Edge Cases
 
-- **If stat data is missing or corrupted:** Fall back to stat = 10 (midpoint) for all stats. Log warning. Car drives as generic mid-tier.
+- **If stat data is missing or corrupted:** Fall back to stat = 12 (midpoint of the valid 4-point increments) for all stats. Log warning. Car drives as generic mid-tier.
 - **If two teams have identical stat profiles:** They drive identically. No tiebreaker in physics — differentiation comes from livery, audio, and team identity only.
 - **If stat is outside 0–20 range:** Clamp to nearest valid value (4 minimum, 20 maximum). Log warning.
+- **If audio profile fields are missing:** Use the MVP default `10-cylinder V10` profile and log a warning.
 - **If a stat is 0 (corrupted data):** Treat as stat = 4 (minimum valid). A stat of 0 would produce 0 km/h top speed or 0 grip, which breaks the game.
 - **High Top Speed + low Brake Power (e.g., `team_tier4_a`):** Car is fast on straights but can't stop. Player must brake much earlier. This is an intentional archetype — "the missile."
 - **High Acceleration + low Grip (e.g., `team_tier2_b`):** Car launches hard but corners poorly. Player must be smooth in corners to capitalize on straight-line speed.
 - **High Efficiency + low everything else:** Car consumes fewer resources but is slow. Player has more strategic flexibility but less raw pace.
-- **All stats at minimum (stat = 4):** Car is very slow (240 km/h max at Normal difficulty, 4.4s 0-100, 64m braking). Still drivable — the floor is set so the game remains playable.
+- **All stats at minimum (stat = 4):** Car is slower (262 km/h max, 4.4s 0-100, 64m braking). Still drivable — the floor is set so the game remains playable.
 - **All stats at maximum (stat = 20):** Car is very fast (310 km/h max, 2.0s 0-100, 30m braking). This is the ceiling — no car exceeds this.
 - **Efficiency formula at stat 20:** `1 - 20 × 0.025 = 0.5` → 50% of base consumption. At stat 0 (if corrupted): `1 - 0 × 0.025 = 1.0` → 100% of base. The formula is safe at all valid stat values.
 
@@ -295,10 +312,9 @@ The **tire_rate** formula is defined as:
 | **Fuel** | Outbound | Efficiency → consumption rate | Hard — fuel system needs base rate |
 | **Tire** | Outbound | Efficiency → wear rate | Hard — tire system needs base rate |
 | **AI Rival** | Outbound | All 6 stats → AI performance | Hard — AI ceiling defined by stats |
-| **Car Differentiation** | Outbound | All 6 stats → feel contrast | Soft — enhances differentiation but works without it |
-| **Content Pipeline** | Inbound | team_id → asset path | Hard — loads correct car assets |
-| **Settings** | Inbound | Difficulty → min/max ranges | Soft — difficulty scales formula ranges |
-| **Race Session Manager** | Inbound | team_id → grid composition | Hard — race needs to know which cars are on grid |
+| **Content Pipeline** | Outbound | team_id → asset path | Hard — loads correct car assets |
+| **Settings** | Not consumed at runtime | Difficulty selection | Soft — AI consumes difficulty; Car Definition formulas remain fixed |
+| **Race Session Manager** | Outbound | team_id → grid composition | Hard — race needs to know which cars are on grid |
 
 ## Tuning Knobs
 
@@ -314,11 +330,9 @@ All values below are serialized fields in `CarConfig.asset` (ScriptableObject). 
 | Brake max | 80 m | 60–100 m | Still manageable | Can't stop for corners |
 | Grip min | 120 km/h | 100–140 km/h | Uncontrollable in corners | Cornering too easy |
 | Grip max | 200 km/h | 180–220 km/h | Best car can't corner | Unrealistic for arcade |
-| Efficiency base (fuel) | 1.0 L/s | 0.5–2.0 L/s | Fuel never runs out | Fuel runs out in 1 lap |
-| Efficiency base (tire) | 0.8 %/s | 0.4–1.5 %/s | Tires never wear | Tires last 20 seconds |
+| Efficiency modifier | `1 - stat × 0.025` | 0.50–0.90 | Fuel/tire balance is lost | Fuel/tire balance is lost |
 | Stability multiplier | stat/20 | — | All cars spin out | No car ever loses control |
 | Weight constant | 505 kg | 450–600 kg | Cars feel weightless | Cars feel like trucks |
-| Difficulty min multiplier | 0.92× (Easy) to 0.77× (Very Hard) | 0.7–1.0 | No difficulty difference | Extreme punishment on Hard |
 
 **Interaction notes:**
 - Top Speed and Brake interact: high speed + poor brakes = "the missile" archetype (intentional)
@@ -344,25 +358,27 @@ Display format: 6 stat names with bar fills or numeric values. No formula detail
 
 ## Acceptance Criteria
 
-- **GIVEN** a car definition with Top Speed stat at 4, **WHEN** the max_velocity formula is applied at Normal difficulty (min 250), **THEN** the result is 260 km/h ± 0.1.
+- **GIVEN** a car definition with Top Speed stat at 4, **WHEN** the fixed MVP max_velocity formula is applied with min 250 km/h, **THEN** the result is 262 km/h ± 0.1.
 - **GIVEN** a car definition with Top Speed stat at 20, **WHEN** the max_velocity formula is applied at any difficulty, **THEN** the result is exactly 310 km/h.
 - **GIVEN** a car definition with Acceleration stat at 4, **WHEN** the accel_time formula is applied, **THEN** the result is 4.4 seconds ± 0.01.
 - **GIVEN** a car definition with Acceleration stat at 20, **WHEN** the accel_time formula is applied, **THEN** the result is exactly 2.0 seconds.
-- **GIVEN** a car definition with Brake Power stat at 4, **WHEN** the brake_distance formula is applied, **THEN** the result is 64 meters ± 0.1.
+- **GIVEN** a car definition with Brake Power stat at 4, **WHEN** the brake_distance formula is applied, **THEN** the result is 70 meters ± 0.1.
 - **GIVEN** a car definition with Brake Power stat at 20, **WHEN** the brake_distance formula is applied, **THEN** the result is exactly 30 meters.
-- **GIVEN** a car definition with Grip Level stat at 4, **WHEN** the cornering_speed formula is applied, **THEN** the result is 144 km/h ± 0.1.
+- **GIVEN** a car definition with Grip Level stat at 4, **WHEN** the cornering_speed formula is applied, **THEN** the result is 136 km/h ± 0.1.
 - **GIVEN** a car definition with Grip Level stat at 20, **WHEN** the cornering_speed formula is applied, **THEN** the result is exactly 200 km/h.
 - **GIVEN** a car definition with Stability stat at 4, **WHEN** the control_threshold formula is applied, **THEN** the result is 0.2 ± 0.001.
 - **GIVEN** a car definition with Stability stat at 20, **WHEN** the control_threshold formula is applied, **THEN** the result is exactly 1.0.
-- **GIVEN** a car definition with Efficiency stat at 4, **WHEN** the fuel rate formula is applied with base 1.0 L/s, **THEN** the result is 0.88 L/s ± 0.001.
-- **GIVEN** a car definition with Efficiency stat at 20, **WHEN** the fuel rate formula is applied with base 1.0 L/s, **THEN** the result is 0.40 L/s ± 0.001.
+- **GIVEN** a car definition with Efficiency stat at 4, **WHEN** efficiency_modifier is evaluated, **THEN** the result is 0.90 ± 0.001.
+- **GIVEN** a car definition with Efficiency stat at 20, **WHEN** efficiency_modifier is evaluated, **THEN** the result is 0.50 ± 0.001.
 - **GIVEN** any of the 16 team car definitions, **WHEN** stat values are inspected, **THEN** every stat is one of {4, 8, 12, 16, 20}.
 - **GIVEN** any of the 16 team car definitions, **WHEN** the stat count is verified, **THEN** exactly 6 stats exist (Top Speed, Acceleration, Brake Power, Grip Level, Stability, Efficiency).
-- **GIVEN** the 16 team car definitions across 4 tiers, **WHEN** the average stat per tier is computed, **THEN** each tier differs from adjacent tiers by approximately 4 points ± 1.
+- **GIVEN** any of the 16 team car definitions, **WHEN** the audio profile is validated, **THEN** `engine_cylinders` is an integer from 6–12 and `engine_type` is a non-empty project-defined identifier.
+- **GIVEN** a team definition without audio-profile overrides, **WHEN** the asset is loaded, **THEN** it uses `engine_cylinders = 10` and `engine_type = V10` without changing any racing stat.
+- **GIVEN** the 16 team car definitions across 4 tiers, **WHEN** the average stat per tier is computed, **THEN** each tier differs from adjacent tiers by approximately 2–4 points (T1→T2 and T2→T3 are ~3–3.5 points; T3→T4 is ~2 points).
 - **GIVEN** a car definition with any valid stat, **WHEN** the weight value is read, **THEN** it is exactly 505 kg.
 - **GIVEN** a car definition with a stat value outside 0-20 or non-multiple of 4, **WHEN** the system processes the definition, **THEN** the stat is clamped to the nearest valid value {4, 8, 12, 16, 20}.
 - **GIVEN** a car definition with a missing or null stat field, **WHEN** the system processes the definition, **THEN** a default value of 12 (midpoint) is used and a warning is logged.
-- **GIVEN** a car definition with Top Speed stat at 4, **WHEN** the max_velocity formula is applied at Very Hard difficulty (min 230), **THEN** the result is 240 km/h ± 0.1, confirming difficulty scales the minimum while max remains 310.
+- **GIVEN** a car definition with Top Speed stat at 16, **WHEN** the fixed MVP max_velocity formula is applied with min 250 km/h, **THEN** the result is 298 km/h ± 0.1 and is identical at every difficulty.
 - **GIVEN** a car definition with corrupted numeric data (e.g., stat = -5 or stat = 25), **WHEN** the system processes the definition, **THEN** the value is clamped to the valid range [4, 20] and normalized to the nearest increment of 4.
 
 ## Open Questions

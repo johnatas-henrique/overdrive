@@ -1,13 +1,26 @@
 # Camera
 
-> **Status**: In Design
+> **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-21
+> **Last Updated**: 2026-07-26
 > **Implements Pillar**: Speed You Can Feel
+
+## Phase Scope
+
+| Phase | Scope |
+|---|---|
+| MVP | Cockpit and chase camera, per-car cockpit offsets, local interpolation, FOV, shake, Reduced Motion, and collision avoidance. |
+| MVP architecture constraints | Camera consumes visual transforms rather than raw simulation state. |
+| Alpha | Not designed. |
+| Beta | Not designed. |
+| Release | Not designed. |
+
+### Review Boundary
+Future camera modes are non-blocking unless MVP visual/simulation separation is violated.
 
 ## Overview
 
-**Camera** is the visual framing system that positions the player's viewpoint relative to the car — cockpit as the primary fantasy, chase camera as an option. It reads interpolated visual transforms from Vehicle Physics (not raw simulation state) to produce smooth, responsive camera movement that reinforces the sense of speed. The system handles camera shake on wall impacts, field-of-view changes proportional to speed (Directional Velocity), and transition blending between camera modes. Without this system, the player has no viewpoint — the game is invisible.
+**Camera** is the visual framing system that positions the player's viewpoint relative to the car — cockpit as the primary fantasy, chase camera as an option. It reads interpolated visual transforms (produced by Simulation Architecture from Vehicle Physics source data, not raw simulation state) to produce smooth, responsive camera movement that reinforces the sense of speed. The system handles camera shake on wall impacts, field-of-view changes proportional to speed (Directional Velocity), and transition blending between camera modes. Without this system, the player has no viewpoint — the game is invisible.
 
 **Interaction:** Direct — the player feels the camera through immersion. Cockpit view places them inside the car; chase view places them behind it. Both must communicate speed, position, and spatial awareness.
 
@@ -49,13 +62,19 @@ Two modes. Cockpit is default and primary. Chase is the accessibility/spectacle 
 - Rotation: Follows car's heading with 0.12s response lag (7.5 frames at 60 FPS). Pitch damped to 40%.
 - FOV default: 70° (see Tuning Knobs — needs playtest)
 
-**Mode switch:** Player input (mapped button). Can switch mid-race, mid-corner, anywhere.
+**Mode switch:** `CameraToggle` action. Default binding is C / gamepad North-Y-Triangle. It is remappable in MVP and can switch mid-race or mid-corner anywhere driving input is active. Input routes its performed/rising edge directly to Camera during Dynamic Update, so one press starts one transition immediately; holding the control does not repeat until release. CameraToggle is presentation-only and never enters SimulationInput, the simulation tick, Replay, or Ghost Recording. It is ignored during PitTransit, InPitBox, Exiting, Finished Presentation, and Replay.
+
+**Reduced Motion:** When enabled in Settings, camera shake amplitude is 0°, look-ahead is 0 m, and dynamic FOV is disabled so each mode stays at `FOV_base`. Mode blending, collision avoidance, and the player's selected camera mode remain active.
+
+**Terminal Presentation:** When `PublishedSimulationSnapshot.terminalPresentationRequest` is active, Camera blends from the active player-selected mode to a dedicated external three-quarter view of the player car. The request contains the result kind and resolved player result; UI Presentation owns the up-to-5-second timer and pause flag. The anchor is authored per car/track and guarantees the car is visible; it is not a chase-camera preference override. The blend uses the existing transition timings and yields to Qualifying Results or Race Results when UI Presentation dismisses the request.
+
+**PitCamera:** PitTransit and Exiting retain the player's active Cockpit or Chase camera. When Pit Stop enters `InPitBox`, Camera blends to a dedicated external `PitCamera` anchored at the assigned box. It remains while tires swap and fuel fills. When Pit Stop begins `Exiting`, Camera blends back to the player-selected camera mode; it never snaps when Confirm triggers early exit.
 
 **2. FOV Response (Directional Velocity)**
 
 FOV widens with speed to amplify the sense of velocity.
 
-`FOV(t) = FOV_base + (FOV_max - FOV_base) × speed_ratio²`
+`FOV(t) = FOV_base + (FOV_max - FOV_base) × clamp(speed_ratio, 0, 1)²`
 
 Quadratic curve makes FOV change subtle at low speeds and aggressive near top speed. Transition smoothed over 0.15s (lerp).
 
@@ -106,7 +125,7 @@ Interrupt rule: switching again during blend restarts from current blended posit
 
 **6. Collision Avoidance**
 
-Sphere-cast from car origin to camera position. If hit, camera pulled forward to hit point minus buffer.
+Sphere-cast from car origin to camera position, excluding the player's own vehicle colliders and trigger volumes. If hit, camera pulled forward to hit point minus buffer.
 
 | Parameter | Cockpit | Chase |
 |-----------|---------|-------|
@@ -131,28 +150,32 @@ If cast distance < 0.3 m, camera teleports to fallback and lerps back over 0.25s
 | `Chase` | Secondary view, behind car | Lagged follow, reduced lookahead |
 | `Transitioning` | Switching between modes | Lerp between anchors, 0.35s duration |
 | `Replay` | Watching ghost replay | Same as active mode, no player input |
+| `TerminalPresentation` | Finished player result | Dedicated external three-quarter view; no player camera switching |
 
 ### Interactions with Other Systems
 
 | System | Direction | Data | Contract |
 |--------|-----------|------|----------|
-| Vehicle Physics | Inbound | Interpolated position, rotation, velocity | Camera reads visual transform, not raw sim state |
-| Simulation Architecture | Inbound | Render interpolation factor α | Camera uses interpolated positions for smooth movement |
+| Input System | Inbound | `CameraToggle` performed/rising edge | Input routes one immediate presentation event per press during allowed driving contexts; no SimulationInput or Ghost field exists. |
+| Settings | Inbound | camera_shake_intensity, reduced_motion | Immediate transactional preview; Reduced Motion suppresses shake, dynamic FOV, and look-ahead without mutating saved preferences. Motion Blur remains VFX-owned. |
+| Vehicle Physics | Inbound | Raw position, rotation, velocity (source data) | Camera reads visual transform, not raw sim state; interpolation performed by Simulation Architecture |
+| Simulation Architecture | Inbound | Interpolated visual transform (position, rotation) via LateUpdate; render interpolation factor α; `PublishedSimulationSnapshot.terminalPresentationRequest` | Camera uses interpolated positions for smooth movement and enters TerminalPresentation only from the immutable published request |
 | HUD | Outbound | Camera mode, FOV | HUD adapts layout for cockpit vs chase |
 | Audio | Outbound | Camera mode, speed | Audio adjusts mix for cockpit (internal) vs chase (external) |
-| VFX | Outbound | Camera speed, FOV | VFX reads camera state for Directional Velocity effects |
+| VFX | Bidirectional | `impactShakeRequest` inbound; camera speed, FOV outbound | Camera applies impact shake and exposes camera state for Directional Velocity effects |
+| Pit Stop | Inbound | `PitPhase`, assigned pit-box anchor | Camera enters PitCamera only during `InPitBox` and returns to the selected mode when `Exiting` begins. |
 
 ## Formulas
 
 ### FOV Response
 
-`FOV(t) = FOV_base + (FOV_max - FOV_base) × speed_ratio²`
+`FOV(t) = FOV_base + (FOV_max - FOV_base) × clamp(speed_ratio, 0, 1)²`
 
 | Variable | Symbol | Type | Range | Description |
 |----------|--------|------|-------|-------------|
 | FOV Base | FOV_base | float | 70-78° | Baseline FOV per mode |
 | FOV Max | FOV_max | float | 90-95° | Maximum FOV at top speed |
-| Speed Ratio | speed_ratio | float | 0.0-1.0 | Current speed / top speed |
+| Speed Ratio | speed_ratio | float | 0.0-∞ | Current speed / top speed before clamping |
 
 **Output Range:** FOV_base to FOV_max
 **Example:** Cockpit at 60% speed: 78 + (95-78) × 0.36 = 84.1°
@@ -185,17 +208,20 @@ Priority order for clamping: speed (lowest) → surface → impact (highest)
 - **If multiple impacts occur simultaneously:** Impact shake amplitudes add. If total exceeds 3.0°, lower-priority layers are reduced first.
 - **If car goes off-track and hits wall in same frame:** Surface shake and impact shake both apply. Total clamped at 3.0°.
 - **If WebGL frame rate drops:** Camera operations are ~0.04ms. No performance concern even at low FPS.
-- **If car enters pit lane:** Camera continues normally. Pit lane has no special camera behavior.
+- **If car enters pit lane:** PitTransit continues with the active camera. `PitCamera` activates only after the car reaches InPitBox and returns to the active camera when Exiting begins.
 
 ## Dependencies
 
 | System | Direction | Type | Data Flow |
 |--------|-----------|------|-----------|
+| Input System | Upstream | Hard | CameraToggle performed/rising edge → immediate presentation-only mode switch |
+| Settings | Upstream | Hard | Shake intensity and Reduced Motion → runtime camera comfort overrides; Motion Blur is not a Camera setting consumer |
 | Vehicle Physics | Upstream | Hard | Visual position, rotation, velocity → Camera |
 | Simulation Architecture | Upstream | Hard | Render interpolation factor → Camera |
 | HUD | Downstream | Soft | Camera mode, FOV → HUD layout adaptation |
 | Audio | Downstream | Soft | Camera mode, speed → Audio mix (internal vs external) |
-| VFX | Downstream | Soft | Camera speed, FOV → Directional Velocity effects |
+| VFX | Bidirectional | Soft | Camera exposes speed/FOV for Directional Velocity and consumes `impactShakeRequest` |
+| Pit Stop | Inbound | Hard | PitPhase and pit-box anchor → PitCamera state |
 
 ## Tuning Knobs
 
@@ -231,8 +257,10 @@ Camera has no direct UI. The player accesses camera mode switch via mapped input
 ### Camera Modes
 - **AC-CM1:** Given cockpit mode, When car rotates, Then camera rotation matches car rotation within ±0.5°.
 - **AC-CM2:** Given chase mode, When car rotates 90° in 1s, Then camera reaches car heading within 0.10-0.14s (target 0.12s ±0.02s).
-- **AC-CM3:** Given player presses mode switch, When transition starts, Then camera position lerps between modes over 0.30-0.40s with smoothstep easing.
+- **AC-CM3:** Given an allowed driving context and a `CameraToggle` rising edge, When Input processes the Dynamic Update, Then Camera starts exactly one mode transition immediately and position, rotation, and FOV lerp over their defined blend durations with smoothstep easing.
+- **AC-CM3a:** Given `CameraToggle` remains held after starting a transition, When subsequent Dynamic Updates execute, Then no additional mode transition starts until the control is released and pressed again; no CameraToggle value enters SimulationInput or Ghost Recording.
 - **AC-CM4:** Given chase mode at 0% speed, When rendering, Then camera is 4.5m behind and 1.8m above car (±0.2m).
+- **AC-CM5:** Given two cars have different authored cockpit offsets, When the player switches to Cockpit, Then the active car's offset is used without changing the global camera mode or blend timing.
 
 ### FOV Response
 - **AC-FOV1:** Given cockpit at 0% speed, When rendering, Then FOV is 78° (±2°).
@@ -240,12 +268,14 @@ Camera has no direct UI. The player accesses camera mode switch via mapped input
 - **AC-FOV3:** Given speed drops from 100% to 0% in 1 frame, When FOV updates, Then FOV eases back over 0.12-0.18s (target 0.15s ±0.03s).
 - **AC-FOV4:** Given chase at 0% speed, When rendering, Then FOV is 70° (±2°).
 - **AC-FOV5:** Given chase at 100% speed, When rendering, Then FOV is 90° (±2°).
+- **AC-FOV6:** Given speed exceeds Top Speed, When FOV updates, Then `speed_ratio` is clamped to 1.0 and FOV does not exceed `FOV_max`.
 
 ### Camera Shake
 - **AC-SH1:** Given car at top speed on smooth track, When shake amplitude is measured, Then speed vibration amplitude is 0.10°-0.20° (target 0.15° ±0.05°).
 - **AC-SH2:** Given car hits wall at 200 km/h, When impact occurs, Then camera shake amplitude is 0.8°-2.5° and decays to <10% of peak within 0.5s.
 - **AC-SH3:** Given speed shake = 2.0° + impact shake = 1.5° (total 3.5°), When clamp activates, Then total is clamped to 3.0° and speed shake is reduced first.
 - **AC-SH4:** Given car drives over curb, When surface contact occurs, Then surface shake amplitude is 0.2°-0.4° (target 0.3° ±0.1°).
+- **AC-SH5:** Given Settings working copy sets Reduced Motion On, When Camera resolves runtime presentation, Then shake, dynamic FOV, and look-ahead are suppressed immediately without changing the saved shake/FOV preferences; turning Reduced Motion Off restores the working values.
 
 ### Look-Ahead
 - **AC-LA1:** Given car in straight line (yaw rate = 0) at any speed, When rendering, Then camera lookahead is 3.0-5.0 m (target 4.0m ±1.0m).
@@ -259,9 +289,12 @@ Camera has no direct UI. The player accesses camera mode switch via mapped input
 - **AC-TR1:** Given player switches mode during active blend, When new switch detected, Then blend restarts from current blend weight (position + rotation + FOV) toward new target.
 - **AC-TR2:** Given blend completes, When 0.1s elapses, Then look-ahead and shake apply normally (no wobble).
 
+### Reduced Motion
+- **AC-RM1:** Given Reduced Motion is enabled, When the camera updates at any speed, Then shake is 0°, look-ahead is 0 m, and FOV remains at the mode's base value while collision avoidance and mode transitions continue to function.
+
 ## Open Questions
 
-- **Per-car cockpit offsets:** Should driver eye position be per-car tunable or global for MVP?
+- **Per-car cockpit offsets:** Resolved for MVP — driver eye position is per-car tunable.
 - **Chase camera car visibility:** How much of the player's car is visible in chase? Full car or just rear wing?
-- **Motion sickness toggle:** Should there be an accessibility option to reduce camera effects (shake, FOV, lookahead)?
+- **Motion sickness toggle:** Resolved for MVP — Reduced Motion disables shake, look-ahead, and dynamic FOV while preserving base FOV, mode transitions, and collision avoidance.
 - **Mirror/rear-view:** Does camera GDD define rear-view mirrors or is that a separate HUD system?
