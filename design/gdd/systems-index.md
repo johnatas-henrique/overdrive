@@ -2,7 +2,8 @@
 
 > **Status**: Draft
 > **Created**: 2026-07-21
-> **Last Updated**: 2026-07-26
+> **Last Updated**: 2026-07-27
+> **Art Bible**: All 9 sections APPROVED — AD-ART-BIBLE gate: PASS (2026-07-27)
 > **Source Concept**: design/gdd/game-concept.md
 
 ## Systems Enumeration
@@ -120,16 +121,31 @@ For an MVP review, Alpha, Beta, and Release behavior is compatibility context on
 | Multiplayer Architecture | Approved | design/gdd/multiplayer-architecture.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
 | Vehicle Physics | Approved | design/gdd/vehicle-physics.md | Lean review — APPROVED — 2026-07-25 — zero cross-GDD issues |
 | Camera | Approved | design/gdd/camera.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
-| HUD | Needs Revision | design/gdd/hud.md | Formal review — CONCERNS — 2026-07-26 — tire numeric readout missing |
+| HUD | Approved | design/gdd/hud.md | Lean re-review — APPROVED — 2026-07-26 — 0 blocking + 3 recommended resolved; R1-R4 all corrected |
 | Audio | Approved | design/gdd/audio-system.md | Lean review — APPROVED — 2026-07-25 — zero cross-GDD issues |
-| Fuel | Needs Revision | design/gdd/fuel-system.md | Formal review — CONCERNS — 2026-07-26 — Vehicle Physics dependency table is one-directional |
+| Fuel | Approved | design/gdd/fuel-system.md | Lean re-review — APPROVED — 2026-07-26 — 0 blocking + 3 recommended resolved; bidirectionality + stale 0.05 L/s references corrected |
 | Tire | Approved | design/gdd/tire-system.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
-| Pit Stop | Needs Revision | design/gdd/pit-stop.md | Formal review — CONCERNS — 2026-07-26 — 16-car simultaneous service assumes unspecified pit geometry |
+| Pit Stop | Approved | design/gdd/pit-stop.md | Lean re-review — APPROVED — 2026-07-26 — 0 blocking + 2 recommended resolved; two-lane F1 model documented in Track §7 + direction mismatch corrected |
 | Qualifying | Approved | design/gdd/qualifying.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
 | AI Rival | Approved | design/gdd/ai-rival.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
-| Track | Needs Revision | design/gdd/track-system.md | Formal review — CONCERNS — 2026-07-26 — lap anti-cut note missing; row-spacing range conflict |
+| Track | Approved | design/gdd/track-system.md | Lean re-review — APPROVED — 2026-07-26 — 0 blocking + 2 recommended resolved; anti-cut note added; row spacing aligned to 6–10 m |
 | Car Definition Data | Approved | design/gdd/car-definition-data.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
-| Race Session Manager | Needs Revision | design/gdd/race-session-manager.md | Formal review — CONCERNS — 2026-07-26 — finish projection ignores pit/resource state |
-| Grid & Start | Needs Revision | design/gdd/grid-start.md | Formal review — CONCERNS — 2026-07-26 — grid row-spacing range conflicts with Track |
+| Race Session Manager | Approved | design/gdd/race-session-manager.md | Lean re-review — APPROVED — 2026-07-26 — 0 blocking + 1 recommended resolved; W6 documented as accepted MVP approximation |
+| Grid & Start | Approved | design/gdd/grid-start.md | Lean re-review — APPROVED — 2026-07-26 — 0 blocking + 1 recommended resolved; row spacing aligned Track → 6-10 m |
 | VFX | Approved | design/gdd/vfx.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
 | UI Menu | Approved | design/gdd/ui-menu.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
+
+## Art Bible
+
+| Section | Status | Approved |
+|---------|--------|----------|
+| 1 — Visual Identity Statement | APPROVED | 2026-07-27 |
+| 2 — Color Palette | APPROVED | 2026-07-27 |
+| 3 — Lighting & Atmosphere | APPROVED | 2026-07-27 |
+| 4 — Character Art Direction | APPROVED | 2026-07-27 |
+| 5 — Environment & Level Art | APPROVED | 2026-07-27 |
+| 6 — UI Visual Language | APPROVED | 2026-07-27 |
+| 7 — VFX & Particle Style | APPROVED | 2026-07-27 |
+| 8 — Asset Standards | APPROVED | 2026-07-27 |
+| 9 — Style Prohibitions | APPROVED | 2026-07-27 |
+| **Gate: AD-ART-BIBLE** | ✅ **PASS** | **2026-07-27** |

@@ -223,7 +223,7 @@ Simulation snapshots the selected DifficultyProfile at race initialization. The 
 
 ### Fuel Consumption
 
-Fuel System owns `fuel_rate = 0.05 L/s × throttle_input × efficiency_modifier` and all unit calculations. Vehicle Physics supplies consumed throttle and reads Fuel state plus the low-fuel max-speed modifier; it does not define a second fuel formula. Difficulty does not modify Fuel rules in MVP.
+Fuel System owns `fuel_rate = 0.06 L/s × throttle_input × efficiency_modifier` and all unit calculations. Vehicle Physics supplies consumed throttle and reads Fuel state plus the low-fuel max-speed modifier; it does not define a second fuel formula. Difficulty does not modify Fuel rules in MVP.
 
 ### Tire Wear
 

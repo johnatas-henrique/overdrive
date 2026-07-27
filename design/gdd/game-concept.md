@@ -237,7 +237,7 @@ Based on Super Monaco GP (1990). 16 teams, 1 car each, 16 cars on grid.
 | 4 | Rigel | Bright Green | Inconsistent, occasional flashes of speed |
 | 4 | Comet | White | Cautious, rarely makes mistakes |
 | 4 | Orchis | Yellow/Black | Aggressive at start, fades late |
-| 4 | Zeroforce | Orange/White | Player's starting team — slowest car, inconsistent AI |
+| 4 | Zeroforce | West Red `#8B1A1A` / White `#FFF8F0` | Player's starting team — slowest car, inconsistent AI |
 
 ## Progression
 
