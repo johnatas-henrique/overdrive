@@ -51,14 +51,14 @@ Title → Track Selection → Car Selection → Qualifying Not Started (optional
                                                                                        Next Race → Loading
 ```
 
-Linear stack navigation applies to menu screens. Loading blocks Back/Cancel after loading begins; Pause Menu Back/Cancel resumes the race; Grid Display is a shared pre-race confirmation screen shown after qualifying or after skipping qualifying, with Start Race as the only action and Confirm sends `StartRaceRequested`; there is no timeout and no Back/Cancel path from this screen; Results and Forfeit use their explicit destination contracts instead of generic stack-back behavior.
+Linear stack navigation applies to menu screens. Loading blocks Back/Cancel after loading begins; Pause Menu Back/Cancel resumes the race; Grid Display is a shared pre-race confirmation screen shown after qualifying or after skipping qualifying, with Start Race as the only action and Confirm sends `StartRaceRequested`; Grid & Start owns display rules — there is no timeout and no Back/Cancel path from this screen; Results and Forfeit use their explicit destination contracts instead of generic stack-back behavior.
 
 **2. Screen Specifications**
 
 | Screen | Elements | Notes |
 |--------|----------|-------|
 | **Title** | Game logo, "Single Race" button, "Settings" button, Content error message when present | Warm garage lighting background; SimulationState.Idle |
-| **Track Selection** | 4 track cards with map layout, name, distance, elevation | Monaco, Silverstone, Spa, Monza; no undefined track-difficulty indicator |
+| **Track Selection** | 4 track cards with map layout, name, distance, elevation | Data-driven track list from Content Pipeline (MVP: 4 tracks); no undefined track-difficulty indicator |
 | **Car Selection** | 3D model turntable, team name, 6 stats, fuel comparison bar/number, "Select" button | Car rotates slowly, warm lighting; pre-race fuel comparison is shown here |
 | **Qualifying Not Started** | Start Qualifying and Skip buttons | Confirm starts; Cancel returns to Car Select |
 | **Loading** | Loading indicator and optional Content error message | Used before Qualifying and Race; Back/Cancel blocked after loading begins |

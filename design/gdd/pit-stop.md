@@ -78,7 +78,7 @@ A pit stop is triggered when the player enters the pit lane zone. Pit stops are 
 
 **5a. Player Pit Advisory**
 
-After the player completes lap 1, Pit Stop evaluates whether the player can begin the next non-final lap. It uses the player's last completed-lap Fuel/Tire deltas and the same 10% resource margin as AI. This is intentionally evaluated mid-lap so the player receives warning before pit entry; AI evaluates at the lap boundary.
+After the player completes lap 1, Pit Stop evaluates whether the player can begin the next non-final lap. It uses the player's last completed-lap Fuel/Tire deltas and the same 10% resource margin as AI. This is intentionally evaluated mid-lap so the player receives warning before pit entry; AI evaluates at the lap boundary. The 1.10× margin is owned by AI Rival (ai-rival.md); Pit Stop applies it consistently for both AI and player.
 
 - `predicted_fuel_at_next_lap_start = current_fuel - last_lap_fuel_use × remaining_racing_progress`
 - `predicted_tire_life_at_next_lap_start = (1 - current_tire_wear_fraction) - last_lap_tire_wear_fraction × remaining_racing_progress`
@@ -127,9 +127,10 @@ If either predicted next-lap-start resource is insufficient, Pit Stop outputs `P
 
 ### Pit Stop Duration
 
-`fuel_fill_rate = 0.8 L/s`
+`fuel_fill_rate = 0.8 L/s` — Fuel System owns fuel_fill_rate; Pit Stop applies it.
 
 `service_duration = max(2.0s, (8.0L - current_fuel) / fuel_fill_rate)`
+    — Tire System owns tire_swap_time (2.0s); Pit Stop applies it in parallel with fueling.
 
 Tire swap completes at 2.0s. Player early exit is valid only after tire swap; AI waits through `service_duration` until 8.0L.
 
@@ -170,7 +171,7 @@ The 0.05 lead guarantees that a track whose pit entry occurs before 80% still wa
 - **If the final lap begins:** AI does not enter pit, even if its projection would otherwise request it.
 - **If AI projected resources cover remaining laps:** AI skips pit. It may finish with low fuel/tire but does not pit unnecessarily.
 - **If player never pits:** Fuel degrades to 0 (car coasts), tire degrades to 0.20 grip floor. Car is drivable but very slow. May lose many positions.
-- **If pit lane is blocked (car stopped on track in pit lane):** Not possible in MVP — 16 boxes, one per car, simultaneous service.
+- **If pit lane is blocked (car stopped on track in pit lane):** Not possible in MVP — each pit box is an independent bay offset from the fast lane (see Track System §7 — two-lane F1 model). A car stopped in its box does not block the fast lane or other boxes.
 
 ## Dependencies
 

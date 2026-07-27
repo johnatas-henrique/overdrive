@@ -20,7 +20,7 @@ All defined grid/start behavior is MVP; future presentation additions are non-bl
 
 ## Overview
 
-**Grid & Start** places 16 cars on the starting grid from the immutable `GridAssignment` produced by Race Session Manager and manages the standing start presentation. The system handles grid formation, the five-light/five-beep Countdown, and the transition from stationary to racing at the Simulation-owned GO boundary. Standing start means all cars remain grid-locked until the 300th Countdown tick. Without this system, cars would appear randomly on the track with no race start.
+**Grid & Start** places 16 cars on the starting grid from the immutable `GridAssignment` produced by Race Session Manager and manages the standing start presentation. The system handles grid formation, the five-light/five-beep Countdown, and the transition from stationary to racing at the Simulation-owned GO boundary. Standing start means all cars remain grid-locked until the 300th Countdown tick (countdown duration owned by Race Session Manager). Without this system, cars would appear randomly on the track with no race start.
 
 ## Player Fantasy
 
