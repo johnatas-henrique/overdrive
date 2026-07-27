@@ -38,7 +38,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-07-26"
+last_updated: "2026-07-27"
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -158,7 +158,8 @@ entities:
       - design/gdd/audio-system.md
       - design/gdd/content-pipeline.md
     tier: 2
-    ai_archetype: Consistent
+    # was: Consistent before 2026-07-27 — aligned to game-concept "Aggressive overtakes"
+    ai_archetype: Aggressive
     stats:
       top_speed: 16
       acceleration: 16
@@ -182,7 +183,8 @@ entities:
       - design/gdd/audio-system.md
       - design/gdd/content-pipeline.md
     tier: 2
-    ai_archetype: Aggressive
+    # was: Aggressive before 2026-07-27 — aligned to game-concept "Inconsistent when pressured"
+    ai_archetype: Inconsistent
     stats:
       top_speed: 12
       acceleration: 20
@@ -206,7 +208,8 @@ entities:
       - design/gdd/audio-system.md
       - design/gdd/content-pipeline.md
     tier: 2
-    ai_archetype: Inconsistent
+    # was: Inconsistent before 2026-07-27 — aligned to game-concept "Defensive, blocks persistently"
+    ai_archetype: Aggressive
     stats:
       top_speed: 20
       acceleration: 12
@@ -230,7 +233,8 @@ entities:
       - design/gdd/audio-system.md
       - design/gdd/content-pipeline.md
     tier: 2
-    ai_archetype: Aggressive
+    # was: Aggressive before 2026-07-27 — aligned to game-concept "Smooth, consistent execution"
+    ai_archetype: Consistent
     stats:
       top_speed: 12
       acceleration: 16
@@ -278,7 +282,8 @@ entities:
       - design/gdd/audio-system.md
       - design/gdd/content-pipeline.md
     tier: 3
-    ai_archetype: Aggressive
+    # was: Aggressive before 2026-07-27 — aligned to game-concept "Technical, smooth driving style"
+    ai_archetype: Consistent
     stats:
       top_speed: 16
       acceleration: 8
@@ -302,7 +307,8 @@ entities:
       - design/gdd/audio-system.md
       - design/gdd/content-pipeline.md
     tier: 3
-    ai_archetype: Cautious
+    # was: Cautious before 2026-07-27 — aligned to game-concept "Aggressive, prone to contact"
+    ai_archetype: Aggressive
     stats:
       top_speed: 16
       acceleration: 8
@@ -326,7 +332,8 @@ entities:
       - design/gdd/audio-system.md
       - design/gdd/content-pipeline.md
     tier: 3
-    ai_archetype: Consistent
+    # was: Consistent before 2026-07-27 — aligned to game-concept "Quick in clean air, struggles in traffic"
+    ai_archetype: Cautious
     stats:
       top_speed: 16
       acceleration: 12
@@ -547,12 +554,13 @@ formulas:
       - design/gdd/vehicle-physics.md
       - design/gdd/tire-system.md
     variables:
-      - base_grip
-      - tire_multiplier
-      - surface_modifier
-      - stability_modifier
+      - grip_base
+      - tire_runtime_grip_multiplier
+      - surface_grip_multiplier
+      - control_threshold
     output_range: [0.20, 1.20]
-    expression: "base_grip × tire_multiplier × surface_modifier × stability_modifier"
+    # was: variables used generic names (base_grip, tire_multiplier, surface_modifier, stability_modifier) before 2026-07-27 — aligned to VP's effective_grip
+    expression: "clamp(grip_base × surface_grip_multiplier × tire_runtime_grip_multiplier × control_threshold, 0.20, 1.20)"
     notes: "Tire System outputs tire_runtime_grip_multiplier = grip_base × (1.0 - (wear_fraction × (1.0 - grip_floor))) where grip_floor = 0.20. Vehicle Physics consumes this multiplier in the multiplicative stack and clamps the final result to 0.20–1.20."
     added: 2026-07-22
     revised: "2026-07-24"
