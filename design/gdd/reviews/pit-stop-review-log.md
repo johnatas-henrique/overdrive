@@ -52,3 +52,15 @@ Blocking items: 0 | Recommended: 0
 Summary: Fresh lean re-review from zero confirmed Pit Stop is internally stable and aligned with Fuel, Tire, Vehicle Physics, Simulation Architecture, AI Rival, Camera, HUD, Input System, Audio, and Qualifying. All pit contracts are explicit and the review closes with no remaining issues.
 
 Prior verdict resolved: Yes — the Tire dependency-direction mismatch was corrected and no new issues were found in this pass.
+
+## Review — 2026-07-26 — Verdict: APPROVED
+
+Scope signal: L
+
+Specialists: none — lean mode
+
+Blocking items: 0 | Recommended: 2 | Nice-to-Have: 1
+
+Summary: Cross-GDD re-review (triggered by review-all-gdds W5 - 16-car simultaneous service) found 3 issues: P1 (pit geometry underspecified — resolved by documenting the F1 two-lane model in Track System §7 with fast lane + offset boxes), P2 (Track Dependencies direction mismatch — corrected Bidirectional to Outbound), P3 (stale status header). Track System and Pit Stop edge cases aligned. No remaining issues.
+
+Prior verdict resolved: Yes — the cross-GDD warning W5 was resolved by properly specifying the two-lane F1 pit model in both GDDs.

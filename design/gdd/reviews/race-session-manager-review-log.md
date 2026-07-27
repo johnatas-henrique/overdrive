@@ -27,3 +27,15 @@ Prior verdict resolved: Yes — all prior findings were resolved; this pass foun
 - RSM remains Idle while Simulation owns Loading.
 - GridAssignment, Content Pipeline, Grid & Start, Pit events, and Countdown contracts are explicit.
 - Status remains Revised — Pending Re-review.
+
+## Review — 2026-07-26 — Verdict: APPROVED
+
+Scope signal: L
+
+Specialists: none — lean mode
+
+Blocking items: 0 | Recommended: 1 | Nice-to-Have: 1
+
+Summary: Cross-GDD re-review (triggered by review-all-gdds W6 - finish projection ignores pit/resource) found 1 design issue: W6 resolved as accepted MVP approximation — FinishOrderResolver projects trailing AI by pace-only because PostFinishSnapshot is captured at the moment the player finishes, and no simulation runs after that point. Projection is cosmetic (determines trailing-AI order for results screen). Documentation note added. Header updated.
+
+Prior verdict resolved: Yes — the cross-GDD warning W6 was resolved by documenting the MVP approximation rationale.
