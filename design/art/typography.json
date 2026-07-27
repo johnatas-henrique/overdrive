@@ -1,0 +1,34 @@
+{
+  "meta": {
+    "project": "Overdrive",
+    "generated": "2026-07-27",
+    "source": "art-bible.md Section 6"
+  },
+  "system": "two-font",
+  "hud": {
+    "font_family": "Gemunu Libre",
+    "source": "Google Fonts (open-source)",
+    "weights": ["Bold", "ExtraBold"],
+    "tabular_figures": true,
+    "snap_numeric": true,
+    "outline": "2px #1A1A1A on all text",
+    "sizes": {
+      "speed": { "px": 72, "weight": "ExtraBold", "color": "#FFF8F0", "accent": "#FF6B2B" },
+      "position": { "px": 48, "weight": "Bold", "color": "#FFF8F0" },
+      "lap_time": { "px": 32, "weight": "Bold", "color": "#FFF8F0" }
+    }
+  },
+  "ui": {
+    "font_family": "Spline Sans",
+    "source": "Google Fonts (open-source)",
+    "weights": ["Regular", "Medium", "Bold"],
+    "minimum_size_px": 14,
+    "contrast_minimum": "4.5:1",
+    "sizes": {
+      "title": { "px": 36, "weight": "Bold", "color": "#FFF8F0" },
+      "button": { "px": 24, "weight": "Medium", "color": "#FFF8F0" },
+      "body": { "px": 18, "weight": "Regular", "color": "#FFF8F0" },
+      "label": { "px": 16, "weight": "Regular", "color": "#B0BEC5" }
+    }
+  }
+}

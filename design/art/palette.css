@@ -1,0 +1,104 @@
+/* Overdrive Design Tokens
+   Generated from art-bible.md Section 2 — 2026-07-27
+   Usage: @import url('palette.css') or link in HTML <head>
+*/
+
+:root {
+  /* ── Primary Palette ──────────────────────────────────────── */
+  --od-orange:       #FF6B2B;  /* Energy, UI accents, speed */
+  --od-red:          #E03C31;  /* Critical warnings, urgency */
+  --od-gold:         #F5C518;  /* Victory, sunlight, premium */
+  --od-blue:         #1E3A5F;  /* Sky, calm states, depth */
+  --od-white:        #FFF8F0;  /* Text, clarity, clean surfaces */
+  --od-black:        #1A1A1A;  /* Contrast, asphalt, outlines */
+  --od-green:        #2D8C3C;  /* Go signals, grass, safe states */
+
+  /* ── Semantic Colors ───────────────────────────────────────── */
+  --od-semantic-red:         #E03C31;  /* Critical warning */
+  --od-semantic-amber:       #F5C518;  /* Caution */
+  --od-semantic-green:       #2D8C3C;  /* Safe */
+  --od-semantic-blue:        #1E3A5F;  /* Calm, nominal */
+  --od-semantic-white:       #FFF8F0;  /* Information */
+  --od-semantic-black:       #1A1A1A;  /* Background */
+  --od-semantic-orange:      #FF6B2B;  /* Excitement */
+
+  /* ── Flag Colors ──────────────────────────────────────────── */
+  --od-flag-green:     #2D8C3C;
+  --od-flag-yellow:    #F5C518;
+  --od-flag-red:       #E03C31;
+  --od-flag-blue:      #1E3A5F;
+  --od-flag-white:     #FFF8F0;
+  --od-flag-black:     #1A1A1A;
+
+  /* ── Track Environment ────────────────────────────────────── */
+  --od-asphalt:        #3D3835;
+  --od-asphalt-sunlit: #5A524D;
+  --od-kerb-red:       #E03C31;
+  --od-kerb-white:     #FFF8F0;
+  --od-grass:          #4CAF50;
+  --od-grass-sunlit:   #66BB6A;
+  --od-gravel:         #A1887F;
+  --od-runoff:         #78909C;
+  --od-sky-clear:      #5C9CE6;
+  --od-sky-horizon:    #FFB74D;
+  --od-cloud:          #FFF8F0;
+  --od-barrier-concrete: #9E9E9E;
+  --od-barrier-tire:   #212121;
+  --od-grandstand:     #8D6E63;
+  --od-pit-lane:       #424242;
+
+  /* ── HUD Palette ──────────────────────────────────────────── */
+  --od-hud-bg:          rgba(26, 26, 26, 0.7);
+  --od-hud-primary:     #FFF8F0;
+  --od-hud-secondary:   #B0BEC5;
+  --od-hud-accent:      #FF6B2B;
+
+  /* HUD State Colors */
+  --od-state-healthy:   #2D8C3C;  /* > 50% */
+  --od-state-caution:   #F5C518;  /* 25–50% */
+  --od-state-critical:  #E03C31;  /* < 25% */
+
+  /* ── Menu Palette ────────────────────────────────────────── */
+  --od-menu-bg:         #1A1A1A;
+  --od-menu-panel:      #2A2520;
+  --od-menu-text:       #FFF8F0;
+  --od-menu-accent:     #FF6B2B;
+  --od-menu-secondary:  #F5C518;
+  --od-menu-divider:    #424242;
+
+  /* ── Colorblind Mode ──────────────────────────────────────── */
+  --od-cb-green:        #FFFFFF;
+  --od-cb-yellow:       #9E9E9E;
+  --od-cb-red:          #8B0000;
+
+  /* ── Typography ────────────────────────────────────────────── */
+  --od-font-hud:        'Gemunu Libre', sans-serif;
+  --od-font-ui:         'Spline Sans', sans-serif;
+  --od-size-hud-speed:  72px;
+  --od-size-hud-pos:    48px;
+  --od-size-hud-lap:    32px;
+  --od-size-ui-title:   36px;
+  --od-size-ui-button:  24px;
+  --od-size-ui-body:    18px;
+  --od-size-ui-label:   16px;
+  --od-size-ui-min:     14px;
+
+  /* ── Texture Sizes ──────────────────────────────────────────── */
+  --od-tex-car-body:    2048px;
+  --od-tex-car-helmet:  512px;
+  --od-tex-track-tile:  512px;
+  --od-tex-env-tile:    256px;
+  --od-tex-building:    512px;
+  --od-tex-skybox:      1024px;
+  --od-tex-ui-atlas:    2048px;
+  --od-tex-vfx:         256px;
+}
+
+/* ── Naming Conventions ────────────────────────────────────── */
+/* Car:       car_[teamId]_body_lod0.fbx
+   Texture:   car_[teamId]_body_2048.png
+   Env:       env_[track]_barrier_lod0.fbx
+   Building:  bld_[type]_[variant].fbx
+   UI:        ui_hud_icons_2048.png
+   VFX:       vfx_[effect]_sheet_256.png
+*/
