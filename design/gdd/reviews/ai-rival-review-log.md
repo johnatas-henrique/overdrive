@@ -1,6 +1,7 @@
 # AI Rival Review Log
 
 ## Review — 2026-07-24 — Verdict: NEEDS REVISION
+
 Scope signal: XL
 Specialists: None (lean review)
 Blocking items: 7 | Recommended: 3
@@ -20,10 +21,12 @@ Blocking items: 0 | Recommended: 1
 Summary: Fresh lean re-review confirmed all prior findings were resolved. Cross-GDD consistency check found 1 RECOMMENDED issue: HUD dependency table said "Outbound" but interactions table said "Indirect" (internal contradiction). The dependency table was corrected to match. All cross-GDD contracts (pit strategy, DifficultyProfile, collision recovery, HUD reporting) are consistent.
 
 Prior verdict resolved: Yes — all prior findings were resolved; this pass found 1 internal naming inconsistency.
+
 - MVP difficulty changes AI competence, pace noise, error, and decisions; it does not multiply the car's base velocity.
 - MVP collision handling uses Vehicle Physics plus deterministic Recovering; active obstacle avoidance is deferred to Alpha.
 
 Corrections applied:
+
 - Added race seed, car ID, and simulation tick to AI noise generation.
 - Defined normalized racing-line offsets and Track-owned pit spline usage.
 - Added Simulation Architecture, Race Session Manager, Grid & Start, and Pit Stop dependencies.
@@ -55,5 +58,6 @@ Summary: Fresh lean re-review with exhaustive artifacts confirmed all prior find
 Prior verdict resolved: Yes — all prior findings were resolved; this pass found a cross-GDD documentation inconsistency.
 
 Corrections applied:
+
 - Pit Stop interactions table: AI Rival direction changed from "Inbound" to "Bidirectional" with outbound data description added.
 - Status remains Revised — Pending Re-review.

@@ -119,3 +119,15 @@ Blocking items: 0 | Recommended: 0
 Summary: Fresh lean re-review from zero confirmed the updated 0.05 L/s Fuel base rate is internally consistent and aligned with Vehicle Physics, Car Definition Data, Pit Stop, and the game-concept pit strategy intent. Full-throttle driving now forces a pit for every Efficiency level in a 5-lap race, while lift-and-coast remains a viable no-pit path, and the review closes with no remaining issues.
 
 Prior verdict resolved: Yes — the 0.05 L/s tuning change was propagated through all dependent formulas and acceptance criteria.
+
+## Review — 2026-07-26 — Verdict: APPROVED
+
+Scope signal: M
+
+Specialists: none — lean mode
+
+Blocking items: 0 | Recommended: 3 | Nice-to-Have: 1
+
+Summary: Cross-GDD re-review (triggered by review-all-gdds W1 - Vehicle Physics dependency table one-directional) found 4 issues: F1 (VP bidirectionality in Interactions + Dependencies tables), F2 (VP line 226 stale 0.05 L/s), F3 (CDD line 276 stale 0.05 L/s), F4 (stale status header). All 4 corrected in-place. Fuel now correctly lists VP as Bidirectional with low-fuel speed bonus output; VP and CDD updated to 0.06 L/s base rate. No remaining issues.
+
+Prior verdict resolved: Yes — the cross-GDD warning W1 was resolved by correcting VP to Bidirectional and all stale base_rate references were updated.

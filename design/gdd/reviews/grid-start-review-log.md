@@ -38,3 +38,15 @@ Blocking items: 0 | Recommended: 0
 Summary: Fresh lean re-review from zero confirmed Grid & Start is internally consistent and aligned with UI Menu and Qualifying. The shared grid display now uses a single Confirm-driven Start Race flow, no timeout or Back/Cancel path, and DNQ labels for skipped qualifying.
 
 Prior verdict resolved: Yes — the countdown and grid-display coupling remained intact while the grid contract was simplified, and no new issues were found in this pass.
+
+## Review — 2026-07-26 — Verdict: APPROVED
+
+Scope signal: M
+
+Specialists: none — lean mode
+
+Blocking items: 0 | Recommended: 1 | Nice-to-Have: 1
+
+Summary: Cross-GDD re-review (triggered by review-all-gdds W4 - row spacing range conflict) found 1 issue: Track row spacing range 6–12m conflicted with Grid & Start 6–10m. Aligned Track to Grid & Start: 6–10m. Header updated.
+
+Prior verdict resolved: Yes — the cross-GDD warning W4 was resolved by aligning Track's row spacing range to Grid & Start's 6–10m.
