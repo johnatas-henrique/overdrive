@@ -130,6 +130,6 @@
 
 **Coordination:** Vertical delegation (Directors → Leads → Specialists) with horizontal consultation allowed but non-binding. Conflict resolution escalates to shared parent or domain director.
 
-**Model Tier Assignment:** Three tiers assigned per agent frontmatter — Lightweight (`opencode-go/deepseek-v4-flash`, simple read-only work), Default (`opencode-go/mimo-v2.5`, implementation and analysis), High-stakes (`opencode-go/minimax-m3`, cross-system synthesis and gates).
+**Model Tier Assignment:** Three tiers assigned per agent frontmatter — Lightweight (`opencode-go/deepseek-v4-flash`, simple read-only work), Default (`opencode-go/qwen3.6-plus`, implementation and analysis), High-stakes (`opencode-go/kimi-k2.6`, cross-system synthesis and gates).
 
 **Code Generation Guardrails:** Agents must ask "May I write this to [filepath]?" before using Write/Edit tools. Multi-file changes require explicit approval. No commits without user instruction.

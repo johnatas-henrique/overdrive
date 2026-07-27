@@ -50,6 +50,9 @@
 │   │   ├── content-pipeline.md
 │   │   ├── fuel-system.md
 │   │   ├── gdd-cross-review-2026-07-25.md
+│   │   ├── gdd-cross-review-2026-07-26.md
+│   │   ├── gdd-cross-review-2026-07-26-v2.md
+│   │   ├── gdd-cross-review-2026-07-26-v3.md
 │   │   ├── ghost-recording.md
 │   │   ├── grid-start.md
 │   │   ├── hud.md
@@ -72,6 +75,7 @@
 │       └── cross-gdd-consistency-report.md # Cross-GDD consistency analysis
 ├── docs/                        # Technical documentation
 │   ├── architecture/            # Architecture Decision Records + TR-ID registry
+│   │   ├── adr-0001-manual-simulation-authority-and-determinism-boundary.md # ADR: manual simulation authority
 │   │   └── tr-registry.yaml     # Technical requirement ID persistence
 │   ├── engine-reference/        # Curated engine API snapshots (version-pinned)
 │   │   ├── super-monaco-gp-teams.md
@@ -96,8 +100,11 @@
 │   ├── examples/                # Session examples and workflow case studies
 │   ├── registry/                # Architecture registry
 │   │   └── architecture.yaml    # Architecture registry data
+│   ├── plans/                   # Project plans and handoff docs
+│   │   └── overdrive-handoff-2026-07-24.md
 │   ├── research/                # Research documents
 │   │   ├── multiplayer-networking-comparison-2026.md
+│   │   ├── mvp-performance-baseline-2026-07.md
 │   │   └── unity-mcp-landscape-2026-07-16.md
 │   ├── AGENTS.md                # Docs directory standards
 │   ├── COLLABORATIVE-DESIGN-PRINCIPLE.md # User-driven collaboration model
@@ -213,10 +220,12 @@
 - `design/gdd/reviews/` — Design review logs
 - `design/registry/entities.yaml`: Cross-GDD entity/formula/constant registry
 - `design/reviews/cross-gdd-consistency-report.md`: Cross-GDD consistency analysis
+- `docs/architecture/adr-0001-manual-simulation-authority-and-determinism-boundary.md`: ADR on manual simulation authority
 - `docs/architecture/tr-registry.yaml`: Technical requirement ID persistence
 - `docs/registry/architecture.yaml`: Architecture registry data
 - `docs/framework/workflow-catalog.yaml`: Phase definitions and artifact checks
 - `docs/framework/director-gates.md`: Shared review gate prompts
+- `docs/plans/overdrive-handoff-2026-07-24.md`: Project handoff plan
 
 **Tests:**
 - `.opencode/plugins/tests/`: Plugin unit tests (11 test suites)
