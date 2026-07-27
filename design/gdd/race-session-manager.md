@@ -102,6 +102,8 @@ A lap counts when the car crosses the start/finish line. The car's position is a
 
 **Expected race pace:** For each unfinished AI, FinishOrderResolver uses `expectedRacePace` in metres per second. If the AI has two completed laps, use `trackLength / mean(lastTwoCompletedLapTimes)`. Otherwise, use `trackLength / sessionTargetLapTime`, where `sessionTargetLapTime` is that AI's pre-generated qualifying time for the current track and difficulty. This fallback exists before racing begins, including when the player skips Qualifying.
 
+**MVP approximation:** The FinishOrderResolver projects trailing AI by pace-only. It does not account for AI pit status, low fuel, or worn tires at the moment of the snapshot. This is accepted for MVP because the `PostFinishSnapshot` is captured at the tick the player crosses the finish line on `totalLaps` (or retires); no further physics, fuel, tire, pit, or AI simulation runs after that point. The projection is cosmetic — it determines only the final standing order among trailing AI for the results screen. Future phases may add pit/resource penalties for increased precision.
+
 **6. Race Timer**
 
 | Timer | Start | Stop | Used By |

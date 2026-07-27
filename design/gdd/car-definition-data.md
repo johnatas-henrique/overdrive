@@ -273,7 +273,7 @@ The **efficiency_modifier** formula is defined as:
 | stat | efficiency | int | 0–20 | Car's Efficiency stat |
 
 **Output Range:** 0.50–0.90 (dimensionless).
-**Example:** stat 20 = 0.50. stat 4 = 0.90. stat 12 = 0.70. Fuel System owns the operational `base_rate = 0.05 L/s` for all difficulties.
+**Example:** stat 20 = 0.50. stat 4 = 0.90. stat 12 = 0.70. Fuel System owns the operational `base_rate = 0.06 L/s` for all difficulties.
 
 ### Efficiency Modifier (Tire Wear)
 

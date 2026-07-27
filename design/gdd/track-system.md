@@ -97,6 +97,7 @@ Surface zones are defined as distance ranges along the spline (e.g., "kerb from 
 - **Lap boundary:** When car crosses distance 0 (wraps from track length back to 0)
 - **Lap count:** Incremented at each crossing
 - **Race distance:** configured race_laps × track_length. Real-world reference lap counts are metadata only; MVP session rules supply the race lap count.
+- **Anti-cut note:** Track owns the geometry helper (`CrossedLapBoundary`) that detects when a car crosses the start/finine line via spline wrap. Race Session Manager adds the 90% minimum-distance gate (`distanceSinceLastLap > trackLength × 0.90`) to prevent short-cut lap counting. Track does not enforce or calculate this distance — RSM owns the full lap validation rule.
 
 **5. Grid Positions**
 
@@ -116,14 +117,15 @@ Surface zones are defined as distance ranges along the spline (e.g., "kerb from 
 
 - **Entry/exit positions:** From track-atlas data as `pit_entry_progress` / `pit_exit_progress` lap fractions (e.g., entry 0.92, exit 0.05)
 - **Pit-entry zone:** Conversion generates a one-way trigger volume at `pit_entry_progress`, spanning the pit-entry corridor and validating forward travel against the authored racing-spline tangent. Vehicle Physics tests its final post-simulation transform against this zone.
-- **Default geometry:** Spline parallel to main track at 10m offset (right side), connecting pit_entry to pit_exit points
+- **Default geometry:** Pit lane spline parallel to main track at 10m offset (right side), connecting pit_entry to pit_exit points. This spline defines the **fast lane** centerline — the continuous driving lane where cars travel at the speed limit.
+- **Two-lane layout (F1 model):** The pit lane follows the Formula 1 model — one **fast lane** (driving lane) with 16 individual **pit boxes** offset laterally alongside it. Each pit box is a service bay parallel to the fast lane; the car steers ~30–45° from the fast lane into its assigned box, stops for service, then returns to the fast lane. This allows simultaneous service without queuing: cars in the fast lane pass behind occupied boxes, and each box is an independent bay. For tracks with left-side pit entry (counterclockwise circuits), the layout is mirrored — the fast lane is closest to the track wall and boxes are on the pit-building side.
+- **Pit box definition:** Each box is defined as `{ box_id, entry_progress (fast-lane progress where the car exits the fast lane), lateral_offset (distance from fast lane centerline to box center, ~3 m) }`. Boxes are spaced at ~10 m intervals. Auto-navigation: the car follows the fast lane spline to `entry_progress`, steers to the offset box position, stops for service, and returns to the fast lane after exit.
 - **Manual override:** Pit lane spline is stored as a separate editable asset — designers can adjust control points per track
 - **Progress mapping:** Every pit-lane spline sample stores its mapped `racing_spline_progress`; Race Session Manager uses this mapping, rather than nearest-world-point projection, for position ranking and pit-lane lap completion.
 - **Lap-boundary helper:** Track exposes `CrossedLapBoundary(previousMappedProgress, currentMappedProgress)`, which evaluates authored main/pit mapping across the start/finish discontinuity even when one simulation step moves from e.g. 0.94 to 0.01.
 - **Speed limit:** 80 km/h fixed in MVP — enforced automatically when car is in pit lane zone
-- **Pit box positions:** 16 boxes, one per car, defined as distances along pit lane spline
-- **Pit stop zone:** Where refueling/tire change happens — all 16 boxes are serviced simultaneously, no queuing
-- **Track map:** Main spline, pit-lane spline and pit-entry marker are rendered on the Track Map.
+- **Simultaneous service:** All 16 boxes are serviced without queuing — each is an independent offset bay. Cars in the fast lane pass behind occupied boxes.
+- **Track map:** Main spline, pit-lane spline, pit boxes, and pit-entry marker are rendered on the Track Map.
 
 **8. Track Scaling**
 
@@ -205,7 +207,7 @@ Where surface_wear_modifier comes from the surface type table (1.0 for asphalt, 
 | **Content Pipeline** | Inbound | Track JSON file | Hard — loading |
 | **Simulation Architecture** | Outbound | Spline position | Hard — car position |
 | **Race Session Manager** | Bidirectional | Lap boundary, mapped racing progress, pit events | Hard — owns race/session interpretation of Track data |
-| **Pit Stop** | Bidirectional | Pit zones, boxes, speed-limit zone | Hard — consumes physical pit geometry |
+| **Pit Stop** | Outbound | Pit zones, boxes, speed-limit zone | Hard — Track provides pit geometry to Pit Stop |
 | **Grid & Start** | Outbound | Validated grid positions | Hard — applies GridAssignment to Track slots |
 | **Qualifying** | Outbound | Reference flying-lap time | Hard — computes qualifying fuel load |
 
@@ -222,7 +224,7 @@ All values below are per-track JSON files or global settings.
 | Kerb grip modifier | 0.85 | 0.7–0.95 | Kerbs too punishing | Kerbs have no effect |
 | Gravel grip modifier | 0.4 | 0.2–0.6 | Instant spin | Gravel too grippy |
 | Grass grip modifier | 0.3 | 0.1–0.5 | Instant spin | Grass too grippy |
-| Grid row spacing | 8 m | 6–12 m | Cars overlap at start | Grid too spread out |
+| Grid row spacing | 8 m | 6–10 m | Cars overlap at start | Grid too spread out |
 | Grid column spacing | 3.5 m | 2.5–5 m | Cars overlap laterally | Grid too wide |
 
 ## Visual/Audio Requirements

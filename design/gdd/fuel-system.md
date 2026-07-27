@@ -119,7 +119,7 @@ State evaluation happens after the Fuel tick updates the current value. Exact 25
 
 | System | Direction | Data | Notes |
 |--------|-----------|------|-------|
-| **Vehicle Physics** | Inbound | `accelerateOut` from `ResolvedCarInput[carId]` at Tick Step 5 (before physics) | Consumed every physics tick |
+| **Vehicle Physics** | Bidirectional | `accelerateOut` from `ResolvedCarInput[carId]` (in); fuel state, low-fuel max-speed modifier (out) | Fuel consumes throttle every physics tick and outputs the low-fuel speed bonus when fuel < 25% |
 | **Car Definition Data** | Inbound | Efficiency stat | Modifies consumption rate |
 | **HUD** | Outbound | Fuel level (0-100%), state | Displayed as bar + numeric |
 | **Pit Stop** | Bidirectional | Pit trigger → 0.8 L/s refuel → partial/full exit | Player may exit after 2s; AI exits full in MVP. |
@@ -186,7 +186,7 @@ When fuel < 25%: apply +1% to max_velocity (top speed bonus only, not accelerati
 
 | System | Direction | Type | Nature |
 |--------|-----------|------|--------|
-| **Vehicle Physics** | Inbound | Throttle input | Hard — fuel consumption depends on throttle |
+| **Vehicle Physics** | Bidirectional | Throttle input, low-fuel max-speed modifier | Hard — fuel consumption depends on throttle; Fuel outputs speed bonus when < 25% |
 | **Simulation Architecture** | Indirect via Simulation | Hard | Assembles `ResolvedCarInput[carId]` at Tick Step 2; Fuel consumes `accelerateOut` at Tick Step 5 |
 | **Car Definition Data** | Inbound | Efficiency stat | Hard — determines consumption rate |
 | **HUD** | Outbound | Fuel level + state | Hard — player needs to see fuel |
