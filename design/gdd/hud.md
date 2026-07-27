@@ -47,7 +47,7 @@ Ghost UI is non-blocking during MVP review unless it changes MVP HUD state contr
 | 1 | **Speed** | Vehicle Physics (km/h) | Bottom-center | Large — primary reference | MVP |
 | 2 | **Position/Lap** | Race Session Manager (position, lap/total) | Top-left | Medium — always visible | MVP |
 | 3 | **Fuel Bar** | Fuel (0-100%) | Bottom-left | Horizontal bar with state-color fill and numeric "X.X L" readout below | MVP |
-| 4 | **Tire Bar** | Tire remaining life (0-100%) | Bottom-left, below fuel | Horizontal bar, state-color fill | MVP |
+| 4 | **Tire Bar** | Tire remaining life (0-100%) | Bottom-left, below fuel | Horizontal bar, state-color fill, numeric "X%" readout below | MVP |
 | 5 | **Race Time** | Simulation (elapsed) | Top-right | Small — secondary reference | MVP |
 | 6 | **Rival Gap** | Race Session Manager (gap in seconds) | Right-center | Medium — always visible | MVP |
 | 7 | **Track Map** | Race Session Manager positions + Track geometry | Bottom-right | Mini-map: main spline, pit-lane spline, pit-entry marker and all 16 cars | MVP |
@@ -150,6 +150,15 @@ If gap < 0.1s: display "0.0" (too close to measure).
 
 Mini-map scale: `map_scale = track_length / map_size_pixels`. All 16 cars shown as dots, player car highlighted.
 
+### PIT THIS LAP Warning
+
+`warning_start_progress = min(PIT_THIS_LAP_warning_start, max(0, pitEntryProgress - 0.05))`
+
+| Variable | Symbol | Type | Range | Description |
+|----------|--------|------|-------|-------------|
+| PIT THIS LAP warning start | — | float | 0.50-1.0 | Fraction of pit-entry progress where warning first appears. Default 0.80. |
+| Pit entry progress | pitEntryProgress | float | 0.0-1.0 | Track-provided fraction of racing spline where pit entry begins |
+
 ## Edge Cases
 
 - **If player has no rival (P1, no one behind):** Rival gap shows "LEADER" instead of a time gap.
@@ -172,6 +181,7 @@ Mini-map scale: `map_scale = track_length / map_size_pixels`. All 16 cars shown 
 | **Vehicle Physics** | Inbound | Speed + gear | Hard — drives speed display |
 | **Race Session Manager** | Inbound | Position, lap, pit proximity, rival gap | Hard — drives position/lap, map and rival display |
 | **Simulation** | Inbound | Race time, state, performance signal | Hard — drives time, state transitions and performance warning |
+| **Camera** | Inbound | Camera mode, FOV | Soft — HUD layout adapts to camera mode |
 | **Car Definition Data** | Inbound | Team color, icon | Hard — drives cosmetic theming |
 | **Content Pipeline** | Inbound | Loading progress, asset readiness | Hard — drives race-load progress UI |
 | **Ghost Recording** | Inbound | Time delta | Soft — Alpha+ only |
@@ -193,6 +203,7 @@ Mini-map scale: `map_scale = track_length / map_size_pixels`. All 16 cars shown 
 | Font size (secondary) | 16px | 12-20px | Too small | Too large |
 | HUD opacity | 85% | 70-100% | Too transparent (unreadable) | Too opaque (blocks view) |
 | Cockpit overlay | On | On/Off | N/A | N/A |
+| PIT THIS LAP warning start | 0.80 | 0.50-1.0 | Warning appears too late | Warning appears too early |
 
 ## Visual/Audio Requirements
 

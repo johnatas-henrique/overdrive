@@ -99,7 +99,7 @@ Fuel and tire are separate resources with separate bars. They share the Efficien
 
 **8. Display**
 
-- HUD tire bar: horizontal bar, 0-100%, color-coded (green > 50%, yellow 50-25%, red 25-1%).
+- HUD tire bar: horizontal bar, 0-100%, color-coded (green > 50%, yellow 25-50%, red < 25%).
 - Numeric readout: "X%" below the bar.
 - Tire wear is visible through grip loss (cornering feel), not just the bar.
 
@@ -198,6 +198,7 @@ All values below are serialized fields in `TireConfig.asset` (ScriptableObject).
 ## Visual/Audio Requirements
 
 - **Tire wear visual:** As tires wear, subtle visual cues — slightly different tire shader (less shiny), minor particle effects on curbs. Not dramatic; the player should feel it through input, not see it on the model.
+- **VFX consumption:** VFX System (vfx.md) consumes tire wear/grip data for smoke particle emissions at Step 10, prior to Render.
 - **Audio cue:** Tire squeal becomes more frequent as wear increases while pitch remains constant at the Audio System's 1200 Hz value. At 75%+ wear, squealing is constant in corners.
 - **Grip loss feel:** Steering becomes lighter. Camera shake increases slightly in corners. Vehicle Physics handles this via grip_multiplier; haptics/force feedback are out of MVP scope.
 
