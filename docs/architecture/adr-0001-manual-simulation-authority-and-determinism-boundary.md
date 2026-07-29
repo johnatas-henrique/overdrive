@@ -53,7 +53,66 @@ CaptureLatestRawSample
 → PublishedSimulationSnapshot
 → Racing continuous-input record
 → AIInput for next tick
+
+### resultClassification Enum
+
+RSM produces a `resultClassification` per car as part of `ResolvedFinishOrder`, capturing why and how the car ended the session. Defined here because it is consumed by Simulation (snapshot publishing, forfeit lifecycle) and owned by RSM:
+
+```csharp
+public enum ResultClassification : byte {
+    Finished,   // completed all laps under own power
+    DNF,        // Did Not Finish — mid-race abandonment
+    Forfeit     // Return to Menu from Paused during Countdown or Racing
+}
 ```
+
+Consumption:
+- **PublishedSimulationSnapshot** carries `resultClassification[carId]` for Results screen
+- **Forfeit** uses `Forfeit` classification with `forfeitLapCount` and `raceTimeAtForfeit` (0 for Countdown forfeit)
+- **Ghost Recording** checks classification: `Finished` → buffer eligible for persistence; `DNF/Forfeit` → discard immediately
+- **RSM** owns the resolution rules; Simulation publishes the result
+```
+
+### TickStartSnapshot Schema
+
+`TickStartSnapshot` is the read-only per-tick input struct consumed by all domain systems (Fuel, Tire, VP, Pit Stop, AI). Its contents are assembled from the previous tick's outputs and the current tick's raw input, gated by SimulationState.
+
+| Field | Source | Populated By |
+|-------|--------|-------------|
+| `RawInputSample[16]` | InputSystem dynamic update | `CaptureLatestRawSample()` at tick start |
+| `CarState[16]` | Previous tick VP.ReadCarState | Step 9 of previous tick |
+| `FuelState[16]` | Previous tick FuelSystem.Tick | Step 5a of previous tick |
+| `TireState[16]` | Previous tick TireSystem.Tick | Step 5b of previous tick |
+| `PitServiceCommand[16]` | Previous tick PitStopSystem | Step 9b of previous tick: PitStopSystem writes command; Simulation carries to next tick |
+| `TrackData` | Loaded at race init via Content Pipeline | Immutable for race duration |
+| `SimulationState` | Simulation owns | Current state + RaceMode from RSM |
+| `DifficultyProfile` | Loaded at race init | Immutable for race duration |
+| `float deltaTime` | Accumulator | Unity `Time.unscaledDeltaTime` (clamped to 2×FIXED_DT max) |
+
+Fields are assembled by the Simulation driver before Step 1 and distributed to all domain `Tick()` calls. No system reads from `TickStartSnapshot` before assembly is complete.
+
+`PitServiceCommand[16]` is the formal pit-service contract: PitStopSystem writes it at Step 9b, Simulation carries it to the next tick's snapshot, and FuelSystem/TireSystem read it at Step 5 to apply refuel/tire-swap. The struct is defined in ADR-0011.
+
+
+### PerformanceReduced Signal
+
+When Simulation detects sustained performance degradation (below 30 FPS for 3s), it publishes a `PerformanceReduced` event consumed by:
+- **VFX** — reduces particle count and speed-line density
+- **HUD** — shows discrete performance warning
+- **Camera** — disables look-ahead and collision avoidance
+
+When FPS recovers (≥30 for 3s), Simulation publishes `PerformanceRestored` and affected systems restore normal operation. If FPS drops below 15 for 3s after reduction, Simulation pauses the race and offers Resume or Return to Menu.
+
+This signal is owned by Simulation; the threshold rules are defined in simulation-architecture.md and cross-referenced by consuming ADRs.
+
+### Interpolation Phases (LateUpdate)
+
+Simulation architecture produces two interpolation outputs, both computed in **LateUpdate** (after all Update() scripts, before render):
+
+1. **VisualTransform α interpolation:** Lerp/slerp between the previous and current tick's `CarState` (position, rotation) using `α = accumulator / FIXED_DT`. Computed by Simulation driver in LateUpdate.
+2. **Consumer read:** CameraSystem, VfxSystem, and AudioSystem read the interpolated VisualTransform and latest `PublishedSimulationSnapshot` in LateUpdate — immediately after the α is computed. This gives zero-frame latency from physics tick to visual output with no jitter (no competing transform writes between Update and render).
+
+Neither Camera, VFX, nor Audio run in DynamicUpdate. All presentation-layer systems (Camera, VFX, Audio, HUD) read from the interpolated state in LateUpdate.
 
 The accumulator consumes focus-change notifications before reading `Time.unscaledDeltaTime`; the focus-change frame adds no delta. Focus loss creates an immediate non-physics lifecycle boundary before accumulator evaluation, preserves the remainder and counters, publishes Paused, and requires explicit Resume. It never waits for another fixed tick.
 
@@ -65,7 +124,7 @@ Simulation snapshots one immutable DifficultyProfile at race initialization. It 
 
 Qualifying and Race share Finished terminal presentation and Results. UI Presentation owns the up-to-5-second timer, pauses it on focus loss, and accepts direct Confirm/Pause routing while generic Cancel is suppressed. Simulation captures PostFinishSnapshot, RSM returns result data, and PublishedSimulationSnapshot carries immutable copies. No PhysX, Fuel, Tire, Pit, collision or tactical AI runs after finish. Continue/Back from Results sends `ContentUnloadRequest`; Simulation remains Results until `ContentUnloadComplete`, then enters Idle.
 
-Before content expansion, the 16-car prototype is profiled on at least three PC machines; the measured tick covers Steps 1–13 excluding rendering/UI. The lowest-cost machine meeting p95 ≤ 6 ms and maximum ≤ 8 ms is recorded in a follow-up ADR. PCG32 remains the only gameplay PRNG. MVP repeatability means the same executable on the same physical machine/environment. Beta canonical multiplayer state must not depend on local PhysX.
+Before content expansion, the 16-car prototype is profiled on at least three PC machines; the measured tick covers Steps 1–14 excluding rendering/UI. The lowest-cost machine meeting p95 ≤ 6 ms and maximum ≤ 8 ms is recorded in a follow-up ADR. PCG32 remains the only gameplay PRNG. MVP repeatability means the same executable on the same physical machine/environment. Beta canonical multiplayer state must not depend on local PhysX.
 
 ## Consequences
 
