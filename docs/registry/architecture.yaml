@@ -43,7 +43,85 @@ last_updated: ""
 # interface: how other systems access this state (read-only property, method call,
 #   signal, shared resource, etc.) — this is the contract other ADRs depend on.
 
-state_ownership: []
+state_ownership:
+  - state: CarState[16]
+    status: active
+    owner_system: vehicle-physics-system
+    adr: docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md
+    interface: "CarState per car per tick (readonly struct): Position, Rotation, LinearVelocity, SpeedKmh, Rpm, Gear, State, SlipState, Surface, PitPhase, WallContact, SlideState, ForwardDot"
+    write_access: vehicle-physics-system-only
+    referenced_by:
+      - docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md
+    added: 2026-07-27
+    revised: ""
+
+  - state: DifficultyProfile data
+    status: active
+    owner_system: settings-system
+    adr: docs/architecture/adr-0004-settings-persistence-and-control-profiles.md
+    interface: "5 ScriptableObject assets at Assets/Settings/Difficulty/. Simulation snapshots resolved struct via Settings.GetProfile(id) at race init."
+    write_access: settings-system-only
+    referenced_by:
+      - docs/architecture/adr-0004-settings-persistence-and-control-profiles.md
+    added: 2026-07-27
+    revised: ""
+
+  - state: FuelState[16]
+    status: active
+    owner_system: fuel-system
+    adr: docs/architecture/adr-0006-fuel-tire-state-ownership-and-tick-timing.md
+    interface: "FuelState per tick: currentFuel, fuelFraction, state (FuelStateEnum), topSpeedModifier, lastLapFuelUse, lowFuelActive"
+    write_access: fuel-system-only
+    referenced_by:
+      - docs/architecture/adr-0006-fuel-tire-state-ownership-and-tick-timing.md
+    added: 2026-07-27
+    revised: ""
+
+  - state: TireState[16]
+    status: active
+    owner_system: tire-system
+    adr: docs/architecture/adr-0006-fuel-tire-state-ownership-and-tick-timing.md
+    interface: "TireState per tick: wearFraction, runtimeGripMultiplier, compoundId (byte), lastLapTireWear"
+    write_access: tire-system-only
+    referenced_by:
+      - docs/architecture/adr-0006-fuel-tire-state-ownership-and-tick-timing.md
+    added: 2026-07-27
+    revised: ""
+
+  - state: PitState[16]
+    status: active
+    owner_system: pit-stop-system
+    adr: docs/architecture/adr-0011-pit-stop-architecture.md
+    interface: "PitState per car per tick: carId, assignedBoxId, phase (PitServicePhase: NotPitting/PitTransit/InPitBox/PitExiting), serviceTimer, tireSwapComplete, fuelLoaded, playerCanExit, pitThisLap"
+    write_access: pit-stop-system-only
+    referenced_by:
+      - docs/architecture/adr-0011-pit-stop-architecture.md
+    added: 2026-07-28
+    revised: ""
+
+# ─── INTERFACE CONTRACTS ─────────────────────────────────────────────────
+
+  - purpose: audio_system
+    status: active
+    api: AudioSystem.Tick(CarAudioState[], SimulationState, RaceMode, PitPhase, CameraMode, AudioSettings) → audio output
+    not: FMOD, Wwise, pre-recorded engine samples per car (procedural-first)
+    adr: docs/architecture/adr-0012-audio-system-architecture.md
+    reason: "Unity Audio Mixer covers all MVP needs. Procedural-first engine (2-oscillator) with IEngineSoundProvider seam for future sample replacement. DynamicUpdate per ADR-0010 pattern."
+    referenced_by:
+      - docs/architecture/adr-0012-audio-system-architecture.md
+    added: 2026-07-28
+    revised: ""
+
+  - purpose: i_engine_sound_provider
+    status: active
+    api: IEngineSoundProvider.Update(in CarAudioState, AudioSource)
+    not: Engine sound hardcoded in AudioSystem
+    adr: docs/architecture/adr-0012-audio-system-architecture.md
+    reason: "Seam for future engine sound replacement (procedural → Asset Store samples → hybrid) without changing AudioSystem."
+    referenced_by:
+      - docs/architecture/adr-0012-audio-system-architecture.md
+    added: 2026-07-28
+    revised: ""
 
 # Example:
 #
@@ -71,7 +149,60 @@ state_ownership: []
 #
 # pattern options: signal | direct_call | event_bus | shared_resource | rpc | none
 
-interfaces: []
+interfaces:
+  - contract: vehicle_driver
+    status: active
+    pattern: direct_call
+    producer: vehicle-physics-system
+    consumers:
+      - simulation-architecture
+    adr: docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md
+    signature: "IVehicleDriver.ApplyForces(VehicleHandle, in VehicleSimState); ReadCarState(VehicleHandle); ReadSimStateForNextTick(VehicleHandle)"
+    referenced_by:
+      - docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md
+    added: 2026-07-27
+    revised: ""
+
+  - contract: collision_event_forwarding
+    status: active
+    pattern: direct_call
+    producer: CarCollisionMonitor (MonoBehaviour per car)
+    consumers:
+      - vehicle-physics-system
+    adr: docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md
+    signature: "OnCollisionEnter/Stay/Exit → forwards contact data to VehiclePhysicsSystem"
+    referenced_by:
+      - docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md
+    added: 2026-07-27
+    revised: ""
+
+  - contract: content_pipeline_events
+    status: active
+    pattern: event_delegate
+    producer: ContentPipelineSystem
+    consumers:
+      - simulation-architecture
+      - ui-menu
+    adr: docs/architecture/adr-0003-content-pipeline-and-addressables.md
+    signature: "event RaceLoadReady(RaceMode, GridAssignment); event ContentLoadError(string, ContentErrorType); event RaceReconfigureStart(); event ContentUnloadComplete(); event LoadingProgress(float)"
+    referenced_by:
+      - docs/architecture/adr-0003-content-pipeline-and-addressables.md
+    added: 2026-07-27
+    revised: ""
+
+  - contract: settings_input_preview_evaluator
+    status: active
+    pattern: direct_call
+    producer: SettingsInputPreviewEvaluator (UI-only)
+    consumers:
+      - input-system
+    adr: docs/architecture/adr-0004-settings-persistence-and-control-profiles.md
+    signature: "EvaluatePreview(float rawValue, ControlScheme scheme) → float — same stick dead-zone + EMA formulas as InputSystem per-tick routine. Does NOT read/write SimulationInput or advance simulation."
+    referenced_by:
+      - docs/architecture/adr-0004-settings-persistence-and-control-profiles.md
+    added: 2026-07-27
+    revised: ""
+
 
 # Example:
 #
@@ -139,6 +270,7 @@ performance_budgets:
 #     revised: ""
 
 
+
 # ─── API DECISIONS ───────────────────────────────────────────────────────────
 # Which engine APIs are chosen for which purpose across the project.
 # Conflicts: two ADRs using different APIs for the same purpose = inconsistent
@@ -147,22 +279,83 @@ performance_budgets:
 # Register an API decision when the choice is non-obvious and other ADRs might
 # make a different choice for the same purpose without knowing this was decided.
 
-api_decisions: []
+api_decisions:
+  - purpose: arcade_force_application
+    status: active
+    api: ForceMode.Acceleration (with Rigidbody.AddForce)
+    not: ForceMode.Force (respects mass, more sim-like)
+    adr: docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md
+    reason: "Arcade handling model requires mass-independent force response."
+    referenced_by:
+      - docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md
+    added: 2026-07-27
+    revised: ""
 
-# Example:
-#
-# api_decisions:
-#   - purpose: physics_raycast
-#     status: active
-#     api: PhysicsServer3D.space_get_direct_state()
-#     not: RayCast3D node     # explicitly banned for this purpose
-#     adr: docs/architecture/adr-0002-physics-architecture.md
-#     reason: "Direct server calls avoid per-frame node overhead; 3× faster in profiling"
-#     referenced_by:
-#       - docs/architecture/adr-0002-physics-architecture.md
-#       - docs/architecture/adr-0003-combat-system.md
-#     added: 2026-03-26
-#     revised: ""
+  - purpose: async_content_loading
+    status: active
+    api: Addressables 3.1.0 (LoadAssetAsync, ReleaseInstance, Release)
+    not: Resources.Load
+    adr: docs/architecture/adr-0003-content-pipeline-and-addressables.md
+    reason: "Per-race loading/unloading requires async asset management."
+    referenced_by:
+      - docs/architecture/adr-0003-content-pipeline-and-addressables.md
+    added: 2026-07-27
+    revised: ""
+
+  - purpose: settings_persistence
+    status: active
+    api: PlayerPrefs single JSON blob + backup key
+    not: Individual PlayerPrefs keys, file IO
+    adr: docs/architecture/adr-0004-settings-persistence-and-control-profiles.md
+    reason: "Backup-first atomic writes require a single blob."
+    referenced_by:
+      - docs/architecture/adr-0004-settings-persistence-and-control-profiles.md
+    added: 2026-07-27
+    revised: ""
+
+  - purpose: ghost_recording_format
+    status: active
+    api: 80-byte binary header + continuous input stream (12 B/tick) + edge event stream (5 B/event)
+    not: JSON, XML, text-based formats
+    adr: docs/architecture/adr-0008-ghost-recording-data-format-and-mvp-buffer.md
+    reason: "~264 KB uncompressed per full race. CRC integrity per 256-tick block."
+    referenced_by:
+      - docs/architecture/adr-0008-ghost-recording-data-format-and-mvp-buffer.md
+    added: 2026-07-27
+    revised: ""
+
+  - purpose: track_spline_storage
+    status: active
+    api: JSON + JsonUtility + Catmull-Rom chordal interpolation
+    not: AnimationCurve, ScriptableObject-only
+    adr: docs/architecture/adr-0007-track-spline-format.md
+    reason: "GPX/GeoJSON → Python → JSON pipeline. Catmull-Rom for smooth tangents."
+    referenced_by:
+      - docs/architecture/adr-0007-track-spline-format.md
+    added: 2026-07-27
+    revised: ""
+
+  - purpose: ai_deterministic_behavior
+    status: active
+    api: AiRivalSystem.Tick(PublishedSimulationSnapshot) → AIInput[16]. PCG32 per-car.
+    not: MonoBehaviour-driven AI (no central authority)
+    adr: docs/architecture/adr-0009-ai-rival-deterministic-architecture.md
+    reason: "Pure C# snapshot observer ensures deterministic AI."
+    referenced_by:
+      - docs/architecture/adr-0009-ai-rival-deterministic-architecture.md
+    added: 2026-07-27
+    revised: ""
+
+  - purpose: camera_vfx_presentation
+    status: active
+    api: Custom C# camera controller + ParticleSystem + URP Volume MotionBlur
+    not: Cinemachine, VFX Graph
+    adr: docs/architecture/adr-0010-camera-vfx-rendering-budget-and-interpolation.md
+    reason: "No external dependency for MVP camera or VFX."
+    referenced_by:
+      - docs/architecture/adr-0010-camera-vfx-rendering-budget-and-interpolation.md
+    added: 2026-07-28
+    revised: ""
 
 
 # ─── FORBIDDEN PATTERNS ──────────────────────────────────────────────────────
@@ -173,25 +366,28 @@ api_decisions: []
 # Register a pattern when an ADR explicitly bans it AND other ADRs might
 # unknowingly use it (i.e., it's a tempting but wrong approach for this project).
 
-forbidden_patterns: []
+forbidden_patterns:
+  - pattern: physics_callback_mutates_gameplay_state
+    status: active
+    description: "OnCollisionEnter/Stay/Exit callbacks must NOT directly mutate gameplay state (fuel, tire, CarState, AI state). Instead, CarCollisionMonitor forwards raw contact data to VehiclePhysicsSystem, which evaluates collision rules at the designated tick step."
+    why: "Physics callbacks run inside Physics.Simulate() — mutating state there breaks the tick pipeline ordering and creates race conditions with domain systems that read CarState at Step 9."
+    adr: docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md
+    added: 2026-07-27
+
 
 # Example:
 #
 # forbidden_patterns:
 #   - pattern: autoload_singleton_coupling
 #     status: active
-#     description: "Systems must not directly reference Autoload singletons by name.
-#       Use dependency injection or signals instead."
-#     why: "Tight coupling to Autoloads makes systems untestable in isolation and
-#       creates hidden dependencies that break when Autoload load order changes."
+#     description: "Systems must not directly reference Autoload singletons by name."
+#     why: "Tight coupling to Autoloads makes systems untestable in isolation."
 #     adr: docs/architecture/adr-0001-health-system.md
 #     added: 2026-03-26
 #
 #   - pattern: direct_cross_system_state_write
 #     status: active
-#     description: "A system must never write to state owned by another system.
-#       Use signals or method calls on the owner instead."
-#     why: "Direct state writes create race conditions and break the state
-#       ownership model. The owning system must be the sole writer."
+#     description: "A system must never write to state owned by another system."
+#     why: "Direct state writes create race conditions."
 #     adr: docs/architecture/adr-0000-architecture-principles.md
 #     added: 2026-03-26
