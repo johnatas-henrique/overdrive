@@ -39,10 +39,41 @@
 ├── Packages/                    # Unity package manifest (URP, Input System, AI Nav, Timeline, etc.)
 ├── design/                      # Game design documents
 │   ├── AGENTS.md                # Design directory standards
+│   ├── art/                     # Art bible, palettes, reference catalogs, prompts
+│   │   ├── art-bible.md         # Art bible (core export)
+│   │   ├── palette.css          # Color palette (CSS)
+│   │   ├── palette.json         # Color palette (JSON)
+│   │   ├── prompts/             # AI generation prompts
+│   │   │   ├── krea2-prompt-book.md
+│   │   │   └── test-kit-01.md
+│   │   ├── reference-catalog.md # Reference image catalog
+│   │   ├── style-anchor-prompt.md # Style anchor prompt
+│   │   └── typography.json      # Typography specs
 │   ├── gdd/                     # Game Design Documents (one per system)
 │   │   ├── game-concept.md      # Core identity, pitch, and creative brief
 │   │   ├── reviews/             # Design review logs
-│   │   │   └── game-concept-review-log.md
+│   │   │   ├── ai-rival-review-log.md
+│   │   │   ├── audio-system-review-log.md
+│   │   │   ├── camera-review-log.md
+│   │   │   ├── car-definition-data-review-log.md
+│   │   │   ├── content-pipeline-review-log.md
+│   │   │   ├── fuel-system-review-log.md
+│   │   │   ├── game-concept-review-log.md
+│   │   │   ├── ghost-recording-review-log.md
+│   │   │   ├── grid-start-review-log.md
+│   │   │   ├── hud-review-log.md
+│   │   │   ├── input-system-review-log.md
+│   │   │   ├── multiplayer-architecture-review-log.md
+│   │   │   ├── pit-stop-review-log.md
+│   │   │   ├── qualifying-review-log.md
+│   │   │   ├── race-session-manager-review-log.md
+│   │   │   ├── settings-review-log.md
+│   │   │   ├── simulation-architecture-review-log.md
+│   │   │   ├── tire-system-review-log.md
+│   │   │   ├── track-system-review-log.md
+│   │   │   ├── ui-menu-review-log.md
+│   │   │   ├── vehicle-physics-review-log.md
+│   │   │   └── vfx-review-log.md
 │   │   ├── ai-rival.md
 │   │   ├── audio-system.md
 │   │   ├── camera.md
@@ -122,11 +153,14 @@
 │   └── assign-models.js         # Model assignment utility
 ├── prototypes/                  # Throwaway prototypes (currently .gitkeep)
 ├── production/                  # Production management
+│   ├── gate-checks/             # Quality gate check results
+│   │   └── concept-to-systems-design.md
 │   ├── session-logs/            # Session audit trail
 │   │   ├── agent-audit.log      # Plugin audit log
 │   │   └── session-log.md       # Human-readable session log
 │   ├── session-state/           # Active session checkpoint
 │   │   └── active.md            # Living state file
+│   ├── stage.txt                # Current production stage
 │   └── review-mode.txt          # Review mode state flag
 ├── dotnet-tools.json            # .NET tool manifest (csharpier)
 ├── .editorconfig                # Editor formatting rules
@@ -165,9 +199,9 @@
 - Key files: `InputSystem_Actions.inputactions`, `Settings/PC_RPAsset.asset`, `TutorialInfo/Readme.cs`
 
 **`design/`:**
-- Purpose: Game design documentation, cross-system registries, and cross-GDD consistency analysis
-- Contains: GDDs (`design/gdd/`), entity/formula registry, design standards, cross-GDD reviews
-- Key files: `gdd/game-concept.md`, `registry/entities.yaml`, `AGENTS.md`, `reviews/cross-gdd-consistency-report.md`
+- Purpose: Game design documentation, art bible, cross-system registries, and cross-GDD consistency analysis
+- Contains: GDDs (`design/gdd/`), art bible and palettes (`design/art/`), entity/formula registry, design standards, cross-GDD reviews
+- Key files: `gdd/game-concept.md`, `art/art-bible.md`, `registry/entities.yaml`, `AGENTS.md`, `reviews/cross-gdd-consistency-report.md`
 
 **`docs/`:**
 - Purpose: Technical documentation — architecture decisions, framework reference, workflow guides, research
@@ -184,9 +218,9 @@
 - Key files: `aseprite-mcp/`, `assign-models.js`
 
 **`production/`:**
-- Purpose: Production management — session logs, audit trails, active state
-- Contains: Session logs, agent audit log, session state checkpoint, review mode state
-- Key files: `session-logs/agent-audit.log`, `session-logs/session-log.md`, `session-state/active.md`, `review-mode.txt`
+- Purpose: Production management — session logs, audit trails, active state, quality gate checks
+- Contains: Session logs, agent audit log, session state checkpoint, gate checks, review mode state
+- Key files: `session-logs/agent-audit.log`, `session-logs/session-log.md`, `session-state/active.md`, `gate-checks/concept-to-systems-design.md`, `stage.txt`, `review-mode.txt`
 
 **`prototypes/`:**
 - Purpose: Throwaway prototypes isolated from main source
@@ -217,7 +251,9 @@
 **Design Documents:**
 - `design/gdd/` — Game Design Documents, one per system
 - `design/gdd/game-concept.md` — Core identity, pitch, and creative brief
-- `design/gdd/reviews/` — Design review logs
+- `design/gdd/reviews/` — Design review logs (one per GDD)
+- `design/art/art-bible.md` — Art bible (core export)
+- `design/art/reference-catalog.md` — Reference image catalog
 - `design/registry/entities.yaml`: Cross-GDD entity/formula/constant registry
 - `design/reviews/cross-gdd-consistency-report.md`: Cross-GDD consistency analysis
 - `docs/architecture/adr-0001-manual-simulation-authority-and-determinism-boundary.md`: ADR on manual simulation authority

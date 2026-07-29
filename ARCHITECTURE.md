@@ -34,9 +34,9 @@
 - Used by: Unity Editor, build pipeline
 
 **Design Layer:**
-- Purpose: Game design documentation — entity/formula registry, design standards
+- Purpose: Game design documentation, art bible, entity/formula registry, design standards
 - Location: `design/`
-- Contains: GDDs (`design/gdd/`), entity/formula registry (`design/registry/entities.yaml`), design standards (`design/AGENTS.md`)
+- Contains: GDDs (`design/gdd/`), art bible and palettes (`design/art/`), entity/formula registry (`design/registry/entities.yaml`), design standards (`design/AGENTS.md`)
 - Depends on: OCGS design skills (`/design-system`, `/quick-design`, `/ux-design`)
 - Used by: Architecture skills, story creation, implementation validation
 
