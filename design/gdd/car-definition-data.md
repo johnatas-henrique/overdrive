@@ -134,9 +134,17 @@ Each team is stored as a ScriptableObject asset:
 Assets/Data/Cars/team_tier1_a.asset
 ```
 
-ScriptableObject fields: `teamId` (string), `tier` (int), `topSpeed` (int), `acceleration` (int), `brakePower` (int), `gripLevel` (int), `stability` (int), `efficiency` (int), `engineCylinders` (int, 6–12), `engineType` (string identifier). Weight is a global constant, not per-car. The concrete audio-profile values for each team are assigned in the Car Definition review; Audio consumes them without duplicating ownership.
+ScriptableObject fields: `teamId` (string), `tier` (int), `topSpeed` (int), `acceleration` (int), `brakePower` (int), `gripLevel` (int), `stability` (int), `efficiency` (int), `engineCylinders` (int, 6–12), `audioProfile` (CarAudioProfile — see ADR-0012). Weight is a global constant, not per-car. The concrete audio-profile values for each team are assigned in the Car Definition review; Audio consumes them without duplicating ownership.
 
-MVP default audio profile: `engineCylinders = 10`, `engineType = V10`. A team asset may override these fields within the declared range; missing audio fields fall back to this default without affecting vehicle performance.
+### CarAudioProfile (from ADR-0012)
+
+| Field | Type | Range | Description |
+|-------|------|-------|-------------|
+| cylinders | int | 8, 10, 12 | Engine cylinder count (V8/V10/V12). Replaces engineCylinders semantic. |
+| engineBasePitch | float | 0.8–1.2 | Engine character pitch multiplier |
+| exhaustNote | enum | Standard, Deep, Sharp | Timbre variant for procedural engine |
+
+The `engineType` (string) field is removed — replaced by structured `CarAudioProfile`. MVP default: `cylinders = 10`, `engineBasePitch = 1.0`, `exhaustNote = Standard`.
 
 Loading: Addressables group `Cars/` — loaded per-race based on grid composition.
 

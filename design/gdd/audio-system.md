@@ -131,7 +131,7 @@ Tire squeal is a continuous sound triggered by grip loss. Volume and normalized 
 | Category | Trigger | Sound | Volume Source |
 |----------|---------|-------|---------------|
 | **Wall Impact** | Car hits wall (Vehicle Physics: WallHit state) | Metallic crunch, pitch = f(impact_speed) | Impact speed → 0.3–1.0 |
-| **Surface Noise** | Car on gravel/grass (gripState: OffTrack) | Continuous rumble | Surface type → 0.4–0.8 |
+| **Surface Noise** | Car on gravel/grass (State: OffTrack) | Continuous rumble | Surface type → 0.4–0.8 |
 | **Wind** | Speed > 100 km/h | Continuous whoosh | Speed → 0.0–1.0 (linear 100–300 km/h) |
 | **Pit Entry** | Car enters pit lane | Air gun, wrench sounds | Fixed volume 0.8 |
 | **Pit Service** | Pit stop active | Fuel nozzle, tire swap | Fixed volume 0.7 |
@@ -189,7 +189,7 @@ When fuel_level reaches 0%:
 
 **8. Off-Track Audio Modifier**
 
-When gripState = OffTrack:
+When `State = OffTrack`:
 - Engine volume reduced by 30% (car is not under load)
 - Surface noise activates (gravel/grass rumble)
 - Tire squeal retrigger rate increases (more sliding)
@@ -216,7 +216,7 @@ When gripState = OffTrack:
 
 | System | Direction | Data | Interface | Timing |
 |--------|-----------|------|-----------|--------|
-| **Vehicle Physics** | Inbound | RPM, speed, throttle, gear, gripState, wall contact, slide state | CarState snapshot | Per physics tick (60 Hz) |
+| **Vehicle Physics** | Inbound | RPM, speed, throttle, gear, `State (CarStateEnum)`, `WallContact`, `SlideState` | CarState snapshot | Per physics tick (60 Hz) |
 | **Tire System** | Inbound | wear_percent (0–100%), grip_multiplier | TireState | Per physics tick |
 | **Fuel System** | Inbound | fuel_level (0–100%), fuel_state | FuelState | Per physics tick |
 | **Track** | Inbound | surface_type (asphalt/gravel/grass) | SurfaceData | Per physics tick |
@@ -270,7 +270,7 @@ When gripState = OffTrack:
 
 | System | Direction | Type | Nature |
 |--------|-----------|------|--------|
-| **Vehicle Physics** | Inbound | RPM, speed, throttle, gear, gripState | Hard — drives engine + SFX |
+| **Vehicle Physics** | Inbound | RPM, speed, throttle, gear, `State (CarStateEnum)` | Hard — drives engine + SFX |
 | **Tire System** | Inbound | wear_percent, grip_multiplier | Hard — drives tire squeal |
 | **Fuel System** | Inbound | fuel_level, fuel_state | Hard — drives engine pitch/cut |
 | **Track** | Inbound | surface_type | Hard — drives surface noise |

@@ -218,7 +218,7 @@ This resolves the tension between "Every Short Race Matters" and "Not punitive":
 
 ### Initial Fictional Grid
 
-Based on Super Monaco GP (1990). 16 teams, 1 car each, 16 cars on grid.
+Based on Super Monaco GP (1989 to 1991 era). 16 teams, 1 car each, 16 cars on grid.
 
 | Tier | Team | Color | Rival behavior |
 |---|---|---|---|
