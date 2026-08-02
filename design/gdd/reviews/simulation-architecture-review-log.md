@@ -65,3 +65,15 @@ Blocking items: 0 | Recommended: 1
 Summary: Fresh lean re-review confirmed all prior findings were resolved. Cross-GDD consistency check found 1 RECOMMENDED issue: Fuel System and Tire System GDDs did not list Simulation Architecture as an indirect dependency (ResolvedCarInput[carId] assembled by SimArch at Step 2, consumed at Step 5). Issue was corrected by adding SimArch as indirect dependency in both Fuel System and Tire System. User chose to keep status as Revised — Pending Re-review.
 
 Prior verdict resolved: Yes — all prior findings were resolved; this pass found a documentation gap in Fuel/Tire dependency declarations.
+
+## Review — 2026-08-01 — Verdict: APPROVED
+
+Scope signal: XL
+
+Specialists: none — lean mode
+
+Blocking items: 6 | Recommended: 2
+
+Summary: Re-review after the parallel agent's Grid Display → Qualifying Results rename (6 points). The rename itself was clean, but cross-check against ADRs 0001/0006/0011 (approved 28-29/07, after this GDD's 26/07 review) exposed the pipeline was 3 steps behind: no Step 9b (PitStopSystem), no PitServiceCommand in TickStartSnapshot/PublishedSimulationSnapshot, no Pit Stop in Dependencies/Interactions, no 5a/5b Fuel/Tire split, and stale "Steps 1–13" references in the performance gate and pause boundary. All 6 blocking corrected in-session: pipeline renumbered to 14 steps (9b between 9 and 10 per ADR-0011), snapshots updated with PitServiceCommand[]/Pit state, Pit Stop added to Dependencies and Interactions tables, Step 5 split into 5a/5b with pit-mode refuel/wear-reset behavior, references updated to 1–14/4–14, header dated 2026-08-01.
+
+Prior verdict resolved: Yes — the 26/07 APPROVED verdict was based on the 13-step pipeline that was canonical at the time; the pit-stop ADRs changed the canonical pipeline afterward, requiring this synchronization pass.

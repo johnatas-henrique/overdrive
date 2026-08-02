@@ -147,3 +147,17 @@ Blocking items: 0 | Recommended: 0
 Summary: Fresh lean review with complete file reads (375 lines target + 2,899 lines related GDDs). Phase 2: 8/8 sections present. Phase 3.1: 20 formula tests pass, 13 edge case checks consistent, 8 dependencies confirmed bidirectional. Phase 3.2: 15 rule precision checks high, 0 hand-wave sections, 7 performance aspects addressed. Phase 3.3: 8 cross-GDD contracts verified consistent, 4 tone/pillar alignments confirmed, 0 unintended interactions. Ledger is clean because all prior phases produced clean output.
 
 Prior verdict resolved: Yes — the stick dead-zone naming mismatch from the 2026-07-25 lean review was corrected in the prior pass; this fresh review found zero new defects.
+
+## Review — 2026-08-01 — Verdict: APPROVED
+
+Scope signal: L
+
+Specialists: none — lean mode
+
+Blocking items: 0 | Recommended: 1
+
+Summary: Re-review after the parallel agent's Grid Display → Qualifying Results rename (3 points: transition, AC-54, AC-56) — rename clean, zero residual references. Full contract re-verification against ADRs 0004/0005/0011: EMA alphas (0.3/0.3/0.5), brake priority with frozen EMA, latching, dead zones, reserved bindings, ProcessEventsInDynamicUpdate, SettingsInputPreviewEvaluator, PitService Confirm routing, ActiveControlScheme arbitration — all aligned. One recommended (stale Last Updated header) corrected in-session.
+
+Cross-ADR note for architecture-review (Skill 3): ADR-0005 lines 53/73/111-119 mandate InputEventQueue (ring buffer, 8 entries, drained at simulation Step 2) for CameraToggle routing, while ADR-0010 line 39 and this GDD use direct InputAction.performed routing in DynamicUpdate. The GDD follows ADR-0010 + decision #1450 and is correct; ADR-0005's InputEventQueue is obsolete and must be reconciled in the architecture review.
+
+Prior verdict resolved: Yes — the 25/07 APPROVED verdict stood; the rename introduced no regressions.

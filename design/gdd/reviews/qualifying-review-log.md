@@ -86,3 +86,15 @@ Prior verdict resolved: Partially — prior BLOCKING (edge case tiebreaker) was 
 Corrections applied:
 - Corrected AC-242: "higher tier gets better position" → "stable car_id determines the deterministic order (same as Grid & Start)".
 - Status remains Revised — Pending Re-review.
+
+## Review — 2026-08-01 — Verdict: APPROVED
+
+Scope signal: M
+
+Specialists: none — lean mode
+
+Blocking items: 1 | Recommended: 2
+
+Summary: Re-review after the parallel agent's rename pass. Blocking: residual "Qualifying Results/Grid" (line 43) and "Grid Screen" state name (lines 108/117/119/121) — canonical name is Qualifying Results per ui-menu, RSM, and ADR-0013; corrected in-session. Recommended: stale Last Updated header corrected; auto-advance ambiguity clarified (line 61 now reads "after the 5-second terminal presentation expires" — line 69 remains the no-auto-advance rule for the grid screen itself). Cross-ADR note (Q4): ADR-0013 (Proposed, 2026-07-31) changes the spawn model to pit box + manual out-lap, contradicting the GDD's pit-exit spawn (lines 43/115/254). Not corrected here — the GDD stays authoritative until the architecture review decides ADR-0013; after acceptance, /propagate-design-change must sync qualifying.md, simulation-architecture.md, fuel-system.md (out-lap fuel), and track-system.md (pit geometry).
+
+Prior verdict resolved: Yes — the AC-242 blocking from the previous pass was resolved; this pass found the rename residuals.

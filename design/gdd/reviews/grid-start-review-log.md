@@ -50,3 +50,15 @@ Blocking items: 0 | Recommended: 1 | Nice-to-Have: 1
 Summary: Cross-GDD re-review (triggered by review-all-gdds W4 - row spacing range conflict) found 1 issue: Track row spacing range 6–12m conflicted with Grid & Start 6–10m. Aligned Track to Grid & Start: 6–10m. Header updated.
 
 Prior verdict resolved: Yes — the cross-GDD warning W4 was resolved by aligning Track's row spacing range to Grid & Start's 6–10m.
+
+## Review — 2026-08-01 — Verdict: APPROVED
+
+Scope signal: M
+
+Specialists: none — lean mode
+
+Blocking items: 0 | Recommended: 1 | Nice-to-Have: 2
+
+Summary: Re-review of the Grid Display → Qualifying Results rename (standardization #1620) — rename verified complete across Phase 2, Countdown diagram, States, Interactions, and UX flag. Cross-GDD contracts re-verified: first corner direction (Track), AI launch archetypes (AI Rival), GridAssignment ownership (RSM), Perfect Start multiplier (VP, exclusive write), row spacing 8m/6-10m aligned (Track). One recommended (stale Last Updated header) and two nice-to-have (spacing typos in Player Fantasy) corrected in-session. Cross-GDD note logged: qualifying.md:61 wording "opens automatically after 5 seconds" is ambiguous (means terminal presentation timeout, not grid auto-advance) — scheduled for the qualifying.md review.
+
+Prior verdict resolved: Yes — the 2026-07-26 APPROVED verdict stood; the rename introduced only cosmetic residuals.

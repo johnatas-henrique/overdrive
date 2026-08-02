@@ -39,3 +39,15 @@ Blocking items: 0 | Recommended: 1 | Nice-to-Have: 1
 Summary: Cross-GDD re-review (triggered by review-all-gdds W6 - finish projection ignores pit/resource) found 1 design issue: W6 resolved as accepted MVP approximation — FinishOrderResolver projects trailing AI by pace-only because PostFinishSnapshot is captured at the moment the player finishes, and no simulation runs after that point. Projection is cosmetic (determines trailing-AI order for results screen). Documentation note added. Header updated.
 
 Prior verdict resolved: Yes — the cross-GDD warning W6 was resolved by documenting the MVP approximation rationale.
+
+## Review — 2026-08-01 — Verdict: APPROVED
+
+Scope signal: L
+
+Specialists: none — lean mode
+
+Blocking items: 0 | Recommended: 1
+
+Summary: Re-review after the parallel agent's Grid Display → Qualifying Results rename (4 points in transition rules) — rename clean, zero residual references. Full contract re-verification: Forfeit (Return to Menu while Countdown/Racing paused, no simulation resume — AC-267 matches #1425), pit lane lap counting via racing-spline mapping (#1392), gridAssignment immutable through TransitionRequest (#1424), FinishOrderResolver runs once preserving Finished/DNF and projecting only trailing AI (#1379), RSM position at Step 10 of the canonical 14-step pipeline (matches ADR-0011). One recommended (stale Last Updated header) corrected in-session.
+
+Prior verdict resolved: Yes — the 26/07 APPROVED verdict stood; the rename introduced no regressions.

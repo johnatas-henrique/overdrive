@@ -79,3 +79,27 @@ Blocking items: 0 | Recommended: 3 | Nice-to-Have: 1
 Summary: Cross-GDD re-review (triggered by review-all-gdds W3 - tire numeric readout) found 4 issues: R1 (tire numeric readout missing), R2 (tire color boundary overlap at 25% in tire-system.md), R3 (warning_start_progress undefined), R4 (stale status header). All 4 corrected in-place. Tire numeric readout added to element #4, PIT THIS LAP warning formula and tuning knob added, tire-system.md color boundaries aligned, status header updated. No remaining issues.
 
 Prior verdict resolved: Yes — the cross-GDD warning W3 was resolved by adding the numeric readout and all secondary issues were corrected.
+
+## Review — 2026-08-01 — Verdict: NEEDS REVISION → APPROVED (revised in-session)
+
+Scope signal: M
+
+Specialists: none — lean mode
+
+Blocking items: 4 | Recommended: 6 | Nice-to-Have: 2
+
+Summary: Re-review triggered by the 29/07 layout change (Position/Lap split, new Lap Time element, "3/16" and "L3/5" formats). The element-table update was not propagated: header, HUD States, overlay count, Visual/Audio, and ACs still claimed 7 chase elements. H1 (7 vs 8 elements) resolved to 8 canonical chase elements with cockpit overlay total 12 (8+4); H2 duplicate numbering fixed (#5 Tire and #5 Lap Time → sequential 1-9); H3 Lap Time ownership aligned with ADR-0014 split (current lap = Simulation sim_time, recorded prev/best = RSM GameState.lapTimes[]); H4 Qualifying state now reads Speed, Position, Lap, Lap Time. Tire warning expanded to 4 stages (green >50%, yellow 25-50%, red flash <25%, red persistent <10% with TYRES WORN at grip floor). Camera duplicate dependency removed; race-time residuals relabeled to lap time; PIT THIS LAP renumbered to ninth. All 12 corrections applied in-session.
+
+Prior verdict resolved: Yes — the 2026-07-26 APPROVED verdict stood; new issues arose solely from the layout change.
+
+## Review — 2026-08-01 — Verdict: APPROVED
+
+Scope signal: M
+
+Specialists: none — lean mode
+
+Blocking items: 0 | Recommended: 0
+
+Summary: All 12 corrections verified on disk: element count 8 canonical everywhere (header, states, overlay, 5 ACs), numbering sequential 1-9, Lap Time split documented, 4-stage tire thresholds, duplicate Camera removed, formatting aligned. No remaining issues.
+
+Prior verdict resolved: Yes — all 4 blocking + 6 recommended + 2 nice-to-have resolved in-session.
