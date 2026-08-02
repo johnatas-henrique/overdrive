@@ -181,6 +181,11 @@ The **tire_runtime_grip_multiplier** formula is defined as:
 | **Pit Stop** | Bidirectional | Pit trigger ↔ tire swap | Hard — pit stops are the recovery mechanism |
 | **AI Rival** | Bidirectional | Tire wear (AI) | Hard — AI tire management |
 | **Ghost Recording** | Indirect | Tire state derived from replay (not recorded per tick) | Soft — ghost replay shows tire state |
+| **Audio** | Outbound | wear_percent, grip_multiplier | Hard — drives tire squeal |
+| **Track** | Inbound | Surface wear modifier | Hard — affects tire wear |
+| **VFX** | Outbound | Wear % | Soft — drives smoke intensity |
+| **Qualifying** | Inbound | Qualifying mode (no wear) | Hard — 100% grip, no wear during qualifying |
+| **Race Session Manager** | Inbound | LapCompleted, PitEntry, PitExit | Hard — tire wears per lap |
 
 ## Tuning Knobs
 
@@ -191,7 +196,7 @@ All values below are serialized fields in `TireConfig.asset` (ScriptableObject).
 | Base wear rate | playtesting | 0.001–0.01 | Tires never wear | Tires last 1 lap |
 | Aggression multiplier | 1.0–2.0 | 1.0–3.0 | No difference between driving styles | Aggressive driving instantly kills tires |
 | Surface penalty (off-track) | 2.5 | 1.5–3.0 | Off-track has no penalty | Off-track instantly kills tires |
-| Grip floor | 0.20 | 0.10–0.30 | Car undrivable at 0% | Car too grippy even at 0% |
+| Grip floor | 0.20 | 0.20–0.30 (≥ 0.20 — VP effective_grip floor; below is silently overridden) | Car undrivable at 0% | Car too grippy even at 0% |
 | Efficiency modifier spread | 0.5–0.9 | 0.3–1.0 | All cars wear same | Worst car unplayable |
 | Tire swap time | 2 s | 1–4 s | Instant (no spectacle) | Too slow |
 

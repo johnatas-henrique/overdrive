@@ -222,6 +222,8 @@ Priority order for clamping: speed (lowest) → surface → impact (highest)
 | Audio | Downstream | Soft | Camera mode, speed → Audio mix (internal vs external) |
 | VFX | Bidirectional | Soft | Camera exposes speed/FOV for Directional Velocity and consumes `impactShakeRequest` |
 | Pit Stop | Inbound | Hard | PitPhase and pit-box anchor → PitCamera state |
+| Track | Inbound | Hard | Track geometry → camera follows racing line (mirrors PitLaneSide) |
+| UI Menu | Inbound | Hard | Finished Presentation camera request → terminal viewpoint |
 
 ## Tuning Knobs
 

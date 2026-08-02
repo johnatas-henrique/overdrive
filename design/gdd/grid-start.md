@@ -2,7 +2,7 @@
 
 > **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-26
+> **Last Updated**: 2026-08-01
 > **Implements Pillar**: Every Short Race Matters
 
 ## Phase Scope
@@ -28,7 +28,7 @@ All defined grid/start behavior is MVP; future presentation additions are non-bl
 
 **Emotional target:** One layer:
 
-1. **The Grid Is Set (consequence is visible):** Your qualifying performance determined your starting position. If you qualified well, you start near the front — close to the rivals you want to beat. If you qualified poorly, you start at the back —15 cars between you and victory. The grid is the visible consequence of your qualifying effort. Anchor: lights go out, you're P8 —8 cars ahead,7 behind. The race starts NOW.
+1. **The Grid Is Set (consequence is visible):** Your qualifying performance determined your starting position. If you qualified well, you start near the front — close to the rivals you want to beat. If you qualified poorly, you start at the back — 15 cars between you and victory. The grid is the visible consequence of your qualifying effort. Anchor: lights go out, you're P8 — 8 cars ahead, 7 behind. The race starts NOW.
 
 **Pillar alignment:** Every Short Race Matters — grid position is the first consequence of performance. Speed You Can Feel — the tension of lights-out and the launch.
 
@@ -48,14 +48,14 @@ All defined grid/start behavior is MVP; future presentation additions are non-bl
 
 Row spacing: 8.0m. Column spacing: 3.5m. Stagger offset: 3-5m.
 
-**2. Grid Display Phase**
+**2. Qualifying Results Phase**
 
-After qualifying (or skip), a grid display screen shows all 16 positions with car names and qualifying times or `DNQ`. The screen waits for the player to press Confirm; there is no timeout or Back/Cancel path. Camera shows the grid from a static top-down view in MVP.
+After qualifying (or skip), a qualifying results screen shows all 16 positions with car names and qualifying times or `DNQ`. The screen waits for the player to press Confirm; there is no timeout or Back/Cancel path. Camera shows the grid from a static top-down view in MVP.
 
 **3. Countdown Sequence**
 
 ```
-GRID DISPLAY: Confirm only
+QUALIFYING RESULTS: Confirm only
     ↓
 LIGHTS SEQUENCE: 5s
     - Camera moves to grid level
@@ -87,13 +87,13 @@ LIGHTS SEQUENCE: 5s
 
 If player skips qualifying: `grid_position = 16`.
 
-AI qualifying times are pre-generated before grid display (from Qualifying system).
+AI qualifying times are pre-generated before the Qualifying Results screen (from Qualifying system).
 
 ### States and Transitions
 
 | State | Description | Duration | Player Control |
 |-------|-------------|----------|----------------|
-| **Grid Display** | Show grid positions and times | Confirm only | No |
+| **Qualifying Results** | Show grid positions and times | Confirm only | No |
 | **Countdown** | Lights sequence; cars grid-locked | 5s | Accelerate, Brake, Steer, Pause |
 | **Racing** | Race active | Until finish | Full control |
 
@@ -107,8 +107,8 @@ AI qualifying times are pre-generated before grid display (from Qualifying syste
 | **Vehicle Physics** | Outbound | grid_lock, `perfectStartDriveForceMultiplier` | Holds cars before GO; multiplies `longitudinalDriveForceFinal` by 1.15 for 600 ticks after a valid start |
 | **AI Rival** | Outbound | Grid positions, AI launch behavior | AI starts from grid |
 | **Simulation Architecture** | Inbound | Countdown ticks, GO boundary, grid-lock lifecycle | Simulation releases grid lock on tick 300 and publishes the first Racing snapshot |
-| **Input System** | Inbound | Accelerate, Brake, Steer, Pause, Confirm | Player controls remain active during Countdown; Confirm advances Grid Display |
-| **HUD** | Outbound | Grid display, countdown, perfect start indicator | Player feedback |
+| **Input System** | Inbound | Accelerate, Brake, Steer, Pause, Confirm | Player controls remain active during Countdown; Confirm advances Qualifying Results |
+| **HUD** | Outbound | Qualifying Results screen, countdown, perfect start indicator | Player feedback |
 | **Audio** | Outbound | Countdown beeps, launch sounds | Audio cues |
 
 ## Formulas
@@ -149,7 +149,7 @@ If player skips: `grid_position = 16`.
 | **Race Session Manager** | Inbound | immutable `GridAssignment`, race mode | Hard — supplies the locked order |
 | **Simulation Architecture** | Bidirectional | GO tick and grid-lock state in; immutable PerfectStartResult out | Hard — Simulation owns the lifecycle boundary and copies the result into ReplayInitialState |
 | **Input System** | Inbound | Confirm and gameplay controls | Hard — owns skip and pre-GO input |
-| **HUD** | Outbound | Grid display, countdown | Hard — player feedback |
+| **HUD** | Outbound | Qualifying Results screen, countdown | Hard — player feedback |
 | **Audio** | Outbound | Countdown sounds | Soft — audio cues |
 
 ## Tuning Knobs
@@ -162,18 +162,18 @@ If player skips: `grid_position = 16`.
 | Perfect start window | 12 pre-GO ticks + GO tick | Fixed for MVP; changes require design review | Too hard to time | Too easy |
 | Acceleration bonus | 15% for 10s | 10–20%, 5–15s | Bonus negligible | Bonus too strong |
 | Countdown duration | 5s / 300 ticks | Fixed for MVP; changes require design review | Too fast (no prep) | Too slow (boring) |
-| Grid display duration | Confirm only | Fixed for MVP; changes require design review | Too fast to read | Too long |
+| Qualifying Results display duration | Confirm only | Fixed for MVP; changes require design review | Too fast to read | Too long |
 
 ## Visual/Audio Requirements
 
-- **Grid display:** Full grid with positions, names, and times. Team colors on cars.
+- **Qualifying Results:** Full grid with positions, names, and times. Team colors on cars.
 - **Countdown:** Red lights illuminate one by one. All lights off = GO.
 - **Perfect start indicator:** Visual flash or HUD indicator when bonus activates.
 - **Launch:** Camera shakes slightly on GO. Engine sounds intensify.
 
 ## UI Requirements
 
-> **📌 UX Flag — Grid & Start**: This system has UI requirements. In Phase 4 (Pre-Production), run `/ux-design` to create a UX spec for the grid display and countdown before writing epics.
+> **📌 UX Flag — Grid & Start**: This system has UI requirements. In Phase 4 (Pre-Production), run `/ux-design` to create a UX spec for the qualifying results and countdown before writing epics.
 
 ## Acceptance Criteria
 
@@ -191,7 +191,7 @@ If player skips: `grid_position = 16`.
 
 ## Open Questions
 
-- **Grid display camera angle:** MVP uses a static top-down view.
+- **Qualifying Results camera angle:** MVP uses a static top-down view.
 - **Perfect start audio cue:** Audio may add a dedicated activation cue; the gameplay contract does not depend on it.
 - **AI perfect start:** Resolved for MVP: player-only.
 - **Grid formation animation:** Cars spawn at their validated assigned grid transforms; no drive-to-grid animation is required in MVP.

@@ -2,7 +2,7 @@
 
 > **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-26
+> **Last Updated**: 2026-08-01
 > **Implements Pillar**: Every Short Race Matters
 
 ## Phase Scope
@@ -130,12 +130,12 @@ A lap counts when the car crosses the start/finish line. The car's position is a
 |------|----|---------|
 | Idle | Countdown | Content emits `RaceLoadReady(RaceMode.Race, gridAssignment)` and Simulation accepts it for a Race-mode load |
 | Idle | Qualifying | Player starts qualifying; RSM sets `raceMode = Qualifying` and returns `TransitionRequest(Loading, QualifyingStartRequested)` while Simulation performs Loading before the first Qualifying tick |
-| Idle | Idle | Grid Display sends `StartRaceRequested`; RSM locks the existing qualifying/skip `gridAssignment` or creates the skip assignment, returns `TransitionRequest(Loading, RaceStartRequested, gridAssignment)`, and remains Idle while Simulation performs Loading |
+| Idle | Idle | Qualifying Results sends `StartRaceRequested`; RSM locks the existing qualifying/skip `gridAssignment` or creates the skip assignment, returns `TransitionRequest(Loading, RaceStartRequested, gridAssignment)`, and remains Idle while Simulation performs Loading |
 | Qualifying | Paused | Player presses Pause; retain `raceMode = Qualifying` |
 | Paused | Qualifying | Player resumes qualifying; retain `raceMode = Qualifying` |
 | Qualifying | Finished | Flying lap completes or fails; set `resultKind = Qualifying`, lock grid result and request Simulation Finished |
-| Finished | Results | `resultKind = Qualifying`, `resolutionComplete = true`, and player dismisses terminal presentation; Simulation opens Qualifying Results/Grid Display |
-| Results | Results | Qualifying Results/Grid Display sends `StartRaceRequested`; RSM locks `gridAssignment`, sets `raceMode = Race`, and returns `TransitionRequest(Loading, QualifyingComplete, gridAssignment)` while Simulation begins Loading |
+| Finished | Results | `resultKind = Qualifying`, `resolutionComplete = true`, and player dismisses terminal presentation; Simulation opens Qualifying Results |
+| Results | Results | Qualifying Results sends `StartRaceRequested`; RSM locks `gridAssignment`, sets `raceMode = Race`, and returns `TransitionRequest(Loading, QualifyingComplete, gridAssignment)` while Simulation begins Loading |
 | Countdown | Racing | Simulation-owned `countdownRemainingTicks` reaches 0 (GO) |
 | Countdown | Paused | Player presses Pause; countdownTimer freezes |
 | Paused | Countdown | Player resumes before GO; countdownTimer continues from remaining time |
@@ -228,6 +228,9 @@ This is deferred telemetry only and has no MVP output or gameplay effect.
 | **Track** | Inbound | trackLength, spline | Hard — RSM reads for distance |
 | **Grid & Start** | Outbound | immutable `GridAssignment` | Hard — RSM creates the assignment consumed during loading |
 | **Content Pipeline** | Bidirectional | RaceLoadReady / ContentLoadError; ContentLoadRequest through Simulation | Hard — loading gates session start |
+| **Car Definition Data** | Inbound | team_id → grid composition | Hard — RSM needs to know which cars are on grid |
+| **UI Menu** | Inbound | StartRaceRequested, ReturnToMenuRequested | Hard — UI submits lifecycle requests |
+| **Audio** | Outbound | lap, final-lap, finish events | Hard — drives stings |
 
 ## Tuning Knobs
 

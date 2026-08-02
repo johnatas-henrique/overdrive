@@ -165,7 +165,7 @@ Designed slots for future implementation:
 
 `streak_intensity = clamp((speed - streak_onset_speed) / (global_max_velocity - streak_onset_speed), 0, 1)`
 
-Where `streak_onset_speed = 100 km/h` and `global_max_velocity = max(all car top speeds)` from Car Definition Data.
+Where `streak_onset_speed = 100 km/h` and `global_max_velocity` = max(all car top speeds) — computed at runtime from each car's `max_velocity` (Car Definition Data).
 
 **Output Range:** 0.0 (at or below onset) to 1.0 (fastest car at max speed).
 
@@ -207,7 +207,7 @@ VFX emits `impactShakeRequest { source, impact_factor }`. Camera converts this r
 | **Camera** | Outbound | `impactShakeRequest` | Hard — camera applies the shake contract |
 | **Settings** | Inbound | density, Motion Blur, Reduced Motion | Hard — supplies player quality/accessibility preferences; Simulation-owned PerformanceReduced has higher runtime precedence |
 | **Tire System** | Inbound | Wear % | Soft — drives smoke intensity |
-| **Car Definition Data** | Inbound | `global_max_velocity` | Hard — normalizes speed effects |
+| **Car Definition Data** | Inbound | Per-car `max_velocity` (derives `global_max_velocity` = max of all) | Hard — normalizes speed effects |
 | **Simulation Architecture** | Inbound | `PerformanceReduced`, SimulationState | Hard — owns state/performance gating |
 
 ## Tuning Knobs
@@ -246,7 +246,7 @@ No UI requirements for this system. VFX is visual-only.
 - **GIVEN** grip loss at 0.5 and a 60 FPS frame, **WHEN** tire smoke is rendered, **THEN** emission is 300–1200 particles/s converted by frame delta to approximately 5–20 particles per frame.
 - **GIVEN** VFX density Low, **WHEN** particles are rendered, **THEN** count is 25% of High.
 - **GIVEN** cockpit camera, **WHEN** VFX intensity is checked, **THEN** same as chase camera unless Reduced Motion or a density preset changes the output.
-- **GIVEN** Simulation emits `PerformanceReduced`, **WHEN** VFX updates, **THEN** density is Low, minimum speed streaks remain available, and VFX does not alter Simulation timing.
+- **GIVEN** Simulation emits `PerformanceReduced`, **WHEN** VFX updates (LateUpdate, per ADR-0010 — reads interpolated VisualTransform after the α is computed), **THEN** density is Low, minimum speed streaks remain available, and VFX does not alter Simulation timing.
 - **GIVEN** Reduced Motion is enabled while saved Motion Blur is On, **WHEN** VFX resolves runtime effects, **THEN** Motion Blur is Off without mutating the saved preference; disabling Reduced Motion restores the working Motion Blur value.
 - **GIVEN** PerformanceReduced and Reduced Motion are both active, **WHEN** VFX resolves overrides, **THEN** density is Low from Simulation and motion effects remain suppressed by Reduced Motion.
 

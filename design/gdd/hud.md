@@ -2,7 +2,7 @@
 
 > **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-26
+> **Last Updated**: 2026-08-01
 > **Implements Pillar**: Speed You Can Feel
 
 ## Phase Scope
@@ -40,31 +40,32 @@ Ghost UI is non-blocking during MVP review unless it changes MVP HUD state contr
 
 ### Core Rules
 
-**1. HUD Elements (Chase Camera — 7 elements in MVP, 8 with Ghost Recording)**
+**1. HUD Elements (Chase Camera — 8 elements in MVP, 9 with Ghost Recording)**
 
 | # | Element | Data Source | Position | Size | Phase |
 |---|---------|-------------|----------|------|-------|
-| 1 | **Speed** | Vehicle Physics (km/h) | Bottom-center | Large — primary reference | MVP |
-| 2 | **Position/Lap** | Race Session Manager (position, lap/total) | Top-left | Medium — always visible | MVP |
-| 3 | **Fuel Bar** | Fuel (0-100%) | Bottom-left | Horizontal bar with state-color fill and numeric "X.X L" readout below | MVP |
-| 4 | **Tire Bar** | Tire remaining life (0-100%) | Bottom-left, below fuel | Horizontal bar, state-color fill, numeric "X%" readout below | MVP |
-| 5 | **Race Time** | Simulation (elapsed) | Top-right | Small — secondary reference | MVP |
-| 6 | **Rival Gap** | Race Session Manager (gap in seconds) | Right-center | Medium — always visible | MVP |
-| 7 | **Track Map** | Race Session Manager positions + Track geometry | Bottom-right | Mini-map: main spline, pit-lane spline, pit-entry marker and all 16 cars | MVP |
-| 8 | **Ghost Delta** | Ghost Recording (time delta) | Below speed | Small, appears only when ghost is active | Alpha |
+| 1 | **Speed + Gear** | Vehicle Physics (km/h, gear) | Top-center | Large — primary reference | MVP |
+| 2 | **Position** | Race Session Manager (position, total grid) | Top-right | Small — "3/16" format | MVP |
+| 3 | **Lap** | Race Session Manager (current lap, total laps) | Top-right, below Position | Small — "L3/5" format | MVP |
+| 4 | **Fuel Bar** | Fuel (0-100%) | Bottom-right | Horizontal bar with state-color fill and numeric "X.X L" readout below | MVP |
+| 5 | **Tire %** | Tire remaining life (0-100%) | Bottom-right, below Fuel Bar | Icon + percentage, color-coded (green/yellow/red) | MVP |
+| 6 | **Lap Time** | Simulation (current) + RSM (prev/best) | Top-left | Small group — current time header + prev/best below | MVP |
+| 7 | **Rival Gap** | Race Session Manager (gap in seconds) | Top-left, below Lap Time | Small — "+X.Xs" or "LEADER" | MVP |
+| 8 | **Track Map** | Race Session Manager positions + Track geometry | Right side | Compact mini-map: main spline, pit-lane spline, pit-entry marker and all 16 cars | MVP |
+| 9 | **Ghost Delta** | Ghost Recording (time delta) | Below Speed | Small, appears only when ghost is active | Alpha |
 
-`PIT THIS LAP` is a transient advisory, not an eighth persistent HUD element. It appears only when Pit Stop outputs `PitThisLap = true` and clears at pit entry.
+`PIT THIS LAP` is a transient advisory, not a ninth persistent HUD element (it joins the 8 persistent chase elements and Ghost Delta only as a transient). It appears only when Pit Stop outputs `PitThisLap = true` and clears at pit entry.
 
 **2. HUD Elements (Cockpit Camera — 4 elements minimum, up to 11 with overlay)**
 
 | # | Element | Data Source | Position | Notes |
 |---|---------|-------------|----------|-------|
-| 1 | **Position/Lap** | Race Session Manager | Top-left | Same as chase |
+| 1 | **Position/Lap** | Race Session Manager | Top-left | Combined "3/16" + "L3/5" — chase splits these into two elements |
 | 2 | **Fuel Warning** | Fuel (state only) | Dashboard area | Color flash only (yellow/red), no bar |
 | 3 | **Tire Warning** | Tire (state only) | Dashboard area | Color flash only, no bar |
 | 4 | **Rival Gap** | Race Session Manager | Right-center | Same as chase |
 
-**Cockpit Overlay (Settings option):** Player can disable "Show Chase HUD in Cockpit" in Settings. When enabled by default during Race, all 7 active Chase elements are overlaid on the cockpit view (total: 11 elements including the 4 cockpit elements). In Qualifying, the overlay respects the Qualifying state and does not reintroduce the race-only Rival Gap or Track Map. The player may turn it off to restore the minimal cockpit HUD. This is a readability preference, not a hard element-count limit; the 0.5-second reading target and maximum 2 pieces of information per glance still apply.
+**Cockpit Overlay (Settings option):** Player can disable "Show Chase HUD in Cockpit" in Settings. When enabled by default during Race, all 8 active Chase elements are overlaid on the cockpit view (total: 12 elements including the 4 cockpit elements). In Qualifying, the overlay respects the Qualifying state and does not reintroduce the race-only Rival Gap or Track Map. The player may turn it off to restore the minimal cockpit HUD. This is a readability preference, not a hard element-count limit; the 0.5-second reading target and maximum 2 pieces of information per glance still apply.
 
 **Note (Alpha/Beta):** When additional cars become playable, each cockpit has a different dashboard layout. Cockpit HUD positioning may need per-car adjustment to avoid overlapping dashboard elements. This is deferred to Alpha/Beta when cockpit variants are implemented.
 
@@ -79,8 +80,8 @@ Ghost UI is non-blocking during MVP review unless it changes MVP HUD state contr
 
 | State | Elements Active | Notes |
 |-------|----------------|-------|
-| **Race** | All 7 (chase) / 4 (cockpit) | Full HUD during race |
-| **Qualifying** | Speed, Position/Lap, Race Time | No rival gap or track map; cockpit overlay does not add race-only elements |
+| **Race** | All 8 (chase) / 4 (cockpit) | Full HUD during race |
+| **Qualifying** | Speed, Position, Lap, Lap Time | No rival gap or track map; cockpit overlay does not add race-only elements |
 | **Countdown** | Countdown overlay | Race time hidden; five-light sequence is authoritative |
 | **Finished** | Terminal presentation | Race HUD suppressed; result/presentation UI owns the screen |
 | **Paused** | Last authoritative telemetry behind pause UI | Race HUD does not advance; a Performance pause exposes only Resume and Return to Menu |
@@ -99,9 +100,9 @@ Every element must be readable in **under 0.5 seconds** at 200+ km/h. This means
 
 | State | Entry Condition | Exit Condition | HUD Mode |
 |-------|-----------------|----------------|----------|
-| **Qualifying** | Qualifying starts | Qualifying ends | Timer-focused (3 elements) |
-| **Countdown** | Simulation enters Countdown | GO | Countdown overlay; race timer remains 0.0 |
-| **Race** | Race starts | Race ends or InPitBox service begins | Full HUD (7/4 elements); PitTransit and Exiting retain the race HUD |
+| **Qualifying** | Qualifying starts | Qualifying ends | Timer-focused (4 elements) |
+| **Countdown** | Simulation enters Countdown | GO | Countdown overlay; lap timer remains 0.0 |
+| **Race** | Race starts | Race ends or InPitBox service begins | Full HUD (8/4 elements); PitTransit and Exiting retain the race HUD |
 | **Finished** | Player objective ends | Finished Presentation dismissed after `resolutionComplete`; then Race Results, or Qualifying Results confirms Start Race and transitions Loading | Player-car terminal presentation; HUD reads immutable `resultKind`, `resolutionComplete`, and resolved result metadata from PublishedSimulationSnapshot while continuing to read live domain telemetry from each owner; Continue is enabled only when resolution is complete |
 | **Paused** | Simulation enters Paused | Player resumes or quits | Last authoritative telemetry remains behind pause UI; Performance pause shows Resume and Return to Menu only |
 | **Pit** | Car enters pit lane | Car exits pit lane | Race HUD during PitTransit/Exiting; four-element service overlay only in InPitBox |
@@ -114,10 +115,10 @@ Every element must be readable in **under 0.5 seconds** at 200+ km/h. This means
 | **Fuel** | Inbound | Fuel level (0-100%), state (Full/Conserving/Critical/Empty) | Drives fuel bar fill + color |
 | **Tire** | Inbound | Tire wear (0-100%), grip multiplier | Drives tire bar fill + color |
 | **Vehicle Physics** | Inbound | Speed (km/h), gear | Drives speed display |
-| **Race Session Manager** | Inbound | Position (1-16), lap (current/total), racing spline progress, pit proximity, rival gap | Drives position/lap, track map and rival gap |
+| **Race Session Manager** | Inbound | Position (1-16), lap (current/total), racing spline progress, pit proximity, rival gap, lapTimes[] (recorded laps) | Drives position/lap, track map and rival gap |
 | **Track** | Inbound | Main spline, pit-lane spline, pit-entry marker | Drives Track Map geometry and pit-entry location. |
 | **Pit Stop** | Inbound | `PitThisLap`, pit-service elapsed time, `tireSwapComplete` | Drives transient advisory and Pit HUD state. |
-| **Simulation** | Inbound | `sim_time`, `SimulationState`, countdown remaining ticks, `PerformanceReduced { severity, observedFps }`, and Finished-only immutable result metadata | Drives race time, countdown, presentation-state transitions and the transient performance warning. During Loading, Paused, Finished, or Results, HUD reads the last authoritative speed/fuel/tire/position outputs retained by their owners until active simulation resumes. |
+| **Simulation** | Inbound | `sim_time` (current lap elapsed), `SimulationState`, countdown remaining ticks, `PerformanceReduced { severity, observedFps }`, and Finished-only immutable result metadata | Drives current lap time, countdown, presentation-state transitions and the transient performance warning. During Loading, Paused, Finished, or Results, HUD reads the last authoritative speed/fuel/tire/position outputs retained by their owners until active simulation resumes. |
 | **Car Definition Data** | Inbound | Team color, team icon | Drives cosmetic theming |
 | **Ghost Recording** | Inbound | Time delta (Alpha+) | Drives ghost delta element |
 | **Input System** | Inbound | Input availability state only | Drives the transient NoInputDevice overlay; no persistent device icon |
@@ -135,10 +136,11 @@ Every element must be readable in **under 0.5 seconds** at 200+ km/h. This means
 - Yellow: fuel 25-50%
 - Red: fuel < 25%
 
-**Tire bar color:**
+**Tire bar color (4 stages):**
 - Green: tire > 50%
 - Yellow: tire 25-50%
-- Red: tire < 25%
+- Red flash: tire < 25%
+- Red persistent: tire < 10% (wear > 90%) — TYRES WORN overlay
 
 ### Rival Gap Display
 
@@ -181,12 +183,13 @@ Mini-map scale: `map_scale = track_length / map_size_pixels`. All 16 cars shown 
 | **Vehicle Physics** | Inbound | Speed + gear | Hard — drives speed display |
 | **Race Session Manager** | Inbound | Position, lap, pit proximity, rival gap | Hard — drives position/lap, map and rival display |
 | **Simulation** | Inbound | Race time, state, performance signal | Hard — drives time, state transitions and performance warning |
-| **Camera** | Inbound | Camera mode, FOV | Soft — HUD layout adapts to camera mode |
+| **Camera** | Inbound | Camera mode | Hard — selects cockpit/chase layout |
 | **Car Definition Data** | Inbound | Team color, icon | Hard — drives cosmetic theming |
+| **Grid & Start** | Inbound | Countdown lights, GO boundary, perfect-start indicator | Hard — drives countdown overlay and perfect-start flash |
+| **Qualifying** | Inbound | Qualifying timer, session state | Hard — timer-focused qualifying HUD |
 | **Content Pipeline** | Inbound | Loading progress, asset readiness | Hard — drives race-load progress UI |
 | **Ghost Recording** | Inbound | Time delta | Soft — Alpha+ only |
 | **Input System** | Inbound | Input availability | Soft — drives only the NoInputDevice overlay |
-| **Camera** | Inbound | Camera mode | Hard — selects cockpit/chase layout |
 | **Track** | Inbound | Main and pit spline geometry | Hard — drives Track Map geometry |
 | **Pit Stop** | Inbound | PitThisLap and service state | Hard — drives advisory and InPitBox overlay |
 | **Settings** | Inbound | Colorblind mode and cockpit overlay preference | Hard — drives accessibility and layout preference |
@@ -209,8 +212,8 @@ Mini-map scale: `map_scale = track_length / map_size_pixels`. All 16 cars shown 
 
 - **Fuel bar:** Horizontal fill bar, team color, depletes left-to-right. Pulse animation when <25%.
 - **Tire bar:** Horizontal fill bar, color-coded (green/yellow/red). No pulse — wear is continuous.
-- **Speed:** Large numeric display, team color accent. No units displayed (km/h implicit).
-- **Position/Lap:** "P1 L3/5" format. Position bold, lap secondary.
+- **Speed + Gear:** Large numeric display with gear indicator, team color accent. No units displayed (km/h implicit).
+- **Position/Lap:** Position "3/16" format, Lap "L3/5" format directly below. Position bold, lap secondary.
 - **Rival gap:** "+0.4s" format. Green if gaining, red if losing, white if stable.
 - **Track map:** Semi-transparent mini-map showing main spline, pit-lane spline, pit-entry marker and all 16 cars as dots. Player = white dot with ring.
 - **Team theming:** Background tint at 20% opacity, element borders in team color, accent text in team color.
@@ -223,23 +226,23 @@ Mini-map scale: `map_scale = track_length / map_size_pixels`. All 16 cars shown 
 
 ## Acceptance Criteria
 
-- **GIVEN** a race in progress, **WHEN** player looks at HUD, **THEN** all 7 chase elements are visible and readable in under 0.5 seconds.
+- **GIVEN** a race in progress, **WHEN** player looks at HUD, **THEN** all 8 chase elements are visible and readable in under 0.5 seconds.
 - **GIVEN** fuel at 30%, **WHEN** fuel bar is displayed, **THEN** bar shows yellow (between 25-50% threshold).
 - **GIVEN** fuel at 20%, **WHEN** fuel bar is displayed, **THEN** bar shows red and pulses.
 - **GIVEN** tire remaining life is 40% (60% wear), **WHEN** tire bar is displayed, **THEN** bar shows yellow (between 25-50% threshold).
-- **GIVEN** rival 0.4s behind, **WHEN** rival gap is displayed, **THEN** shows "+0.4" with appropriate color.
+- **GIVEN** rival 0.4s behind, **WHEN** rival gap is displayed, **THEN** shows "+0.4s" with appropriate color.
 - **GIVEN** player is P1, **WHEN** rival gap is displayed, **THEN** shows "LEADER" instead of time.
 - **GIVEN** cockpit camera active with `Show Chase HUD in Cockpit` disabled, **WHEN** HUD is displayed, **THEN** only 4 elements show (position/lap, fuel warning, tire warning, rival gap).
 - **GIVEN** Pit Stop is in `InPitBox`, **WHEN** HUD is displayed, **THEN** the service overlay shows elapsed pit-service time instead of speed; PitTransit and Exiting retain the race HUD.
-- **GIVEN** qualifying active, **WHEN** HUD is displayed, **THEN** only speed, position/lap, and race time shown.
+- **GIVEN** qualifying active, **WHEN** HUD is displayed, **THEN** only speed, position, lap, and lap time shown.
 - **GIVEN** a normal finish reaches Results, **WHEN** the results screen appears, **THEN** full-screen takeover shows position, time, and stats; Forfeit uses its separate result contract.
 - **GIVEN** team_tier1_a (Madonna), **WHEN** HUD is displayed, **THEN** elements use Madonna's team color for borders and accents.
 - **GIVEN** team_tier4_d (ZeroForce), **WHEN** HUD is displayed, **THEN** elements use ZeroForce's team color, with auto-contrast adjustment if needed.
-- **GIVEN** cockpit camera with overlay enabled during Race, **WHEN** HUD is displayed, **THEN** all 7 active Chase elements are overlaid on cockpit view.
+- **GIVEN** cockpit camera with overlay enabled during Race, **WHEN** HUD is displayed, **THEN** all 8 active Chase elements are overlaid on cockpit view.
 - **GIVEN** cockpit camera with overlay disabled, **WHEN** HUD is displayed, **THEN** only 4 minimal elements shown.
-- **GIVEN** qualifying is active with cockpit overlay enabled, **WHEN** HUD is displayed, **THEN** the overlay does not add Rival Gap or Track Map to the three-element Qualifying HUD.
-- **GIVEN** cockpit camera with overlay enabled by default, **WHEN** HUD is displayed, **THEN** all 7 Chase elements are overlaid with the 4 cockpit elements, for 11 total, while the 0.5-second reading target remains documented.
-- **GIVEN** a new profile uses Settings defaults, **WHEN** cockpit HUD is first shown, **THEN** `show_chase_hud_in_cockpit = On` and the documented 11-element composition is active.
+- **GIVEN** qualifying is active with cockpit overlay enabled, **WHEN** HUD is displayed, **THEN** the overlay does not add Rival Gap or Track Map to the four-element Qualifying HUD.
+- **GIVEN** cockpit camera with overlay enabled by default, **WHEN** HUD is displayed, **THEN** all 8 Chase elements are overlaid with the 4 cockpit elements, for 12 total, while the 0.5-second reading target remains documented.
+- **GIVEN** a new profile uses Settings defaults, **WHEN** cockpit HUD is first shown, **THEN** `show_chase_hud_in_cockpit = On` and the documented 12-element composition is active.
 - **GIVEN** Settings previews text scale 150%, **WHEN** HUD reflows, **THEN** every active element uses the working scale without clipping and Cancel restores the prior scale.
 - **GIVEN** player disables `Show Chase HUD in Cockpit`, **WHEN** cockpit HUD is displayed, **THEN** only the 4 minimal cockpit elements remain.
 - **GIVEN** Input System reports no available scheme, **WHEN** HUD updates, **THEN** authoritative telemetry remains visible and the "NO INPUT DEVICE" overlay is shown.

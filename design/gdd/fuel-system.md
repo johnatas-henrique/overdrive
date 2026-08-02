@@ -192,6 +192,11 @@ When fuel < 25%: apply +1% to max_velocity (top speed bonus only, not accelerati
 | **HUD** | Outbound | Fuel level + state | Hard — player needs to see fuel |
 | **Pit Stop** | Bidirectional | Pit trigger ↔ refuel | Hard — pit stops are the recovery mechanism |
 | **AI Rival** | Bidirectional | Fuel level (AI) | Hard — AI fuel management |
+| **Track** | Inbound | Pit lane state | Hard — triggers refueling |
+| **Qualifying** | Inbound | `qualifying_fuel_load` request and reference lap estimate | Hard — initializes the minimum load for one flying lap |
+| **UI Menu** | Outbound | Fuel rate comparison data | Hard — pre-race fuel comparison |
+| **Audio** | Outbound | Fuel level, fuel_state | Hard — drives engine pitch/cut |
+| **Race Session Manager** | Inbound | LapCompleted, PitEntry, PitExit | Hard — fuel consumes per lap |
 | **Ghost Recording** | Indirect | Fuel state derived from replay (not recorded per tick) | Soft — ghost replay shows fuel state |
 
 ## Tuning Knobs

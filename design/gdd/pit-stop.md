@@ -78,7 +78,7 @@ A pit stop is triggered when the player enters the pit lane zone. Pit stops are 
 
 **5a. Player Pit Advisory**
 
-After the player completes lap 1, Pit Stop evaluates whether the player can begin the next non-final lap. It uses the player's last completed-lap Fuel/Tire deltas and the same 10% resource margin as AI. This is intentionally evaluated mid-lap so the player receives warning before pit entry; AI evaluates at the lap boundary. The 1.10× margin is owned by AI Rival (ai-rival.md); Pit Stop applies it consistently for both AI and player.
+After the player completes lap 1, Pit Stop evaluates whether the player can begin the next non-final lap. It uses the player's last completed-lap Fuel/Tire deltas and the same 10% resource margin as AI. This is intentionally evaluated mid-lap so the player receives warning before pit entry; AI evaluates at the lap boundary. The 1.10× margin value is owned by AI Rival's Tuning Knob (ai-rival.md, "Pit resource safety margin"); the `pit_required_before_next_lap` formula itself is owned by Pit Stop and applies that value consistently for both AI and player.
 
 - `predicted_fuel_at_next_lap_start = current_fuel - last_lap_fuel_use × remaining_racing_progress`
 - `predicted_tire_life_at_next_lap_start = (1 - current_tire_wear_fraction) - last_lap_tire_wear_fraction × remaining_racing_progress`
@@ -185,6 +185,7 @@ The 0.05 lead guarantees that a track whose pit entry occurs before 80% still wa
 | **AI Rival** | Bidirectional | AI commits to pit-lane route, navigation and service completion | Hard — AI uses the same pit lane, speed cap, box and service flow as player |
 | **Race Session Manager** | Inbound | PitEntry, PitExit, lap boundary, mapped progress | Hard — owns race/session events consumed by Pit Stop |
 | **Camera** | Outbound | PitPhase and pit-box anchors | Hard — owns PitCamera presentation |
+| **Qualifying** | Inbound | RaceMode.Qualifying check | Hard — pit entry, service, and exit are blocked during qualifying |
 | **Input System** | Inbound | Direct Confirm action in PitService | Hard — generic UI Submit/Cancel/navigation remain disabled; direct Confirm permits manual player exit |
 | **Audio** | Outbound | Pit phase events | Soft — plays pit movement/service cues |
 

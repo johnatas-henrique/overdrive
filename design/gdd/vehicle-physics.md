@@ -227,7 +227,7 @@ Fuel System owns `fuel_rate = 0.06 L/s × throttle_input × efficiency_modifier`
 
 ### Tire Wear
 
-Tire System owns `tire_wear_rate = base_rate × distance_factor × aggression × surface_penalty × efficiency_modifier`. Vehicle Physics supplies speed/distance, slip/aggression and surface inputs; Tire System returns runtime grip multiplier. Vehicle Physics does not define a second wear formula. Difficulty does not modify Tire rules in MVP.
+Tire System owns `tire_wear_rate = base_rate × distance_factor × aggression × surface_penalty × efficiency_modifier × wearRateMultiplier` (wearRateMultiplier = 1.0 in MVP, per tire-system.md). Vehicle Physics supplies speed/distance, slip/aggression and surface inputs; Tire System returns runtime grip multiplier. Vehicle Physics does not define a second wear formula. Difficulty does not modify Tire rules in MVP.
 
 ### Grip Decomposition
 
@@ -287,6 +287,8 @@ For the player while off-track, `surface_grip_multiplier` is selected from the a
 | AI Rival | Downstream | Soft | Physics → AI: full car state for decision-making |
 | Ghost Recording | Indirect via Simulation | Hard | Simulation → Ghost: SimulationInput per tick. Replay input re-enters through Simulation Architecture. |
 | Multiplayer Architecture | Deferred / Beta | Architecture constraint only | Future Beta may provide kinematic state and remote inputs after a separate network architecture decision; MVP has no network dependency. |
+| Content Pipeline | Inbound | Hard | Car prefab references for spawning |
+| Race Session Manager | Outbound | Hard | CarState and Track-mapped spline progress for ranking |
 | Grid & Start | Bidirectional | Hard | Grid & Start → Physics: grid lock and Perfect Start multiplier; Physics → Grid & Start: GO-boundary CarState |
 | Track System | Inbound | Hard | Track → Physics: surface, tangent, racing boundary, pit-entry zone |
 | Pit Stop | Bidirectional | Hard | Pit Stop → Physics: `PitPhase` and pit speed limit; Physics → Pit Stop: CarState and pit-entry/exit events |
@@ -350,7 +352,7 @@ The HUD itself is owned by the HUD System GDD.
 - **AC-L3:** Given player taps throttle rapidly on/off while turning, When assist triggers, Then next activation requires throttle held ≥0.3s (no spam).
 
 ### Resources
-- **AC-R1:** Given Efficiency stat 16/20, When player holds full throttle for 60 seconds, Then Fuel reports approximately 1.8L consumed, equal to about 22.5% of the fixed 8.0L tank (±0.1L), independent of DifficultyProfile.
+- **AC-R1:** Given Efficiency stat 16/20, When player holds full throttle for 60 seconds, Then Fuel reports approximately 2.16L consumed, equal to about 27% of the fixed 8.0L tank (±0.1L), independent of DifficultyProfile.
 - **AC-R2:** Given Efficiency stat 15/20, When player drives with constant throttle + weaving off-track for 30 seconds, Then tire wear is ≥2× compared to straight-line on-track driving for 30 seconds at same Efficiency.
 - **AC-R3:** Given fuel at 0%, When player presses throttle, Then car does not accelerate but steering and braking remain functional.
 - **AC-R4:** Given tire at 0%, When car is on-track, Then effective grip is reduced to floor (0.20) and car is controllable but significantly slower.

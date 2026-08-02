@@ -2,7 +2,7 @@
 
 > **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-26
+> **Last Updated**: 2026-08-01
 > **Implements Pillar**: Speed You Can Feel
 
 ## Phase Scope
@@ -40,7 +40,7 @@ Future qualifying presentation or replay behavior is non-blocking during MVP rev
 
 **1. Qualifying Format**
 
-Single flying lap. Starting Qualifying requests Content Loading; after Simulation accepts `RaceLoadReady(RaceMode.Qualifying)`, it enters `SimulationState.Racing` with `GameplayQualifying` directly, without Countdown or grid lock. The player starts from pit exit and completes one timed lap. After it ends, the player car is presented for up to 5 seconds; Confirm may advance immediately to Qualifying Results/Grid. Fastest time = grid position. One chance only — no retry. Race Session Manager owns `RaceMode.Qualifying`; Simulation owns Loading, Racing, Finished, and Results.
+Single flying lap. Starting Qualifying requests Content Loading; after Simulation accepts `RaceLoadReady(RaceMode.Qualifying)`, it enters `SimulationState.Racing` with `GameplayQualifying` directly, without Countdown or grid lock. The player starts from the pit box (assigned by boxId from TrackData.PitLaneDefinition), drives an out-lap through the pit lane onto track (pit speed limit enforced, no fuel consumption, no tire wear, timer does not start), then completes one timed flying lap. After it ends, the player car is presented for up to 5 seconds; Confirm may advance immediately to Qualifying Results. Fastest time = grid position. One chance only — no retry. Race Session Manager owns `RaceMode.Qualifying`; Simulation owns Loading, Racing, Finished, and Results.
 
 **2. Fuel During Qualifying**
 
@@ -58,7 +58,7 @@ After crossing the finish line on the flying lap:
 - Timer stops, time is recorded
 - Player car remains in terminal presentation for up to 5 seconds
 - UI Confirm (Enter / gamepad South) advances immediately; UI Cancel (Escape / gamepad East) is ignored
-- Qualifying Results/Grid opens automatically after 5 seconds
+- Qualifying Results opens automatically after the 5-second terminal presentation expires
 - No player driving, fuel consumption, tire wear or return-lap simulation occurs
 
 **5. Post-Qualifying Screen**
@@ -66,7 +66,7 @@ After crossing the finish line on the flying lap:
 After terminal presentation completes (or Confirm advances):
 - Full grid screen shows all 16 positions with car names and qualifying times
 - Player's position highlighted
-- "Start Race" button (Confirm / Enter / South) — no retry option; Grid Display waits for Confirm and does not auto-advance
+- "Start Race" button (Confirm / Enter / South) — no retry option; Qualifying Results waits for Confirm and does not auto-advance
 
 **6. Grid Position Calculation**
 
@@ -105,20 +105,20 @@ If player crashes, spins, or fails to complete the qualifying lap:
 | **Loading** | Qualifying content and runtime state are prepared | No — Input remains blocked UI routing |
 | **Flying Lap** | Timed lap — full speed | Yes — player drives |
 | **Finished Presentation** | Show player car after lap | UI Confirm advances; Pause available; UI Cancel ignored |
-| **Grid Screen** | Full grid display | Yes — choose "Start Race" |
+| **Qualifying Results** | Full grid display | Yes — choose "Start Race" |
 
 ### States and Transitions
 
 | From | To | Trigger | Notes |
 |------|----|---------|-------|
 | Not Started | Loading | Player starts qualifying | RSM returns a Qualifying Loading request; Input remains blocked UI routing |
-| Loading | Flying Lap | Simulation accepts `RaceLoadReady(RaceMode.Qualifying)` | Simulation enters Racing directly, applies qualifying fuel, and spawns the car at pit exit without Countdown |
+| Loading | Flying Lap | Simulation accepts `RaceLoadReady(RaceMode.Qualifying)` | Simulation enters Racing directly, applies qualifying fuel, and spawns the car at pit box without Countdown; player drives out-lap through pit lane (no fuel/wear, timer off) then starts flying lap |
 | Flying Lap | Finished Presentation | Player crosses start/finish line | Timer stops, time/grid result recorded |
-| Finished Presentation | Grid Screen | 5s expires or Confirm advances | Grid determined |
+| Finished Presentation | Qualifying Results | 5s expires or Confirm advances | Grid determined |
 | Flying Lap | Finished Presentation | Player crashes/spins | No time recorded, P16 grid result locked; no retry |
-| Grid Screen | — | Player presses "Start Race" | Grid finalized |
+| Qualifying Results | — | Player presses "Start Race" | Grid finalized |
 
-**GridAssignment:** When qualifying completes or is skipped, Race Session Manager locks `GridAssignment { carId → gridSlot[1..16] }` from the final grid order. The Grid Screen displays that locked assignment; Start Race passes it through `StartRaceRequested` → `TransitionRequest(Loading, QualifyingComplete, gridAssignment)` for Content Pipeline and Grid & Start. Note: Content Pipeline handles this transition as a lightweight Race Reconfigure (no asset unload/reload) since track and car bundles are already loaded from qualifying.
+**GridAssignment:** When qualifying completes or is skipped, Race Session Manager locks `GridAssignment { carId → gridSlot[1..16] }` from the final grid order. Qualifying Results displays that locked assignment; Start Race passes it through `StartRaceRequested` → `TransitionRequest(Loading, QualifyingComplete, gridAssignment)` for Content Pipeline and Grid & Start. Note: Content Pipeline handles this transition as a lightweight Race Reconfigure (no asset unload/reload) since track and car bundles are already loaded from qualifying.
 
 ### Interactions with Other Systems
 
@@ -229,7 +229,7 @@ If player skips: `grid_position = 16`.
 
 ## UI Requirements
 
-> **📌 UX Flag — Qualifying**: This system has UI requirements. In Phase 4 (Pre-Production), run `/ux-design` to create a UX spec for the qualifying screen and grid display before writing epics.
+> **📌 UX Flag — Qualifying**: This system has UI requirements. In Phase 4 (Pre-Production), run `/ux-design` to create a UX spec for the qualifying screen and Qualifying Results before writing epics.
 
 ## Acceptance Criteria
 
@@ -251,6 +251,6 @@ If player skips: `grid_position = 16`.
 ## Open Questions
 
 - **Qualifying visual feedback:** Should the player see a "ghost" of their best time during the flying lap? Or is the raw timer sufficient?
-- **Out lap behavior:** MVP starts the player at pit exit after Qualifying content readiness; no Countdown, manually driven out lap, or separate cutscene is required.
+- **Out lap behavior:** MVP spawns the player at the pit box after Qualifying content readiness, drives out-lap through pit lane (pit speed limit enforced, no fuel consumption, no tire wear, timer does not start), then starts the single flying lap. No Countdown or separate cutscene is required.
 - **Replay qualifying:** After a failed lap, should the player see what went wrong (sector times, comparison to AI)? Or just retry?
 - **Qualifying per car:** If different cars have different cockpit layouts (Alpha/Beta), does the qualifying HUD change?
