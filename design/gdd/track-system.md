@@ -210,6 +210,7 @@ Where surface_wear_modifier comes from the surface type table (1.0 for asphalt, 
 | **Pit Stop** | Outbound | Pit zones, boxes, speed-limit zone | Hard — Track provides pit geometry to Pit Stop |
 | **Grid & Start** | Outbound | Validated grid positions | Hard — applies GridAssignment to Track slots |
 | **Qualifying** | Outbound | Reference flying-lap time | Hard — computes qualifying fuel load |
+| **Audio** | Outbound | surface_type | Hard — drives surface noise |
 
 ## Tuning Knobs
 

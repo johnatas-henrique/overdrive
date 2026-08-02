@@ -266,6 +266,7 @@ The benchmark uses the same dry reference track, neutral AI archetype, predefine
 | Camera | Outbound | Soft | Settings → Camera: shake intensity and Reduced Motion |
 | VFX | Outbound | Hard | Settings → VFX: density, Motion Blur preference, Reduced Motion; Simulation supplies PerformanceReduced separately |
 | Vehicle Physics | Indirect via Simulation | Hard | DifficultyProfile → Vehicle Physics: player off-track grip and wall speed-loss values only |
+| Content Pipeline | Outbound | Hard | Settings → Content Pipeline: default quality (Medium WebGL / High PC) |
 
 ## Tuning Knobs
 
@@ -300,7 +301,7 @@ The Settings system requires a dedicated Settings menu screen with the following
 - **Audio:** 4 sliders (Master, Music, SFX, UI) and 2 Mute toggles (Mute Music, Mute SFX). Sliders show percentage. Each Mute toggle silences its channel independently; Master volume still applies.
 - **Display:** Resolution dropdown (filtered to supported resolutions), Fullscreen dropdown (Windowed/Fullscreen Window/Exclusive), VSync toggle, Quality dropdown (Low/Medium/High/Ultra). Resolution/fullscreen preview opens the 15-second DisplayConfirm dialog. Expandable "Advanced" section contains the remaining individual controls.
 - **Accessibility:** Colorblind mode dropdown (None/Protanopia/Deuteranopia/Tritanopia) and Text scaling slider (75%–200%) with live preview. Critical states retain labels/patterns and never rely on color alone.
-- **Camera:** Shake intensity slider (0%–200%), Motion Blur toggle, Reduced Motion toggle, and Show Chase HUD in Cockpit toggle (On by default). Reduced Motion forces runtime shake, look-ahead, dynamic FOV, and Motion Blur off while preserving mode blending, collision avoidance, and the saved preferences. Show Chase HUD in Cockpit controls whether the seven Chase elements are added to the four-element cockpit layout.
+- **Camera:** Shake intensity slider (0%–200%), Motion Blur toggle, Reduced Motion toggle, and Show Chase HUD in Cockpit toggle (On by default). Reduced Motion forces runtime shake, look-ahead, dynamic FOV, and Motion Blur off while preserving mode blending, collision avoidance, and the saved preferences. Show Chase HUD in Cockpit controls whether the eight Chase elements are added to the four-element cockpit layout.
 
 **Bottom bar:** "Apply" button (persists working values and closes), "Cancel" button (restores snapshot and closes), "Restore Defaults" button (replaces working values with defaults after confirmation; Apply persists them).
 
@@ -374,7 +375,7 @@ The Settings system requires a dedicated Settings menu screen with the following
 - **AC-CAM2:** Given player toggles Motion Blur while Reduced Motion is Off and no higher-priority override suppresses it, When changed, Then VFX updates Motion Blur immediately.
 - **AC-CAM3:** Given player changes camera setting, When changed, Then immediate effect, no restart.
 - **AC-CAM4:** Given player enables Reduced Motion, When changed, Then runtime shake, look-ahead, dynamic FOV, and Motion Blur are disabled immediately while base FOV, mode transitions, collision avoidance, and saved preferences remain unchanged.
-- **AC-CAM5:** Given `Show Chase HUD in Cockpit` is On by default, When cockpit HUD is displayed, Then the seven Chase elements are visible in addition to the four cockpit elements; when Off, only the four cockpit elements remain.
+- **AC-CAM5:** Given `Show Chase HUD in Cockpit` is On by default, When cockpit HUD is displayed, Then the eight Chase elements are visible in addition to the four cockpit elements; when Off, only the four cockpit elements remain.
 - **AC-CAM6:** Given Motion Blur is saved On and Reduced Motion is enabled then disabled, When the override clears, Then Motion Blur returns to the working On preference.
 
 ### 8. State Transitions

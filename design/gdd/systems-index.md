@@ -113,27 +113,27 @@ For an MVP review, Alpha, Beta, and Release behavior is compatibility context on
 
 | System | Status | GDD | Review |
 |--------|--------|-----|--------|
-| Input | Approved | design/gdd/input-system.md | Lean review — APPROVED — 2026-07-25 |
-| Simulation Architecture | Approved | design/gdd/simulation-architecture.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
-| Settings | Approved | design/gdd/settings.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
-| Content Pipeline | Approved | design/gdd/content-pipeline.md | Lean review — APPROVED — 2026-07-25 — zero cross-GDD issues |
+| Input | Approved | design/gdd/input-system.md | Re-review — APPROVED — 2026-08-01 — cross-review 08-01 resolved (CW1 asym 26/27/31 synced); cross-ADR note: ADR-0005 InputEventQueue obsolete vs ADR-0010 direct route (for architecture-review) |
+| Simulation Architecture | Approved | design/gdd/simulation-architecture.md | Re-review — APPROVED — 2026-08-01 — pipeline synced to 14 steps (ADR-0001/0006/0011): Step 9b PitStopSystem, 5a/5b Fuel/Tire, PitServiceCommand in snapshots, Pit Stop in deps/interactions; 6 blocking resolved |
+| Settings | Approved | design/gdd/settings.md | Approved 2026-07-26 — cross-review 08-01 resolved (CB3 eight Chase elements; CW1 asym 15 synced) |
+| Content Pipeline | Approved | design/gdd/content-pipeline.md | Re-review — APPROVED — 2026-08-01 — LOD0 budget aligned to art bible (25-50K), car textures aligned to 2048×2048 atlas; rename Grid Display→Qualifying Results verified |
 | Ghost Recording | Approved | design/gdd/ghost-recording.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + one recommended issue remaining (future-service dependency labeling) |
 | Multiplayer Architecture | Approved | design/gdd/multiplayer-architecture.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
-| Vehicle Physics | Approved | design/gdd/vehicle-physics.md | Lean review — APPROVED — 2026-07-25 — zero cross-GDD issues |
-| Camera | Approved | design/gdd/camera.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
-| HUD | Approved | design/gdd/hud.md | Lean re-review — APPROVED — 2026-07-26 — 0 blocking + 3 recommended resolved; R1-R4 all corrected |
-| Audio | Approved | design/gdd/audio-system.md | Lean review — APPROVED — 2026-07-25 — zero cross-GDD issues |
-| Fuel | Approved | design/gdd/fuel-system.md | Lean re-review — APPROVED — 2026-07-26 — 0 blocking + 3 recommended resolved; bidirectionality + stale 0.05 L/s references corrected |
-| Tire | Approved | design/gdd/tire-system.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
-| Pit Stop | Approved | design/gdd/pit-stop.md | Lean re-review — APPROVED — 2026-07-26 — 0 blocking + 2 recommended resolved; two-lane F1 model documented in Track §7 + direction mismatch corrected |
-| Qualifying | Approved | design/gdd/qualifying.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
-| AI Rival | Approved | design/gdd/ai-rival.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
-| Track | Approved | design/gdd/track-system.md | Lean re-review — APPROVED — 2026-07-26 — 0 blocking + 2 recommended resolved; anti-cut note added; row spacing aligned to 6–10 m |
-| Car Definition Data | Approved | design/gdd/car-definition-data.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
-| Race Session Manager | Approved | design/gdd/race-session-manager.md | Lean re-review — APPROVED — 2026-07-26 — 0 blocking + 1 recommended resolved; W6 documented as accepted MVP approximation |
-| Grid & Start | Approved | design/gdd/grid-start.md | Lean re-review — APPROVED — 2026-07-26 — 0 blocking + 1 recommended resolved; row spacing aligned Track → 6-10 m |
-| VFX | Approved | design/gdd/vfx.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
-| UI Menu | Approved | design/gdd/ui-menu.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
+| Vehicle Physics | Approved | design/gdd/vehicle-physics.md | Approved 2026-07-25 — cross-review 08-01 resolved (CB2 AC-R1 2.16L/27%; CW7 wear formula synced; CW1 asym 7/13 synced) |
+| Camera | Approved | design/gdd/camera.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW1 asym 1/2 synced) |
+| HUD | Approved | design/gdd/hud.md | Re-review — APPROVED — 2026-08-01 — cross-review 08-01 resolved (CW5 internal counts 8/4; CW1 asym 4/11 synced) |
+| Audio | Approved | design/gdd/audio-system.md | Approved 2026-07-25 — cross-review 08-01 resolved (CB1 final-lap sting totalLaps-1; CW4 CarAudioProfile; CW1 asym 12/14/16/17/20/21 synced) |
+| Fuel | Approved | design/gdd/fuel-system.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW1 asym 3/18/19/20/28 synced) |
+| Tire | Approved | design/gdd/tire-system.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW6 grip floor 0.20-0.30; CW7 wear formula; CW1 asym 21/22/23/24/28 synced) |
+| Pit Stop | Approved | design/gdd/pit-stop.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW6 1.10 ownership explicit; DW2 KEPT by decision; CW1 asym 25/26 synced) |
+| Qualifying | Approved | design/gdd/qualifying.md | Re-review — APPROVED — 2026-08-01 — cross-review 08-01 resolved (DW3 KEPT by decision; spawn model vs ADR-0013 logged for propagate; CW1 asym 11/18/24/25/27/30 synced) |
+| AI Rival | Approved | design/gdd/ai-rival.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW6 1.10 ownership explicit; DW5 tier gap deferred to playtest; CW1 asym 29 synced) |
+| Track | Approved | design/gdd/track-system.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW1 asym 1/3/17/22 synced) |
+| Car Definition Data | Approved | design/gdd/car-definition-data.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW4 CarAudioProfile; CW1 asym 5/6/8/9 synced) |
+| Race Session Manager | Approved | design/gdd/race-session-manager.md | Re-review — APPROVED — 2026-08-01 — cross-review 08-01 resolved (CW1 asym 9/10/12/13/28 synced) |
+| Grid & Start | Approved | design/gdd/grid-start.md | Re-review — APPROVED — 2026-08-01 — cross-review 08-01 resolved (CW2 residuals renamed; CW1 asym 4/14 synced) |
+| VFX | Approved | design/gdd/vfx.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW3 global_max_velocity derived from per-car max_velocity; CW1 asym 6/23 synced) |
+| UI Menu | Approved | design/gdd/ui-menu.md | Re-review — APPROVED — 2026-08-01 — cross-review 08-01 resolved (CW2 knob renamed; CW1 asym 2/10/16 synced) |
 
 ## Art Bible
 

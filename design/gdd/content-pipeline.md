@@ -2,7 +2,7 @@
 
 > **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-26
+> **Last Updated**: 2026-08-01
 > **Implements Pillar**: Every Short Race Matters
 
 ## Phase Scope
@@ -107,8 +107,8 @@ Loading screen progress is derived from byte counts of pending bundles.
 **5. WebGL Constraints**
 
 - **Heap:** 768 MB minimum (Player Settings > WebGL > Memory Size)
-- **Textures:** ASTC 6×6 compression, 1024px max for cars
-- **LODs:** Mandatory 3 levels (LOD0 ~15-20K tri, LOD1 ~8-10K, LOD2 ~3-5K)
+- **Textures:** ASTC 6×6 compression, 2048×2048 max for cars (single texture atlas per team, art bible Section 8)
+- **LODs:** Mandatory 3 levels (LOD0 25-50K tri, LOD1 ~8-10K, LOD2 ~3-5K) — LOD0 budget per art bible, Section 8 (25k-50k worst case 16 × 50k = 800k tris; real case ~300k with LOD distribution)
 - **Bundle size:** Each car bundle ≤ 3MB in WebGL build
 - **Quality profiles:** Medium is the WebGL default and High is the PC default; Low is an automatic fallback when memory or performance protection requires reduced quality, with different texture resolutions and post-processing
 - **No graceful OOM recovery:** WebGL heap is fixed — `malloc` failure = crash
@@ -143,7 +143,7 @@ Loading screen progress is derived from byte counts of pending bundles.
 | `Loading Track` | `Loading Cars` | Track loaded (or parallel — both start together) |
 | `Loading Cars` | `Ready` | All 16 cars loaded |
 | `Ready` | `Racing` | Simulation accepts `RaceLoadReady(mode)`; Content remains fully loaded while Simulation runs Countdown for Race or Racing for Qualifying |
-| `Racing` | `Race Reconfigure` | Simulation enters Loading after RSM accepts `StartRaceRequested` from Grid Display (after qualifying or skip) and sends `ContentLoadRequest(Race, gridAssignment)` |
+| `Racing` | `Race Reconfigure` | Simulation enters Loading after RSM accepts `StartRaceRequested` from Qualifying Results (after qualifying or skip) and sends `ContentLoadRequest(Race, gridAssignment)` |
 | `Racing` | `Loading Track` | Simulation sends `ContentLoadRequest(RaceMode.Race, gridAssignment)` for Next Race (not qualifying→race transition); Content Pipeline unloads current race and loads new one |
 | `Race Reconfigure` | `Ready` | Emit `RaceReconfigureStart` signal for domain owners (Fuel, Tire, AI, RSM) to reset their own state; instantiate cars from locked `gridAssignment`; re-emit `RaceLoadReady(RaceMode.Race, gridAssignment)` without unloading assets |
 | `Racing` | `Unloading` | Simulation remains Results after Continue/Back and sends `ContentUnloadRequest` |
@@ -212,6 +212,7 @@ Loading screen progress is derived from byte counts of pending bundles.
 | HUD | Outbound | Soft | Content Pipeline → HUD: loading progress percentage |
 | Ghost Recording | Outbound | Soft | Content Pipeline → Ghost: track data reference for replay |
 | Settings | Indirect | Soft | Settings → Content Pipeline: Medium WebGL or High PC default quality; Low fallback when memory/performance protection requests reduced quality |
+| Car Definition Data | Inbound | Hard | team_id → asset path |
 
 ## Tuning Knobs
 
@@ -297,8 +298,8 @@ No player interaction during loading — all input is blocked.
 ### 6. WebGL Constraints
 
 - **AC-WG1:** Given WebGL build, When Player Settings inspected, Then Memory Size ≥ 768 MB.
-- **AC-WG2:** Given WebGL build, When car textures inspected, Then all use ASTC 6×6 and are ≤ 1024px.
-- **AC-WG3:** Given any car model in WebGL, When LODs inspected, Then 3 levels exist (LOD0 ~15-20K, LOD1 ~8-10K, LOD2 ~3-5K tris).
+- **AC-WG2:** Given WebGL build, When car textures inspected, Then all use ASTC 6×6 at 2048×2048 (single atlas per team).
+- **AC-WG3:** Given any car model in WebGL, When LODs inspected, Then 3 levels exist (LOD0 25-50K, LOD1 ~8-10K, LOD2 ~3-5K tris).
 - **AC-WG4:** Given WebGL build, When any car bundle measured, Then bundle ≤ 3 MB.
 - **AC-WG5:** Given WebGL build, When quality settings load, Then Medium profile applies by default; Low profile is available as the memory/performance fallback.
 - **AC-WG6:** Given WebGL OOM, When malloc fails, Then the runtime may terminate because no graceful OOM recovery is guaranteed; Content Pipeline makes no claim that race state can be recovered after termination.

@@ -243,12 +243,13 @@ Based on Super Monaco GP (1989 to 1991 era). 16 teams, 1 car each, 16 cars on gr
 
 ### MVP — Race-by-Race
 - Standalone races with no tier switching.
-- Player chooses a race, competes against 15 AI rivals, and receives position results.
+- Player chooses a race and any team (free car selection), competes against 15 AI rivals, and receives position results.
 - No progression system — the MVP validates the core race loop (driving, fuel/tire strategy, pit stops, AI behavior).
-- The player experiences different tiers by racing against them, not by driving for them.
+- The player experiences different tiers by racing against them (and optionally by driving them in Single Race); the Zeroforce start is a Career-mode constraint, not an MVP constraint.
 - Rivals have fixed personalities per race (static behavior). Dynamic confidence-based behavior enters in Alpha when rival memory exists.
 
 ### Alpha — Career Progression
+- Career mode starts the player on Zeroforce (team_tier4_d, slowest team); Single Race keeps free car selection.
 - Team switching via rival challenge (variable by tier gap: Tier 4→3 = 2 wins, Tier 3→2 = 3 wins, Tier 2→1 = 4 wins).
 - Rival challenges for the player's seat — other drivers may challenge the player.
 - Intra-tier challenges (Tier 1: Madonna vs Firenze for grid position).
@@ -288,7 +289,7 @@ A session consists of 3 races (approximately 25-30 minutes total including menus
 ### MVP — Corrida Funcional
 
 - 16 F1 teams (1 car each, 16 cars on grid).
-- Player starts on Zeroforce (slowest team).
+- Player selects any team for Single Race (free choice). Career mode (Alpha) starts the player on Zeroforce (slowest team) and unlocks teams via rival challenge.
 - 4 tracks in the MVP corpus.
 - 5-lap races with qualifying.
 - Fuel, tire wear, and pit stops (pit required for most driving styles; lift-and-coast can finish without pit, 8-10s stop).

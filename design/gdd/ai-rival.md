@@ -270,7 +270,7 @@ Pit uses the deterministic remaining-lap resource projection defined by Pit Stop
 | Overtake threshold | 5% speed advantage | 3–10% | AI overtakes too easily | AI never overtakes |
 | Defend threshold | 3% threat speed | 1–5% | AI never defends | AI defends constantly |
 | Error base rate | 0.05 | 0.01–0.10 | AI too perfect | AI too error-prone |
-| Pit resource safety margin | 10% next-lap forecast | 0–20% | AI risks empty tank/bald tires | AI pits unnecessarily; Pit Stop's `pit_required_before_next_lap` formula applies the 1.10 multiplier. |
+| Pit resource safety margin | 10% next-lap forecast | 0–20% | AI risks empty tank/bald tires | AI pits unnecessarily (the 1.10 multiplier is applied by Pit Stop's `pit_required_before_next_lap` formula) |
 | Overtake timeout | 5s | 3–10s | AI gives up too fast | AI forces pass too long |
 
 ## Visual/Audio Requirements

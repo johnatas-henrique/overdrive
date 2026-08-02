@@ -2,14 +2,14 @@
 
 > **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-26
+> **Last Updated**: 2026-08-01
 > **Implements Pillar**: Earn the Next Seat
 
 ## Phase Scope
 
 | Phase | Scope |
 |---|---|
-| MVP | Title, Single Race, local track/car selection, settings, grid display, pause, and results navigation. |
+| MVP | Title, Single Race, local track/car selection, settings, qualifying results, pause, and results navigation. |
 | MVP architecture constraints | Navigation is content-driven and supports later screens without altering local race flow. |
 | Alpha | Career, team-switching, session, and standings screens. |
 | Beta | Multiplayer UI if designed later. |
@@ -42,16 +42,16 @@ Career, multiplayer, and localization UI are non-blocking unless MVP navigation 
 
 ```
 Title → Track Selection → Car Selection → Qualifying Not Started (optional)
-                                      ├─ Start → Loading → Qualifying → Qualifying Results → Grid Display → Loading → Countdown → Race
-                                      ├─ Skip  → Grid Display → Loading → Countdown → Race
-                                      └─ Flying Lap → Finished Presentation → Qualifying Results → Grid Display → Loading → Countdown → Race
-                    ↑                                  ↓                                      ↓              ↓
+                                      ├─ Start → Loading → Qualifying → Qualifying Results → Loading → Countdown → Race
+                                      ├─ Skip  → Qualifying Results → Loading → Countdown → Race
+                                      └─ Flying Lap → Finished Presentation → Qualifying Results → Loading → Countdown → Race
+                    ↑                                  ↓                                      ↓
                     └── Settings ←─────────────────────┘                              Pause Menu        Idle/Title
                                                                                        ReturnToMenu → Results
                                                                                        Next Race → Loading
 ```
 
-Linear stack navigation applies to menu screens. Loading blocks Back/Cancel after loading begins; Pause Menu Back/Cancel resumes the race; Grid Display is a shared pre-race confirmation screen shown after qualifying or after skipping qualifying, with Start Race as the only action and Confirm sends `StartRaceRequested`; Grid & Start owns display rules — there is no timeout and no Back/Cancel path from this screen; Results and Forfeit use their explicit destination contracts instead of generic stack-back behavior.
+Linear stack navigation applies to menu screens. Loading blocks Back/Cancel after loading begins; Pause Menu Back/Cancel resumes the race; Qualifying Results is a shared pre-race confirmation screen shown after qualifying or after skipping qualifying, with Start Race as the only action and Confirm sends `StartRaceRequested`; Grid & Start owns display rules — there is no timeout and no Back/Cancel path from this screen; Results and Forfeit use their explicit destination contracts instead of generic stack-back behavior.
 
 **2. Screen Specifications**
 
@@ -63,7 +63,7 @@ Linear stack navigation applies to menu screens. Loading blocks Back/Cancel afte
 | **Qualifying Not Started** | Start Qualifying and Skip buttons | Confirm starts; Cancel returns to Car Select |
 | **Loading** | Loading indicator and optional Content error message | Used before Qualifying and Race; Back/Cancel blocked after loading begins |
 | **Settings** | Volume sliders, difficulty selector, per-slot control remapping, `Show Chase HUD in Cockpit` toggle | KeyboardMouse Primary/Secondary slots and one Gamepad slot per approved action/composite part |
-| **Grid Display** | 16 positions with car names and qualifying times or `DNQ` | Metadata-only screen; Start Race button only |
+| **Qualifying Results** | 16 positions with car names and qualifying times or `DNQ` | Metadata-only screen; Start Race button only |
 | **Pause Menu** | Resume, Settings, Return to Menu | Return to Menu emits `ReturnToMenuRequested`; in Countdown/Racing this is Forfeit |
 | **Race** | (Managed by HUD + Race Session Manager) | N/A |
 | **Finished Presentation** | Player car terminal presentation, optional pause, Continue | Input routes Confirm/Pause directly to UI Presentation; generic UI module is disabled and Cancel is suppressed |
@@ -113,12 +113,11 @@ Linear stack navigation applies to menu screens. Loading blocks Back/Cancel afte
 | **Car Select** | Car selection | Choose car |
 | **Qualifying Not Started** | Qualifying start/skip screen | Confirm starts; Cancel returns to Car Select |
 | **Loading** | Loading screen | Back/Cancel blocked after content loading begins |
-| **Grid Display** | Grid positions and qualifying results | Shared pre-race screen; Start Race button only; no timeout and no Back/Cancel path |
+| **Qualifying Results** | Grid positions and qualifying results | Shared pre-race screen; Start Race button only; no timeout and no Back/Cancel path |
 | **Settings** | Settings menu | Adjust settings |
 | **Pause Menu** | Resume, Settings, Return to Menu | ReturnToMenuRequested is the only route to Forfeit |
 | **Race** | In-race (HUD active) | Gameplay |
 | **Finished Presentation** | Player-car terminal view | Receives `terminalPresentationRequest` from PublishedSimulationSnapshot; owns the up-to-5-second timer and emits `DismissTerminalPresentation` |
-| **Qualifying Results** | Grid/result screen | After qualifying terminal presentation; Start Race sends `StartRaceRequested` to RSM |
 | **Results** | Race results screen | After race terminal resolution or forfeit; displays race standings, DNF, or FORFEIT summary; Next Race enters Loading and Continue/Back returns to Idle/Title |
 
 ### Interactions with Other Systems
@@ -129,7 +128,7 @@ Linear stack navigation applies to menu screens. Loading blocks Back/Cancel afte
 | **Track** | Inbound | Track list, distances, elevation | Display in selection |
 | **Car Definition Data** | Inbound | Team stats, names, colors | Display in selection |
 | **Qualifying** | Bidirectional | Start/skip request and qualifying result | UI starts or skips qualifying and displays the returned result |
-| **Race Session Manager** | Bidirectional | `StartRaceRequested` from Grid Display, `ReturnToMenuRequested`, result data | UI submits session requests; RSM owns lifecycle rules |
+| **Race Session Manager** | Bidirectional | `StartRaceRequested` from Qualifying Results, `ReturnToMenuRequested`, result data | UI submits session requests; RSM owns lifecycle rules |
 | **Simulation Architecture** | Inbound/Outbound | `terminalPresentationRequest`, `DismissTerminalPresentation` | UI owns presentation timing; Simulation owns Loading, Countdown, Finished, Results, and Idle lifecycle |
 | **Camera** | Inbound | Finished Presentation camera request | Camera owns the external terminal viewpoint |
 | **Audio** | Outbound | Menu music, button sounds | Background audio |
@@ -142,7 +141,7 @@ No formulas for this system. UI Menu is display and navigation only.
 
 ## Edge Cases
 
-- **If player attempts Back/Cancel during grid display:** No navigation occurs; race loading has not started and no race-resource unload is required.
+- **If player attempts Back/Cancel during Qualifying Results:** No navigation occurs; race loading has not started and no race-resource unload is required.
 - **If player changes settings from an active-race pause menu:** Settings previews supported values immediately; Apply persists working values, Cancel restores the session snapshot, and Difficulty remains disabled because the current race already owns an immutable DifficultyProfile.
 - **If track assets fail to load:** Show error message, return to title.
 - **If player selects same car/track as last race:** No special handling, normal flow.
@@ -171,7 +170,7 @@ No formulas for this system. UI Menu is display and navigation only.
 | Knob | Current Value | Safe Range | Breaks If Too Low | Breaks If Too High |
 |------|--------------|------------|-------------------|-------------------|
 | Car rotation speed | 15 RPM | 5–30 RPM | Too slow (boring) | Too fast (dizzying) |
-| Grid display duration | Confirm only | Fixed for MVP; changes require design review | Too fast to read | Too long (boring) |
+| Qualifying Results display duration | Confirm only | Fixed for MVP; changes require design review | Too fast to read | Too long (boring) |
 | Menu music volume | 0.5 | 0.0–1.0 | Silent menus | Overpowers UI sounds |
 | Button repeat delay | 0.5s | 0.2–1.0s | Too fast (accidental) | Too slow (annoying) |
 
@@ -192,11 +191,11 @@ No formulas for this system. UI Menu is display and navigation only.
 
 - **GIVEN** player on title screen, **WHEN** "Single Race" is selected, **THEN** track selection screen appears.
 - **GIVEN** player selects track, **WHEN** "Next" is pressed, **THEN** car selection screen appears.
-- **GIVEN** player selects car, **WHEN** "Select" is pressed, **THEN** Qualifying Not Started appears when qualifying is enabled; otherwise Grid Display appears.
-- **GIVEN** player on a navigable menu screen outside Loading, Finished Presentation, Results, Pause Menu, and Grid Display, **WHEN** "Back" is pressed, **THEN** the previous screen appears.
+- **GIVEN** player selects car, **WHEN** "Select" is pressed, **THEN** Qualifying Not Started appears when qualifying is enabled; otherwise Qualifying Results appears.
+- **GIVEN** player on a navigable menu screen outside Loading, Finished Presentation, Results, Pause Menu, and Qualifying Results, **WHEN** "Back" is pressed, **THEN** the previous screen appears.
 - **GIVEN** Pause Menu is open, **WHEN** Cancel/Back is pressed, **THEN** the race resumes and no stack navigation occurs.
-- **GIVEN** Grid Display is open, **WHEN** Cancel/Back is pressed, **THEN** no navigation occurs.
-- **GIVEN** Grid Display is open, **WHEN** Confirm is pressed, **THEN** UI sends `StartRaceRequested` to RSM and Simulation begins Loading only after the request is accepted.
+- **GIVEN** Qualifying Results is open, **WHEN** Cancel/Back is pressed, **THEN** no navigation occurs.
+- **GIVEN** Qualifying Results is open, **WHEN** Confirm is pressed, **THEN** UI sends `StartRaceRequested` to RSM and Simulation begins Loading only after the request is accepted.
 - **GIVEN** player on car selection, **WHEN** car model is displayed, **THEN** 3D model rotates at 15 RPM.
 - **GIVEN** normal race results, **WHEN** results are displayed, **THEN** position, car name, and race time are shown; DNF and Forfeit use their explicit classifications and omit unavailable position data.
 - **GIVEN** player on settings, **WHEN** volume slider is adjusted, **THEN** volume changes immediately.

@@ -268,6 +268,7 @@ File Integrity Table
 | Coherence | Alpha / Deferred | Future hard | Ghost → CloudStorage: upload ghost artifact; CloudStorage → Ghost: download rival ghost in Alpha only |
 | HUD | Outbound | Soft | Ghost → HUD: time delta, lap splits, ghost indicator |
 | Global leaderboard | Deferred | Future hard | No global leaderboard exists in MVP, Alpha, or the current Beta relay design; a future service decision owns any ranked feature. |
+| Input System | Indirect via Simulation | Architecture constraint | MVP exposes a recordable SimulationInput + tick boundary; Alpha Ghost consumes it |
 
 ## Tuning Knobs
 

@@ -2,7 +2,7 @@
 
 > **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-07-26
+> **Last Updated**: 2026-08-01
 > **Implements Pillar**: Speed You Can Feel
 
 ## Phase Scope
@@ -149,6 +149,7 @@ The Input System captures player actions from keyboard, mouse, and gamepad devic
 6. **EMA, Brake Priority, and Output Contract:**
    - `Accelerate`: α = 0.3; `Brake`: α = 0.3; `Steer`: α = 0.5.
    - EMA accepts -1.0 to 1.0 for Steer and 0.0 to 1.0 for Accelerate and Brake.
+    - Input sanitization (per ADR-0005): raw channels are validated after dead-zone normalization and before EMA — NaN or Infinity replaced by 0.0f; values outside [-1.0, 1.0] clamped. Prevents erratic behavior from hardware defects or driver bugs.
     - Brake priority is explicit: `brakeOut = filteredBrake`; `accelerateOut = 0 when rawBrakePostDeadZone > 0, otherwise filteredAccelerate`.
     - While brake priority is active, Accelerate EMA state is frozen at its last pre-brake value. It does not advance toward current raw throttle and does not reset. When raw brake returns to 0, the next tick resumes the EMA recurrence from that frozen value.
     - Vehicle Physics receives `accelerateOut`, `brakeOut`, and `steerOut` once per 60 Hz tick and adds no second input ramp or smoothing layer.
@@ -175,7 +176,7 @@ Transitions:
 - `GameplayQualifying → UI`: Player pauses qualifying; Simulation transitions to `Paused` while `RaceMode.Qualifying` is retained
 - `UI → GameplayQualifying`: Player resumes paused qualifying
 - `GameplayQualifying → UI`: Qualifying flying lap completes or fails; Simulation enters `SimulationState.Finished`, Finished Presentation becomes active, and driving input is disabled
-- `UI → GameplayCountdown`: Grid Display sends `StartRaceRequested`; Input remains in UI during Loading and changes to GameplayCountdown only after Simulation accepts `RaceLoadReady(RaceMode.Race, gridAssignment)`
+- `UI → GameplayCountdown`: Qualifying Results sends `StartRaceRequested`; Input remains in UI during Loading and changes to GameplayCountdown only after Simulation accepts `RaceLoadReady(RaceMode.Race, gridAssignment)`
 - `GameplayCountdown → GameplayRacing`: GO releases grid lock; Simulation enters Racing and Input changes context on the GO tick
 - `GameplayRacing → UI`: Player pauses mid-race or race finishes; Simulation selects `Paused` or `Finished` respectively
 - `GameplayRacing → PitTransit`: Vehicle Physics crosses Track's pit-entry zone after physics; Pit Stop enters PitTransit and no driving input remains active
@@ -239,7 +240,7 @@ For a trigger with raw value `t` and inner threshold `i = 0.05`:
 - **If all devices disconnect:** The next SimulationInput forces accelerate, brake, and steer to 0 and sets `inputAvailability = NoInputDevice`. The car coasts. HUD presents its transient overlay while this condition persists; availability returns only after a valid scheme is selected.
 - **If player presses both accelerate and brake simultaneously:** Brake takes priority. Brake output remains filtered Brake; Accelerate output is 0 while raw Brake remains above its dead-zone threshold.
 - **If player switches device during qualifying:** The next SimulationInput uses the new available scheme. Qualifying continues.
-- **If EMA receives NaN or infinity:** Clamp to last valid output. Log warning.
+- **If EMA receives NaN or infinity internally:** Clamp to last valid output. Log warning. (Input sanitization at the raw-input stage already replaces NaN/Infinity with 0.0f before EMA — this rule covers EMA-internal NaN from extreme recurrence states.)
 - **If Settings enters Listening:** `OverdriveGameplay` is disabled. `OverdriveUI.Cancel` cancels capture; `OverdriveUI.Confirm` confirms a non-binding modal choice. Captured race-action candidates return Captured, Conflict, or Rejected. Reserved Confirm, Cancel, and Pause bindings cannot be replaced or removed.
 - **If a WebGL browser delays gamepad exposure until focus or user interaction:** KeyboardMouse remains active until gamepad South, East, West, North, Start, any D-pad direction, trigger input above the trigger threshold, or stick magnitude above the stick inner threshold is received.
 - **If a gamepad reconnects:** KeyboardMouse remains active until that same meaningful-input threshold is met, then the active scheme changes to Gamepad and initializes EMA from the selected raw sample.
@@ -261,6 +262,8 @@ For a trigger with raw value `t` and inner threshold `i = 0.05`:
 | Ghost Recording | Outbound via Simulation | Architecture constraint | MVP exposes a recordable SimulationInput + tick boundary; Alpha Ghost Recording consumes it. |
 | Settings | Inbound | Hard | Settings → Input: per-slot overrides for Accelerate, Brake, Steer Left/Right or analog Steer, and CameraToggle plus stick profile and per-channel EMA alpha. Trigger threshold and reserved Confirm, Cancel, and Pause bindings are not overridden. |
 | HUD | Outbound | Soft | Input availability → HUD transient overlay only. |
+| Pit Stop | Inbound | Hard | Direct Confirm action in PitService → Pit Stop (after tire-swap eligibility) |
+| Qualifying | Inbound | Hard | GameplayQualifying context → qualifying controls |
 
 ## Tuning Knobs
 
@@ -336,9 +339,9 @@ Settings displays the stable binding slots and Input-provided display strings. U
 51. **GIVEN** keyboard gameplay input or mouse pointer input is processed, **WHEN** the dead-zone stage runs, **THEN** it leaves that channel's raw value unchanged.
 52. **GIVEN** PitService is active before tire swap completes, **WHEN** Enter or South is pressed, **THEN** no exit occurs; **GIVEN** tire swap has completed, **WHEN** Enter or South is pressed, **THEN** Vehicle Physics begins pit exit with the current fuel level.
 53. **GIVEN** a digital action or UI Navigate control is held during a Gameplay ↔ UI context transition, **WHEN** the new context is active, **THEN** that control is ignored until neutral/released and any gameplay edge from the old context is false; continuous Accelerate, Brake, and Steer follow AC-41 on Resume.
-54. **GIVEN** Qualifying Finished Presentation is active, **WHEN** Enter or South is pressed, **THEN** UI Presentation dismisses it and opens Qualifying Results/Grid Display; Escape or East is ignored and all driving input remains disabled.
+54. **GIVEN** Qualifying Finished Presentation is active, **WHEN** Enter or South is pressed, **THEN** UI Presentation dismisses it and opens Qualifying Results; Escape or East is ignored and all driving input remains disabled.
 55. **GIVEN** WebGL exposes a gamepad after focus or user interaction while KeyboardMouse is active, **WHEN** the gamepad has not met the meaningful-input threshold, **THEN** KeyboardMouse remains the active scheme.
-56. **GIVEN** Qualifying Results/Grid Display confirms Start Race, **WHEN** `StartRaceRequested` is accepted, **THEN** Input remains in UI throughout Loading and transitions to GameplayCountdown only after Simulation accepts `RaceLoadReady(RaceMode.Race, gridAssignment)`.
+56. **GIVEN** Qualifying Results confirms Start Race, **WHEN** `StartRaceRequested` is accepted, **THEN** Input remains in UI throughout Loading and transitions to GameplayCountdown only after Simulation accepts `RaceLoadReady(RaceMode.Race, gridAssignment)`.
 57. **GIVEN** SimulationState is Finished, **WHEN** P or gamepad Start is pressed, **THEN** UI Presentation toggles terminal presentation pause while SimulationState remains Finished; Escape/East remains suppressed and no generic UI Cancel is dispatched.
 58. **GIVEN** GameplayRacing, GameplayQualifying, or GameplayCountdown is active, **WHEN** C or gamepad North/Y/Triangle produces a CameraToggle rising edge, **THEN** Camera begins one mode transition in the same Dynamic Update; holding the control produces no additional transition until release, and no CameraToggle value enters SimulationInput or Ghost Recording.
 59. **GIVEN** a render Update begins after Input System Dynamic Update, **WHEN** Simulation evaluates its accumulator, **THEN** it first calls Input-owned `CaptureLatestRawSample()` and receives exactly one immutable RawInputSample with a monotonic captureSequence.

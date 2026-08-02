@@ -156,7 +156,7 @@ Music stings are short musical phrases that trigger at key race moments. They ov
 | Sting | Trigger | Duration | Description |
 |-------|---------|----------|-------------|
 | **Race Start** | Countdown reaches "GO" | 2–3s | High-energy sting, matches tempo of background track |
-| **Final Lap** | Lap count = total laps | 3–5s | Rising tension sting, tempo increase |
+| **Final Lap** | Lap count = total laps - 1 (RSM-owned trigger) | 3–5s | Rising tension sting, tempo increase |
 | **Finish** | Cross finish line (race complete) | 4–6s | Victory/defeat sting based on final position |
 | **Pit Entry** | Car enters pit lane | 1–2s | Tension sting, low energy |
 
@@ -223,7 +223,7 @@ When `State = OffTrack`:
 | **Settings** | Inbound | Master, Music, SFX, UI volumes, Mute state | AudioSettings | Working-copy preview immediately; persisted only after successful Apply |
 | **Camera** | Inbound | Camera mode (cockpit/chase), camera speed | CameraState | Per frame; Audio adjusts engine/ambient mix for cockpit (internal) vs chase (external) |
 | **Pit Stop** | Bidirectional | pit_state (entry/service/exit) → audio triggers | PitEvent | On state change |
-| **Car Definition Data** | Inbound | cylinders count, engine type | CarAudioProfile | On car select (once per race) |
+| **Car Definition Data** | Inbound | `CarAudioProfile` (cylinders, exhaust note) | CarAudioProfile | On car select (once per race) |
 | **Simulation** | Inbound | `SimulationState`, countdown ticks, Finished Presentation, Results | SimulationSnapshot | Per tick/state transition |
 | **Race Session Manager** | Inbound | lap completion, final-lap event, finish classification | RaceEvent | On event |
 
@@ -277,9 +277,11 @@ When `State = OffTrack`:
 | **Settings** | Inbound | volumes, mute | Hard — drives all audio levels |
 | **Camera** | Inbound | camera mode, camera speed | Hard — drives engine/ambient mix for cockpit vs chase |
 | **Pit Stop** | Bidirectional | pit_state → audio triggers | Hard — drives pit sounds |
-| **Car Definition Data** | Inbound | cylinders, engine type | Hard — drives engine character |
+| **Car Definition Data** | Inbound | `CarAudioProfile` (cylinders, exhaust note) | Hard — drives engine character |
 | **Simulation** | Inbound | SimulationState, countdown, terminal presentation, Results | Hard — drives state-specific audio |
 | **Race Session Manager** | Inbound | lap, final-lap, finish events | Hard — drives stings |
+| **Grid & Start** | Inbound | Countdown beeps, launch sounds | Hard — drives start audio |
+| **UI Menu** | Inbound | Menu music, button sounds | Hard — drives menu audio |
 
 ## Tuning Knobs
 
@@ -323,7 +325,7 @@ No UI requirements for this system. Audio is controlled via Settings (already de
 
 ## Open Questions
 
-- **Engine sound per car:** Ownership is resolved: Car Definition supplies `engineCylinders` and `engineType`; Audio supplies the procedural interpretation. Concrete per-team values are assigned during the Car Definition review.
+- **Engine sound per car:** Ownership is resolved: Car Definition supplies `CarAudioProfile` (cylinders, exhaustNote); Audio supplies the procedural interpretation. Concrete per-team values are assigned during the Car Definition review.
 - **Adaptive music (Alpha):** When should adaptive music be added? Per-biome? Per-race-state? Per-position?
 - **3D spatial audio:** Should rival engine sounds be spatialized (3D positioned)? Or is stereo sufficient for arcade?
 - **Audio memory budget:** How many simultaneous audio sources can WebGL handle before performance degrades?

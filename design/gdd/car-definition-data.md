@@ -161,7 +161,7 @@ Loading: Addressables group `Cars/` — loaded per-race based on grid compositio
 | `stability` | int | 0–20 | Vehicle Physics → loss-of-control threshold |
 | `efficiency` | int | 0–20 | Fuel → consumption rate, Tire → wear rate |
 | `engine_cylinders` | int | 6–12 | Audio → procedural engine frequency |
-| `engine_type` | string | Project-defined identifier | Audio → oscillator/timbre profile |
+| `exhaust_note` | enum | Standard, Deep, Sharp | Audio → engine character |
 
 ### States and Transitions
 
@@ -176,7 +176,7 @@ This system is static data — no runtime states. Car definitions are loaded at 
 | **Tire** | Outbound | Efficiency stat | Determines base tire wear rate |
 | **AI Rival** | Outbound | All 6 stats | Performance ceiling for AI behavior |
 | **Content Pipeline** | Outbound | team_id → asset path | Loads correct car prefab, materials, audio |
-| **Audio** | Outbound | engine_cylinders, engine_type | Supplies the procedural engine profile |
+| **Audio** | Outbound | `engine_cylinders`, `exhaust_note` (CarAudioProfile) | Supplies the procedural engine profile |
 | **Settings** | Not consumed at runtime | Difficulty | Difficulty changes AI competence, not car-definition stat formulas |
 
 ## Formulas
@@ -323,6 +323,8 @@ The same **efficiency_modifier** applies to Tire System wear calculations:
 | **Content Pipeline** | Outbound | team_id → asset path | Hard — loads correct car assets |
 | **Settings** | Not consumed at runtime | Difficulty selection | Soft — AI consumes difficulty; Car Definition formulas remain fixed |
 | **Race Session Manager** | Outbound | team_id → grid composition | Hard — race needs to know which cars are on grid |
+| **HUD** | Outbound | Team color, icon | Hard — cosmetic theming |
+| **VFX** | Outbound | Per-car `max_velocity` (derives `global_max_velocity`) | Hard — normalizes speed effects |
 
 ## Tuning Knobs
 
@@ -380,8 +382,8 @@ Display format: 6 stat names with bar fills or numeric values. No formula detail
 - **GIVEN** a car definition with Efficiency stat at 20, **WHEN** efficiency_modifier is evaluated, **THEN** the result is 0.50 ± 0.001.
 - **GIVEN** any of the 16 team car definitions, **WHEN** stat values are inspected, **THEN** every stat is one of {4, 8, 12, 16, 20}.
 - **GIVEN** any of the 16 team car definitions, **WHEN** the stat count is verified, **THEN** exactly 6 stats exist (Top Speed, Acceleration, Brake Power, Grip Level, Stability, Efficiency).
-- **GIVEN** any of the 16 team car definitions, **WHEN** the audio profile is validated, **THEN** `engine_cylinders` is an integer from 6–12 and `engine_type` is a non-empty project-defined identifier.
-- **GIVEN** a team definition without audio-profile overrides, **WHEN** the asset is loaded, **THEN** it uses `engine_cylinders = 10` and `engine_type = V10` without changing any racing stat.
+- **GIVEN** any of the 16 team car definitions, **WHEN** the audio profile is validated, **THEN** `engine_cylinders` is an integer from 6–12 and `exhaust_note` is one of the defined enum values (Standard, Deep, Sharp).
+- **GIVEN** a team definition without audio-profile overrides, **WHEN** the asset is loaded, **THEN** it uses `engine_cylinders = 10` and `exhaust_note = Standard` without changing any racing stat.
 - **GIVEN** the 16 team car definitions across 4 tiers, **WHEN** the average stat per tier is computed, **THEN** each tier differs from adjacent tiers by approximately 2–4 points (T1→T2 and T2→T3 are ~3–3.5 points; T3→T4 is ~2 points).
 - **GIVEN** a car definition with any valid stat, **WHEN** the weight value is read, **THEN** it is exactly 505 kg.
 - **GIVEN** a car definition with a stat value outside 0-20 or non-multiple of 4, **WHEN** the system processes the definition, **THEN** the stat is clamped to the nearest valid value {4, 8, 12, 16, 20}.
