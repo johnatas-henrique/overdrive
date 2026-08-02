@@ -158,6 +158,14 @@ At race init, TrackSystem pre-builds acceleration structures (segment index with
 - `GetPitEntryZone(float progress)` → PitEntryZone (entry trigger zone for Vehicle Physics)
 - `GetRacingLine(float progress)` → float3 racing line position (for AI Rival)
 
+### Lap Validation Rules
+
+`CrossedLapBoundary` requires a minimum distance gate to prevent lap count inflation:
+
+- `distanceSinceLastLap > trackLength × 0.90`
+- Prevents: wall-clip exploits, spline edge cases, or any shortcut that bypasses track geometry
+- The gate ensures the car has traversed at least 90% of the track before a new lap is counted
+
 ## Consequences
 
 - **Simple serialization:** `JsonUtility.FromJson` with `[Serializable]` attributes. No custom parser.

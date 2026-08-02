@@ -93,6 +93,23 @@ Fields are assembled by the Simulation driver before Step 1 and distributed to a
 
 `PitServiceCommand[16]` is the formal pit-service contract: PitStopSystem writes it at Step 9b, Simulation carries it to the next tick's snapshot, and FuelSystem/TireSystem read it at Step 5 to apply refuel/tire-swap. The struct is defined in ADR-0011.
 
+### PostFinishSnapshot Schema
+
+`PostFinishSnapshot` is the immutable terminal-state snapshot captured by Simulation at the lifecycle transition to Finished. It freezes the final race data for Results presentation and ghost disposal; no PhysX, Fuel, Tire, Pit, collision, or tactical AI runs after finish (ADR-0013 reuses the same snapshot with `resultKind = Qualifying`).
+
+| Field | Source | Notes |
+|-------|--------|-------|
+| `CarState[16]` | Last tick VP.ReadCarState | Final positions, rotations, speeds |
+| `FuelState[16]` | Last tick FuelSystem.Tick | Final fuel levels |
+| `TireState[16]` | Last tick TireSystem.Tick | Final wear levels |
+| `simulationStepCount` | Simulation | Final tick counter |
+| `activeRaceStepCount` | Simulation | Final racing tick counter |
+| `resultClassification[carId]` | RSM ResolvedFinishOrder | Finished/DNF/Forfeit per car (consumed by Results screen) |
+| `resultKind` | RSM | Race or Qualifying — selects destination screen |
+| `raceTime` | Simulation `sim_time` | Final clock value |
+| `lapTimes[16][]` | RSM | Final lap history per car |
+| `raceMode` | RSM | Final session mode |
+
 
 ### PerformanceReduced Signal
 

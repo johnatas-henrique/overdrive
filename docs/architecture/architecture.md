@@ -4,7 +4,7 @@
 - **Last Updated:** 2026-07-28
 - **Engine:** Unity 6000.3.19f1 (Unity 6.3 LTS)
 - **GDDs Covered:** 21 MVP GDDs (all APPROVED)
-- **ADRs Referenced:** All 12 ADRs (0001-0011, 0012). See `docs/architecture/control-manifest.md` for the consolidated rules sheet and `docs/architecture/` for individual ADRs.
+- **ADRs Referenced:** All 15 ADRs (0001-0015). See `docs/architecture/control-manifest.md` for the consolidated rules sheet and `docs/architecture/` for individual ADRs.
 - **Technical Director Sign-Off:** 2026-07-27 — APPROVED WITH CONDITIONS. All 5 Foundation ADRs now exist (0001, 0003, 0004, 0005, 0008). Conditions met.
 
 ---
@@ -114,7 +114,7 @@
 
 | Aspect | Definition |
 |--------|-----------|
-| **Owns** | `SimulationState` (sole writer), 13-step tick pipeline ordering, `FIXED_DT = 1/60s` accumulator, `Physics.simulationMode = SimulationMode.Script`, all 4 immutable snapshots (`TickStartSnapshot`, `PublishedSimulationSnapshot`, `PostFinishSnapshot`, `ReplayInitialState`), `simulationStepCount`/`activeRaceStepCount`, `countdownRemainingTicks`, focus-loss lifecycle boundary, performance monitor, PCG32 RNG instance |
+| **Owns** | `SimulationState` (sole writer), 14-step tick pipeline ordering, `FIXED_DT = 1/60s` accumulator, `Physics.simulationMode = SimulationMode.Script`, all 4 immutable snapshots (`TickStartSnapshot`, `PublishedSimulationSnapshot`, `PostFinishSnapshot`, `ReplayInitialState`), `simulationStepCount`/`activeRaceStepCount`, `countdownRemainingTicks`, focus-loss lifecycle boundary, performance monitor, PCG32 RNG instance |
 | **Exposes** | `PublishedSimulationSnapshot` (read-only per tick), `SimulationState`, `RaceMode`, `TransitionRequest` queue, `PerformanceReduced`/`PerformancePaused` signals |
 | **Consumes** | Input's `CaptureLatestRawSample()`, Content Pipeline's `RaceLoadReady`/`ContentLoadError`, AI Rival's cached `AIInput[]`, RSM's `TransitionRequest` |
 | **Engine APIs** | `Physics.simulationMode = SimulationMode.Script` (✅ verified), `Physics.Simulate(FIXED_DT)` (✅ verified), `Time.unscaledDeltaTime`, `Application.focusChanged`. HIGH RISK: all verified against Unity 6000.3 runtime |
@@ -197,7 +197,7 @@
 
 | Aspect | Definition |
 |--------|-----------|
-| **Owns** | `GameState` (lapCount, position, raceTime, lapTimes[], totalDistance, isFinished, isPitting, raceMode, resultKind), `position_ranking` (lapCount DESC → splinePosition DESC → entryStep ASC → carId ASC), `FinishOrderResolver` (pace-only projection), `LapCompleted`/`PositionChanged`/`PitEntry`/`PitExit`/`RaceFinished` events, `TransitionRequest` production, `GridAssignment` creation |
+| **Owns** | `GameState` (lapCount, position, raceTime, lapTimes[], totalDistance, isFinished, isPitting, raceMode, resultKind, splinePositions[16] — per-car fractional spline progress for Track Map dots and position ranking), `position_ranking` (lapCount DESC → splinePosition DESC → entryStep ASC → carId ASC), `FinishOrderResolver` (pace-only projection), `LapCompleted`/`PositionChanged`/`PitEntry`/`PitExit`/`RaceFinished` events, `TransitionRequest` production, `GridAssignment` creation |
 | **Exposes** | `GameState` per tick (via PublishedSimulationSnapshot), race events to Fuel, Tire, AI, Pit Stop, HUD, Camera. `TransitionRequest` to Simulation |
 | **Consumes** | `RaceMode` from Content Pipeline, lap detection from Track + distance gate, per-lap deltas from Fuel and Tire, position from `position_ranking` |
 | **Engine APIs** | Pure C# logic |
@@ -217,7 +217,7 @@
 | System | Owns | Exposes | Consumes | Engine APIs |
 |--------|------|---------|----------|-------------|
 | **Camera** | 2 modes (Cockpit/Chase), FOV response (quadratic, 78-95°/70-90°), 3-layer shake (clamped 3.0°), look-ahead, 0.35s transitions, SphereCast collision avoidance, PitCamera, terminal presentation blend, CameraToggle routing | Camera transform + FOV + mode per frame | Interpolated car transform from Simulation, `PublishedSimulationSnapshot`, `impactShakeRequest` from VFX, Settings (shake, Reduced Motion) | `Camera`, `Physics.SphereCast()` (✅ verified) |
-| **HUD** | 7 chase + 4 cockpit elements, 7 states, team color tinting, 85% opacity, 150ms transitions, Track Map rendering, `PIT THIS LAP` advisory | Rendered screen-space canvas output | `CarState`, `GameState`, `FuelState`, `TireState`, `PitThisLap`, Camera mode, Settings overlay toggle, Performance signals | uGUI (Canvas, Image, TextMeshPro) |
+| **HUD** | 8 chase + 4 cockpit elements, 7 states, team color tinting, 85% opacity, 150ms transitions, Track Map rendering, `PIT THIS LAP` advisory | Rendered screen-space canvas output | `CarState`, `GameState`, `FuelState`, `TireState`, `PitThisLap`, Camera mode, Settings overlay toggle, Performance signals | uGUI (Canvas, Image, TextMeshPro) |
 | **Audio** | Procedural 2-oscillator engine, 5 audio layers, SFX (squeal/impact/wind), fuel factor curve, 6-speed gear ratios, 8 states, music sting priority | Mixed audio output to `AudioListener` | `CarState` (rpm, speed, throttle, gear, gripState), Camera mode, Fuel state, Car Def (cylinders) | `AudioSource`, `AudioMixer`, `AudioListener` |
 | **VFX** | Speed streaks, motion blur (max 0.5), vignette (60%+ speed), tire smoke (300-3000 particles), sparks (wall hits), `impactShakeRequest`, 4 density presets (Low/Medium/High/Ultra), max 16 smoke/8 sparks/16 dust | `impactShakeRequest{source, factor}` to Camera | `CarState`, `TireState`, `global_max_velocity` from Car Def, Settings (density, Motion Blur, Reduced Motion), `PerformanceReduced` | URP post-processing, `ParticleSystem`. HIGH RISK (RenderGraph) |
 | **UI Menu** | Screen flow (Title→Track→Car→Qualifying→Grid→Race→Results), linear stack navigation, 3 input coexistence, 3D car turntable (15 RPM), pause menu, Settings preview, results/forfeit display | Navigation state, screen transitions | `PublishedSimulationSnapshot`, Content Pipeline signals, `OverdriveUI` action map, Car Def stats, Track data | uGUI, `InputSystemUIInputModule`, `EventSystem` |
@@ -548,6 +548,9 @@ struct ImpactShakeRequest {
 | 0010 | Camera-VFX | Accepted | PASS | Valid |
 | 0011 | Pit Stop | Accepted | PASS | Valid |
 | 0012 | Audio | Accepted | PASS | Valid |
+| 0013 | Qualifying Session Format | Accepted | PASS | Valid |
+| 0014 | HUD Data Contract & Layout | Accepted | PASS | Valid |
+| 0015 | Car Definition Data Validation | Accepted | PASS | Valid |
 
 ### ADR-0001 Detail (Root ADR — template for all)
 
@@ -576,7 +579,7 @@ Gaps are documented per TR in `docs/architecture/complete-traceability-matrix.md
 
 ## Required ADRs (All Completed)
 
-All 12 ADRs (0001-0011, 0012) are created and Accepted. See `docs/architecture/` for each ADR's full text and `docs/architecture/control-manifest.md` for the consolidated rules sheet. The table below links each layer to its governing ADRs.
+All 15 ADRs (0001-0015) are created and Accepted. See `docs/architecture/` for each ADR's full text and `docs/architecture/control-manifest.md` for the consolidated rules sheet. The table below links each layer to its governing ADRs.
 
 | Layer | ADRs | Key Decisions |
 |-------|------|---------------|

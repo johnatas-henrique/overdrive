@@ -64,7 +64,7 @@ public struct CameraState {
     public bool reducedMotion;       // from AccessibilitySettings (disables shake)
 }
 
-// VFX System — runs in DynamicUpdate
+// VFX System — runs in LateUpdate (per ADR-0001 §Interpolation Phases)
 public class VfxSystem {
     public void Tick(
         VisualTransform interpolatedTransform,
@@ -84,7 +84,7 @@ public class VfxSystem {
 ```
 Simulation tick (60 Hz, manual accumulator per ADR-0001):  Tick pipeline (Steps 1-14, 14-step model including Step 9b + counters)
 DynamicUpdate (frame):   Simulation publishes interpolated VisualTransform
-                         CameraSystem.Tick()
+LateUpdate (frame):      CameraSystem.Tick()
                          VfxSystem.Tick()
                          HUD update
                          Presentation rendering
@@ -122,6 +122,28 @@ Transitions:
   PitCamera → active: 0.2s blend on exit begin.
   No snap transitions except on race start (Countdown → GO).
 ```
+
+### Camera Look-Ahead
+
+Chase camera anticipates car direction for smoother visual tracking:
+
+- `lookAheadOffset = forward × speed × lookAheadFactor`
+- `lookAheadFactor` scales quadratically with speed:
+  - Low speed: minimal offset (~0.5m)
+  - High speed: significant offset (~3m)
+- Prevents camera lag behind car at high speed
+- Cockpit mode: no look-ahead (fixed to driver eye position)
+
+### SphereCast Collision Avoidance
+
+Camera avoids geometry obstruction via SphereCast:
+
+- `Physics.SphereCast(origin, radius, direction, out hit, maxDistance)`
+- When hit detected: camera moves forward along cast direction
+- Prevents camera clipping through walls, barriers, bridges
+- Radius: ~0.3m (small enough for tight corners)
+- MaxDistance: dependent on camera distance from car
+- Reduced Motion: still active (prevents visual clipping)
 
 ### Camera Shake
 

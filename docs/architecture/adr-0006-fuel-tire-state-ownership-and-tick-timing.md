@@ -38,6 +38,7 @@ Existing architectural stances confirmed:
 - **CarState[16]** → vehicle-physics-system (ADR-0002). Fuel/Tire read CarState fields (surface, speed, slideState) but must NOT write them.
 - **ForceMode.Acceleration** — grip modifiers must be compatible with mass-independent force model.
 - **Forbidden pattern: physics_callback_mutates_gameplay_state** — Fuel/Tire are pure C# per-tick, no physics callbacks.
+- **efficiency_modifier** → car-definition-data (ADR-0015). FuelSystem and TireSystem read `CarDefinition.stats.efficiency` at race init and store it as a per-car scaling factor. The formula is a tuning knob defined in ADR-0015. This ADR consumes the modifier but does not define it.
 
 ## Decision
 

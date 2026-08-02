@@ -39,7 +39,7 @@ Overdrive's audio GDD (210 lines) defines 5 mixer layers, a procedural engine fo
 - **No FMOD/Wwise installed** — dependency must be zero at MVP. Adding middleware requires separate approval and package installation.
 - **3 engine types only** (V8, V10, V12 per 1989-1990 F1) — not 16 unique engines. Fallback to samples is viable with only 3 base profiles.
 - **Unity Audio Mixer** is installed and stable. 3 groups (Master → Music/SFX/UI).
-- **DynamicUpdate consumption** per ADR-0010 — AudioSystem runs per frame, not per tick.
+- **LateUpdate consumption** per ADR-0001 §Interpolation Phases — AudioSystem runs in LateUpdate, not per tick.
 - **Addressables 3.1.0** for audio asset loading (Shared group for UI/engine, Tracks/{trackId} for ambient).
 
 ### Requirements
@@ -62,7 +62,7 @@ Audio System uses **Unity Audio Mixer** with **procedural-first engine generatio
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                      AudioSystem                             │
-│  (standalone class, DynamicUpdate per ADR-0010)              │
+│  (standalone class, LateUpdate per ADR-0001 §Interpolation Phases)│
 │                                                              │
 │  Tick(CarAudioState[], AudioMixState, AudioSettings)         │
 │    ├─ _engineSound.Update(carState, audioSource)  ← SEAM    │
@@ -81,7 +81,7 @@ Audio System uses **Unity Audio Mixer** with **procedural-first engine generatio
 ### Key Interfaces
 
 ```csharp
-// Audio System — runs in DynamicUpdate per frame
+// Audio System — runs in LateUpdate per frame (per ADR-0001 §Interpolation Phases)
 public class AudioSystem {
     public AudioSystem(IEngineSoundProvider engineSound);  // seam for future swap
 
@@ -231,5 +231,5 @@ Engine routes through the SFX group per GDD Rule 1 — if SFX is muted, engine i
 - ADR-0002: CarState fields (Rpm, Gear, Speed, Throttle, State, PitPhase, SlideState, Surface)
 - ADR-0004: AudioSettings struct with per-mixer-group volume
 - ADR-0006: FuelState.fuelLevel for engine pitch drop, lowFuelActive for stinger
-- ADR-0010: DynamicUpdate consumption pattern (shared with CameraSystem, VfxSystem)
+- ADR-0001: LateUpdate consumption pattern (shared with CameraSystem, VfxSystem per §Interpolation Phases)
 - ADR-0003: Audio assets in Shared group (UI, stings, menu music) and Tracks/{trackId} (ambient loops)

@@ -50,10 +50,11 @@ Overdrive has two mutually exclusive input contexts: gameplay (racing, qualifyin
 - Must clear pending pauseEdge on Gameplay→UI transition
 - Must latch every newly enabled digital action and UI Navigate control actuated at transition until neutral/released (prevents Pause→Cancel, held Confirm firing in new context)
 - Must exempt Accelerate, Brake, Steer from latching on UI→Gameplay resume (EMA initializes from current post-dead-zone values)
-- Must route CameraToggle rising edge to Camera via InputEventQueue — dequeued at simulation Step 2, never enters tick pipeline. Holding does not repeat.
+- Must route CameraToggle rising edge to Camera directly (via InputAction.performed callback → Camera.ToggleRequest). Never enters tick pipeline, Replay, or Ghost Recording. Holding does not repeat.
 - Must support ActiveControlScheme arbitration (KeyboardMouse default, last meaningful device wins; both in same DynamicUpdate preserves current)
 - Must trigger EMA reinitialization on active scheme change: `OnActiveSchemeChanged` → EMA state initialized from new scheme's post-dead-zone values
 - Must support InputAvailability enum (Available / NoInputDevice) — zeroed SimulationInput with NoInputDevice flag when no device connected
+- Must enforce brake priority: when rawBrakePostDeadZone > 0, accelerateOut = 0 and Accelerate EMA is frozen (standard racing convention)
 - Replay context (Alpha+): neither action map is enabled. Recorded input only — no live CaptureLatestRawSample
 
 ## Decision
@@ -65,11 +66,10 @@ Input uses **InputContextController** as the sole owner of action map activation
 ```csharp
 // InputContextController — sole authority over action map lifecycle
 public class InputContextController {
-    public void SetGameplayContext();  // disables UI, enables Gameplay; clears event queue
-    public void SetUIContext();        // disables Gameplay, enables UI; clears event queue
+    public void SetGameplayContext();  // disables UI, enables Gameplay
+    public void SetUIContext();        // disables Gameplay, enables UI
     public ControlScheme ActiveScheme { get; }
     public event Action<ControlScheme> OnActiveSchemeChanged;
-    public InputEventQueue EventQueue { get; }  // ring buffer (8 entries), drained at tick Step 2
 }
 
 // Action map inventory (InputSystem_Actions.inputactions)
@@ -107,35 +107,10 @@ public readonly struct InputContextTransition {
     // until neutral and re-actuated
 }
 
-// InputEventQueue — ring buffer for cross-update event delivery
-// Events from InputAction.performed (DynamicUpdate) are enqueued on rising edge.
-// Simulation reads and drains at Step 2 (before Step 3 Pause consumption).
-// Capacity: 8 entries (sufficient for all human input events per frame).
-public class InputEventQueue {
-    public void Enqueue(SimulationInputEvent evt);  // called from InputAction.performed callbacks
-    public SimulationInputEvent Dequeue();           // called from Simulation driver at Step 2
-    public bool TryPeek(out SimulationInputEvent evt);
-    public void Clear();                             // on context transition
-}
-
-public readonly struct SimulationInputEvent {
-    public readonly InputEventType Type;             // Pause, CameraToggle, ConfirmPitExit
-    public readonly ulong Timestamp;                 // InputSystem event timestamp
-}
-
-public enum InputEventType : byte {
-    Pause,
-    CameraToggle,
-    ConfirmPitExit,
-    SettingsOpen,
-    SettingsClose
-}
-
 // CameraToggle — presentation-only, no simulation involvement
-// Rising edge from InputAction.performed in DynamicUpdate enqueues CameraToggle event.
-// Simulation Step 2 dequeues it and routes directly to Camera (no tick pipeline entry).
+// Rising edge from InputAction.performed in DynamicUpdate routes DIRECTLY to Camera
+// (Camera.ToggleRequest), same-frame. No queue, no tick pipeline involvement.
 // Holding does not repeat. One toggle per button press.
-// The event queue ensures CameraToggle is never lost between DynamicUpdate and the tick.
 ```
 
 ### Context Transition Rules
@@ -157,6 +132,15 @@ UI → Gameplay:
   - All other digital actions latched as above
   - Pause remains consumed (not a new Pause event)
 ```
+
+### Input Sanitization
+
+Raw input channels (accelerate, brake, steer) are validated after dead-zone normalization and before EMA smoothing:
+
+- NaN or Infinity → replaced by 0.0f
+- Values outside [-1.0, 1.0] → clamped to [-1.0, 1.0]
+
+This prevents erratic behavior from hardware defects or driver bugs (USB glitch, faulty stick, driver crash). Affects: all consumers of SimulationInput. Cost: 3 lines of validation per channel (negligible).
 
 ## Alternatives Considered
 
@@ -182,8 +166,7 @@ UI → Gameplay:
 - **No binding collisions:** `InputSystemUIInputModule` references OverdriveUI actions; gameplay code references OverdriveGameplay. Same key (Escape) can mean Pause in gameplay and Cancel in UI.
 - **Context handoff correctness:** Latching prevents phantom inputs. Accelerate/Brake immediate on Resume matches player expectation.
 - **Reserved binding enforcement:** InputContextController owns the allowlist of rebindable actions. Confirm/Cancel/Pause are not in the rebindable set.
-- **CameraToggle isolation:** Never enters sim pipeline — no ghost recording, no replay contamination.
-- **Event queue guarantees:** Input events captured in DynamicUpdate survive to the next tick boundary — no lost edges between update phases.
+- **CameraToggle isolation:** Never enters sim pipeline — no ghost recording, no replay contamination. Rising edge routes directly to Camera in the same frame.
 
 ### ResolvedCarInput Timing
 
