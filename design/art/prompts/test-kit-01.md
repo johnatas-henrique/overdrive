@@ -1,5 +1,9 @@
 # Art Style Test Kit — Overdrive
 
+> **STATUS: DISCARDED** — These 5 styles were tested and rejected.
+> The project uses a single unified style: Fujishima + Matsuri fusion.
+> See `design/art/style-anchor-prompt.md` for the authoritative seed prompt.
+
 > Gerado para testes no ComfyUI (Krea2/Anima/Flux)
 > Carro referência: Benetton B190 (verde escuro, amarelo, vermelho)
 > Época: F1 1991

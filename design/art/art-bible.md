@@ -154,9 +154,9 @@ Every color in Overdrive communicates meaning. The player must never have to gue
 
 | ID | SMGP Team | Based On (1989) | Car | Primary | Hex | Secondary | Hex | Notes |
 |----|-----------|-----------------|-----|---------|-----|-----------|-----|-------|
-| `team_tier2_a` | **May** | March-Leyton House-Judd | CG891 | Miami Blue | `#66C5C5` | White | `#FFF8F0` | "Leyton blue" — a pastel turquoise adopted from Miami Blue. Designer Adrian Newey's first F1 car. Very distinctive shade, almost emerald-green at certain angles. [thebiggarage](https://thebiggarage.jouwweb.nl/f1/f1-teams/leyton-house-f1/leyton-house-pages) |
+| `team_tier2_a` | **May** | March-Leyton House-Judd | CG891 | Miami Blue | `#66C5C5` | Green | `#2E7D32` | "Leyton blue" — a pastel turquoise-like shade near to emerald green. Green accents from BP co-sponsorship. Designer Adrian Newey's first F1 car. [ultimatecarpage](https://www.ultimatecarpage.com/car/7680/March-CG891-Judd.html) |
 | `team_tier2_b` | **Losel** | Lotus-Judd | 101 | Camel Yellow | `#E8A830` | Dark Blue | `#1A3A6B` | Camel Racing Yellow (called "Norfolk Mustard") dominates the car, with dark blue sections. An iconic livery described as "pale yellow-orange hue." [MotorSportRetro](https://www.motorsportretro.com/2014/08/camel-lotus-101/) |
-| `team_tier2_c` | **Tyrant** | Tyrrell-Ford | 017B/018 | Tyrrell Blue | `#1E4D8C` | White | `#FFF8F0` | Tyrrell ran Honda engines through their Braun sponsorship. Blue and white livery. |
+| `team_tier2_c` | **Tyrant** | Tyrrell-Ford | 017B/018 | Tyrrell Blue | `#1E4D8C` | Yellow + White | `#F5C518` / `#FFF8F0` | Tyrrell 018 ran dark blue with yellow Camel sponsorship accents from French GP onwards, plus white details. [Wikipedia](https://en.wikipedia.org/wiki/Tyrrell_018) |
 | `team_tier2_d` | **Blanche** | Brabham-Judd | BT58 | Brabham Blue | `#1A3A8C` | White | `#FFF8F0` | Brabham's return to F1 after 1988. Blue and white with no major title sponsor. [Wikipedia](https://en.wikipedia.org/wiki/Brabham_BT58) |
 
 #### Tier 3 (Below Average)
@@ -164,8 +164,8 @@ Every color in Overdrive communicates meaning. The player must never have to gue
 | ID | SMGP Team | Based On (1989) | Car | Primary | Hex | Secondary | Hex | Notes |
 |----|-----------|-----------------|-----|---------|-----|-----------|-----|-------|
 | `team_tier3_a` | **Minarae** | Minardi-Ford | M188B/M189 | Lois Yellow | `#F5C518` | Black + White | `#1A1A1A` / `#FFF8F0` | Minardi 1989 with Lois sponsorship — predominantly yellow with black and white accents. The beloved Italian backmarker identity. [F1 Colours](https://f1colours.sebpatrick.co.uk/teams/minardi/) |
-| `team_tier3_b` | **Linden** | Ligier-Ford | JS33 | Gitanes Blue | `#1A3A6B` | — | — | Solid Gitanes blue. Ligier's French tobacco blue was one of the most recognizable mid-field liveries. |
-| `team_tier3_c` | **Dardan** | Dallara-BMS Scuderia Italia-Ford | F189 | Rosso Corsa | `#DC2828` | Black + White | `#1A1A1A` / `#FFF8F0` | BMS Scuderia Italia ran red cars with black and white details (Marlboro sponsorship without the chevron). [F1 Colours](https://en.wikipedia.org/wiki/Formula_One_sponsorship_liveries) |
+| `team_tier3_b` | **Linden** | Ligier-Ford | JS33 | Gitanes Blue | `#0D2B5E` | — | — | Solid Gitanes blue. Ligier's French tobacco blue was darker and more saturated than Williams' Canon blue. [F1 Colours](https://f1colours.sebpatrick.co.uk/teams/ligier/) |
+| `team_tier3_c` | **Dardan** | Dallara-BMS Scuderia Italia-Ford | F189 | Rosso Corsa | `#DC2828` | White | `#FFF8F0` | BMS Scuderia Italia ran red cars with white details. Black is unpainted carbon (incidental, not livery). [Wikipedia](https://en.wikipedia.org/wiki/Dallara_F189) |
 | `team_tier3_d` | **Bullets** | Arrows-Ford | A11 | USF&G White | `#FFF8F0` | Red + Blue | `#E03C31` / `#1E4D8C` | Arrows 1989 with USF&G sponsorship — predominantly white with red and blue stripes. A clean, American-inspired livery. [F1 Colours](https://f1colours.sebpatrick.co.uk/teams/arrows/) |
 
 #### Tier 4 (Bottom 4 — Including Player's Starting Team)
@@ -173,7 +173,7 @@ Every color in Overdrive communicates meaning. The player must never have to gue
 | ID | SMGP Team | Based On (1989) | Car | Primary | Hex | Secondary | Hex | Notes |
 |----|-----------|-----------------|-----|---------|-----|-----------|-----|-------|
 | `team_tier4_a` | **Rigel** | Rial-Ford | ARC2 | Rial Blue | `#1A3A8C` | Yellow | `#F5C518` | Rial was a German wheel manufacturer. Their 1989 car used the company's corporate blue and yellow. [F1 Colours](https://f1colours.sebpatrick.co.uk/teams/rial/) |
-| `team_tier4_b` | **Comet** | Coloni-Ford | FC188B/C3 | Coloni White | `#FFF8F0` | Sky Blue + Yellow | `#66C5C5` / `#F5C518` | Coloni 1989 with Himont sponsorship — white base with sky blue and yellow accents. [F1 Colours](https://en.wikipedia.org/wiki/Formula_One_sponsorship_liveries) |
+| `team_tier4_b` | **Comet** | Coloni-Ford | FC188B/C3 | Coloni White | `#FFF8F0` | Dark Navy Blue + Yellow | `#1A3A6B` / `#F5C518` | Coloni 1989 with Himont sponsorship — white base with dark navy blue and yellow accents. [F1 Colours](https://f1colours.sebpatrick.co.uk/teams/coloni/) |
 | `team_tier4_c` | **Orchis** | Onyx-Ford | ORE-1 | Onyx Blue | `#1A2A5C` | Pink + White | `#E87A90` / `#FFF8F0` | Onyx 1989 with Moneytron sponsorship — deep blue with distinctive PINK accents. One of the most unusual and memorable liveries of the late 1980s. [F1 Colours](https://f1colours.sebpatrick.co.uk/teams/onyx/) |
 | `team_tier4_d` | **Zeroforce** ★ | Zakspeed-Yamaha | ZR891 | West Red | `#8B1A1A` | White | `#FFF8F0` | Zakspeed ran West sponsorship in a dark red and white scheme years before McLaren adopted it. The player's starting team. [F1 Colours](https://f1colours.sebpatrick.co.uk/teams/zakspeed/) |
 
@@ -855,17 +855,22 @@ The UI is a transparent layer between the player and the race — present when n
 
 **Decision:** Screen-space overlay, not diegetic. The HUD floats above the game world, not on the car dashboard. Rationale: (1) cockpit models have limited dashboard space, (2) the GDD defines 4 cockpit elements + 7 optional chase elements overlaying the cockpit view — diegetic placement cannot accommodate this, (3) readability at 200km/h demands consistent element positioning regardless of car model.
 
-**7 Elements (Chase view):** Speed, position, lap, fuel bar, tire bar, rival info, PIT THIS LAP.
+**7 Elements (Chase view):** Speed, position/lap, fuel bar, tire bar, race time, rival gap, track map.
 
-**4 + 7 Elements (Cockpit view, overlay ON by default per GDD):** The same 7 chase elements overlay the cockpit view. The player can disable this in Settings (Section 3 HUD GDD).
+**7 Elements (Cockpit view, HUD ON by default):** Same 7 elements, static layout, same position as Chase. The player can disable the entire HUD overlay in cockpit via Settings, leaving only the car dashboard 3D model visible.
 
 **Visual hierarchy at speed (reading order):**
-1. **Speed** — largest element, center-bottom. The primary number. `#FF6B2B` accent on current value.
-2. **Position** — top-left. Large numeral + ordinal suffix (1st, 2nd, 3rd…). P1 uses Champion Gold `#F5C518`.
-3. **Fuel bar + Tire bar** — left and right sides. Color + shape + animation backup per Section 2 colorblind rules.
-4. **Lap** — top-right. Current / Total (7/15). Secondary text size.
-5. **Rival info** — bottom-right. Smallest persistent element. Name + gap.
-6. **PIT THIS LAP** — Transient. Appears at `min(0.80, max(0, pitEntryProgress - 0.05))`. Fades after physical pit entry.
+1. **Speed + Gear** — largest element, top-center. Speed number + small gear indicator. `#FF6B2B` accent. Moved from bottom-center to avoid steering wheel overlap in cockpit view.
+2. **Position** — top-right. "3/16" format (current/total). P1 shows "1/16". Champion Gold `#F5C518` when leading.
+3. **Lap** — top-right, below Position. "L3/5" format.
+4. **Lap Time** — top-left. Current lap time (header) + previous and best lap below.
+4. **Rival Gap** — below Lap Time, top-left area. "+X.Xs" or "LEADER".
+5. **Fuel Bar** — bottom-right. Horizontal bar with numeric "X.X L" readout.
+6. **Tire %** — below Fuel Bar. Icon + percentage, color-coded.
+7. **Track Map** — right side, below Position. Compact mini-map.
+8. **PIT THIS LAP** — Transient, below Speed. Appears at `min(0.80, max(0, pitEntryProgress - 0.05))`. Fades after physical pit entry.
+
+**Layout status:** The current layout was defined during UX design before a playable prototype existed. Positions are provisional and will be revisited when playtesting validates or challenges them.
 
 ---
 
