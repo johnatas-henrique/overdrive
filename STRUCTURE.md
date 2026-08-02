@@ -27,7 +27,11 @@
 ├── Assets/                      # Unity project assets
 │   ├── Scenes/                  # Unity scenes (SampleScene.unity)
 │   ├── source/                  # Game C# source code and local rules
+│   ├── Prototype/               # In-editor prototype scripts and test assets
+│   │   └── CarAnimationTest.cs  # Car animation test script
 │   ├── Materials/               # Unity materials (CoplayTestRed, CoplayTestSphere)
+│   ├── Plugins/                 # Unity native plugins
+│   │   └── Roslyn/              # Roslyn C# compiler assemblies
 │   ├── sprites/                 # Game sprites (currently empty — .gitkeep)
 │   ├── Settings/                # URP render pipeline assets (Mobile, PC profiles)
 │   ├── Screenshots/             # Test screenshots
@@ -39,11 +43,18 @@
 ├── Packages/                    # Unity package manifest (URP, Input System, AI Nav, Timeline, etc.)
 ├── design/                      # Game design documents
 │   ├── AGENTS.md                # Design directory standards
+│   ├── accessibility-requirements.md # Accessibility requirements (Standard tier)
 │   ├── art/                     # Art bible, palettes, reference catalogs, prompts
 │   │   ├── art-bible.md         # Art bible (core export)
 │   │   ├── palette.css          # Color palette (CSS)
 │   │   ├── palette.json         # Color palette (JSON)
 │   │   ├── prompts/             # AI generation prompts
+│   │   │   ├── character-dardan-driver.md
+│   │   │   ├── character-may-driver-and-mechanic.md
+│   │   │   ├── character-millions-grid-girl.md
+│   │   │   ├── character-seimec-mechanic.md
+│   │   │   ├── character-tyrant-mechanic.md
+│   │   │   ├── character-zeroforce-grid-girl.md
 │   │   │   ├── krea2-prompt-book.md
 │   │   │   └── test-kit-01.md
 │   │   ├── reference-catalog.md # Reference image catalog
@@ -100,14 +111,69 @@
 │   │   ├── ui-menu.md
 │   │   ├── vehicle-physics.md
 │   │   └── vfx.md
+│   ├── assets/                    # Asset specifications and manifests
+│   │   ├── asset-manifest.md     # Master asset manifest
+│   │   └── specs/                # Per-asset specification docs
+│   │       ├── pit-building-assets.md
+│   │       ├── team_tier1_a-car-assets.md
+│   │       ├── team_tier1_b-car-assets.md
+│   │       ├── team_tier1_c-car-assets.md
+│   │       ├── team_tier1_d-car-assets.md
+│   │       ├── team_tier2_a-car-assets.md
+│   │       ├── team_tier2_b-car-assets.md
+│   │       ├── team_tier2_c-car-assets.md
+│   │       ├── team_tier2_d-car-assets.md
+│   │       ├── team_tier3_a-car-assets.md
+│   │       ├── team_tier3_b-car-assets.md
+│   │       ├── team_tier3_c-car-assets.md
+│   │       ├── team_tier3_d-car-assets.md
+│   │       ├── team_tier4_a-car-assets.md
+│   │       ├── team_tier4_b-car-assets.md
+│   │       ├── team_tier4_c-car-assets.md
+│   │       ├── team_tier4_d-car-assets.md
+│   │       ├── track-monaco-assets.md
+│   │       ├── track-monza-assets.md
+│   │       ├── track-silverstone-assets.md
+│   │       ├── track-spa-assets.md
+│   │       └── trackside-shared-assets.md
+│   ├── player-journey.md         # Player journey and progression design
 │   ├── registry/
 │   │   └── entities.yaml        # Single source of truth for cross-GDD game-world facts
-│   └── reviews/
-│       └── cross-gdd-consistency-report.md # Cross-GDD consistency analysis
+│   ├── reviews/
+│   │   └── cross-gdd-consistency-report.md # Cross-GDD consistency analysis
+│   └── ux/                       # UX design documents
+│       ├── interaction-patterns.md # Interaction patterns and controls
+│       ├── qualifying-results.md  # Qualifying results screen UX
+│       ├── race-hud.md           # Race HUD layout and behavior
+│       ├── results.md            # Race results screen UX
+│       ├── settings.md           # Settings menu UX specification
+│       └── ui-menu.md            # UI menu system design
 ├── docs/                        # Technical documentation
-│   ├── architecture/            # Architecture Decision Records + TR-ID registry
-│   │   ├── adr-0001-manual-simulation-authority-and-determinism-boundary.md # ADR: manual simulation authority
-│   │   └── tr-registry.yaml     # Technical requirement ID persistence
+│   ├── architecture/            # Architecture Decision Records, reviews, traceability
+│   │   ├── adr-0001-manual-simulation-authority-and-determinism-boundary.md
+│   │   ├── adr-0002-vehicle-physics-implementation-pattern.md
+│   │   ├── adr-0003-content-pipeline-and-addressables.md
+│   │   ├── adr-0004-settings-persistence-and-control-profiles.md
+│   │   ├── adr-0005-input-context-controller-and-action-map-inventory.md
+│   │   ├── adr-0006-fuel-tire-state-ownership-and-tick-timing.md
+│   │   ├── adr-0007-track-spline-format.md
+│   │   ├── adr-0008-ghost-recording-data-format-and-mvp-buffer.md
+│   │   ├── adr-0009-ai-rival-deterministic-architecture.md
+│   │   ├── adr-0010-camera-vfx-rendering-budget-and-interpolation.md
+│   │   ├── adr-0011-pit-stop-architecture.md
+│   │   ├── adr-0012-audio-system-architecture.md
+│   │   ├── adr-0013-qualifying-session-format.md
+│   │   ├── architecture-review-2026-07-27.md
+│   │   ├── architecture-review-2026-07-28-v5.md
+│   │   ├── architecture-review-2026-07-28-v6.md
+│   │   ├── architecture-review-2026-07-28.md
+│   │   ├── architecture-traceability-matrix.md
+│   │   ├── architecture.md          # Master architecture doc
+│   │   ├── complete-traceability-matrix.md
+│   │   ├── control-manifest.md
+│   │   ├── tr-registry.yaml         # Technical requirement ID persistence
+│   │   ├── traceability-index.md
+│   │   └── traceability-matrix.md
 │   ├── engine-reference/        # Curated engine API snapshots (version-pinned)
 │   │   ├── super-monaco-gp-teams.md
 │   ├── framework/               # OCGS framework reference
@@ -147,14 +213,26 @@
 │   ├── authoring-agents.md      # Agent creation guide
 │   ├── authoring-skills.md      # Skill creation guide
 │   └── CONTRIBUTING.md          # Framework contribution guide
-├── tests/                       # Unity/C# gameplay test suites (created as needed)
+├── tests/                       # Unity/C# gameplay test suites
+│   ├── README.md                # Test suite overview and conventions
+│   ├── EditMode/                # Edit-mode tests (run in Unity Editor)
+│   │   └── README.md
+│   ├── PlayMode/                # Play-mode tests (run in play mode)
+│   │   └── README.md
+│   ├── unit/                    # Unit tests
+│   │   └── FuelConsumptionExampleTests.cs
+│   ├── integration/             # Integration tests
+│   ├── smoke/                   # Smoke tests
+│   │   └── critical-paths.md
+│   └── evidence/                # Test evidence and artifacts
 ├── tools/                       # Build and pipeline tools
 │   ├── aseprite-mcp/            # Aseprite MCP server (Python/uv)
 │   └── assign-models.js         # Model assignment utility
 ├── prototypes/                  # Throwaway prototypes (currently .gitkeep)
 ├── production/                  # Production management
 │   ├── gate-checks/             # Quality gate check results
-│   │   └── concept-to-systems-design.md
+│   │   ├── concept-to-systems-design.md
+│   │   └── technical-setup-to-pre-production-2026-07-28.md
 │   ├── session-logs/            # Session audit trail
 │   │   ├── agent-audit.log      # Plugin audit log
 │   │   └── session-log.md       # Human-readable session log
@@ -176,6 +254,7 @@
     │   ├── opencode.yml         # OpenCode CI
     │   ├── opencode-review.yml  # OpenCode review
     │   ├── conventional-commits.yml # Conventional Commit validation (Cocogitto)
+    │   ├── tests.yml            # Test suite CI pipeline
     │   └── stale.yml            # Stale issue management
     ├── ISSUE_TEMPLATE/          # Issue templates
     ├── PULL_REQUEST_TEMPLATE.md # PR template
@@ -199,28 +278,28 @@
 - Key files: `InputSystem_Actions.inputactions`, `Settings/PC_RPAsset.asset`, `TutorialInfo/Readme.cs`
 
 **`design/`:**
-- Purpose: Game design documentation, art bible, cross-system registries, and cross-GDD consistency analysis
-- Contains: GDDs (`design/gdd/`), art bible and palettes (`design/art/`), entity/formula registry, design standards, cross-GDD reviews
-- Key files: `gdd/game-concept.md`, `art/art-bible.md`, `registry/entities.yaml`, `AGENTS.md`, `reviews/cross-gdd-consistency-report.md`
+- Purpose: Game design documentation, art bible, asset specs, UX design, cross-system registries, and cross-GDD consistency analysis
+- Contains: GDDs (`design/gdd/`), art bible and palettes (`design/art/`), asset specifications (`design/assets/`), UX design (`design/ux/`), entity/formula registry, design standards, cross-GDD reviews
+- Key files: `gdd/game-concept.md`, `art/art-bible.md`, `assets/asset-manifest.md`, `ux/race-hud.md`, `registry/entities.yaml`, `AGENTS.md`, `reviews/cross-gdd-consistency-report.md`
 
 **`docs/`:**
 - Purpose: Technical documentation — architecture decisions, framework reference, workflow guides, research
-- Contains: ADRs, engine API snapshots, OCGS framework docs, examples, research
-- Key files: `framework/director-gates.md`, `framework/agent-roster.md`, `framework/skills-reference.md`, `framework/workflow-catalog.yaml`, `architecture/tr-registry.yaml`, `research/multiplayer-networking-comparison-2026.md`
+- Contains: ADRs (12 total), architecture reviews, traceability matrices, engine API snapshots, OCGS framework docs, examples, research
+- Key files: `architecture/architecture.md`, `architecture/control-manifest.md`, `architecture/tr-registry.yaml`, `framework/director-gates.md`, `framework/agent-roster.md`, `framework/skills-reference.md`, `framework/workflow-catalog.yaml`, `research/multiplayer-networking-comparison-2026.md`
 
 **`tests/`:**
 - Purpose: Unity/C# gameplay and integration tests
-- Contains: Test suites created by the project's test setup workflow
+- Contains: EditMode and PlayMode test directories, unit tests, integration tests, smoke tests, and test evidence
 
 **`tools/`:**
 - Purpose: Build utilities and MCP integrations
-- Contains: Aseprite MCP server, model assignment utility
+- Contains: Aseprite MCP server, Blender MCP server, model assignment utility
 - Key files: `aseprite-mcp/`, `assign-models.js`
 
 **`production/`:**
 - Purpose: Production management — session logs, audit trails, active state, quality gate checks
 - Contains: Session logs, agent audit log, session state checkpoint, gate checks, review mode state
-- Key files: `session-logs/agent-audit.log`, `session-logs/session-log.md`, `session-state/active.md`, `gate-checks/concept-to-systems-design.md`, `stage.txt`, `review-mode.txt`
+- Key files: `session-logs/agent-audit.log`, `session-logs/session-log.md`, `session-state/active.md`, `gate-checks/concept-to-systems-design.md`, `gate-checks/technical-setup-to-pre-production-2026-07-28.md`, `stage.txt`, `review-mode.txt`
 
 **`prototypes/`:**
 - Purpose: Throwaway prototypes isolated from main source
@@ -252,15 +331,26 @@
 - `design/gdd/` — Game Design Documents, one per system
 - `design/gdd/game-concept.md` — Core identity, pitch, and creative brief
 - `design/gdd/reviews/` — Design review logs (one per GDD)
+- `design/accessibility-requirements.md` — Accessibility requirements (Standard tier)
+- `design/player-journey.md` — Player journey and progression design
 - `design/art/art-bible.md` — Art bible (core export)
 - `design/art/reference-catalog.md` — Reference image catalog
+- `design/assets/asset-manifest.md` — Master asset manifest
+- `design/ux/race-hud.md` — Race HUD UX specification
+- `design/ux/ui-menu.md` — UI menu system design
 - `design/registry/entities.yaml`: Cross-GDD entity/formula/constant registry
 - `design/reviews/cross-gdd-consistency-report.md`: Cross-GDD consistency analysis
+- `docs/architecture/architecture.md`: Master architecture document
+- `docs/architecture/control-manifest.md`: Control manifest
 - `docs/architecture/adr-0001-manual-simulation-authority-and-determinism-boundary.md`: ADR on manual simulation authority
+- `docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md` through `adr-0013-qualifying-session-format.md`: 12 additional ADRs
 - `docs/architecture/tr-registry.yaml`: Technical requirement ID persistence
+- `docs/architecture/complete-traceability-matrix.md`: Full traceability matrix
+- `docs/architecture/architecture-traceability-matrix.md`: Architecture traceability
 - `docs/registry/architecture.yaml`: Architecture registry data
 - `docs/framework/workflow-catalog.yaml`: Phase definitions and artifact checks
 - `docs/framework/director-gates.md`: Shared review gate prompts
+- `docs/plans/asr-car-import-pipeline.md`: ASR car import pipeline plan
 - `docs/plans/overdrive-handoff-2026-07-24.md`: Project handoff plan
 
 **Tests:**
@@ -300,9 +390,9 @@
 
 **New ADR:** `docs/architecture/[adr-title].md` — follow standard ADR format
 
-**New test:** `tests/[category]/[test-name].test.mjs` — co-located with related validation code
+**New test:** `tests/[category]/[test-name].cs` (Unity) or `tests/[category]/[test-name].test.mjs` (plugin) — follow existing test patterns in the relevant subdirectory
 
-**New CI workflow:** `.github/workflows/[workflow-name].yml` — follow existing workflow patterns
+**New CI workflow:** `.github/workflows/[workflow-name].yml` — follow existing workflow patterns (e.g., `tests.yml` for test suites)
 
 **Shared utilities:** `tools/` — JavaScript utilities used across tooling scripts (e.g., `tools/assign-models.js`)
 

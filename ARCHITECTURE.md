@@ -34,25 +34,25 @@
 - Used by: Unity Editor, build pipeline
 
 **Design Layer:**
-- Purpose: Game design documentation, art bible, entity/formula registry, design standards
+- Purpose: Game design documentation, art bible, asset specs, UX design, entity/formula registry, design standards
 - Location: `design/`
-- Contains: GDDs (`design/gdd/`), art bible and palettes (`design/art/`), entity/formula registry (`design/registry/entities.yaml`), design standards (`design/AGENTS.md`)
+- Contains: GDDs (`design/gdd/`), art bible and palettes (`design/art/`), asset specifications (`design/assets/`), UX design (`design/ux/`), entity/formula registry (`design/registry/entities.yaml`), design standards (`design/AGENTS.md`)
 - Depends on: OCGS design skills (`/design-system`, `/quick-design`, `/ux-design`)
 - Used by: Architecture skills, story creation, implementation validation
 
 **Testing Layer:**
-- Purpose: Plugin tests and future Unity/C# gameplay tests
+- Purpose: Plugin tests and Unity/C# gameplay tests
 - Location: `tests/`
-- Contains: Plugin tests in `.opencode/plugins/tests/` and future game tests
+- Contains: EditMode and PlayMode test directories, unit tests, integration tests, smoke tests; plugin tests in `.opencode/plugins/tests/`
 - Depends on: Node.js for plugin tests; Unity Test Framework for gameplay tests
 - Used by: Plugin CI and game development validation
 
 **Tooling Layer:**
 - Purpose: Build utilities, MCP integrations, model assignment
 - Location: `tools/`
-- Contains: Aseprite MCP server (`tools/aseprite-mcp/`, git submodule), model assignment utility (`tools/assign-models.js`)
-- Depends on: Node.js, Python/uv (for Aseprite MCP)
-- Used by: Asset pipeline and project tooling
+- Contains: Aseprite MCP server (`tools/aseprite-mcp/`, git submodule), Blender MCP server (`blender-mcp` in `opencode.json`), Unity MCP server (`unityMCP` in `opencode.json`), model assignment utility (`tools/assign-models.js`)
+- Depends on: Node.js, Python/uv (for Aseprite MCP), Blender (for Blender MCP), Unity Editor (for Unity MCP)
+- Used by: Asset pipeline, 3D asset workflow, Unity scene inspection, project tooling
 
 ## Data Flow
 
