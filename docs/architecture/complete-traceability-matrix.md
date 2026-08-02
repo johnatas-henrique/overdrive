@@ -305,7 +305,7 @@
 | TR-grid-005 | Perfect Start bonus: 1.15× multiplier for 600 ticks; PerfectStartResult { active, remainingTicks } | ADR-0001 §ReplayInitialState (Perfect Start remaining ticks); ADR-0002 §Requirements (1.15× multiplier for 600 ticks) | ✅ |
 | TR-grid-006 | PerfectStartResult immutable: captured at GO, travels through ReplayInitialState | ADR-0001 §Decision ("ReplayInitialState contains Perfect Start remaining ticks") | ✅ |
 | TR-grid-007 | AI no Perfect Start: AI archetypes define launch; never receives Perfect Start multiplier | ADR-0009 (AI archetype launch behavior). AI-PS-exclusion not explicitly in ADR. | ⚠️ |
-| TR-grid-008 | Grid Display Confirm only: no timeout, no Back/Cancel; static top-down camera in MVP | ADR-0001 §Decision ("Grid Display Confirm only"). Camera angle and timeout not in ADR. | ⚠️ |
+| TR-grid-008 | Qualifying Results Confirm only: no timeout, no Back/Cancel; static top-down camera in MVP | ADR-0001 §Decision ("Grid Display Confirm only"). Camera angle and timeout not in ADR. | ⚠️ |
 
 **Grid & Start Summary: 6 ✅, 2 ⚠️, 0 ❌ (88% coverage)**
 
@@ -397,7 +397,7 @@
 | TR-uimenu-001 | Linear stack navigation: screens push/pop on a stack | ADR-0003 (Content Pipeline integration for loading screens); ADR-0004 (Settings integration). Linear stack pattern not explicitly in ADR. | ⚠️ |
 | TR-uimenu-002 | Finished Presentation input routing: Confirm skip timer, Pause pause timer, Cancel ignored | ADR-0001 §Decision ("UI Presentation owns the up-to-5-second timer, Confirm/Pause direct routing"); ADR-0005 §Context ("Finished Presentation Pause/Confirm routing") | ✅ |
 | TR-uimenu-003 | Settings difficulty disabled: Difficulty dropdown disabled during active race | ADR-0004 §Decision ("Settings blocked during active Countdown") | ✅ |
-| TR-uimenu-004 | Grid Display Confirm only: no timeout, no Back/Cancel | ADR-0001 §Decision ("Grid Display Confirm only") | ✅ |
+| TR-uimenu-004 | Qualifying Results Confirm only: no timeout, no Back/Cancel | ADR-0001 §Decision ("Grid Display Confirm only") | ✅ |
 | TR-uimenu-005 | Results display: race results with position, time, classification | ADR-0001 §Decision (Results lifecycle; Simulation remains Results until ContentUnloadComplete). Results layout not in ADR. | ⚠️ |
 | TR-uimenu-006 | Navigate boundary behavior: Navigate wraps at screen boundaries | ADR-0005 (UI Navigate binding defined). Wrap behavior not in ADR. | ⚠️ |
 | TR-uimenu-007 | Car selection turntable: rotating car display in selection screen | ADR-0003 (Car Addressable loading). Turntable presentation not in ADR. | ❌ |

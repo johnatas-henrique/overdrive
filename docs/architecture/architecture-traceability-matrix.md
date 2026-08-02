@@ -125,7 +125,7 @@
 | TR-QUAL-007 | qualifying | RaceReconfigure flow: qualifying→race is lightweight (no asset unload/reload) | ADR-0003 (§CP_RaceReconfigure: no Addressables I/O) | ✅ |
 | TR-QUAL-008 | qualifying | Terminal presentation: up to 5s, Confirm advances, Cancel ignored, Pause available | — | ❌ (No ADR defines the qualifying terminal presentation timer, Confirm/Cancel routing during qualifying results, or the 5s timeout) |
 | TR-QUAL-009 | qualifying | Skip qualifying → start P16; failed lap → start P16, no retry | — | ❌ (No ADR governs skip/failure grid position rules — defined only in qualifying.md) |
-| TR-QUAL-010 | qualifying | Qualifying Results → Grid Display → "Start Race" → Loading via TransitionRequest(Loading, QualifyingComplete, gridAssignment) | ADR-0001 (§TransitionRequest lifecycle); ADR-0003 (§RaceReconfigure and loading) | ✅ |
+| TR-QUAL-010 | qualifying | Qualifying Results → "Start Race" → Loading via TransitionRequest(Loading, QualifyingComplete, gridAssignment) | ADR-0001 (§TransitionRequest lifecycle); ADR-0003 (§RaceReconfigure and loading) | ✅ |
 
 **Qualifying Summary: 6 ✅, 0 ⚠️, 4 ❌**
 
@@ -224,7 +224,7 @@
 | TR-GRID-004 | grid-start | Perfect Start evaluation: 12-tick arming window [GO-12, GO-1], arm if `rawThrottlePostDeadZone > 0.5` and `rawBrakePostDeadZone == 0`, condition must hold at GO | ADR-0005 (§Input arms Perfect Start; §Accelerate/Brake exempt from latching) | ⚠️ (ADR-0005 mentions Input arms Perfect Start but does NOT define the 12-tick window, the 0.5/0 thresholds, or the arming logic explicitly. ADR-0001 includes Perfect Start in ReplayInitialState.) |
 | TR-GRID-005 | grid-start | `PerfectStartResult { active, remainingTicks }`: 600 ticks when active | ADR-0001 (§ReplayInitialState contains Perfect Start remaining ticks); ADR-0002 (§1.15× multiplier for 600 ticks) | ✅ |
 | TR-GRID-006 | grid-start | AI launch archetypes: Aggressive = faster, Cautious = slower. AI never receives Perfect Start multiplier | ADR-0009 (§AI archetype defines launch behavior) | ⚠️ (ADR-0009 defines archetype behavior for racing but does NOT explicitly define launch behavior differences or confirm the AI-exclusion from Perfect Start — ai-rival.md and grid-start.md cover this without ADR backing) |
-| TR-GRID-007 | grid-start | Grid Display: Confirm-only, no timeout, no Back/Cancel. Static top-down camera in MVP | — | ❌ (No ADR defines grid display UX flow, Confirm-only semantics, or camera angle. ADR-0010 defines camera budget but not grid display mode.) |
+| TR-GRID-007 | grid-start | Qualifying Results: Confirm-only, no timeout, no Back/Cancel. Static top-down camera in MVP | — | ❌ (No ADR defines grid display UX flow, Confirm-only semantics, or camera angle. ADR-0010 defines camera budget but not grid display mode.) |
 | TR-GRID-008 | grid-start | Accelerate, Brake, Steer active during Countdown but grid lock prevents movement | ADR-0001 (§Countdown consumes controls without movement); ADR-0002 (§GridLocked state) | ✅ |
 | TR-GRID-009 | grid-start | `grid_position = rank(qualifying_times, ascending, stable_car_id)` — stable carId breaks ties | ADR-0001 (§GridAssignment from RSM) | ⚠️ (The stable_car_id tiebreaker formula is defined in grid-start.md and qualifying.md but NOT captured in any ADR — ADR-0001 delegates to RSM.) |
 
@@ -277,7 +277,7 @@
 - **TR-TIRE-004**: TireCompound ScriptableObject asset format (not just the byte compoundId). **Suggested:** Amend ADR-0006 or standalone ADR
 - **TR-TIRE-012**: Grip loss player communication through camera/audio/VFX. **Suggested:** Cross-system ADR "Grip Loss Multi-Sensory Feedback"
 - **TR-TRK-012**: Track map HUD rendering (splines, pit lane, entry marker, car positions). **Suggested:** ADR "Track Map HUD Data Contract"
-- **TR-GRID-007**: Grid display Confirm-only UX, no timeout, static camera. **Suggested:** ADR "Grid Display Presentation and UX Flow"
+- **TR-GRID-007**: Qualifying Results Confirm-only UX, no timeout, static camera. **Suggested:** ADR "Qualifying Results Presentation and UX Flow"
 
 ### Cross-ADR Concerns
 

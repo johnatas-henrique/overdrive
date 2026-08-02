@@ -463,6 +463,33 @@ requirements:
     revised: ""
     status: active
 
+  - id: TR-qual-004
+    system: qualifying
+    gdd: design/gdd/qualifying.md
+    requirement: "Single flying lap format: one chance, no retry; enters Racing directly (no Countdown)"
+    created: "2026-08-01"
+    revised: ""
+    status: active
+    source: docs/architecture/adr-0013-qualifying-session-format.md
+
+  - id: TR-qual-005
+    system: qualifying
+    gdd: design/gdd/qualifying.md
+    requirement: "Skip/fail behavior: P16 grid position, no retry; AI times pre-generated"
+    created: "2026-08-01"
+    revised: ""
+    status: active
+    source: docs/architecture/adr-0013-qualifying-session-format.md
+
+  - id: TR-qual-006
+    system: qualifying
+    gdd: design/gdd/qualifying.md
+    requirement: "Tier order not preserved; cross-tier outqualification allowed by DifficultyProfile"
+    created: "2026-08-01"
+    revised: ""
+    status: active
+    source: docs/architecture/adr-0013-qualifying-session-format.md
+
   # --- AI Rival ---
   - id: TR-ai-001
     system: ai-rival
@@ -537,6 +564,24 @@ requirements:
     created: "2026-07-27"
     revised: ""
     status: active
+
+  - id: TR-car-003
+    system: car-definition-data
+    gdd: design/gdd/car-definition-data.md
+    requirement: "Load-time stat validation: valid values from config, clamp with warning, run once at race init"
+    created: "2026-08-01"
+    revised: ""
+    status: active
+    source: docs/architecture/adr-0015-car-definition-data-validation.md
+
+  - id: TR-car-004
+    system: car-definition-data
+    gdd: design/gdd/car-definition-data.md
+    requirement: "Authoring-time differentiation check: team stats must differ (no duplicate 12/12/12/12/12/12 profiles)"
+    created: "2026-08-01"
+    revised: ""
+    status: active
+    source: docs/architecture/adr-0015-car-definition-data-validation.md
 
   # --- Race Session Manager ---
   - id: TR-rsm-001

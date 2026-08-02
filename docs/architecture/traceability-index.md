@@ -1,8 +1,8 @@
 # Architecture Traceability Index
 
-> **Last Updated:** 2026-07-28
+> **Last Updated:** 2026-08-01
 > **Engine:** Unity 6000.3.19f1
-> **ADRs:** 11 (0001–0011)
+> **ADRs:** 15 (0001–0015)
 
 ## Coverage Summary
 
@@ -223,7 +223,7 @@
 | TR-GS-4 | grid-start.md | Perfect Start conditions | ADR-0002, ADR-0005 | ✅ |
 | TR-GS-5 | grid-start.md | Grid lock | ADR-0001, ADR-0002 | ✅ |
 | TR-GS-6 | grid-start.md | AI launches | ADR-0009 | ✅ |
-| TR-GS-7 | grid-start.md | Grid Display screen | — | ❌ |
+| TR-GS-7 | grid-start.md | Qualifying Results screen | — | ❌ |
 | TR-GS-8 | grid-start.md | GridAssignment immutable | ADR-0001 | ✅ |
 
 ### Presentation Layer (64 TRs)
@@ -324,3 +324,4 @@
 |------|-----------|------|-------|
 | 2026-07-27 | 42% | 6 | Initial review. Foundation ADRs complete. |
 | 2026-07-28 | 74% | 11 | Full review. All layers covered. 2 HIGH conflicts found. |
+| 2026-08-01 | 74% | 15 | New ADRs 0013-0015 Accepted. 5 TR-IDs created (TR-qual-004..006, TR-car-003..004). 12 corrections applied (A1/A2/M1/M2/L1-L5/S2 + bonus). PASS. |

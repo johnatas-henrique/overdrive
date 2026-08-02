@@ -99,6 +99,28 @@ state_ownership:
     added: 2026-07-28
     revised: ""
 
+  - state: QualifyingPhase
+    status: active
+    owner_system: race-session-manager
+    adr: docs/architecture/adr-0013-qualifying-session-format.md
+    interface: "QualifyingPhase enum: OutLap, FlyingLap, Finished — tracks current qualifying session state"
+    write_access: rsm-only
+    referenced_by:
+      - docs/architecture/adr-0013-qualifying-session-format.md
+    added: 2026-07-31
+    revised: ""
+
+  - state: QualifyingResult
+    status: active
+    owner_system: race-session-manager
+    adr: docs/architecture/adr-0013-qualifying-session-format.md
+    interface: "QualifyingResult enum: Completed, Failed, Skipped — tracks qualifying outcome"
+    write_access: rsm-only
+    referenced_by:
+      - docs/architecture/adr-0013-qualifying-session-format.md
+    added: 2026-07-31
+    revised: ""
+
 # ─── INTERFACE CONTRACTS ─────────────────────────────────────────────────
 
   - purpose: audio_system
@@ -201,6 +223,103 @@ interfaces:
     referenced_by:
       - docs/architecture/adr-0004-settings-persistence-and-control-profiles.md
     added: 2026-07-27
+    revised: ""
+
+  - contract: grid_assignment
+    status: active
+    pattern: immutable_data
+    producer: race-session-manager
+    consumers:
+      - grid-start
+      - content-pipeline
+    adr: docs/architecture/adr-0013-qualifying-session-format.md
+    signature: "GridAssignment { carId → gridSlot[1..16] } — immutable after qualifying completion. Produced by RSM, consumed by Grid & Start and Content Pipeline."
+    referenced_by:
+      - docs/architecture/adr-0013-qualifying-session-format.md
+    added: 2026-07-31
+    revised: ""
+
+  - contract: hud_data_pipeline
+    status: active
+    pattern: direct_read
+    producer: multiple (vehicle-physics, fuel-system, tire-system, race-session-manager, simulation, pit-stop, track-system)
+    consumers:
+      - hud-system
+    adr: docs/architecture/adr-0014-hud-data-contract-and-layout.md
+    signature: "12 HUD elements mapped to 6 producer systems. Each element reads from exactly one owner via PublishedSimulationSnapshot or direct interface."
+    referenced_by:
+      - docs/architecture/adr-0014-hud-data-contract-and-layout.md
+    added: 2026-07-31
+    revised: ""
+
+  - contract: hud_performance_budget
+    status: active
+    pattern: performance_budget
+    producer: hud-system
+    consumers:
+      - hud-system
+    adr: docs/architecture/adr-0014-hud-data-contract-and-layout.md
+    signature: "HUD: 0.5ms per frame (separate from Camera-VFX 2.1ms). Track Map: 0.15ms (30% of HUD budget)."
+    referenced_by:
+      - docs/architecture/adr-0014-hud-data-contract-and-layout.md
+    added: 2026-07-31
+    revised: ""
+
+  - contract: tire_warning_threshold
+    status: active
+    pattern: threshold
+    producer: tire-system
+    consumers:
+      - hud-system
+    adr: docs/architecture/adr-0014-hud-data-contract-and-layout.md
+    signature: "Tire Warning: yellow flash when wearFraction > 0.50, red flash when > 0.75, red persistent when > 0.90"
+    referenced_by:
+      - docs/architecture/adr-0014-hud-data-contract-and-layout.md
+    added: 2026-07-31
+    revised: ""
+
+  - contract: car_definition_schema
+    status: active
+    pattern: data_contract
+    producer: car-definition-data
+    consumers:
+      - vehicle-physics-system
+      - fuel-system
+      - tire-system
+      - ai-rival-system
+      - audio-system
+    adr: docs/architecture/adr-0015-car-definition-data-validation.md
+    signature: "CarDefinition ScriptableObject with CarStats (6 stats), weight, audioProfile. Read-only accessors via CarStatsAccessor."
+    referenced_by:
+      - docs/architecture/adr-0015-car-definition-data-validation.md
+    added: 2026-07-31
+    revised: ""
+
+  - contract: efficiency_modifier
+    status: active
+    pattern: data_flow
+    producer: car-definition-data
+    consumers:
+      - fuel-system
+      - tire-system
+    adr: docs/architecture/adr-0015-car-definition-data-validation.md
+    signature: "efficiency_modifier: float derived from CarStats.efficiency at race init. Formula is a tuning knob. Consumed by FuelSystem and TireSystem per tick."
+    referenced_by:
+      - docs/architecture/adr-0015-car-definition-data-validation.md
+    added: 2026-07-31
+    revised: ""
+
+  - contract: car_validation_config
+    status: active
+    pattern: shared_config
+    producer: car-definition-data
+    consumers:
+      - car-definition-data
+    adr: docs/architecture/adr-0015-car-definition-data-validation.md
+    signature: "CarValidationConfig: ScriptableObject with StatValidationConfig (validValues[], defaultValue) and DifferentiationConfig (maxSpreadPercentage, withinTierOnly). Loaded via Shared/CarValidationConfig Addressable."
+    referenced_by:
+      - docs/architecture/adr-0015-car-definition-data-validation.md
+    added: 2026-07-31
     revised: ""
 
 

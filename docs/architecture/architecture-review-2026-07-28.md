@@ -39,7 +39,7 @@
 | car-definition-data.md | Car Def | Tier gap ~4-point average | MVP |
 | race-session-manager.md | RSM | Position ranking formula | MVP |
 | qualifying.md | Qualifying | Skip → P16, failed → P16 | MVP |
-| grid-start.md | Grid & Start | Grid Display screen | MVP |
+| grid-start.md | Grid & Start | Qualifying Results screen | MVP |
 
 ### Presentation Layer (20 gaps)
 
