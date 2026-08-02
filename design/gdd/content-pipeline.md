@@ -290,6 +290,8 @@ No player interaction during loading — all input is blocked.
 - **AC-LS3:** Given loading completes under 0.5s, When displayed, Then loading screen remains at least 0.5s.
 - **AC-LS4:** Given loading completes over 0.5s, When finished, Then loading screen dismisses immediately.
 - **AC-LS5:** Given loading screen visible, When player presses any input, Then input is blocked.
+- **AC-LS10:** Given a race load on PC (SSD), When loading completes, Then elapsed time is at most 5s (UX decision 2026-07-31 — loading.md spec).
+- **AC-LS11:** Given a race load on WebGL, When loading completes, Then elapsed time is at most 10s (UX decision 2026-07-31 — loading.md spec).
 - **AC-LS6:** Given first launch, When catalog initializes, Then "Preparing..." with spinner is shown.
 - **AC-LS7:** Given loading VFX budget, When measured, Then VFX memory does not exceed 3 MB.
 - **AC-LS8:** Given VFX fails to load, When displayed, Then progress bar and text still function.

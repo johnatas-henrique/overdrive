@@ -150,6 +150,30 @@
 - **When NOT to Use**: Safe actions (Resume, Settings, Confirm Selection) — use direct Confirm pattern
 - **Used In**: Pause Menu (Return to Menu confirmation)
 
+### Tab Navigation
+
+- **Input**: Q / E (keyboard) or LB / RB (gamepad)
+- **Action Map**: OverdriveUI
+- **Behavior**: Switches between category tabs. Focus stays in the tab's content area (not on the tab bar) — Q/E switches tabs at any time. Content area updates with a 200ms crossfade. Wraps at both edges (Q on the first tab goes to the last; E on the last goes to the first) — no dead ends.
+- **When to Use**: Screens with 3+ distinct categories (Settings — Difficulty/Controls/Audio/Display/Access/Camera)
+- **When NOT to Use**: Screens with 1-2 sections — use vertical navigation only
+
+### Listening State
+
+- **Input**: Any valid rebindable input; Escape / East cancels capture
+- **Action Map**: OverdriveUI
+- **Behavior**: Binding-capture mode in Controls. The slot shows "Listening..." and the next valid input is captured. Reserved inputs (Pause, Confirm, Cancel) are REJECTED immediately with status `Rejected` — capture continues waiting for a valid input. Escape/East cancels only the capture (returns to the previous slot state); a second Cancel closes Settings. No timeout — capture persists until a valid input or Cancel.
+- **When to Use**: Rebindable binding slots in Settings Controls
+- **When NOT to Use**: Reserved bindings (Confirm/Cancel/Pause) — never offered as capture targets
+
+### DisplayConfirm Modal
+
+- **Input**: Keep Changes via Enter/South; Cancel via Escape/East
+- **Action Map**: OverdriveUI
+- **Behavior**: Modal for resolution/fullscreen changes with a 15s countdown. Default focus is on **Cancel (revert)** for safety — a broken resolution would leave the screen unusable, and the timeout also reverts. The countdown is visible as a regressive number ("Reverting in 12s"). At 0s the display reverts automatically and the modal closes. Apply is disabled while the modal is active.
+- **When to Use**: Display settings that change resolution or fullscreen mode
+- **When NOT to Use**: Non-display settings — use the standard Confirmation Modal
+
 ### Device Switch
 
 - **Detection**: Last significant input device
@@ -207,9 +231,9 @@
 
 ## Gaps & Patterns Needed
 
-- **Tab Navigation**: Q/E (keyboard) or LB/RB (gamepad) for tab switching. Used in Settings. Should be added as a formal pattern.
-- **Listening State**: Binding capture mode in Settings Controls. Should be added as a formal pattern.
-- **DisplayConfirm Modal**: 15-second countdown for display changes. Should be added as a formal pattern.
+- ~~**Tab Navigation**: Q/E (keyboard) or LB/RB (gamepad) for tab switching. Used in Settings.~~ **ADDED 2026-08-01** — formalized above.
+- ~~**Listening State**: Binding capture mode in Settings Controls.~~ **ADDED 2026-08-01** — formalized above.
+- ~~**DisplayConfirm Modal**: 15-second countdown for display changes.~~ **ADDED 2026-08-01** — formalized above.
 
 ---
 
