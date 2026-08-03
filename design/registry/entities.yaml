@@ -65,7 +65,7 @@ entities:
     ai_archetype: Consistent
     stats:
       top_speed: 20
-      acceleration: 20
+      acceleration: 18
       brake_power: 16
       grip_level: 20
       stability: 20
@@ -88,7 +88,7 @@ entities:
     tier: 1
     ai_archetype: Consistent
     stats:
-      top_speed: 16
+      top_speed: 20
       acceleration: 20
       brake_power: 20
       grip_level: 16
@@ -112,7 +112,7 @@ entities:
     tier: 1
     ai_archetype: Inconsistent
     stats:
-      top_speed: 20
+      top_speed: 17
       acceleration: 16
       brake_power: 20
       grip_level: 16
@@ -136,8 +136,8 @@ entities:
     tier: 1
     ai_archetype: Cautious
     stats:
-      top_speed: 20
-      acceleration: 12
+      top_speed: 14
+      acceleration: 14
       brake_power: 20
       grip_level: 20
       stability: 20
@@ -161,8 +161,8 @@ entities:
     # was: Consistent before 2026-07-27 — aligned to game-concept "Aggressive overtakes"
     ai_archetype: Aggressive
     stats:
-      top_speed: 16
-      acceleration: 16
+      top_speed: 11
+      acceleration: 12
       brake_power: 16
       grip_level: 16
       stability: 16
@@ -186,8 +186,8 @@ entities:
     # was: Aggressive before 2026-07-27 — aligned to game-concept "Inconsistent when pressured"
     ai_archetype: Inconsistent
     stats:
-      top_speed: 12
-      acceleration: 20
+      top_speed: 11
+      acceleration: 12
       brake_power: 20
       grip_level: 16
       stability: 12
@@ -211,8 +211,8 @@ entities:
     # was: Inconsistent before 2026-07-27 — aligned to game-concept "Defensive, blocks persistently"
     ai_archetype: Aggressive
     stats:
-      top_speed: 20
-      acceleration: 12
+      top_speed: 8
+      acceleration: 10
       brake_power: 16
       grip_level: 16
       stability: 16
@@ -236,8 +236,8 @@ entities:
     # was: Aggressive before 2026-07-27 — aligned to game-concept "Smooth, consistent execution"
     ai_archetype: Consistent
     stats:
-      top_speed: 12
-      acceleration: 16
+      top_speed: 11
+      acceleration: 12
       brake_power: 16
       grip_level: 12
       stability: 12
@@ -260,8 +260,8 @@ entities:
     tier: 3
     ai_archetype: Cautious
     stats:
-      top_speed: 12
-      acceleration: 12
+      top_speed: 8
+      acceleration: 10
       brake_power: 12
       grip_level: 12
       stability: 12
@@ -285,8 +285,8 @@ entities:
     # was: Aggressive before 2026-07-27 — aligned to game-concept "Technical, smooth driving style"
     ai_archetype: Consistent
     stats:
-      top_speed: 16
-      acceleration: 8
+      top_speed: 8
+      acceleration: 10
       brake_power: 8
       grip_level: 12
       stability: 8
@@ -310,8 +310,8 @@ entities:
     # was: Cautious before 2026-07-27 — aligned to game-concept "Aggressive, prone to contact"
     ai_archetype: Aggressive
     stats:
-      top_speed: 16
-      acceleration: 8
+      top_speed: 8
+      acceleration: 10
       brake_power: 16
       grip_level: 16
       stability: 16
@@ -335,8 +335,8 @@ entities:
     # was: Consistent before 2026-07-27 — aligned to game-concept "Quick in clean air, struggles in traffic"
     ai_archetype: Cautious
     stats:
-      top_speed: 16
-      acceleration: 12
+      top_speed: 8
+      acceleration: 10
       brake_power: 8
       grip_level: 12
       stability: 8
@@ -359,8 +359,8 @@ entities:
     tier: 4
     ai_archetype: Inconsistent
     stats:
-      top_speed: 16
-      acceleration: 8
+      top_speed: 8
+      acceleration: 10
       brake_power: 8
       grip_level: 12
       stability: 12
@@ -383,8 +383,8 @@ entities:
     tier: 4
     ai_archetype: Cautious
     stats:
-      top_speed: 16
-      acceleration: 8
+      top_speed: 8
+      acceleration: 10
       brake_power: 8
       grip_level: 12
       stability: 8
@@ -407,8 +407,8 @@ entities:
     tier: 4
     ai_archetype: Aggressive
     stats:
-      top_speed: 12
-      acceleration: 8
+      top_speed: 8
+      acceleration: 10
       brake_power: 8
       grip_level: 8
       stability: 8
@@ -431,8 +431,8 @@ entities:
     tier: 4
     ai_archetype: Inconsistent
     stats:
-      top_speed: 16
-      acceleration: 8
+      top_speed: 5
+      acceleration: 6
       brake_power: 4
       grip_level: 12
       stability: 12
