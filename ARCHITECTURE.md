@@ -50,9 +50,9 @@
 **Tooling Layer:**
 - Purpose: Build utilities, MCP integrations, model assignment
 - Location: `tools/`
-- Contains: Aseprite MCP server (`tools/aseprite-mcp/`, git submodule), Blender MCP server (`blender-mcp` in `opencode.json`), Unity MCP server (`unityMCP` in `opencode.json`), model assignment utility (`tools/assign-models.js`)
+- Contains: Aseprite MCP server (`tools/aseprite-mcp/`, git submodule), Blender MCP server (`blender-mcp` in `opencode.json`), Unity MCP server (`unityMCP` in `opencode.json`), model assignment utility (`tools/assign-models.js`), ksan animation parser (`tools/ksanim/`)
 - Depends on: Node.js, Python/uv (for Aseprite MCP), Blender (for Blender MCP), Unity Editor (for Unity MCP)
-- Used by: Asset pipeline, 3D asset workflow, Unity scene inspection, project tooling
+- Used by: Asset pipeline, 3D asset workflow, Unity scene inspection, animation pipeline, project tooling
 
 ## Data Flow
 

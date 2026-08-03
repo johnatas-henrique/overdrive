@@ -28,7 +28,8 @@
 │   ├── Scenes/                  # Unity scenes (SampleScene.unity)
 │   ├── source/                  # Game C# source code and local rules
 │   ├── Prototype/               # In-editor prototype scripts and test assets
-│   │   └── CarAnimationTest.cs  # Car animation test script
+│   │   ├── CarAnimationTest.cs  # Car animation test script
+│   │   └── RaceFeel/            # RaceFeel prototype (car feel, camera, HUD, track)
 │   ├── Materials/               # Unity materials (CoplayTestRed, CoplayTestSphere)
 │   ├── Plugins/                 # Unity native plugins
 │   │   └── Roslyn/              # Roslyn C# compiler assemblies
@@ -142,11 +143,19 @@
 │   ├── reviews/
 │   │   └── cross-gdd-consistency-report.md # Cross-GDD consistency analysis
 │   └── ux/                       # UX design documents
+│       ├── car-selection.md      # Car selection screen UX
+│       ├── finished-presentation.md # Race finish presentation UX
 │       ├── interaction-patterns.md # Interaction patterns and controls
+│       ├── loading.md            # Loading screen UX
+│       ├── pause-menu.md         # Pause menu UX
+│       ├── qualifying-not-started.md # Pre-qualifying screen UX
 │       ├── qualifying-results.md  # Qualifying results screen UX
 │       ├── race-hud.md           # Race HUD layout and behavior
 │       ├── results.md            # Race results screen UX
+│       ├── reviews/              # UX review logs
+│       │   └── ux-review-2026-08-01.md
 │       ├── settings.md           # Settings menu UX specification
+│       ├── track-selection.md    # Track selection screen UX
 │       └── ui-menu.md            # UI menu system design
 ├── docs/                        # Technical documentation
 │   ├── architecture/            # Architecture Decision Records, reviews, traceability
@@ -163,10 +172,13 @@
 │   │   ├── adr-0011-pit-stop-architecture.md
 │   │   ├── adr-0012-audio-system-architecture.md
 │   │   ├── adr-0013-qualifying-session-format.md
+│   │   ├── adr-0014-hud-data-contract-and-layout.md
+│   │   ├── adr-0015-car-definition-data-validation.md
 │   │   ├── architecture-review-2026-07-27.md
 │   │   ├── architecture-review-2026-07-28-v5.md
 │   │   ├── architecture-review-2026-07-28-v6.md
 │   │   ├── architecture-review-2026-07-28.md
+│   │   ├── architecture-review-2026-08-01.md
 │   │   ├── architecture-traceability-matrix.md
 │   │   ├── architecture.md          # Master architecture doc
 │   │   ├── complete-traceability-matrix.md
@@ -198,11 +210,16 @@
 │   ├── registry/                # Architecture registry
 │   │   └── architecture.yaml    # Architecture registry data
 │   ├── plans/                   # Project plans and handoff docs
+│   │   ├── asr-car-import-pipeline.md
+│   │   ├── benetton-b189-animation-inventory.md
+│   │   ├── benetton-b189-asset-pipeline-pilot.html
+│   │   ├── benetton-b189-driver-animation-mapping.md
 │   │   └── overdrive-handoff-2026-07-24.md
 │   ├── research/                # Research documents
 │   │   ├── multiplayer-networking-comparison-2026.md
 │   │   ├── mvp-performance-baseline-2026-07.md
-│   │   └── unity-mcp-landscape-2026-07-16.md
+│   │   ├── unity-mcp-landscape-2026-07-16.md
+│   │   └── unity-packages-evaluation-2026-08.html
 │   ├── AGENTS.md                # Docs directory standards
 │   ├── COLLABORATIVE-DESIGN-PRINCIPLE.md # User-driven collaboration model
 │   ├── COPLAY.md                # Coplay integration notes
@@ -227,8 +244,10 @@
 │   └── evidence/                # Test evidence and artifacts
 ├── tools/                       # Build and pipeline tools
 │   ├── aseprite-mcp/            # Aseprite MCP server (Python/uv)
-│   └── assign-models.js         # Model assignment utility
-├── prototypes/                  # Throwaway prototypes (currently .gitkeep)
+│   ├── assign-models.js         # Model assignment utility
+│   └── ksanim/                  # Ksan animation parser (Python)
+├── prototypes/                  # Throwaway prototypes
+│   └── race-feel/               # RaceFeel prototype documentation
 ├── production/                  # Production management
 │   ├── gate-checks/             # Quality gate check results
 │   │   ├── concept-to-systems-design.md
@@ -284,8 +303,8 @@
 
 **`docs/`:**
 - Purpose: Technical documentation — architecture decisions, framework reference, workflow guides, research
-- Contains: ADRs (12 total), architecture reviews, traceability matrices, engine API snapshots, OCGS framework docs, examples, research
-- Key files: `architecture/architecture.md`, `architecture/control-manifest.md`, `architecture/tr-registry.yaml`, `framework/director-gates.md`, `framework/agent-roster.md`, `framework/skills-reference.md`, `framework/workflow-catalog.yaml`, `research/multiplayer-networking-comparison-2026.md`
+- Contains: ADRs (15 total), architecture reviews, traceability matrices, engine API snapshots, OCGS framework docs, examples, plans, research
+- Key files: `architecture/architecture.md`, `architecture/control-manifest.md`, `architecture/tr-registry.yaml`, `framework/director-gates.md`, `framework/agent-roster.md`, `framework/skills-reference.md`, `framework/workflow-catalog.yaml`, `plans/asr-car-import-pipeline.md`, `research/multiplayer-networking-comparison-2026.md`
 
 **`tests/`:**
 - Purpose: Unity/C# gameplay and integration tests
@@ -293,8 +312,8 @@
 
 **`tools/`:**
 - Purpose: Build utilities and MCP integrations
-- Contains: Aseprite MCP server, Blender MCP server, model assignment utility
-- Key files: `aseprite-mcp/`, `assign-models.js`
+- Contains: Aseprite MCP server, Blender MCP server, model assignment utility, ksan animation parser
+- Key files: `aseprite-mcp/`, `assign-models.js`, `ksanim/parse_ksanim.py`
 
 **`production/`:**
 - Purpose: Production management — session logs, audit trails, active state, quality gate checks
@@ -303,7 +322,7 @@
 
 **`prototypes/`:**
 - Purpose: Throwaway prototypes isolated from main source
-- Contains: Placeholder (`.gitkeep`)
+- Contains: `race-feel/` (race feel prototype documentation)
 
 ## Key File Locations
 
@@ -343,7 +362,7 @@
 - `docs/architecture/architecture.md`: Master architecture document
 - `docs/architecture/control-manifest.md`: Control manifest
 - `docs/architecture/adr-0001-manual-simulation-authority-and-determinism-boundary.md`: ADR on manual simulation authority
-- `docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md` through `adr-0013-qualifying-session-format.md`: 12 additional ADRs
+- `docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md` through `adr-0015-car-definition-data-validation.md`: 14 additional ADRs
 - `docs/architecture/tr-registry.yaml`: Technical requirement ID persistence
 - `docs/architecture/complete-traceability-matrix.md`: Full traceability matrix
 - `docs/architecture/architecture-traceability-matrix.md`: Architecture traceability
@@ -351,6 +370,8 @@
 - `docs/framework/workflow-catalog.yaml`: Phase definitions and artifact checks
 - `docs/framework/director-gates.md`: Shared review gate prompts
 - `docs/plans/asr-car-import-pipeline.md`: ASR car import pipeline plan
+- `docs/plans/benetton-b189-animation-inventory.md`: Benetton B189 animation inventory
+- `docs/plans/benetton-b189-driver-animation-mapping.md`: Benetton B189 driver animation mapping
 - `docs/plans/overdrive-handoff-2026-07-24.md`: Project handoff plan
 
 **Tests:**
