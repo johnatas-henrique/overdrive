@@ -28,6 +28,15 @@
         "ASEPRITE_PATH": "{env:ASEPRITE_PATH}"
       }
     },
+    "blender-mcp": {
+      "type": "local",
+      "command": ["uvx", "blender-mcp"],
+      "enabled": true,
+      "environment": {
+        "BLENDER_HOST": "localhost",
+        "BLENDER_PORT": "9876"
+      }   
+    },
     "unityMCP": {
       "type": "remote",
       "url": "http://127.0.0.1:8080/mcp",
