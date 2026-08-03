@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unity Packages Evaluation — Overdrive</title>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #222; }
+  h1, h2, h3 { line-height: 1.2; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #ccc; padding: 0.5rem 0.75rem; text-align: left; font-size: 0.95rem; }
+  th { background: #f0f0f0; }
+  .yes { color: #1a7f37; font-weight: 600; }
+  .no { color: #b35900; font-weight: 600; }
+  .maybe { color: #8250df; font-weight: 600; }
+  .note { background: #f6f8fa; border-left: 4px solid #0969da; padding: 0.75rem 1rem; margin: 1rem 0; }
+  .warning { background: #fff8c5; border-left: 4px solid #d4a72c; padding: 0.75rem 1rem; margin: 1rem 0; }
+  code { background: #f0f0f0; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Unity Packages Evaluation — Overdrive</h1>
+<p><strong>Date:</strong> 2026-08-01 &nbsp;|&nbsp; <strong>Context:</strong> Review of <a href="https://github.com/adammyhre/Unity-Multiplayer-Kart">Unity-Multiplayer-Kart</a> (adammyhre, Unity 2023.2 URP) against Overdrive's stack.</p>
+<p><strong>Overdrive stack:</strong> Unity 6000.3.19f1 (Unity 6.3 LTS) · URP 17.3.0 · Input System 1.19.0 · AI Navigation 2.0.14 · Addressables 3.1.0. Full manifest in <code>Packages/manifest.json</code>.</p>
+
+<h2>1. Packages from the Kart project vs. Overdrive</h2>
+<table>
+  <tr>
+    <th>Package</th>
+    <th>Kart version</th>
+    <th>Overdrive</th>
+    <th>Verdict</th>
+    <th>Why</th>
+  </tr>
+  <tr>
+    <td>Netcode for GameObjects</td>
+    <td>1.6.0</td>
+    <td>not installed</td>
+    <td class="no">NO — for now</td>
+    <td>Multiplayer is Alpha+ scope; the transport decision (Coherence vs Netcode vs other) is a future ADR, not an MVP concern.</td>
+  </tr>
+  <tr>
+    <td>Multiplayer Tools</td>
+    <td>yes</td>
+    <td>not installed</td>
+    <td class="no">NO</td>
+    <td>Debug tooling that only makes sense with Netcode.</td>
+  </tr>
+  <tr>
+    <td>Multiplayer Play Mode</td>
+    <td>0.4.0</td>
+    <td>not installed</td>
+    <td class="no">NO</td>
+    <td>Runs several local players in the editor; only useful when multiplayer exists.</td>
+  </tr>
+  <tr>
+    <td>Unity Input System</td>
+    <td>1.7.0</td>
+    <td>1.19.0 (newer)</td>
+    <td class="yes">HAVE IT</td>
+    <td>Nothing to do — we are ahead of the kart project.</td>
+  </tr>
+  <tr>
+    <td>Cinemachine</td>
+    <td>2.9.7</td>
+    <td>not installed</td>
+    <td class="maybe">RE-EVALUATE</td>
+    <td>ADR-0010 says "no Cinemachine, custom C# camera". The prototype jitter battle shows the real cost of hand-rolling smooth follow. Reopen before production camera work. See section 3.</td>
+  </tr>
+  <tr>
+    <td>TextMesh Pro</td>
+    <td>yes</td>
+    <td>not installed</td>
+    <td class="yes">YES — when UI starts</td>
+    <td>HUD/UI will use art-bible fonts (Gemunu Libre, Spline Sans). TMP is the standard for scalable text with outline/glow. Prototype HUD is IMGUI — fine for now.</td>
+  </tr>
+  <tr>
+    <td>ProBuilder</td>
+    <td>yes</td>
+    <td>not installed</td>
+    <td class="maybe">MAYBE — for track blockout</td>
+    <td>Editor-only (never ships in build). Useful to model the 4 tracks quickly. Decide when track production starts.</td>
+  </tr>
+  <tr>
+    <td>DOTween (free)</td>
+    <td>yes (Asset Store)</td>
+    <td>not installed</td>
+    <td class="maybe">WHEN UI exists</td>
+    <td>HUD animation (fade/pulse) and camera shake. Free, industry standard. Decide when UI production starts.</td>
+  </tr>
+  <tr>
+    <td>SceneReference (Eflatun)</td>
+    <td>git dependency</td>
+    <td>not installed</td>
+    <td class="no">NO</td>
+    <td>Redundant — Addressables already solves scene/content loading (ADR-0003).</td>
+  </tr>
+</table>
+
+<div class="note">
+<strong>Also interesting:</strong> the kart project uses <strong>server-authoritative Rigidbody + Client Prediction / Reconciliation / Extrapolation</strong> — the same physical pattern as our ADR-0001/0002 (Rigidbody + manual simulation). It validates our approach, but the kart's multiplayer-specific parts (Netcode, prediction) do not apply to the single-player MVP.
+</div>
+
+<h2>2. Packages Overdrive already has (no action)</h2>
+<ul>
+  <li><strong>Input System 1.19.0</strong> — newer than the kart's 1.7.0; ADR-0005 owns input contexts and action maps.</li>
+  <li><strong>Addressables 3.1.0</strong> — content pipeline (ADR-0003): 3 groups (Shared, Cars/{teamId}, Tracks/{trackId}).</li>
+  <li><strong>URP 17.3.0</strong> — render pipeline; camera/VFX budget in ADR-0010.</li>
+  <li><strong>AI Navigation 2.0.14</strong> — reserved for AI rival pathing later; not used in the prototype.</li>
+</ul>
+
+<h2>3. Cinemachine — open question (reopen ADR-0010?)</h2>
+<div class="warning">
+<strong>Why ADR-0010 originally said no Cinemachine</strong> (docs/architecture/adr-0010-…, lines 17, 42, 248): "No Cinemachine — MVP uses basic Unity Camera + custom C# camera controller"; "simple Transform lerp — lower learning curve, smaller build, no version risk."
+</div>
+<p><strong>What the prototype revealed (2026-08-01):</strong> hand-rolling smooth follow on top of 60 Hz discrete physics ticks produced visible jitter through several fix rounds (double smoothing, LateUpdate ordering, interpolation races). This is precisely the problem Cinemachine solves natively (follow damping, blends, noise, look-ahead).</p>
+<ul>
+  <li>Production camera spec (<code>design/gdd/camera.md</code>) has 4 modes: Chase, Cockpit, PitCamera, Finished — with blends. That is Cinemachine's core use case.</li>
+  <li>Decision point: <strong>install Cinemachine and amend ADR-0010, or keep custom camera and budget the engineering time</strong>. Not decided yet — user approval required. Reopen when production camera work starts.</li>
+</ul>
+
+<h2>4. Reference links</h2>
+<ul>
+  <li><a href="https://github.com/adammyhre/Unity-Multiplayer-Kart">Unity-Multiplayer-Kart repository</a></li>
+  <li><a href="https://github.com/adammyhre/Unity-Multiplayer-Kart/blob/master/Packages/manifest.json">Kart manifest.json</a></li>
+  <li><a href="https://docs.unity3d.com/Packages/com.unity.cinemachine@2.9/manual/index.html">Cinemachine manual</a></li>
+  <li><a href="https://docs.unity3d.com/Packages/com.unity.netcode.gameobjects@1.6/manual/index.html">Netcode for GameObjects manual</a></li>
+  <li><a href="https://assetstore.unity.com/packages/tools/animation/dotween-hotween-v2-27676">DOTween on Asset Store</a></li>
+  <li><a href="https://github.com/starikcetin/Eflatun.SceneReference">Eflatun.SceneReference</a></li>
+  <li>Related internal docs: <code>docs/architecture/adr-0010-camera-vfx-rendering-budget-and-interpolation.md</code>, <code>docs/research/multiplayer-networking-comparison-2026.md</code></li>
+</ul>
+
+<h2>5. Decision log</h2>
+<table>
+  <tr><th>Date</th><th>Decision</th><th>Status</th></tr>
+  <tr><td>2026-08-01</td><td>TMP: adopt when UI production starts</td><td>PENDING (UI)</td></tr>
+  <tr><td>2026-08-01</td><td>Cinemachine: re-evaluate before production camera (prototype jitter evidence)</td><td>OPEN</td></tr>
+  <tr><td>2026-08-01</td><td>DOTween: adopt when UI animation starts</td><td>PENDING (UI)</td></tr>
+  <tr><td>2026-08-01</td><td>ProBuilder: decide at track production</td><td>PENDING (tracks)</td></tr>
+  <tr><td>2026-08-01</td><td>Netcode + Multiplayer Tools + Play Mode: no — Alpha+ decision deferred</td><td>CLOSED (deferred)</td></tr>
+  <tr><td>2026-08-01</td><td>SceneReference: no — Addressables covers it</td><td>CLOSED</td></tr>
+</table>
+
+</body>
+</html>
