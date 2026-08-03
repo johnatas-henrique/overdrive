@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RaceFeel Tuning Panel — Field Reference</title>
+<style>
+  body { font-family: "Segoe UI", Helvetica, Arial, sans-serif; margin: 2em auto; max-width: 980px; color: #222; line-height: 1.5; }
+  h1 { border-bottom: 3px solid #d40000; padding-bottom: .3em; }
+  h2 { margin-top: 2em; border-bottom: 1px solid #ccc; padding-bottom: .2em; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border: 1px solid #bbb; padding: 6px 10px; text-align: left; font-size: .95em; }
+  th { background: #f2f2f2; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .hl { background: #fff3cd; }
+  .note { background: #eef; border-left: 4px solid #44a; padding: 8px 12px; margin: 1em 0; }
+  .warn { background: #fee; border-left: 4px solid #a44; padding: 8px 12px; margin: 1em 0; }
+  code { background: #f4f4f4; padding: 1px 5px; border-radius: 3px; font-size: .92em; }
+  .tag { font-size: .8em; color: #666; }
+</style>
+</head>
+<body>
+
+<h1>RaceFeel Tuning Panel — Field Reference</h1>
+<p class="tag">Prototype documentation · 2026-08-02 · Source: <code>Assets/Prototype/RaceFeel/RaceFeelTuningPanel.cs</code>, <code>Assets/Prototype/RaceFeel/ArcadeCar.cs</code>, <code>design/gdd/car-definition-data.md</code></p>
+
+<p>This document explains every field of the runtime tuning panel (press <strong>Tab</strong> in Play Mode), the physics model each one controls, and the values loaded by the four car presets: <strong>Car 20</strong>, <strong>Car 12</strong>, <strong>Car 4</strong> (converted from the GDD stat system) and <strong>Car proto</strong> (the feel-calibrated reference car).</p>
+
+<h2>1. Steering model — how it works</h2>
+<p>The prototype uses the <strong>1-state steering capacity curve</strong> (playtest 2026-08-02). Every physics tick the maximum allowed yaw rate is the minimum of three independent limits:</p>
+<pre>maxYaw = min(steeringCeiling(v), v / minTurnRadius, gripCeiling(v))</pre>
+<ul>
+  <li><strong>Steering ceiling</strong> — falls linearly (or with a shape exponent) from <code>maxSteerLow</code> at low speed to <code>maxSteerHigh</code> at top speed. This is the design cap: more turn authority at low speed, less at high speed.</li>
+  <li><strong>Min turn circle</strong> — <code>v / minTurnRadius</code>. A real car has a minimum turning circle; this prevents pivoting in place at standstill.</li>
+  <li><strong>Grip ceiling</strong> — <code>effectiveGrip × maxLateralG × 9.81 / v</code>. The car cannot turn tighter than its lateral grip allows; above it the car understeers smoothly.</li>
+</ul>
+<p>The executed yaw is <code>steerEma × maxYaw</code> applied directly to <code>Rigidbody.angularVelocity.y</code> (no torque inertia — instant arcade response).</p>
+
+<h2>2. Steering fields</h2>
+<table>
+  <tr><th>Field</th><th>Unit</th><th>Default</th><th>What it controls</th></tr>
+  <tr><td><strong>Max steer low</strong></td><td class="num">rad/s</td><td class="num">3.0</td><td>Maximum yaw rate at falloff start speed (~60 km/h and below). Full steering lock — the fastest the car can rotate its nose at low speed.</td></tr>
+  <tr><td><strong>Max steer high</strong></td><td class="num">rad/s</td><td class="num">1.4 (proto 2.4)</td><td>Minimum yaw rate reached at falloff end speed (top speed). <span class="hl">This is the top-speed steering cap.</span> With 1.4, any grip above ~12.8g is wasted at vmax (grip ceiling 20g = 2.18 rad/s gets cut by min()). The proto raises it to 2.4 so the 20g grip becomes the real top-speed limit again.</td></tr>
+  <tr><td><strong>Lift-off bonus</strong></td><td class="num">rad/s</td><td class="num">0.6</td><td>Extra yaw authority added to the steering ceiling while the throttle is released (SMGP tuck-in). Lifting off mid-corner turns the car more — the classic correction technique. Does not apply while accelerating.</td></tr>
+  <tr><td><strong>Min turn radius</strong></td><td class="num">m</td><td class="num">8</td><td>Minimum turning circle. Guards against pivoting in place: yaw is capped at <code>v / 8</code>, so at 0.5 m/s the car can barely rotate. Grid/pit alignment still possible at low speed.</td></tr>
+  <tr><td><strong>Falloff start</strong></td><td class="num">km/h</td><td class="num">60</td><td>Speed where the steering ceiling starts falling from <code>maxSteerLow</code>. Below this speed the ceiling is flat at maxSteerLow.</td></tr>
+  <tr><td><strong>Falloff end</strong></td><td class="num">km/h</td><td class="num">324 (GDD cars: their own vmax)</td><td>Speed where the ceiling reaches <code>maxSteerHigh</code>. GDD presets set this to the car's own top speed so the steering minimum lands exactly at vmax.</td></tr>
+  <tr><td><strong>Falloff shape</strong></td><td class="num">—</td><td class="num">1</td><td>Exponent on the falloff interpolation. 1 = linear. &lt;1 drops early (ceiling falls fast then plateaus). &gt;1 drops late (holds high steering most of the range, then falls fast).</td></tr>
+  <tr><td><strong>Grip (g)</strong></td><td class="num">g</td><td class="num">20 (GDD cars 2.1–4.5)</td><td><code>maxLateralG</code>: max centripetal acceleration in g. The grip ceiling is <code>g × 9.81 / v</code> rad/s. Also used by the velocity-rotation grip model (<code>gripAlignRate</code> capped at <code>maxCentripetal / hSpeed</code>). Arcade values (13–20g) are physically impossible but match Super Monaco GP / Top Gear feel.</td></tr>
+</table>
+
+<h2>3. Longitudinal fields</h2>
+<table>
+  <tr><th>Field</th><th>Unit</th><th>Default</th><th>What it controls</th></tr>
+  <tr><td><strong>Engine power</strong></td><td class="num">m/s²</td><td class="num">40 (GDD 6.3–13.9)</td><td>Traction-limited acceleration at launch — the ceiling of the power curve. The engine applies <code>min(enginePower, powerPerMass / v)</code> m/s². GDD presets derive it from the 0–100 km/h time: <code>27.78 / accelTime</code>.</td></tr>
+  <tr><td><strong>Power P/m</strong></td><td class="num">m²/s³</td><td class="num">1012</td><td><span class="hl">NEW (2026-08-02) — the power curve.</span> Specific power P/m: force falls with 1/speed, exactly like a real engine (P = F·v). 1012 = the 1989 Honda RA109E (511 kW / 505 kg). Result: strong launch, "dying" top end instead of linear acceleration. At 324 km/h the available force drops to ~11 m/s² (vs 40 constant before).</td></tr>
+  <tr><td><strong>Brake power</strong></td><td class="num">m/s²</td><td class="num">35 (GDD 22.0–51.5)</td><td>Deceleration while braking (applied as negative longitudinal force). GDD presets derive it from the 200→0 km/h stopping distance: <code>55.56² / (2 × brakeDist)</code>.</td></tr>
+  <tr><td><strong>Max speed</strong></td><td class="num">km/h</td><td class="num">324 (GDD 262–310)</td><td>Hard speed cap: the engine cuts when the car reaches it (with 0.5 m/s hysteresis to avoid chatter). GDD presets derive it from the Top Speed stat: <code>250 + (stat/20) × 60</code>.</td></tr>
+  <tr><td><strong>Speed cap</strong></td><td class="num">km/h</td><td class="num">0 (off)</td><td>Testing tool: locks the car at a fixed speed so cornering behavior can be validated without feathering the throttle. Floor the throttle and the car accelerates to the cap and holds it exactly. 0 = use Max speed.</td></tr>
+  <tr><td><strong>Coast decel</strong></td><td class="num">m/s²</td><td class="num">3.5</td><td>Constant deceleration with no pedals (engine-braking feel). Replaces Rigidbody damping alone, which is asymptotic and never actually stops the car.</td></tr>
+  <tr><td><strong>Dead stop</strong></td><td class="num">m/s</td><td class="num">0.8</td><td>Below this speed with no pedals the horizontal velocity is zeroed outright — the car actually stops instead of creeping forever.</td></tr>
+  <tr><td><strong>Control threshold</strong></td><td class="num">—</td><td class="num">1.0 (GDD 0.2–1.0)</td><td><code>controlThreshold</code>, the Stability stat. Multiplier in the effective grip stack: <code>gripBase × surfaceGrip × tireGrip × controlThreshold</code> (clamped 0.20–1.20). Higher = harder to lose control. GDD presets: <code>stat / 20</code>. <span class="hl">⚠ Double penalty with Grip — see FAQ Q5.</span></td></tr>
+  <tr><td><strong>Grass grip</strong></td><td class="num">mult</td><td class="num">0.55</td><td>Surface multiplier applied to the grip stack while off-track (grass). The car detects grass by lateral offset from the centerline beyond the asphalt half-width.</td></tr>
+  <tr><td><strong>Grass decel</strong></td><td class="num">m/s²</td><td class="num">4</td><td>Constant deceleration on grass, with <strong>ease-out</strong>: full at ≥150 km/h, fading to <strong>0 at 80 km/h</strong> (smoothstep). Below 80 km/h the car can drive away from a standstill — the old flat decel ate the reduced engine force and made the grass a trap (user report).</td></tr>
+  <tr><td><strong>Grass traction</strong></td><td class="num">mult</td><td class="num">0.25</td><td>Fraction of engine force applied on grass (wheelspin — reduced drive). Together with grass decel it sets the natural grass equilibrium speed (~80 km/h) without any hard cap.</td></tr>
+</table>
+
+<h2>4. Constants (not in the panel)</h2>
+<p>These values are not editable in the tuning panel. Some are truly fixed across cars; others are <strong>derived per car</strong> by the presets.</p>
+<table>
+  <tr><th>Constant</th><th>Value</th><th>What it controls</th></tr>
+  <tr><td>Reverse power</td><td class="num">14 m/s²</td><td>Reverse drive while holding brake at near-zero forward speed.</td></tr>
+  <tr><td>Max reverse speed</td><td class="num">13.9 m/s (50 km/h)</td><td>Reverse cap (unstick convenience — a wall-stuck car can back out).</td></tr>
+  <tr><td>Throttle EMA alpha</td><td class="num">0.35</td><td>Smoothing of throttle/brake input (ADR-0005).</td></tr>
+  <tr><td>Steer EMA alpha</td><td class="num">0.50</td><td>Smoothing of steer input — near-instant for keyboard (was 0.30).</td></tr>
+  <tr><td>Drift speed loss</td><td class="num">2.5 m/s²</td><td>Speed bleed while sliding × slip ratio — drifting is a trade-off, not free.</td></tr>
+  <tr><td>Grip align rate</td><td class="num">8.0 rad/s</td><td>How fast the velocity vector rotates toward the heading (grip response).</td></tr>
+  <tr><td>Mass</td><td class="num">505 kg</td><td>Rigidbody mass (GDD fixed).</td></tr>
+  <tr><td>Linear damping</td><td class="num">0.28 (proto) / <strong>0.075–0.140 (derived per GDD car)</strong></td><td>Rigidbody linear drag F = −c·v. GDD presets derive it so terminal velocity sits 15% above vmax: <code>enginePower / (1.15 × vmax)</code>. <span class="hl">Caveat: with the power curve the real terminal becomes sqrt(P/m ÷ damping) — Car 20 lands at 306 km/h, below its declared 310 (see §8 FAQ Q3).</span></td></tr>
+</table>
+
+<h2>5. Car presets — current values</h2>
+<p class="note"><strong>What the presets mean:</strong> GDD stat 0–20 → each stat is converted by its formula. <strong>Car 20</strong> = all six stats at 20 — slightly better than the best real car (team_tier1_a has brake 16, not 20). <strong>Car 4</strong> = all six stats at 4 — worse than the worst real car (team_tier4_c: 12/8/8/8/8/8; no real car is all-4). <strong>Car 12</strong> = midpoint (the GDD data-missing fallback). <strong>Car proto</strong> = feel-calibrated reference, outside the stat system.</p>
+
+<table>
+  <tr>
+    <th>Parameter</th>
+    <th class="num">Car 20</th>
+    <th class="num">Car 12</th>
+    <th class="num">Car 4</th>
+    <th class="num">Car proto</th>
+  </tr>
+  <tr><td>Top speed (km/h)</td><td class="num">310</td><td class="num">286</td><td class="num">262</td><td class="num">324</td></tr>
+  <tr><td>0–100 km/h (s)</td><td class="num">2.0</td><td class="num">3.2</td><td class="num">4.4</td><td class="num">≈0.9*</td></tr>
+  <tr><td>Engine power (m/s²)</td><td class="num">13.89</td><td class="num">8.68</td><td class="num">6.31</td><td class="num">40</td></tr>
+  <tr><td>Power P/m (m²/s³)</td><td class="num">1012</td><td class="num">1012</td><td class="num">1012</td><td class="num">1012</td></tr>
+  <tr><td>Brake 200→0 (m)</td><td class="num">30</td><td class="num">50</td><td class="num">70</td><td class="num">—</td></tr>
+  <tr><td>Brake power (m/s²)</td><td class="num">51.45</td><td class="num">30.86</td><td class="num">22.05</td><td class="num">35</td></tr>
+  <tr><td>Cornering speed (km/h)</td><td class="num">200</td><td class="num">168</td><td class="num">136</td><td class="num">—</td></tr>
+  <tr><td>Grip (g)</td><td class="num">4.49</td><td class="num">3.17</td><td class="num">2.08</td><td class="num">20</td></tr>
+  <tr><td>Control threshold</td><td class="num">1.0</td><td class="num">0.6</td><td class="num">0.2</td><td class="num">1.0</td></tr>
+  <tr><td>Linear damping</td><td class="num">0.140</td><td class="num">0.095</td><td class="num">0.075</td><td class="num">0.28</td></tr>
+  <tr><td>Max steer high (rad/s)</td><td class="num">1.4†</td><td class="num">1.4†</td><td class="num">1.4†</td><td class="num">2.4</td></tr>
+  <tr><td>Falloff end (km/h)</td><td class="num">310</td><td class="num">286</td><td class="num">262</td><td class="num">324</td></tr>
+</table>
+
+<p class="warn"><strong>† Known issue:</strong> the GDD presets do <em>not</em> set <code>MaxSteerHigh</code> — they inherit the current value (1.4 unless proto was applied first). With 1.4, Car 20's 4.49g grip ceiling at vmax is 4.49 × 9.81 / 86.1 = 0.51 rad/s — far below 1.4, so the <em>grip</em> is the true limit for all GDD cars at top speed (the opposite situation from the proto). The 1.4 cap only binds if the player edits Grip above ~12.8g.</p>
+
+<p class="warn"><strong>* Proto 0–100:</strong> ~0.9 s is the constant-force estimate; with the 1012 power curve the real value is slightly higher. The proto is not stat-mapped — it is the feel benchmark.</p>
+
+<h2>6. Power curve — behavior by car</h2>
+<table>
+  <tr><th>Car</th><th>Engine (m/s²)</th><th>Speed where P/m starts to bind</th><th>Effect</th></tr>
+  <tr><td>Proto (40)</td><td class="num">40</td><td>1012/40 = 25.3 m/s (91 km/h)</td><td>Strong launch, falls off through the whole range — the curve is clearly felt.</td></tr>
+  <tr><td>Car 20 (13.89)</td><td class="num">13.89</td><td>1012/13.89 = 72.9 m/s (262 km/h)</td><td>Nearly constant force up to 262 km/h; only the last ~48 km/h feel the curve.</td></tr>
+  <tr><td>Car 12 (8.68)</td><td class="num">8.68</td><td>1012/8.68 = 116.6 m/s (420 km/h — above vmax)</td><td>Effectively constant force — the curve never binds before the 286 km/h cap.</td></tr>
+  <tr><td>Car 4 (6.31)</td><td class="num">6.31</td><td>1012/6.31 = 160.4 m/s (577 km/h — above vmax)</td><td>Constant force — the curve never binds before the 262 km/h cap.</td></tr>
+</table>
+<p class="note">The P/m value is shared (1012) because no preset sets it per-car. If the power curve should differentiate the GDD cars, each preset needs its own P/m scaled to a real engine (e.g. weaker teams get a lower P/m, not only lower launch force).</p>
+
+<h2>7. Track geometry (PrototypeTrack — Inspector, not in the panel)</h2>
+<table>
+  <tr><th>Field</th><th>Value</th><th>What it controls</th></tr>
+  <tr><td><strong>Track width</strong></td><td class="num">14 m</td><td>Asphalt lane width (raised from 12 m after playtest feedback). Half-width is the grass-detection boundary.</td></tr>
+  <tr><td><strong>Grass width</strong></td><td class="num">7 m</td><td>Grass runoff band each side (raised from 6 m). Walls sit past it: offset = halfWidth + grassWidth. A small mistake stays on grass, only a big one hits the wall.</td></tr>
+  <tr><td><strong>Kerbs</strong></td><td class="num">1.2 × 4 m</td><td>Red/white zebra tiles on the inner edge of corners (radius &lt; 250 m), centered ON the asphalt edge — half on track, half on grass. Contiguous along the arc (no gaps — the old tiles left gaps and the cumulative counter dumped overlapping tiles after straights). Visual only.</td></tr>
+  <tr><td><strong>Grass visual fix</strong></td><td class="num">—</td><td>The right-side grass band had flipped normals (backface culled) — the left side was green, the right was not. Vertex order reversed per side (2026-08-02).</td></tr>
+</table>
+
+<h2>8. GDD stat → prototype parameter mapping</h2>
+<p>Each of the six GDD stats (car-definition-data.md §Formulas) maps to one or more prototype parameters. The Efficiency stat (fuel/tire) has no prototype equivalent — it is out of the race-feel scope.</p>
+<table>
+  <tr><th>GDD stat</th><th>GDD formula (stat 0–20)</th><th>Prototype parameter(s)</th><th>Notes</th></tr>
+  <tr><td><strong>Top Speed</strong></td><td><code>250 + (stat/20)×60</code> km/h</td><td><code>maxSpeed</code> (hard cap) + <code>falloffEnd</code> (steering curve end)</td><td>The engine cap stops the car at vmax — except Car 20, which physics-caps at 306 via damping (FAQ Q3).</td></tr>
+  <tr><td><strong>Acceleration</strong></td><td><code>2.0 + ((20−stat)/20)×3.0</code> s (0–100)</td><td><code>enginePower</code> = 27.78/accelTime + <code>linearDamping</code> (derived)</td><td>enginePower is the <em>launch</em> ceiling; the power curve (P/m) takes over at speed (FAQ Q4).</td></tr>
+  <tr><td><strong>Brake Power</strong></td><td><code>30 + ((20−stat)/20)×50</code> m (200→0)</td><td><code>brakePower</code> = 55.56²/(2×dist)</td><td>Applied as constant deceleration while braking.</td></tr>
+  <tr><td><strong>Grip Level</strong></td><td><code>120 + (stat/20)×80</code> km/h cornering</td><td><code>maxLateralG</code> = v²/(9.81×70)</td><td>Becomes the grip ceiling g×9.81/v. <span class="hl">Multiplied again by controlThreshold — double penalty (FAQ Q5).</span></td></tr>
+  <tr><td><strong>Stability</strong></td><td><code>stat/20</code> (0.2–1.0)</td><td><code>controlThreshold</code> (grip stack multiplier)</td><td>GDD intent: resistance to losing control. Today it also cuts cornering ability (Q5) — proposed fix: modulate slip tendency instead.</td></tr>
+  <tr><td><strong>Efficiency</strong></td><td><code>1 − stat×0.025</code></td><td>— (none)</td><td>Fuel consumption / tire wear only — not part of the race-feel prototype.</td></tr>
+</table>
+
+<h2>9. Real 1989 engine data — the 16 teams (research 2026-08-02)</h2>
+<p>Sources: <strong>[C]</strong> Wikipedia "Formula One engines" (Honda 685 hp @13,500 rpm; Renault 650 hp @12,500; Ferrari 660 hp @13,000; DFR 620 hp @10,750; Yamaha 560 hp), <strong>[C]</strong> allf1.info engine pages (Ferrari, Renault), <strong>[C]</strong> Honda official RA109E page, <strong>[C]</strong> Ford-Cosworth HB wiki (~630 hp, Benetton exclusive), <strong>[C]</strong> Motor Sport Magazine 12/1989 (DFR "slightly less than 600 hp", Honda target 650+). Mass: 505 kg fixed (GDD). vmax are Monza-style low-downforce estimates — <strong>[I]</strong>.</p>
+<table>
+  <tr><th>Team (tier)</th><th>Real car</th><th>Engine</th><th class="num">Power (hp)</th><th class="num">RPM max</th><th class="num">P/m @505 kg (m²/s³)</th><th class="num">Real vmax (km/h)</th></tr>
+  <tr><td>tier1_a</td><td>McLaren MP4/5</td><td>Honda RA109E V10</td><td class="num">685 (511 kW)</td><td class="num">13,500</td><td class="num"><strong>1012</strong></td><td class="num">~340</td></tr>
+  <tr><td>tier1_b</td><td>Ferrari 640</td><td>Ferrari 035/5 V12</td><td class="num">660 (492 kW)</td><td class="num">13,000</td><td class="num"><strong>974</strong></td><td class="num">~340</td></tr>
+  <tr><td>tier1_c</td><td>Williams FW12C</td><td>Renault RS1 V10</td><td class="num">650 (485 kW)</td><td class="num">12,500</td><td class="num"><strong>960</strong></td><td class="num">~335</td></tr>
+  <tr><td>tier1_d</td><td>Benetton B189</td><td>Ford Cosworth HB V8</td><td class="num">~630 (470 kW)</td><td class="num">12,000</td><td class="num"><strong>931</strong></td><td class="num">~330</td></tr>
+  <tr><td>tier2_a/b/d</td><td>March CG891 / Lotus 101 / Brabham BT58</td><td>Judd CV V8</td><td class="num">620 (462 kW)</td><td class="num">~11,000</td><td class="num"><strong>915</strong></td><td class="num">~320–325</td></tr>
+  <tr><td>tier2_c, tier3_a–d, tier4_a–c</td><td>Tyrrell 018 / Minardi M189 / Ligier JS33 / Dallara F189 / Arrows A11 / Rial ARC2 / Coloni / Onyx</td><td>Ford Cosworth DFR V8</td><td class="num">620 (462 kW)</td><td class="num">10,750</td><td class="num"><strong>915</strong></td><td class="num">~320–325</td></tr>
+  <tr><td>tier4_d</td><td>Zakspeed ZR891</td><td>Yamaha OX88 V8</td><td class="num">560 (420 kW)</td><td class="num">11,000</td><td class="num"><strong>832</strong></td><td class="num">~310–315</td></tr>
+</table>
+<p class="note"><strong>Why this matters (user question 2026-08-02):</strong> the current GDD table (250–310 km/h) is compressed vs reality (310–340 km/h), and all presets share P/m = 1012 — correct only for the McLaren. Real per-engine P/m gives worse cars a <em>lower power curve</em>, not just a lower launch force, which keeps them competitive at their own pace instead of artificially handicapped. Proposal: per-tier P/m (832–1012) + per-car vmax from this table, with 0–100 km/h times derived from the real engines (TBD).</p>
+
+<h2>10. FAQ — playtest questions (2026-08-02)</h2>
+
+<h3>Q1. How does grip map to rad/s? Is the lift-off bonus being throttled by grip?</h3>
+<p>Grip enters as <code>gripCeiling = g × 9.81 / v</code> rad/s — it is not a fixed rate, it falls with 1/speed:</p>
+<table>
+  <tr><th>Speed</th><th class="num">1g</th><th class="num">4.49g (Car 20)</th><th class="num">20g (proto)</th></tr>
+  <tr><td>100 km/h</td><td class="num">0.35</td><td class="num">1.59</td><td class="num">7.06</td></tr>
+  <tr><td>200 km/h</td><td class="num">0.18</td><td class="num">0.79</td><td class="num">3.53</td></tr>
+  <tr><td>324 km/h</td><td class="num">0.11</td><td class="num">0.51</td><td class="num">2.18</td></tr>
+</table>
+<p class="warn"><strong>Confirmed bug (user report):</strong> the lift-off bonus is added to the steering ceiling <em>before</em> the <code>min()</code> with gripCeiling. For low-grip cars the grip ceiling binds first — Car 20 at 200 km/h: steering 2.10 + 0.6 = 2.70, but min(2.70, 0.79) = 0.79. Lifting off never helps the cars that need it. Physically, lifting off transfers weight forward = more front grip. Proposed fix: apply the bonus as a multiplier of <code>maxLateralAccel</code> (e.g. ×1.25) so low-grip cars gain cornering proportional to their capacity.</p>
+
+<h3>Q2. Why 3.5 m/s² for coast decel?</h3>
+<p>Empirical, calibrated in the 2026-08-02 playtest. Rigidbody damping alone is asymptotic — the car never stops (~3 km/h forever). 3.5 m/s² ≈ 12.6 km/h lost per second with no pedals: perceptible engine-braking without being abrupt. 300→0 km/h without brakes ≈ 24 s. No external source — it is a feel knob.</p>
+
+<h3>Q3. Why does Car 20 cap at 305 km/h with max 310 — even raising engine power?</h3>
+<p>Because enginePower is only the <em>launch</em> ceiling. Actual acceleration is <code>min(enginePower, powerPerMass/v)</code>. Above 262 km/h the P/m term (1012/v) is smaller and dominates. The linear damping then defines the physical terminal:</p>
+<pre>vmax_real = sqrt(P/m ÷ damping) = sqrt(1012 / 0.14) = 85 m/s = 306 km/h</pre>
+<p>Raising enginePower changes nothing — min() picks the P/m term. To reach 310: lower damping (0.13 → 317) or raise P/m. <span class="hl">The damping formula (enginePower/(1.15×vmax)) was designed for the old constant-force model; with the power curve it no longer lands on the declared vmax.</span></p>
+
+<h3>Q4. Why is the P/m power curve imperceptible on the GDD cars?</h3>
+<p>No preset sets P/m — all four cars inherit 1012. And for the weak cars the curve never binds before the speed cap:</p>
+<table>
+  <tr><th>Car</th><th>P/m binds above</th><th>Effect</th></tr>
+  <tr><td>Proto (40 m/s²)</td><td>1012/40 = 25.3 m/s (91 km/h)</td><td>Curve felt through the whole range.</td></tr>
+  <tr><td>Car 20 (13.89)</td><td>1012/13.89 = 72.9 m/s (262 km/h)</td><td>Only the last ~48 km/h.</td></tr>
+  <tr><td>Car 12 (8.68)</td><td>1012/8.68 = 116.6 m/s (420 km/h — above its 286 vmax)</td><td>Never.</td></tr>
+  <tr><td>Car 4 (6.31)</td><td>1012/6.31 = 160.4 m/s (577 km/h — above its 262 vmax)</td><td>Never.</td></tr>
+</table>
+<p>P/m is specific power (kW/kg). To differentiate the GDD cars, each preset needs its own P/m scaled to a real engine (weak teams ~600–700, strong 1012).</p>
+
+<h3>Q5. Does controlThreshold (Stability) cut yaw? Car 4 is uncornerable — correct?</h3>
+<p class="warn"><strong>Confirmed bug — FIXED 2026-08-02.</strong> controlThreshold used to multiply the grip stack (<code>clamp(base×surface×tire×control, 0.2, 1.2)</code>), multiplying <code>maxLateralAccel</code>. Car 4: 0.2 × 2.08g = 0.416g effective — at 100 km/h the minimum radius was 27.8²/(0.416×9.81) = <strong>189 m</strong>, on a 14 m track with 70 m corners. The GDD defines stability as "harder to lose control" — resistance to sliding, NOT cornering ability (that is the Grip stat). <span class="hl">Fix (applied): cornering capacity now comes from the Grip stat only. Stability acts on the slip behavior: slide threshold scales with controlThreshold (0.25 → 0.05 slip for stability 0.2), recovery rate scales gripAlignRate × controlThreshold, and slide speed loss becomes driftSpeedLoss × (2 − controlThreshold). A low-stability car now corners as well as its grip allows but slides early, recovers slowly, and loses more speed while sliding.</span></p>
+
+<h3>Q6. Is linear damping fixed or per-car? Why does it exist?</h3>
+<p>Per-car: the proto uses 0.28 fixed, GDD presets derive <code>enginePower/(1.15×vmax)</code> → 0.140 / 0.095 / 0.075. The old "Fixed constants" heading meant "not editable in the panel", not "equal across cars" — renamed in §4. It exists as linear drag F = −c·v: without it the car would hit the speed cap with full force (a step); with it the acceleration dies near the top — the "sag" in the last km/h. The 1.15 factor puts the natural terminal 15% above the declared cap so the cap cuts exactly at vmax — <span class="hl">but with the power curve the real terminal is sqrt(P/m ÷ damping), so the formula needs revisiting (e.g. damping = P/m ÷ (1.15×vmax)²).</span></p>
+
+<h2>11. Field sources</h2>
+<ul>
+  <li><code>Assets/Prototype/RaceFeel/RaceFeelTuningPanel.cs</code> — panel, presets, conversions (lines 217–250)</li>
+  <li><code>Assets/Prototype/RaceFeel/ArcadeCar.cs</code> — steering model <code>ComputeMaxYaw</code> (179–204), power curve (303–311), grip stack (245–272)</li>
+  <li><code>design/gdd/car-definition-data.md</code> — stat formulas (182–300)</li>
+  <li>Honda RA109E specs — 685 cv @ 13,000 RPM, 511 kW / 505 kg → 1012 m²/s³</li>
+</ul>
+
+</body>
+</html>
