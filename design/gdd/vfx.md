@@ -90,7 +90,7 @@ VFX scales relative to the fastest car's max velocity (read from Car Definition 
 |-------|-----------|--------|
 | 0 km/h | 0.0 | No streaks |
 | 155 km/h (50% of max) | 0.262 | Mild streaks |
-| 310 km/h (100% of max) | 1.0 | Maximum streaks |
+| 340 km/h (100% of max, tier 1) | 1.0 | Maximum streaks |
 
 **6. Motion Blur Formula**
 
@@ -238,8 +238,8 @@ No UI requirements for this system. VFX is visual-only.
 
 ## Acceptance Criteria
 
-- **GIVEN** Tier1 car at max speed (310 km/h), **WHEN** streaks are rendered, **THEN** intensity is 1.0.
-- **GIVEN** Tier4 car at max speed (298 km/h), **WHEN** streaks are rendered against a global max of 310 km/h and onset of 100 km/h, **THEN** intensity is approximately 0.943.
+- **GIVEN** Tier1 car at max speed (340 km/h), **WHEN** streaks are rendered, **THEN** intensity is 1.0.
+- **GIVEN** Tier4 car at max speed (316 km/h), **WHEN** streaks are rendered against a global max of 340 km/h and onset of 100 km/h, **THEN** intensity is approximately 0.90.
 - **GIVEN** car at 50% of global max, **WHEN** blur is rendered, **THEN** amount is 0.25.
 - **GIVEN** car at 60% of global max, **WHEN** vignette is checked, **THEN** intensity is 0.0 (threshold).
 - **GIVEN** wall hit at 100 km/h, **WHEN** sparks are rendered, **THEN** 10-30 particles burst.

@@ -48,7 +48,7 @@ Every physics tick (60 Hz), each AI agent reads the immutable final `PublishedSi
 
 | Variable | Type | Range | Description |
 |----------|------|-------|-------------|
-| base_speed | float | 0–310 km/h | Car's max velocity from Car Definition Data; difficulty does not multiply it |
+| base_speed | float | 300–340 km/h | Car's max velocity from Car Definition Data (Top Speed formula: 300 + TS×2); difficulty does not multiply it |
 | state_modifier | float | 0.7–1.1 | Depends on current state |
 | personality_modifier | float | 0.95–1.05 | Per-archetype adjustment |
 | pace_noise | float | 0.92–1.08 | Deterministic difficulty-specific pace variation per tick around the car's base speed |
@@ -285,8 +285,8 @@ AI exposes no archetype/state UI. Race Session Manager owns the player-facing po
 
 ## Acceptance Criteria
 
-- **GIVEN** a Tier 1 AI car in Racing state with neutral personality, `pace_noise = 1.0`, and `error_noise = 1.0`, **WHEN** target speed is calculated, **THEN** it is approximately 310 km/h before the max-velocity clamp.
-- **GIVEN** a Tier 4 AI car with Top Speed stat 16 in Racing state with neutral personality, `pace_noise = 1.0`, and `error_noise = 1.0`, **WHEN** target speed is calculated, **THEN** it is approximately 298 km/h before the max-velocity clamp.
+- **GIVEN** a Tier 1 AI car in Racing state with neutral personality, `pace_noise = 1.0`, and `error_noise = 1.0`, **WHEN** target speed is calculated, **THEN** it is approximately 340 km/h before the max-velocity clamp.
+- **GIVEN** a Tier 4 AI car with Top Speed stat 16 in Racing state with neutral personality, `pace_noise = 1.0`, and `error_noise = 1.0`, **WHEN** target speed is calculated, **THEN** it is approximately 332 km/h before the max-velocity clamp.
 - **GIVEN** AI with Aggressive archetype, **WHEN** car ahead within 100m with 8% speed advantage, **WHEN** overtake probability is calculated, **THEN** it is approximately 69%.
 - **GIVEN** AI with Cautious archetype, **WHEN** car behind within 80m with 5% threat, **WHEN** defend probability is calculated, **THEN** it is approximately 25%.
 - **GIVEN** an AI with post-current-lap Fuel or Tire resource below 110% of its last completed-lap use, **WHEN** the next lap is not final, **THEN** it commits to pit entry regardless of difficulty.
