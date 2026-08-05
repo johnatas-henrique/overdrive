@@ -131,6 +131,10 @@ Surface zones are defined as distance ranges along the spline (e.g., "kerb from 
 
 Tracks are imported at real-world scale (1 unit = 1 meter). The game uses meters for all physics calculations. No artificial scaling — a 7km track is 7km in the game.
 
+**9. Validation Reference Track**
+
+Suzuka (1989-91 F1 calendar) is the canonical reference track for validating cornering feel, drift, and braking — it covers every corner-radius type: S Curves (200-260 km/h esses), Degner 1/2, Hairpin (<70 km/h, ~10-15 m radius), Spoon (double-apex 180°), 130R (130 m flat-out), and Casio Chicane. No other circuit of the era spans that radius range. When a track with the widest corner-radius variety is needed for feel validation, use Suzuka (race-feel prototype reference, 2026-08-03).
+
 ### States and Transitions
 
 The Track System itself has no runtime states — it's static data loaded at race start. However, the car's relationship to the track has states:

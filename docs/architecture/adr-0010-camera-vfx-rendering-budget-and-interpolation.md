@@ -127,7 +127,7 @@ Transitions:
 
 Chase camera anticipates car direction for smoother visual tracking:
 
-- `lookAheadOffset = forward × speed × lookAheadFactor`
+- `lookAheadOffset = velocityDirection × speed × lookAheadFactor` (velocity direction projected on XZ — not car heading — so the look-ahead follows the trajectory and the drift stays visible when heading diverges; race-feel prototype validation 2026-08-03)
 - `lookAheadFactor` scales quadratically with speed:
   - Low speed: minimal offset (~0.5m)
   - High speed: significant offset (~3m)

@@ -59,7 +59,7 @@ Two modes. Cockpit is default and primary. Chase is the accessibility/spectacle 
 
 **Chase:**
 - Position: Fixed offset behind (4.5 m) and above (1.8 m) the car. Dead center horizontally.
-- Rotation: Follows car's heading with 0.12s response lag (7.5 frames at 60 FPS). Pitch damped to 40%.
+- Rotation: Follows the car's horizontal VELOCITY direction (not heading) with 0.12s response lag (7.5 frames at 60 FPS). Pitch damped to 40%. When heading and velocity diverge (drift), the car appears sideways on screen — the drift must be visible, not masked by the camera (race-feel prototype validation 2026-08-03). Below a low-speed threshold, maintain the last filtered velocity direction instead of switching to heading (no heading fallback while moving).
 - FOV default: 70° (see Tuning Knobs — needs playtest)
 
 **Mode switch:** `CameraToggle` action. Default binding is C / gamepad North-Y-Triangle. It is remappable in MVP and can switch mid-race or mid-corner anywhere driving input is active. Input routes its performed/rising edge directly to Camera during Dynamic Update, so one press starts one transition immediately; holding the control does not repeat until release. CameraToggle is presentation-only and never enters SimulationInput, the simulation tick, Replay, or Ghost Recording. It is ignored during PitTransit, InPitBox, Exiting, Finished Presentation, and Replay.

@@ -135,6 +135,36 @@ For an MVP review, Alpha, Beta, and Release behavior is compatibility context on
 | VFX | Approved | design/gdd/vfx.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW3 global_max_velocity derived from per-car max_velocity; CW1 asym 6/23 synced) |
 | UI Menu | Approved | design/gdd/ui-menu.md | Re-review — APPROVED — 2026-08-01 — cross-review 08-01 resolved (CW2 knob renamed; CW1 asym 2/10/16 synced) |
 
+## Prototype Findings — Race Feel (2026-08-03)
+
+Race-feel prototype validation (see `prototypes/race-feel/REPORT.md` — CD verdict:
+CONCERNS, PROCEED). Prototype values ARE the source of truth for the systems
+below; production implementation must replicate them:
+
+**Validated and propagated:**
+- Stats TS/AC/GR/ST/BR — real 1989 F1 values → car-definition-data.md,
+  entities.yaml (2026-08-04)
+- Steering 1-state model + lift-off grip bonus (fixed g) + drift factor
+  (track-radius activated) + reverse arcade inversion → vehicle-physics.md,
+  ADR-0002 (2026-08-04)
+- Camera follows velocity direction (drift visible), not heading →
+  camera.md, ADR-0010 (2026-08-05)
+
+**Pending production (from the report's If-Proceeding list):**
+- Engine sound (ADR-0012) — the single biggest remaining feel gap
+- Drift VFX (smoke/body roll — ADR-0010)
+- Splines with elevation (ADR-0007) — prototype tracks are 2D
+- AI rival grid (16 cars) — prototype has 1 car
+- Real HUD (8 elements), cockpit camera, menus/car-track selection, settings
+- Per-track retuning (16 tracks; cars may diverge on extreme layouts)
+- Trackside content density for speed sensation
+- Wall/runoff spacing preserving error space (playtester finding)
+- Art-style-in-motion validation: minimal art test before heavy production
+
+**Validation criteria (CD-PLAYTEST):** cockpit camera + engine sound +
+art-in-motion playtest before asset production scales; starting-car
+first-session scenario in the Alpha Career test plan.
+
 ## Art Bible
 
 | Section | Status | Approved |
