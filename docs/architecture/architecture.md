@@ -188,7 +188,7 @@
 
 | Aspect | Definition |
 |--------|-----------|
-| **Owns** | 16 `ScriptableObject` assets (6 stats each 0–20, engine audio profile), stat-to-behavior formulas (`max_velocity`, `accel_time`, `brake_distance`, `cornering_speed`, `control_threshold`, `efficiency_modifier`), `global_max_velocity` runtime computation |
+| **Owns** | 16 `ScriptableObject` assets (6 stats each 0–20, engine audio profile), stat-to-behavior formulas (`max_velocity` = 300 + TS×2, `t300` Acceleration metric, `brake_distance`, grip % of vmax, `control_threshold` slip-only, `efficiency_modifier`), `global_max_velocity` runtime computation |
 | **Exposes** | Per-car: 6 stat values, computed metrics, engine audio profile. `global_max_velocity = max(all car top speeds)` for VFX |
 | **Consumes** | None — static data loaded at race start via Addressables `Cars/{teamId}` |
 | **Engine APIs** | `ScriptableObject`, loaded via `Addressables.LoadAssetAsync<CarDefinition>()`. MEDIUM RISK |

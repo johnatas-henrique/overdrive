@@ -560,9 +560,9 @@ requirements:
   - id: TR-car-002
     system: car-definition-data
     gdd: design/gdd/car-definition-data.md
-    requirement: "Stat-to-behavior formulas: max_velocity, accel_time, brake_distance, cornering_speed, control_threshold, efficiency_modifier"
+    requirement: "Stat-to-behavior formulas: max_velocity (300 + TS×2), t300 (Acceleration metric), brake_distance, grip % of vmax, control_threshold (slip-only), efficiency_modifier"
     created: "2026-07-27"
-    revised: ""
+    revised: "2026-08-04"
     status: active
 
   - id: TR-car-003

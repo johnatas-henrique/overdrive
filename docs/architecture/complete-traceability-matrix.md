@@ -139,7 +139,7 @@
 |-------|-------------|--------------|--------|
 | TR-vehicle-physics-001 | SimulationInput consumed once per tick: ResolvedCarInput[carId] (accelerateOut, brakeOut, steerOut) at Step 6 | ADR-0002 §Requirements ("Must consume ResolvedCarInput[carId] at Tick Step 6"); ADR-0001 §TickStartSnapshot schema | ✅ |
 | TR-vehicle-physics-002 | Pit-entry zone detection: VP detects crossing, queues CarState.PitPhase transition with 1-tick latency | ADR-0002 §Requirements (Pitting state, CarState.pitPhase); ADR-0001 (tick pipeline carries to PitStopSystem); ADR-0011 §Data Flow (1-tick entry detection) | ✅ |
-| TR-vehicle-physics-003 | 6 stats via range formulas: max_velocity, accel_time, brake_distance, cornering_speed, control_threshold, efficiency_modifier; weight constant 505kg | ADR-0002 §Requirements ("6 car stats", "ForceMode.Acceleration decouples force from mass"); ADR-0002 §GDD Reqs table | ✅ |
+| TR-vehicle-physics-003 | 6 stats via formulas: max_velocity (300 + TS×2), t300 (Acceleration metric), brake_distance, grip % of vmax, control_threshold (slip-only), efficiency_modifier; weight constant 505kg | ADR-0002 §Requirements ("6 car stats", ForceMode.Force corrected 2026-08-04); ADR-0002 §GDD Reqs table | ✅ |
 | TR-vehicle-physics-004 | Perfect Start multiplier: `perfectStartDriveForceMultiplier = 1.15` for 600 ticks after GO | ADR-0001 §ReplayInitialState (includes Perfect Start); ADR-0002 §Requirements ("perfectStartDriveForceMultiplier = 1.15 for 600 ticks") | ✅ |
 | TR-vehicle-physics-005 | Off-track difficulty override: 5 profiles with different off-track grip (0.25–0.60) and wall speed loss (0.20–0.60) | ADR-0001 §Decision ("immutable DifficultyProfile snapshot at race init"); ADR-0004 §DifficultyProfile storage; ADR-0002 §Requirements (difficulty consumption) | ✅ |
 | TR-vehicle-physics-006 | VP owns collision resolution: car-to-car (15–25% speed loss, cooldown), wall bounce (0.2–0.5s cooldown, 50% repeated reduction) | ADR-0002 §Requirements ("car-to-car collision", "wall contact"); ADR-0002 §WallHit/Car-to-car sections | ✅ |
@@ -375,7 +375,7 @@
 
 | TR-ID | Requirement | ADR Coverage | Status |
 |-------|-------------|--------------|--------|
-| TR-vfx-001 | global_max_velocity: car speed cap from CarDefinition (250–310 km/h) consumed by VFX intensity | ADR-0002 §maxLinearVelocity (hard speed cap); ADR-0010 §VFX ("speed-normalized VFX") | ✅ |
+| TR-vfx-001 | global_max_velocity: car speed cap from CarDefinition (300–340 km/h) consumed by VFX intensity | ADR-0002 §maxLinearVelocity (hard speed cap); ADR-0010 §VFX ("speed-normalized VFX") | ✅ |
 | TR-vfx-002 | streak_intensity formula: proportional to speed/global_max_velocity ratio | ADR-0010 §VFX ("speed streaks formula"). Explicit math not in ADR. | ⚠️ |
 | TR-vfx-003 | blur_amount formula: proportional to speed, capped at max blur | ADR-0010 §Post-Cutoff APIs (MotionBlur Volume override confirmed). Blur formula not explicitly in ADR. | ⚠️ |
 | TR-vfx-004 | vignette_intensity formula: proportional to speed/cornering load | ADR-0010 §VFX (Vignette confirmed). Formula not in ADR. | ⚠️ |

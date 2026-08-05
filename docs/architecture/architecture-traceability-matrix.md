@@ -28,7 +28,7 @@
 | TR-VP-001 | vehicle-physics | 6 car stats (Top Speed, Acceleration, Brake Power, Grip Level, Stability, Efficiency) mapped from SMGP1 | ADR-0002 (§CarState, §force calculation); ADR-0009 (AI uses stats) | ✅ |
 | TR-VP-002 | vehicle-physics | 505 kg constant weight for all cars | ADR-0002 (ForceMode.Acceleration decouples force from mass) | ✅ |
 | TR-VP-003 | vehicle-physics | CarState production per physics tick (16 cars, read-only snapshot) | ADR-0001 (§Step 9 CarState readout); ADR-0002 (§ReadCarState, §CarState schema) | ✅ |
-| TR-VP-004 | vehicle-physics | Grip multiplicative stack: `effective_grip = clamp(grip_base × surface_grip_multiplier × tire_runtime_grip_multiplier × control_threshold, 0.20, 1.20)` | ADR-0002 (§GripMath.ComputeEffectiveGrip); ADR-0006 (§Step 5b Tire input); ADR-0007 (surface modifiers) | ✅ |
+| TR-VP-004 | vehicle-physics | Grip multiplicative stack: `effective_grip = clamp(grip_base × surface_grip_multiplier × tire_runtime_grip_multiplier, 0.20, 1.20)` (no stability term) | ADR-0002 (§GripMath.ComputeEffectiveGrip); ADR-0006 (§Step 5b Tire input); ADR-0007 (surface modifiers) | ✅ |
 | TR-VP-005 | vehicle-physics | Grip floor 0.20, ceiling 1.20 | ADR-0002 (§GripMath constants gripFloor=0.20f, gripCeiling=1.20f) | ✅ |
 | TR-VP-006 | vehicle-physics | Wall bounce: speed loss, shallow angle, 0.2–0.5s cooldown, 50% repeated bounce reduction | ADR-0002 (§WallHit state timer, §impulse scaling) | ✅ |
 | TR-VP-007 | vehicle-physics | Lift-off rotation assist: throttle release while turning, anti-spam 0.3s | ADR-0002 (§Lift-off rotation with 0.3s anti-spam) | ✅ |
@@ -180,8 +180,8 @@
 | TR-ID | GDD | Requirement | ADR Coverage | Status |
 |-------|-----|-------------|--------------|--------|
 | TR-CAR-001 | car-definition-data | 16 teams, each with 6 stats (0–20, increments of 4) | ADR-0002 (§CarDefinition loaded at race init, 6 stats consumed) | ✅ |
-| TR-CAR-002 | car-definition-data | Stat-to-behavior formulas: `max_velocity`, `accel_time`, `brake_distance`, `cornering_speed`, `control_threshold`, `efficiency_modifier` | ADR-0002 (§force calculation consumes stats; formulas defined in car-definition-data.md) | ⚠️ (ADR-0002 confirms stats are consumed but does NOT explicitly enumerate or define the formulas — they live only in car-definition-data.md with a reference to live values in CarConfig.asset) |
-| TR-CAR-003 | car-definition-data | `global_max_velocity`: 250–310 km/h range, stat 20 = 310 km/h, stat 4 = 262 km/h | ADR-0002 (§maxLinearVelocity as hard speed cap; §Top Speed stat consumed) | ✅ |
+| TR-CAR-002 | car-definition-data | Stat-to-behavior formulas: `max_velocity` (300 + TS×2), `t300` (Acceleration metric), `brake_distance`, `grip % of vmax`, `control_threshold` (slip-only), `efficiency_modifier` | ADR-0002 (§force calculation consumes stats; formulas defined in car-definition-data.md) | ✅ (updated 2026-08-04 with prototype-validated formulas) |
+| TR-CAR-003 | car-definition-data | `global_max_velocity`: 300–340 km/h range (300 + TS×2), stat 20 = 340 km/h, stat 4 = 308 km/h | ADR-0002 (§maxLinearVelocity as hard speed cap; §Top Speed stat consumed) | ✅ |
 | TR-CAR-004 | car-definition-data | `efficiency_modifier = 1 - stat × 0.025` (0.5–0.9) for both fuel and tire | ADR-0006 (§FuelSystem and TireSystem both consume efficiency_modifier from the same stat) | ✅ |
 | TR-CAR-005 | car-definition-data | Validation: clamp invalid stats to nearest valid {4,8,12,16,20}, missing fields default to 12 | — | ❌ (No ADR defines the validation/clamping rules for car definition data. ADR-0002 loads CarDefinition but doesn't specify validation logic.) |
 | TR-CAR-006 | car-definition-data | ScriptableObject storage per team: `Assets/Data/Cars/team_tier{N}_{a-d}.asset` | ADR-0003 (§Cars/{teamId} Addressable group); ADR-0002 (§CarDefinition loaded via Addressables) | ✅ |

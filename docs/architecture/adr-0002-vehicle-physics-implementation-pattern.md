@@ -45,13 +45,13 @@ Vehicle Physics is the core simulation layer — it translates player input (thr
 
 ### Requirements
 
-- Must support the arcade grip stack: `effective_grip = clamp(grip_base × surface_grip_multiplier × tire_runtime_grip_multiplier × control_threshold, 0.20, 1.20)`
+- Must support the arcade grip stack: `effective_grip = clamp(grip_base × surface_grip_multiplier × tire_runtime_grip_multiplier, 0.20, 1.20)` (control_threshold REMOVED from the stack — Stability modulates slip behavior only, validated 2026-08-04)
 - Must produce a `CarState` per car per physics tick (position, rotation, speed, throttle, brake, steer, gripState, rpm, gear, wallContact, slideState, surface, pitPhase, isGridLocked, forwardDot)
 - Must consume `ResolvedCarInput[carId]` (accelerateOut, brakeOut, steerOut) at Tick Step 6
 - Must support 5 car states: Driving, OffTrack, WallHit, Pitting, GridLocked
 - Must support `perfectStartDriveForceMultiplier = 1.15` for 600 ticks after GO (written by Grid & Start)
-- Must support high-speed steer reduction (~25% above 70% top speed, smooth transition band 65–75%)
-- Must support lift-off rotation assist (anti-spam, 0.3s cooldown between activations)
+- Must support the 1-state steering model (validated 2026-08-04): `maxYaw = min(steerCeiling(v), v / minTurnRadius, gripCeiling)` — steering capacity falls with speed (falloff start → 99% of vmax), minTurnRadius prevents turning in place, grip is the anti-slide ceiling
+- Must support lift-off grip bonus (tuck-in, validated 2026-08-03): fixed +3.0 g to maxLateralAccel when throttle ≤ 0, applied in both the yaw request and the velocity rotation rate
 - Must support wall contact (0.2–0.5s persist, repeated bounce impulse reduction by 50%)
 - Must support car-to-car collision (15–25% speed loss + push impulse, cooldown between repeated impacts)
 - Must be replaceable by a DOTS/ECS implementation in the future without rewriting game logic
@@ -124,14 +124,13 @@ public struct VehicleSimState {
 // The grip formula — standalone pure math, testable without Unity
 public static class GripMath {
     public static float ComputeEffectiveGrip(
-        float gripBase,          // from CarDef stats
+        float gripBase,          // from CarDef stats → maxLateralG
         float surfaceMultiplier, // from Track System
         float tireGripMultiplier,// from Tire System
-        float stability,         // control_threshold = stat/20
         float gripFloor = 0.20f,
         float gripCeiling = 1.20f
     ) => math.clamp(
-        gripBase * surfaceMultiplier * tireGripMultiplier * stability,
+        gripBase * surfaceMultiplier * tireGripMultiplier,
         gripFloor, gripCeiling
     );
 }
@@ -151,7 +150,7 @@ public static class GripMath {
 
 ### Implementation Notes
 
-**ForceMode:** Arcade forces use `ForceMode.Acceleration` (mass-independent velocity change) for longitudinal and lateral force application. This decouples tuning from Rigidbody mass and produces predictable response at any speed.
+**ForceMode:** Use `ForceMode.Force` (or raw acceleration values applied directly). `ForceMode.Acceleration` and `ForceMode.Impulse` apply mass implicitly — multiplying by Rigidbody.mass again produces extreme values (observed in the prototype: 28 m/s² × 505 kg = 14,140 m/s²; corrected 2026-08-03).
 
 **CollisionDetectionMode:** Player car uses `ContinuousDynamic` (prevents tunneling with thin walls/kerbs at high speed). AI cars use `Continuous` (detects collisions at reduced cost). All cars fall back to `Discrete` if profiling shows the continuous modes exceed the simulation budget.
 
@@ -217,12 +216,12 @@ public static class GripMath {
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|--------------------------|
 | vehicle-physics.md | Arcade handling model (4PGP/Horizon Chase feel) | Custom grip formula (GripMath.ComputeEffectiveGrip) over Rigidbody forces — not WheelCollider slip curves |
-| vehicle-physics.md | `effective_grip = clamp(grip_base × surface × tire × stability, 0.20, 1.20)` | Pure C# math in GripMath, testable without Unity |
+| vehicle-physics.md | `effective_grip = clamp(grip_base × surface × tire, 0.20, 1.20)` (no stability term) | Pure C# math in GripMath, testable without Unity |
 | vehicle-physics.md | 5 car states (Driving/OffTrack/WallHit/Pitting/GridLocked) | VehicleSimState.Flags, evaluated per tick in pure C# |
 | vehicle-physics.md | CarState[16] per physics tick (position, rotation, speed, throttle, brake, steer, gripState, rpm, gear, wallContact, slideState, surface, pitPhase, isGridLocked, forwardDot) | ReadCarState() at Tick Step 9 after Physics.Simulate. CarState now includes LinearVelocity (float3 for AI) and ForwardDot (float for RSM). gripState split into State (5-state machine) + SlipState (Normal/Slipping/SpinOut) |
 | vehicle-physics.md | Steering is instant at physics boundary (no input ramp) | steerOut applied directly without additional smoothing layer |
-| vehicle-physics.md | High-speed steer reduction ~25% above 70% top speed | C# math in force calculation, lerp in 65–75% transition band |
-| vehicle-physics.md | Lift-off rotation assist with 0.3s anti-spam | Evaluated per tick, cooldown tracked in VehicleSimState |
+| vehicle-physics.md | 1-state steering: maxYaw = min(steerCeiling(v), v/minTurnRadius, gripCeiling) | Steering model in ComputeMaxYaw; global knobs (maxSteerLow 2.5, maxSteerHigh 1.5, liftOffSteerBonus 0.5, minTurnRadius 10, falloff start 60); grip is the anti-slide ceiling |
+| vehicle-physics.md | Lift-off grip bonus (tuck-in), fixed +3 g | Added to maxLateralAccel in both the yaw request and the velocity rotation rate when throttle ≤ 0 |
 | vehicle-physics.md | Wall contact 0.2-0.5s persist, bounce impulse reduction 50% | WallHit state timer + impulse scaling in pure C# |
 | vehicle-physics.md | Car-to-car collision 15-25% speed loss + push impulse | Post-collision speed evaluation in pure C# after Physics.Simulate |
 | vehicle-physics.md | `Rigidbody.interpolation = None`, manual LateUpdate interpolation | Applied via IVehicleDriver adapter; interpolation owned by Simulation Architecture |
