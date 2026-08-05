@@ -152,7 +152,7 @@
 
 | Aspect | Definition |
 |--------|-----------|
-| **Owns** | `ResolvedCarInput[carId]` consumption, 5 car states (Driving/OffTrack/WallHit/Pitting/GridLocked), `effective_grip` multiplicative stack (grip_base × surface × tire × stability), `longitudinalDriveForceFinal` with perfect-start multiplier, high-speed steer reduction, lift-off rotation assist, wall contact cooldown, collision response (speed loss + push impulse), per-tick `CarState[16]` production |
+| **Owns** | `ResolvedCarInput[carId]` consumption, 5 car states (Driving/OffTrack/WallHit/Pitting/GridLocked), `effective_grip` multiplicative stack (grip_base × surface × tire), `longitudinalDriveForceFinal` with perfect-start multiplier, high-speed steer reduction, lift-off rotation assist, wall contact cooldown, collision response (speed loss + push impulse), per-tick `CarState[16]` production |
 | **Exposes** | `CarState` per car per physics tick: position, rotation, speed, throttle, brake, steer, gripState, forwardDot, isGridLocked, rpm, gear, wallContact, slideState, surface, pitPhase |
 | **Consumes** | `SimulationInput.accelerateOut/brakeOut/steerOut`, `tire_runtime_grip_multiplier` (Tire), fuel state + low-fuel modifier (Fuel), `surface_grip_multiplier` (Track), `AIInput` (AI Rival), grid_lock state (Simulation) |
 | **Engine APIs** | `Rigidbody.linearVelocity` (✅), `linearDamping` (✅), `angularDamping` (✅), `AddForce()`, `MovePosition()`, `interpolation = None`. HIGH RISK: all verified |
@@ -188,7 +188,7 @@
 
 | Aspect | Definition |
 |--------|-----------|
-| **Owns** | 16 `ScriptableObject` assets (6 stats each 0–20, engine audio profile), stat-to-behavior formulas (`max_velocity` = 300 + TS×2, `t300` Acceleration metric, `brake_distance`, grip % of vmax, `control_threshold` slip-only, `efficiency_modifier`), `global_max_velocity` runtime computation |
+| **Owns** | 16 `ScriptableObject` assets (6 stats each 0–20, engine audio profile), stat-to-behavior formulas (`max_velocity` = 300 + TS×2, `t300` Acceleration metric, `brake_distance`, grip % of vmax, `control_threshold` slip-only (NOT in effective_grip stack), `efficiency_modifier`), `global_max_velocity` runtime computation |
 | **Exposes** | Per-car: 6 stat values, computed metrics, engine audio profile. `global_max_velocity = max(all car top speeds)` for VFX |
 | **Consumes** | None — static data loaded at race start via Addressables `Cars/{teamId}` |
 | **Engine APIs** | `ScriptableObject`, loaded via `Addressables.LoadAssetAsync<CarDefinition>()`. MEDIUM RISK |

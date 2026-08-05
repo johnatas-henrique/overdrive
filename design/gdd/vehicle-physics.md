@@ -287,7 +287,7 @@ For the player while off-track, `surface_grip_multiplier` is selected from the a
 - **If car is stopped + full throttle:** Normal acceleration from standstill.
 - **If wall hit at 0 speed:** No impact (velocity into wall ≈ 0).
 - **If multiple rapid wall bounces:** Cooldown reduces impulse by 50%. Prevents jitter.
-- **If off-track + full grip input:** The surface multiplier reduces the multiplicative stack. The 0.20 floor and 1.20 ceiling are enforced after all grip modifiers — `effective_grip = clamp(grip_base × surface_grip_multiplier × tire_runtime_grip_multiplier × control_threshold, 0.20, 1.20)`.
+- **If off-track + full grip input:** The surface multiplier reduces the multiplicative stack. The 0.20 floor and 1.20 ceiling are enforced after all grip modifiers — `effective_grip = clamp(grip_base × surface_grip_multiplier × tire_runtime_grip_multiplier, 0.20, 1.20)` (stability no longer part of the stack — see the Grip formula in the main section).
 - **If tire at 0%:** Grip reduced to floor (0.20). Combined with reduced brake/accel, car is controllable but significantly slower.
 - **If fuel at 0%:** Car coasts. No throttle response. Brake and steer remain functional. Player must pit.
 - **If fuel and tire both at 0%:** Grip at floor, no acceleration. Car coasts at current speed with minimal grip. If pit lane unreachable by coasting, car stops on track.

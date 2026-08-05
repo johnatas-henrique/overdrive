@@ -86,7 +86,7 @@ Sources reconciled: Pipeline numbering uses the canonical 14-step model (ADR-000
 - **Lift-off rotation assist**: 0.3s anti-spam cooldown. — **source: ADR-0002**
 - **Wall contact**: 0.2-0.5s persist + 50% repeated-bounce reduction. — **source: ADR-0002**
 - **Car-to-car collision**: 15-25% speed loss. — **source: ADR-0002**
-- **Grip floor/ceiling**: `effective_grip` floor = 0.20, ceiling = 1.2. Grip stack: 4 multipliers (tire, surface, speed, aggression). — **source: ADR-0002**
+- **Grip floor/ceiling**: `effective_grip` floor = 0.20, ceiling = 1.2. Grip stack: 3 multipliers (grip_base, surface_grip_multiplier, tire_runtime_grip_multiplier). — **source: ADR-0002**
 - **FuelSystem/TireSystem**: Separate domain systems, pure C# math, Step 5a/5b before Physics.Simulate. — **source: ADR-0006**
 - **Fuel consumption**: Base 0.06 L/s × throttle × `efficiency_modifier` (Normal difficulty). Lift-off stops consumption. — **source: ADR-0006, fuel-system.md**
 - **Tire wear**: Continuous linear grip curve (no breakpoints), grip floor = 0.20 at fully worn. Driven by distance, aggression, off-track. — **source: ADR-0006**
