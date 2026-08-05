@@ -1,3 +1,7 @@
+// PROTOTYPE - NOT FOR PRODUCTION
+// Question: Is the arcade grip (ADR-0002) fun and responsive enough to sustain the 30s loop?
+// Date: 2026-08-04
+
 using System;
 using UnityEngine;
 
