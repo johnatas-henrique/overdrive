@@ -90,7 +90,7 @@ namespace RaceFeel
 
         [Header("Coasting (playtest 2026-08-02)")]
         [SerializeField] float coastDecel = 3.5f;        // m/s^2 constant decel with NO pedals (engine-braking feel)
-        [SerializeField] float deadStopMps = 0.8f;       // m/s: below this with no pedals, velocity is zeroed (car actually stops)
+        [SerializeField] float deadStopMps = 0.1f;       // m/s: below this with no pedals, velocity is zeroed (car actually stops)
 
         // ARCADE STEERING MODEL (2-state, playtest 2026-08-02): fixed turning
         // RADIUS per state, not fixed yaw rate. yaw = speed / radius, so
@@ -136,6 +136,12 @@ namespace RaceFeel
         public bool IsSliding => isSliding;
         public float SlipRatio => slipRatio;
         public float TargetYawRate => _targetYawRate;
+
+        /// <summary>
+        /// Smoothed steering input consumed by presentation-only vehicle visuals.
+        /// Example: a front-wheel visual turns by VisualSteerInput * maxVisualAngle.
+        /// </summary>
+        public float VisualSteerInput => _steerEma;
 
         // Tuning surface for the runtime panel (settable, applies next tick).
         public float MaxSteerLow { get => maxSteerLow; set => maxSteerLow = value; }
@@ -466,7 +472,13 @@ namespace RaceFeel
             float forwardAbs = Mathf.Abs(forwardSpeed);
             float maxYaw = ComputeMaxYaw(forwardAbs, throttle <= 0f);
 
-            _targetYawRate = _steerEma * maxYaw;
+            // ARCADE REVERSE (2026-08-04): while reversing the car moves
+            // along -forward, so the heading's left/right are opposite to
+            // the motion's left/right. Invert the yaw sign so left input
+            // turns the car left on screen (Top Gear / Horizon Chase);
+            // simulator-style un-inverted steering was reported as a bug.
+            float reverseSign = forwardSpeed < 0f ? -1f : 1f;
+            _targetYawRate = _steerEma * maxYaw * reverseSign;
             Vector3 angVel = _rb.angularVelocity;
             angVel.y = _targetYawRate;
             _rb.angularVelocity = angVel;

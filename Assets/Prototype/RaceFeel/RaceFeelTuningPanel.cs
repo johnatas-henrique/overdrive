@@ -26,6 +26,7 @@ namespace RaceFeel
         [Header("References (auto-found)")]
         [SerializeField] ArcadeCar car;
         [SerializeField] PrototypeTrack track;
+        [SerializeField] CarVisualLivery carVisual;
         [SerializeField] RaceFeelController controller;
 
         // Text field buffers (applied on Enter).
@@ -35,22 +36,22 @@ namespace RaceFeel
         // (name, pm, vmax, br, gr, st, ts, ac)
         static readonly (string name, float pm, float vmax, int br, int gr, int st, int ts, int ac)[] TeamCars =
         {
-            ("1a McLaren", 1012f, 340f, 16, 20, 20, 20, 18),
+            ("1a McLaren", 1012f, 340f, 16, 20, 20, 20, 20),
             ("1b Ferrari", 974f, 340f, 20, 16, 20, 20, 20),
-            ("1c Williams", 960f, 335f, 20, 16, 16, 17, 16),
-            ("1d Benetton", 931f, 330f, 20, 20, 20, 14, 14),
-            ("2a March", 915f, 322f, 16, 16, 16, 11, 12),
-            ("2b Lotus", 915f, 322f, 20, 16, 12, 11, 12),
-            ("2c Tyrrell", 915f, 316f, 16, 16, 16, 8, 10),
-            ("2d Brabham", 915f, 322f, 16, 12, 12, 11, 12),
-            ("3a Minardi", 915f, 316f, 12, 12, 12, 8, 10),
-            ("3b Ligier", 915f, 316f, 8, 12, 8, 8, 10),
-            ("3c Dallara", 915f, 316f, 16, 16, 16, 8, 10),
-            ("3d Arrows", 915f, 316f, 8, 12, 8, 8, 10),
-            ("4a Rial", 915f, 316f, 8, 12, 12, 8, 10),
-            ("4b Coloni", 915f, 316f, 8, 12, 8, 8, 10),
-            ("4c Onyx", 915f, 316f, 8, 8, 8, 8, 10),
-            ("4d Zakspeed", 832f, 312f, 4, 12, 12, 5, 6),
+            ("1c Williams", 960f, 334f, 20, 16, 16, 17, 19),
+            ("1d Benetton", 931f, 330f, 20, 20, 20, 15, 17),
+            ("2a March", 915f, 322f, 16, 16, 16, 11, 14),
+            ("2b Lotus", 915f, 322f, 20, 16, 12, 11, 14),
+            ("2c Tyrrell", 915f, 316f, 16, 16, 16, 8, 11),
+            ("2d Brabham", 915f, 322f, 16, 12, 12, 11, 14),
+            ("3a Minardi", 915f, 316f, 12, 12, 12, 8, 11),
+            ("3b Ligier", 915f, 316f, 8, 12, 8, 8, 11),
+            ("3c Dallara", 915f, 316f, 16, 16, 16, 8, 11),
+            ("3d Arrows", 915f, 316f, 8, 12, 8, 8, 11),
+            ("4a Rial", 915f, 316f, 8, 12, 12, 8, 11),
+            ("4b Coloni", 915f, 316f, 8, 12, 8, 8, 11),
+            ("4c Onyx", 915f, 316f, 8, 8, 8, 8, 11),
+            ("4d Zakspeed", 832f, 312f, 4, 12, 12, 6, 6),
         };
 
         // Text field buffers (applied on Enter). Steering knobs are GLOBAL
@@ -97,8 +98,12 @@ namespace RaceFeel
             if (car == null) car = FindFirstObjectByType<ArcadeCar>();
             if (track == null) track = FindFirstObjectByType<PrototypeTrack>();
             if (controller == null) controller = FindFirstObjectByType<RaceFeelController>();
+            if (carVisual == null && car != null)
+                carVisual = car.GetComponentInChildren<CarVisualLivery>(true);
 
-            // Seed the fields from the car's current values.
+            if (carVisual != null)
+                carVisual.ApplyTeamColor(15);
+
             RefreshFromCar();
         }
 
@@ -322,10 +327,7 @@ namespace RaceFeel
             car.LinearDamping = 0f;      // quadratic drag replaces linear
             car.BrakePower = 55.56f * 55.56f / (2f * (30f + (20f - br) / 20f * 50f));
             // Grip (user formula 2026-08-02): % of the car's own vmax at
-            // which the oval (70 m) is flat-out, interpolated between
-            // gripHighPct (GR 20) and gripLowPct (GR 0) by the GR stat:
-            //   pct = low + (high - low) * (GR/20)
-            //   maxLateralG = (pct * vmax / 3.6)^2 / (9.81 * 70)
+            // which the oval (70 m) is flat-out while accelerating.
             float.TryParse(_gripLowPct, NumberStyles.Float, CultureInfo.InvariantCulture, out float lowPct);
             float.TryParse(_gripHighPct, NumberStyles.Float, CultureInfo.InvariantCulture, out float highPct);
             float pct = (lowPct + (highPct - lowPct) * (gr / 20f)) / 100f;
@@ -334,6 +336,10 @@ namespace RaceFeel
             car.ControlThreshold = st / 20f;
             car.LiftOffGripBonus = 3f; // FIXED g (user decision): same absolute tool for every car
             car.SpeedCapKmh = 0f;
+
+            if (carVisual != null)
+                carVisual.ApplyTeamColor(i);
+
             RefreshFromCar();
             _appliedNote = $"{name}: TS {ts} AC {ac} | P/m {pm:0}, vmax {vmax}, K {car.DragCoeff:0.000000}, grip {car.MaxLateralG:0.00}g ({pct * 100f:0}% => oval {ovalLimitKmh:0} km/h), brake {car.BrakePower:0.0}";
         }
