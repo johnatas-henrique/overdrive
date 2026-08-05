@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Benetton B189 Asset Pipeline Pilot</title>
+  <style>
+    :root {
+      --ink: #1c2428;
+      --muted: #5b666b;
+      --paper: #fffdf8;
+      --panel: #f4efe5;
+      --line: #d8d0c2;
+      --accent: #d95732;
+      --blue: #245277;
+      --green: #28734d;
+      --amber: #9a6a11;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #e7e1d6;
+      font: 16px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { max-width: 1180px; margin: 0 auto; padding: 42px 28px 72px; }
+    header {
+      padding: 42px;
+      color: #fffaf0;
+      background: linear-gradient(135deg, #17344c, #9c3926);
+      border-radius: 18px;
+      box-shadow: 0 18px 45px #1c242833;
+    }
+    h1, h2, h3 { line-height: 1.2; }
+    h1 { max-width: 820px; margin: 0 0 12px; font-size: clamp(2.1rem, 5vw, 4rem); }
+    h2 { margin-top: 46px; padding-bottom: 10px; border-bottom: 2px solid var(--line); }
+    h3 { margin-top: 28px; color: var(--blue); }
+    .subtitle { max-width: 820px; margin: 0; font-size: 1.2rem; opacity: .9; }
+    .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+    .tag { padding: 5px 10px; border: 1px solid #fff8; border-radius: 999px; font-size: .85rem; }
+    section, .callout, table { margin-top: 22px; }
+    section { padding: 28px 30px; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; }
+    .callout { padding: 18px 20px; border-left: 5px solid var(--accent); background: #fff3e8; }
+    .callout.confirmed { border-color: var(--green); background: #edf8f0; }
+    .callout.inference { border-color: var(--amber); background: #fff8df; }
+    .callout.pending { border-color: var(--blue); background: #edf5fb; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(245px, 1fr)); gap: 16px; }
+    .card { padding: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+    .card strong { display: block; margin-bottom: 6px; color: var(--blue); }
+    table { width: 100%; border-collapse: collapse; overflow: hidden; background: var(--paper); }
+    th, td { padding: 12px 13px; vertical-align: top; text-align: left; border: 1px solid var(--line); }
+    th { color: #fffaf0; background: var(--blue); }
+    tr:nth-child(even) td { background: #faf6ed; }
+    code { padding: 2px 5px; color: #76301f; background: #f1e8da; border-radius: 4px; }
+    pre { padding: 16px; overflow: auto; color: #eef7ff; background: #17242c; border-radius: 9px; }
+    li { margin: 5px 0; }
+    .status { font-weight: 700; }
+    .confirmed { color: var(--green); }
+    .pending-text { color: var(--blue); }
+    .inference-text { color: var(--amber); }
+    footer { margin-top: 28px; color: var(--muted); font-size: .9rem; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Benetton B189 Asset Pipeline Pilot</h1>
+    <p class="subtitle">A complete asset-to-runtime validation plan for turning one Assetto Corsa car into a reusable pipeline for Overdrive's 16-car roster.</p>
+    <div class="meta">
+      <span class="tag">Benchmark asset: Benetton B189</span>
+      <span class="tag">Source context: Assetto Corsa KN5 → FBX</span>
+      <span class="tag">Target: Unity 6000.3.19f1 / URP 17.3.0</span>
+      <span class="tag">Document date: 2026-07-31</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>1. Purpose</h2>
+    <p>This car is the pipeline pilot. The goal is not merely to make one model look acceptable. The goal is to discover every conversion, material, hierarchy, pivot, animation, and Unity integration issue before the author delivers FBX files for the other 15 cars.</p>
+    <div class="callout confirmed"><strong>Confirmed project intent:</strong> use the Benetton as a complete test case, preserve the delivered assets, document each failure, and separate reusable pipeline work from car-specific repair.</div>
+  </section>
+
+  <section>
+    <h2>2. System Boundaries</h2>
+    <div class="grid">
+      <div class="card"><strong>Source asset</strong><p>KN5, converted FBX, sidecar INI, textures, LODs, empties, and source folder structure. Originals are read-only evidence.</p></div>
+      <div class="card"><strong>Blender preparation</strong><p>Correct materials, alpha behavior, normal maps, body response, pivots, offsets, hierarchy, and export readiness.</p></div>
+      <div class="card"><strong>Unity integration</strong><p>Import settings, URP materials, prefab hierarchy, animation hooks, camera compatibility, colliders, LODs, and runtime control.</p></div>
+      <div class="card"><strong>Play Mode validation</strong><p>Render and drive the car in the actual game context. Verify steering, wheel rotation, cockpit/chase presentation, lighting, and performance.</p></div>
+    </div>
+    <div class="callout inference"><strong>Important boundary:</strong> Blender can validate static asset correctness and prepare pivots. Unity must implement runtime steering, wheel rotation, physics linkage, and presentation-state behavior.</div>
+  </section>
+
+  <section>
+    <h2>3. End-to-End Pipeline</h2>
+    <table>
+      <thead><tr><th>Stage</th><th>Input</th><th>Work</th><th>Required evidence</th><th>Output</th></tr></thead>
+      <tbody>
+        <tr><td><strong> A. Source audit</strong></td><td>Original KN5/FBX package</td><td>Inventory files, textures, materials, sidecar declarations, LODs, and source hashes.</td><td>File inventory and hashes.</td><td>Immutable source record.</td></tr>
+        <tr><td><strong> B. Blender diagnosis</strong></td><td>Converted FBX and textures</td><td>Inspect alpha links, Base Color, normal/detail nodes, material parameters, missing meshes, wheel offsets, pivots, and hierarchy.</td><td>Controlled screenshots, node reports, transform comparisons.</td><td>Issue ledger per car.</td></tr>
+        <tr><td><strong> C. Blender repair copy</strong></td><td>Diagnosed scene</td><td>Apply only evidence-backed repairs. Never overwrite source or prior repair copies.</td><td>Before/after screenshots and saved-path verification.</td><td>Prepared <code>.blend</code> and repair notes.</td></tr>
+        <tr><td><strong> D. Unity import</strong></td><td>Prepared FBX/Blender export</td><td>Configure model importer, scale, materials, prefab hierarchy, LODs, colliders, and references.</td><td>Importer settings, hierarchy inspection, prefab evidence.</td><td>Unity car prefab.</td></tr>
+        <tr><td><strong> E. Play Mode</strong></td><td>Unity prefab and game systems</td><td>Test steering, wheel roll, cockpit/chase camera, lighting, material response, collisions, and runtime state.</td><td>Play Mode screenshots/video and console diagnostics.</td><td>Runtime validation report.</td></tr>
+        <tr><td><strong> F. Generalization</strong></td><td>Benetton findings</td><td>Classify each issue as common pipeline work, author-side defect, converter loss, or car-specific exception.</td><td>16-car issue matrix and acceptance checklist.</td><td>Reusable 16-car import workflow.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>4. Confirmed Benetton Findings</h2>
+    <table>
+      <thead><tr><th>Finding</th><th>Status</th><th>Evidence</th><th>Classification</th></tr></thead>
+      <tbody>
+        <tr><td>Diffuse textures exist on disk.</td><td class="status confirmed">CONFIRMED</td><td>All 46 referenced texture files in the main source folder were loadable.</td><td>Not a missing-texture problem.</td></tr>
+        <tr><td>Converted FBX lost or failed to wire several maps.</td><td class="status confirmed">CONFIRMED</td><td>Normal/detail inputs were empty even though the INI declared maps.</td><td>Conversion/import pipeline issue.</td></tr>
+        <tr><td>Opaque materials incorrectly used diffuse Alpha.</td><td class="status confirmed">CONFIRMED</td><td><code>SUSPENTION</code> used an image with approximately 93.85% sampled alpha zero.</td><td>Material repair.</td></tr>
+        <tr><td>Normal/detail map repair is possible.</td><td class="status confirmed">CONFIRMED</td><td>18 materials received primary and/or detail-normal connections in the repair copy.</td><td>Reusable Blender repair step.</td></tr>
+        <tr><td>Bodywork behaved like polished metal.</td><td class="status confirmed">CONFIRMED</td><td>Body materials had Metallic 1.0 and roughness from 0.0 to 0.293.</td><td>Material conversion/default issue.</td></tr>
+        <tr><td>Rear-right nut disappeared in the original scene.</td><td class="status confirmed">CONFIRMED</td><td>Controlled exterior-side captures showed the RR center as a uniform black disc.</td><td>Requires wheel-specific diagnosis.</td></tr>
+        <tr><td>Rear-right rim offset was asymmetric.</td><td class="status confirmed">CONFIRMED</td><td>Before correction, <code>RIM_LR.x = +0.007861</code> and <code>RIM_RR.x ≈ -0.00742</code>. The user corrected RR to <code>-0.007861</code>.</td><td>Transform/offset defect; likely occlusion or depth ordering.</td></tr>
+        <tr><td>Front wheel steering is not a Blender-only task.</td><td class="status confirmed">CONFIRMED</td><td>Front wheel roots exist, but runtime steering must be driven in Unity.</td><td>Asset preparation plus Unity runtime.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>5. Current Repair Copies</h2>
+    <table>
+      <thead><tr><th>File</th><th>Purpose</th><th>Important limitation</th></tr></thead>
+      <tbody>
+        <tr><td><code>f1_1989_benetton_b189_f_alpha_fixed.blend</code></td><td>Alpha links removed from materials declared opaque.</td><td>Does not include later normal-map work.</td></tr>
+        <tr><td><code>f1_1989_benetton_b189_f_alpha_normal_fixed.blend</code></td><td>Alpha repair plus primary/detail normal-map connections.</td><td>Uses external textures from the source folder.</td></tr>
+        <tr><td><code>f1_1989_benetton_b189_f_body_fixed.blend</code></td><td>Body Metallic/Roughness correction.</td><td>Created before the user's latest RR rim-offset edit; that edit is currently an unsaved scene change.</td></tr>
+        <tr><td><code>f1_1989_benetton_b189_f_blender_pilot_stage1.blend</code></td><td>Stage 1 consolidated Blender pilot copy.</td><td>Includes the body-material repair and the verified mirrored RR rim offset; front-wheel static validation remains open.</td></tr>
+        <tr><td><code>f1_1989_benetton_b189_f_blender_pilot_stage1_wheels_aligned_clean.blend</code></td><td>Clean Stage 1 copy with front wheel root, tire, and disk offsets aligned as lateral mirrors.</td><td>Neutral front-wheel rotations restored; steering runtime and Unity export are still pending.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout confirmed"><strong>Stage 1 save boundary:</strong> the consolidated copy is saved separately. The original package and all previous repair copies remain preserved.</div>
+  </section>
+
+  <section>
+    <h2>6. Wheel and Steering Validation</h2>
+    <h3>Static Blender checks</h3>
+    <ul>
+      <li>Each front wheel root must be centered on the steering pivot.</li>
+      <li>Left/right wheel roots must be mirrored on the lateral axis.</li>
+      <li>Disk, rim, tire, and brake components must share the intended wheel center.</li>
+      <li>Front-wheel steering rotation must occur around the vertical steering axis, not the tire axle.</li>
+      <li>Wheel offsets must be compared as mirrored values, not copied with the same sign.</li>
+    </ul>
+    <h3>Unity runtime checks</h3>
+    <ul>
+      <li>Front wheels steer with the visual steering value.</li>
+      <li>All wheel assemblies roll with vehicle travel.</li>
+      <li>Steering and rolling rotations do not overwrite each other.</li>
+      <li>Wheel visuals remain aligned with physics/collider positions.</li>
+      <li>Wheel animation remains correct in cockpit and chase cameras.</li>
+    </ul>
+    <div class="callout inference"><strong>Architecture implication:</strong> the imported <code>WHEEL_LF</code> and <code>WHEEL_RF</code> empties are suitable candidates for steering pivots, but the final runtime contract belongs in Unity and must be tested against the vehicle-physics presentation state.</div>
+  </section>
+
+  <section>
+    <h2>6A. Next Execution Stage: Blender Pilot Consolidation</h2>
+    <p>Stage 1 consolidates the confirmed Blender repairs before any Unity import. It intentionally keeps the car and pilot as separate runtime domains.</p>
+    <div class="grid">
+      <div class="card"><strong>Car-owned visuals</strong><p><code>STEER_HR</code>, dashboard meshes, wheels, suspension groups, bodywork, materials, and car animation pivots remain part of the car prefab.</p></div>
+      <div class="card"><strong>Pilot-owned visuals</strong><p>The pilot mesh, skeleton, hands, arms, and <code>DRIVER:RIG_*</code> animation targets remain a separate reusable prefab.</p></div>
+      <div class="card"><strong>Shared runtime state</strong><p>Steering angle, speed, RPM, gear, and suspension presentation are published by the vehicle and consumed by cockpit and pilot presentation controllers.</p></div>
+      <div class="card"><strong>Animation bridge</strong><p>The KSANIM parser produces transform data first. A later adapter maps those targets to a pilot rig or to car-owned cockpit objects.</p></div>
+    </div>
+    <h3>Stage 1 checklist</h3>
+    <ul>
+      <li class="confirmed">Saved <code>f1_1989_benetton_b189_f_blender_pilot_stage1.blend</code> without overwriting source files.</li>
+      <li class="confirmed">Validated the four wheel roots and saved the mirrored front tire/disk alignment in the clean Stage 1 wheel-aligned copy.</li>
+      <li class="confirmed">Previewed front-wheel steering by rotating <code>WHEEL_LF</code> and <code>WHEEL_RF</code> temporarily; evidence: <code>Assets/Screenshots/benetton_b189_stage1_front_steering_test.png</code>.</li>
+      <li class="confirmed">Confirmed that tire, rim, and disk components remain parented to their wheel roots during the steering test.</li>
+      <li class="confirmed">Generated <code>docs/plans/benetton-b189-driver-animation-mapping.md</code>; the current FBX has zero <code>DRIVER:*</code> objects for the parsed clip targets.</li>
+      <li class="confirmed">Generated <code>docs/plans/benetton-b189-animation-inventory.md</code> from a 95-object Blender inspection.</li>
+      <li>Prepare the export boundary for the corrected car FBX.</li>
+    </ul>
+    <div class="callout pending"><strong>Not yet complete:</strong> this Stage 1 copy has not been exported to Unity, and the current FBX still has no pilot rig to receive the parsed <code>steer.ksanim</code> targets.</div>
+  </section>
+
+  <section>
+    <h2>6B. Animation Inventory Findings</h2>
+    <p>The animation inventory is maintained separately so the same inspection can be repeated for each incoming FBX.</p>
+    <div class="grid">
+      <div class="card"><strong>Ready for runtime tests</strong><p>Wheel roots, tire groups, rim groups, discs, and the <code>STEER_HR</code> steering-wheel group are present and structured.</p></div>
+      <div class="card"><strong>Needs Blender pivot audit</strong><p><code>SUSP_LF/RF/LR/RR</code>, <code>SUSP1–4</code>, and <code>DIR_SUSP1–4</code> exist, but their origins and intended travel axes are not yet validated.</p></div>
+      <div class="card"><strong>Needs instrument audit</strong><p><code>benetton_dash0-*</code> meshes exist independently, but their roles as needles, displays, plates, or material-driven elements are not yet classified.</p></div>
+      <div class="card"><strong>Needs runtime preparation</strong><p><code>benetton0-6</code> is the dedicated rear-light candidate using exclusive <code>BENLAMP</code>; emission is still black and must be configured for braking.</p></div>
+      <div class="card"><strong>Correct driver found</strong><p><code>DRIVE_BASE.fbx</code> was found in the 1989 asset root and imports with the complete driver, helmet, visor, and 55-bone <code>DRIVER:*</code> armature. Materials and cockpit alignment still require preparation.</p></div>
+    </div>
+    <p>The package also contains twelve decoded external animation clips covering suspension arms, hubs, wheels, blur rims, driver steering, gear shifts, helmet/body motion, and rain effects. Full clip classification is recorded in <code>docs/plans/benetton-b189-animation-inventory.md</code>.</p>
+    <p>Measured keyframes show that hubs and suspension arms carry suspension motion, while wheel, tire, rim, blur-rim, and rear-transmission targets are static in the sampled clips. These latter behaviors should be owned by runtime visual controllers unless later parent-space analysis proves otherwise.</p>
+    <p>The final <code>DRIVE_BASE.fbx</code> test succeeded: the imported driver includes helmet geometry, visor geometry, the expected <code>DRIVER:*</code> armature, relinked Benetton materials, cockpit alignment, and a tested 121-frame Action.</p>
+    <p>The isolated completeness audit confirmed the driver mesh is complete. The cockpit render hides the torso and legs through normal geometry occlusion; the final player-camera cockpit view remains the presentation check.</p>
+    <p>The Steam Editor package did not contain the driver, but the exact file was found in the supplied <code>F1 1989</code> asset root.</p>
+    <p>Full evidence and blocking findings: <code>docs/plans/benetton-b189-animation-inventory.md</code>.</p>
+  </section>
+
+  <section>
+    <h2>7. Unity Play Mode Test Matrix</h2>
+    <table>
+      <thead><tr><th>Test</th><th>Expected result</th><th>Evidence</th><th>Failure owner</th></tr></thead>
+      <tbody>
+        <tr><td>Import scale/orientation</td><td>Car sits on the track with correct dimensions and forward direction.</td><td>Scene screenshot and transform report.</td><td>Importer or asset.</td></tr>
+        <tr><td>Material response</td><td>Paint is readable, not metallic/mirror-like, under Overdrive lighting.</td><td>Play Mode screenshot.</td><td>Material preparation or URP configuration.</td></tr>
+        <tr><td>Front steering</td><td>Both front wheel assemblies rotate around their pivots with steering input.</td><td>Before/after steering screenshots or short capture.</td><td>Hierarchy, pivot, or Unity animation.</td></tr>
+        <tr><td>Wheel rolling</td><td>All four wheels roll consistently with speed and direction.</td><td>Play Mode capture.</td><td>Unity runtime.</td></tr>
+        <tr><td>Cockpit camera</td><td>Steering wheel, dashboard, and track view remain correctly framed.</td><td>Cockpit screenshot.</td><td>Asset hierarchy, camera, or material.</td></tr>
+        <tr><td>Chase camera</td><td>Car silhouette, livery, wheels, and suspension remain readable.</td><td>Chase screenshot.</td><td>Asset, camera, or VFX.</td></tr>
+        <tr><td>Collision/pit behavior</td><td>Physics and visual mesh remain aligned through impacts and pit transitions.</td><td>Play Mode evidence and console check.</td><td>Unity integration.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>8. Reusable 16-Car Issue Matrix</h2>
+    <table>
+      <thead><tr><th>Car ID</th><th>Source format</th><th>Material issues</th><th>Map issues</th><th>Pivot/offset issues</th><th>Unity issues</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Benetton B189</td><td>KN5 → FBX pilot</td><td>Alpha; metallic body response</td><td>Normal/detail links lost</td><td>RR rim offset corrected; front tire/disk offsets aligned</td><td>Not yet tested in Play Mode</td><td class="pending-text">Pilot in progress</td></tr>
+        <tr><td>Car 02</td><td>Author FBX</td><td>To inspect</td><td>To inspect</td><td>To inspect</td><td>To inspect</td><td>Pending</td></tr>
+        <tr><td>Cars 03–16</td><td>Author FBX</td><td>To inspect</td><td>To inspect</td><td>To inspect</td><td>To inspect</td><td>Pending</td></tr>
+      </tbody>
+    </table>
+    <p>Each new car should enter the same sequence. The matrix must record whether the fix is common and automatable or specific to that car's source hierarchy.</p>
+  </section>
+
+  <section>
+    <h2>9. Acceptance Criteria for the Pilot</h2>
+    <ol>
+      <li>Original source files remain byte-identical and are never overwritten.</li>
+      <li>Every Blender repair has a before/after screenshot and a saved output path.</li>
+      <li>All four wheels have verified centers, mirrored offsets, and correct component hierarchy.</li>
+      <li>Front-wheel steering can be previewed with the correct pivot before Unity import.</li>
+      <li>Unity imports the prepared car without missing references or console errors.</li>
+      <li>Play Mode renders the car under Overdrive lighting without metallic/mirror-like body response.</li>
+      <li>Front wheels steer and all wheels roll in runtime.</li>
+      <li>Cockpit and chase views both remain readable at racing speed.</li>
+      <li>The final report separates reusable pipeline fixes from Benetton-specific exceptions.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>10. Non-Goals</h2>
+    <ul>
+      <li>Reproducing Assetto Corsa's original shader feel.</li>
+      <li>Preserving every Assetto-specific material channel when it conflicts with Overdrive's visual direction.</li>
+      <li>Using this one car to assume every author-supplied FBX has the same hierarchy.</li>
+      <li>Declaring the pipeline complete before the Unity Play Mode test passes.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Local design references: <code>design/gdd/vehicle-physics.md</code>, <code>design/gdd/game-concept.md</code>, <code>design/art/art-bible.md</code>. This report records the pilot state as of 2026-07-31 and intentionally distinguishes confirmed evidence from pending validation.
+  </footer>
+</main>
+</body>
+</html>
