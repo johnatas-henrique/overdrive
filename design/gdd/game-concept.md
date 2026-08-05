@@ -200,6 +200,37 @@ However, the career calendar recycles (Alpha+): each season the player returns t
 
 This resolves the tension between "Every Short Race Matters" and "Not punitive": each race matters because its result is permanent, but the player is never permanently locked out of improvement — next season offers a new chance on the same track with different conditions.
 
+## Team Design Notes
+
+Deliberate design intentions behind specific team stat profiles (recorded with
+the GR validation, 2026-08-04). These are gameplay facts, not flavor text — a
+player who reads the stats or knows the 1989 season can exploit them.
+
+### Tier 1: Ferrari speed vs Benetton accessibility
+
+Ferrari (1b) is the fast car of the tier (TS 20, AC 20 — 340 km/h); Benetton
+(1d) is the accessible one (GR 20, ST 20 — holds 90% of its vmax through the
+reference corner). Two personalities in the same tier: the Ferrari rewards
+speed, the Benetton forgives mistakes. Both are valid tier-1 seats with
+different driving styles.
+
+### Tier 2: Brabham is a trap
+
+Brabham (2d) suffers from grip problems (GR 12 — historically its weakness,
+which is why it underperformed). It LOOKS like a tier-2 upgrade but corners
+worse than several tier-3 cars. Players who advance by tier alone get burned;
+players who read the stats or know the history choose differently.
+
+### Tier 3: Dallara is a hidden gem
+
+Dallara (3c) is a genuinely good car (GR 16, ST 16 — grip at tier-2 level)
+locked in tier 3 by historically weak drivers. The player can be the driver
+who unlocks it: a player who knows the 1989 season (or reads the stats) can
+challenge with a tier-3 car that corners like a tier 2, and use it as a
+shortcut to tier 1 — potentially skipping tier 2 entirely. This is a
+deliberate non-obvious "Earn the Next Seat" path: knowledge is a strategic
+advantage, not a grind shortcut.
+
 ## Career and Championship Structure
 
 ### MVP
