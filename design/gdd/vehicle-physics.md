@@ -231,18 +231,53 @@ Tire System owns `tire_wear_rate = base_rate × distance_factor × aggression ×
 
 ### Grip Decomposition
 
-`effective_grip = clamp(grip_base × surface_grip_multiplier × tire_runtime_grip_multiplier × control_threshold, 0.20, 1.20)`
+`effective_grip = clamp(grip_base × surface_grip_multiplier × tire_runtime_grip_multiplier, 0.20, 1.20)`
 
-Vehicle Physics owns this multiplicative stack. Tire System supplies `tire_runtime_grip_multiplier`; Car Definition Data supplies `grip_base` and `control_threshold`; Track supplies the surface multiplier. The 0.20 floor preserves controllability and the 1.20 ceiling prevents stacked modifiers from creating unbounded grip.
+Vehicle Physics owns this multiplicative stack. Tire System supplies `tire_runtime_grip_multiplier`; Car Definition Data supplies `grip_base` (maxLateralG from the Grip Level formula); Track supplies the surface multiplier. The 0.20 floor preserves controllability and the 1.20 ceiling prevents stacked modifiers from creating unbounded grip.
+
+**Stability is NOT part of this stack** (validated 2026-08-04): control_threshold was removed — it modulates slip behavior only (see car-definition-data.md Stability). Cornering capacity is exclusively grip_base's domain.
 
 | Variable | Symbol | Type | Range | Description |
 |----------|--------|------|-------|-------------|
-| Grip Base | grip_base | float | project-defined | Car Definition Data's Grip Level output (different from Tire System's `grip_base` which is tire compound grip) |
+| Grip Base | grip_base | float | project-defined | Car Definition Data's Grip Level output → maxLateralG (different from Tire System's `grip_base` which is tire compound grip) |
 | Surface Grip Multiplier | surface_grip_multiplier | float | 0.25–1.20 | Track surface contribution; player off-track value may come from DifficultyProfile |
 | Tire Runtime Grip Multiplier | tire_runtime_grip_multiplier | float | 0.20–1.0 | Tire System's continuous wear output |
-| Control Threshold | control_threshold | float | 0.20–1.0 | Stability contribution from Car Definition Data |
 
 **Output Range:** `effective_grip` is clamped to 0.20–1.20. The resulting grip value drives the simplified lateral response; no separate additive grip stack is permitted.
+
+### Steering Model (1-state, validated 2026-08-04)
+
+`maxYaw = min(steerCeiling(v), v / minTurnRadius, gripCeiling)`
+
+- `steerCeiling(v)` = Lerp(maxSteerLow, maxSteerHigh, falloff) — steering capacity decreases with speed (arcade, Horizon Chase / Top Gear feel). Falloff is linear from falloffStartKmh to falloffEndKmh = 99% of the car's own vmax, falloffShape = 1.0
+- `v / minTurnRadius` — prevents turning in place at standstill (the car cannot spin around its own axis)
+- `gripCeiling = maxLateralAccel / v` — the anti-slide safety ceiling; grip is the limit, not the steering
+- Global steering knobs, identical for all cars (user decision 2026-08-02): maxSteerLow 2.5, maxSteerHigh 1.5, liftOffSteerBonus 0.5, minTurnRadius 10, falloffStart 60 km/h
+- Reverse uses arcade sign inversion: left input turns the car left on screen while reversing (2026-08-04)
+
+### Lift-Off (tuck-in)
+
+`liftOffGripBonus = 3.0 g` — fixed value added to maxLateralAccel when throttle ≤ 0, in BOTH the yaw request (ComputeMaxYaw) and the velocity rotation rate (SetInput). Fixed g (not %) gives weaker cars proportionally more cornering speed (v = sqrt(g·9.81·70)) — an excellent driver in a weak car can fight (validated 2026-08-03).
+
+### Drift Factor (track-radius activated)
+
+While ACCELERATING above a corner's grip limit (v > sqrt(aMax × R_ahead), R from the track's curvature ahead), the heading may request up to driftFactor × grip (default 1.15) while the velocity follows only the real grip — the rear axle slides out (controlled drift). Below the limit F = 1 (clean line); lifting off returns F = 1 immediately (tuck-in). F applies to BOTH consumers; driftHeadBoost (default 1.40) makes heading ask F × boost while velocity follows only F — the gap between them is the slip angle (validated 2026-08-03).
+
+### Acceleration Model (real-engine power curve, validated 2026-08-02)
+
+`accel = min(enginePower, P/m ÷ v) − K·v²`
+
+- Below ~90 km/h the traction limit (13.5 m/s²) dominates — all cars do 0-100 in 2.11 s
+- The P/m term (real 1989 engine power / 505 kg mass) takes over mid-speed
+- Quadratic drag `K = P/m ÷ vmax³` makes the equilibrium land exactly at vmax (asymptote — no car reaches its theoretical ceiling; practical top speed = theoretical − 2 km/h)
+- LinearDamping = 0 when the quadratic model is active (real-engine presets)
+
+### Surface & Coasting Behavior (prototype-validated 2026-08-04)
+
+- Grass: traction 0.25 (engine power fraction), grip 0.55 (surface multiplier in the grip stack), decel ease-out 4 m/s² at ≥150 km/h → 0 at 80 km/h. The eased curve is required: a constant 4 m/s² traps the car at standstill (motor×traction cannot overcome it)
+- Coasting (no pedals): coastDecel 3.5 m/s² constant deceleration (engine-braking feel)
+- Dead stop: velocity zeroed below 0.1 m/s with no pedals — the car actually stops (drag alone is asymptotic, never reaches zero)
+- Input EMA: throttle 0.35, steer 0.50 (steer EMA tuned for near-instant keyboard response; analog stick is naturally smooth)
 
 For the player while off-track, `surface_grip_multiplier` is selected from the active DifficultyProfile: Very Easy 0.60, Easy 0.50, Normal 0.40, Hard 0.30, Very Hard 0.25. AI uses 0.40. On wall contact, player retained speed is `speed_after = speed_before × (1 - player_wall_speed_loss)` with losses 0.20/0.30/0.40/0.50/0.60 by profile; AI uses 0.40.
 
@@ -325,8 +360,8 @@ The HUD itself is owned by the HUD System GDD.
 ## Acceptance Criteria
 
 ### Car Properties
-- **AC-CP1:** Given a Tier 1 car with Top Speed 20, When throttle is held at 100%, Then car reaches top speed in 3-5 seconds.
-- **AC-CP2:** Given Tier 1 Top Speed 20 resolves to 310 km/h and Tier 4 Top Speed 16 resolves to 298 km/h, When compared on the same track, Then Tier 4 top speed is approximately 3.9% lower.
+- **AC-CP1:** Given a Tier 1 car with Top Speed 20 (McLaren), When throttle is held at 100%, Then the car reaches 300 km/h in approximately 8.6 seconds (0→vmax_pr ≈ 17.5s — quadratic drag asymptote).
+- **AC-CP2:** Given Tier 1 Top Speed 20 resolves to 340 km/h and Tier 4 Top Speed 8 resolves to 316 km/h, When compared on the same track, Then Tier 4 top speed is approximately 7.1% lower.
 
 ### Movement
 - **AC-M1:** Given player holds throttle at 100% from standstill, When 3 seconds elapse, Then car has accelerated to ≥80% of top speed.

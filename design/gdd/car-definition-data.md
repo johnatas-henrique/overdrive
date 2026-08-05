@@ -101,11 +101,11 @@ Stats are consumed by Vehicle Physics via range-based formulas. See Section D fo
 
 | Stat | Formula Pattern | Inverted? | Effect |
 |------|----------------|-----------|--------|
-| Top Speed | `min + (stat/20) × (max-min)` | No | Higher = faster on straights |
-| Acceleration | `min + ((20-stat)/20) × (max-min)` | Yes | Higher = faster 0-100 time |
+| Top Speed | `300 + stat × 2.0` | No | Higher = faster on straights |
+| Acceleration | `t300 rank (0→300 km/h time)` | No | Higher = faster acceleration (metric, not formula) |
 | Brake Power | `min + ((20-stat)/20) × (max-min)` | Yes | Higher = shorter stopping distance |
-| Grip Level | `min + (stat/20) × (max-min)` | No | Higher = faster cornering |
-| Stability | `stat / 20` | No | Higher = harder to lose control |
+| Grip Level | `% of own vmax (gripLow→gripHigh)` | No | Higher = faster cornering |
+| Stability | `stat / 20` | No | Higher = harder to lose control (slip-only) |
 | Efficiency | `base × (1 - stat × 0.025)` | Yes | Higher = lower consumption |
 
 **4a. Player-Facing Feel Contrast**
@@ -181,41 +181,42 @@ This system is static data — no runtime states. Car definitions are loaded at 
 
 ## Formulas
 
-All formulas use a stat value (0–20) to position the car within a defined range. **Current live values:** see `Assets/Data/Cars/CarConfig.asset` (ScriptableObject). This section documents the formula structure and safe tuning ranges — not the exact numbers used in builds.
+All formulas use a stat value (0–20) to position the car within a defined range. **Current live values (prototype 2026-08-04):** stats in `design/registry/entities.yaml`, physics in `prototypes/race-feel/engine-data.md`. Production values land in `Assets/Data/Cars/CarConfig.asset` (ScriptableObject). This section documents the formula structure and safe tuning ranges — not the exact numbers used in builds.
 
 ### Top Speed
 
 The **max_velocity** formula is defined as:
 
-`max_velocity = min + (stat / 20) × (max - min)`
+`max_velocity = 300 + stat × 2.0`
 
 **Variables:**
 | Variable | Symbol | Type | Range | Description |
 |----------|--------|------|-------|-------------|
-| min | — | float | 250 km/h | Fixed MVP baseline inherited from the Normal tuning value |
-| max | — | float | 310 km/h | Constant ceiling |
 | stat | top_speed | int | 0–20 | Car's Top Speed stat |
 
-**Output Range:** 250–310 km/h depending on stat; Difficulty does not alter this formula.
-**Example:** stat 20 = 310 km/h. stat 16 = 298 km/h. stat 4 = 262 km/h.
+**Output Range:** 300–340 km/h (2 km/h per stat point); Difficulty does not alter this formula. This is the THEORETICAL ceiling (vmax_th) — the practical top speed is vmax_th − 2 km/h (quadratic drag asymptote, see vehicle-physics.md); no car ever reaches the theoretical ceiling.
+
+**Example:** stat 20 = 340 km/h (McLaren, Ferrari). stat 17 = 334 km/h (Williams). stat 15 = 330 km/h (Benetton). stat 6 = 312 km/h (Zakspeed).
 
 ### Acceleration
 
-The **accel_time** formula is defined as:
+The Acceleration stat is the **rank of the 0→300 km/h time** (t300), computed
+by integrating the real-engine physics (P/m power curve + quadratic drag, see
+vehicle-physics.md). It is a **measured metric, not a formula** — the physics
+comes first (P/m per engine), the stat is the resulting rank. Changing the
+stat does NOT change the physics; the physics defines the stat (user decision
+2026-08-04: formulas are fixed, the stat recalcuates the car's values).
 
-`accel_time = min + ((20 - stat) / 20) × (max - min)`
+**Why 0→300, not 0→100 or 0→vmax:** 0-100 is identical for all cars
+(traction-limited at 13.5 m/s² → 2.11 s for every car); 0→vmax punishes
+high-top-speed cars (the drag asymptote makes a 340 km/h car take longer to
+reach its own ceiling than a 316 km/h car takes to reach its). A fixed 300
+km/h reference keeps the metric comparable across cars while covering the
+high-speed band where engine power differentiates.
 
-⚠️ **Inverted:** higher stat = lower value (faster is better).
-
-**Variables:**
-| Variable | Symbol | Type | Range | Description |
-|----------|--------|------|-------|-------------|
-| min | — | float | 2.0 s | Best possible 0-100 km/h time |
-| max | — | float | 5.0 s | Worst possible 0-100 km/h time |
-| stat | acceleration | int | 0–20 | Car's Acceleration stat |
-
-**Output Range:** 2.0–5.0 s (0-100 km/h).
-**Example:** stat 20 = 2.0 s. stat 4 = 4.4 s. stat 8 = 3.8 s.
+**Current rank (16 teams, 2026-08-04):** McLaren/Ferrari 20 (t300 8.58/8.59s),
+Williams 19 (8.87), Benetton 17 (9.13), Judd ×3 14 (9.74), DFR ×9 11 (10.37),
+Zakspeed 6 (11.38). Full table: `prototypes/race-feel/engine-data.md`.
 
 ### Brake Power
 
@@ -237,21 +238,57 @@ The **brake_distance** formula is defined as:
 
 ### Grip Level
 
-The **cornering_speed** formula is defined as:
+Grip is defined as a **percentage of the car's own vmax** it can sustain in a
+70 m-radius corner while accelerating (the oval prototype reference):
 
-`cornering_speed = min + (stat / 20) × (max - min)`
+`pct = (gripLow + (gripHigh − gripLow) × (stat / 20)) / 100`   [fraction 0–1]
 
-**Note:** Vehicle Physics consumes Grip Level stat as `grip_base` in its effective_grip multiplicative stack. The `cornering_speed` formula above defines the player-facing cornering performance; `grip_base` is the internal physics input derived from the same stat. Both use the same stat value (0–20) but produce different outputs for different consumption contexts.
+`maxLateralG = (pct × vmax / 3.6)² / (9.81 × 70)`
+
+⚠️ **gripLow/gripHigh are PERCENTAGES (50–90); the ÷100 converts to a fraction
+(0.50–0.90) before the physical conversion.** Skipping it multiplies g by 100×
+(implementation trap found during GR validation 2026-08-04).
+
+**Player reading:** GR is the % of the car's OWN top speed it holds through the
+reference corner — GR 20 = 90% of vmax, GR 4 = 58%. Grip scales with the car's
+speed: a faster car with the same GR needs more lateral g to hold the same
+percentage.
 
 **Variables:**
 | Variable | Symbol | Type | Range | Description |
 |----------|--------|------|-------|-------------|
-| min | — | float | 120 km/h | Worst cornering speed |
-| max | — | float | 200 km/h | Best cornering speed |
+| gripLow | — | float | 50% (default) | Grip % for stat 0 — global calibration knob |
+| gripHigh | — | float | 90% (default) | Grip % for stat 20 — global calibration knob |
 | stat | grip_level | int | 0–20 | Car's Grip Level stat |
+| vmax | — | km/h | 300-340 | Car's top speed (Top Speed formula) |
 
-**Output Range:** 120–200 km/h (sustained cornering speed).
-**Example:** stat 20 = 200 km/h. stat 4 = 136 km/h. stat 12 = 168 km/h.
+**Output Range:** 50-90% of the car's own vmax (sustained cornering speed in
+the 70 m reference corner). Vehicle Physics consumes the result as `grip_base`
+(maxLateralG) in its effective_grip multiplicative stack.
+
+**Validated table (16 teams, 2026-08-04):**
+| Team | GR | vmax | pct | cornering @70m | maxLateralG |
+|------|----|------|-----|----------------|-------------|
+| 1a McLaren | 20 | 340 | 90% | 306.0 km/h | 10.52g |
+| 1b Ferrari | 16 | 340 | 82% | 278.8 km/h | 8.73g |
+| 1c Williams | 16 | 334 | 82% | 273.9 km/h | 8.43g |
+| 1d Benetton | 20 | 330 | 90% | 297.0 km/h | 9.91g |
+| 2a March | 16 | 322 | 82% | 264.0 km/h | 7.83g |
+| 2b Lotus | 16 | 322 | 82% | 264.0 km/h | 7.83g |
+| 2c Tyrrell | 16 | 316 | 82% | 259.1 km/h | 7.54g |
+| 2d Brabham | 12 | 322 | 74% | 238.3 km/h | 6.38g |
+| 3a Minardi | 12 | 316 | 74% | 233.8 km/h | 6.14g |
+| 3b Ligier | 12 | 316 | 74% | 233.8 km/h | 6.14g |
+| 3c Dallara | 16 | 316 | 82% | 259.1 km/h | 7.54g |
+| 3d Arrows | 12 | 316 | 74% | 233.8 km/h | 6.14g |
+| 4a Rial | 12 | 316 | 74% | 233.8 km/h | 6.14g |
+| 4b Coloni | 12 | 316 | 74% | 233.8 km/h | 6.14g |
+| 4c Onyx | 8 | 316 | 66% | 208.6 km/h | 4.89g |
+| 4d Zakspeed | 12 | 312 | 74% | 230.9 km/h | 5.99g |
+
+**Examples (2026-08-04):** GR 20 → 90% of vmax (McLaren: 306 km/h in the
+oval = 10.5g). GR 12 → 74% (Zakspeed: 231 km/h = 6.0g). GR 8 → 66% (Onyx:
+209 km/h = 4.9g).
 
 ### Stability
 
@@ -259,12 +296,19 @@ The **control_threshold** formula is defined as:
 
 `control_threshold = stat / 20`
 
+**Role (validated 2026-08-04):** Stability modulates SLIP behavior only — it
+is NOT part of the cornering grip stack. Cornering capacity is exclusively the
+Grip Level stat's domain. Control threshold affects:
+- slide threshold: `0.25 × max(control_threshold, 0.2)`
+- recovery rate: `gripAlignRate × control_threshold` (gripAlignRate = 8.0 rad/s, global)
+- slide speed loss: `driftSpeedLoss × (2 − control_threshold)` (driftSpeedLoss = 2.5 m/s², global)
+
 **Variables:**
 | Variable | Symbol | Type | Range | Description |
 |----------|--------|------|-------|-------------|
 | stat | stability | int | 0–20 | Car's Stability stat |
 
-**Output Range:** 0.2–1.0 (dimensionless multiplier for valid stat values 4–20). Higher = harder to lose control.
+**Output Range:** 0.2–1.0 (dimensionless for valid stat values 4–20). Higher = slides later, recovers faster, loses less speed while sliding.
 **Example:** stat 20 = 1.0 (almost never loses control). stat 4 = 0.2 (easily loses control). stat 12 = 0.6.
 
 ### Efficiency Modifier (Fuel)
@@ -308,8 +352,8 @@ The same **efficiency_modifier** applies to Tire System wear calculations:
 - **High Top Speed + low Brake Power (e.g., `team_tier4_a`):** Car is fast on straights but can't stop. Player must brake much earlier. This is an intentional archetype — "the missile."
 - **High Acceleration + low Grip (e.g., `team_tier2_b`):** Car launches hard but corners poorly. Player must be smooth in corners to capitalize on straight-line speed.
 - **High Efficiency + low everything else:** Car consumes fewer resources but is slow. Player has more strategic flexibility but less raw pace.
-- **All stats at minimum (stat = 4):** Car is slower (262 km/h max, 4.4s 0-100, 64m braking). Still drivable — the floor is set so the game remains playable.
-- **All stats at maximum (stat = 20):** Car is very fast (310 km/h max, 2.0s 0-100, 30m braking). This is the ceiling — no car exceeds this.
+- **All stats at minimum (stat = 4):** Car is slower (308 km/h max, ~11.4s 0-300, 70m braking). Still drivable — the floor is set so the game remains playable.
+- **All stats at maximum (stat = 20):** Car is very fast (340 km/h max, ~8.6s 0-300, 30m braking). This is the ceiling — no car exceeds this.
 - **Efficiency formula at stat 20:** `1 - 20 × 0.025 = 0.5` → 50% of base consumption. At stat 0 (if corrupted): `1 - 0 × 0.025 = 1.0` → 100% of base. The formula is safe at all valid stat values.
 
 ## Dependencies
@@ -332,14 +376,14 @@ All values below are serialized fields in `CarConfig.asset` (ScriptableObject). 
 
 | Knob | Current Value | Safe Range | Breaks If Too Low | Breaks If Too High |
 |------|--------------|------------|-------------------|-------------------|
-| Top Speed max | 310 km/h | 280–350 | Cars feel slow | Cars feel uncontrollable |
-| Top Speed min (Normal) | 250 km/h | 220–280 | Worst car is too slow | No speed difference between cars |
-| Acceleration min | 2.0 s | 1.5–3.0 s | Cars feel instant (no skill) | Cars feel sluggish |
-| Acceleration max | 5.0 s | 4.0–7.0 s | Still too fast for worst car | Worst car can't keep up |
+| Top Speed max | 340 km/h | 320–360 | Cars feel slow | Cars feel uncontrollable |
+| Top Speed min (Normal) | 300 km/h | 290–310 | Worst car is too slow | No speed difference between cars |
+| Acceleration min | 8.6 s (t300) | 8.0–9.5 s | Cars feel instant (no skill) | Cars feel sluggish |
+| Acceleration max | 11.4 s (t300) | 10.5–13.0 s | Still too fast for worst car | Worst car can't keep up |
 | Brake min | 30 m | 25–40 m | Brakes feel like teleportation | No risk in braking late |
 | Brake max | 80 m | 60–100 m | Still manageable | Can't stop for corners |
-| Grip min | 120 km/h | 100–140 km/h | Uncontrollable in corners | Cornering too easy |
-| Grip max | 200 km/h | 180–220 km/h | Best car can't corner | Unrealistic for arcade |
+| Grip min | 50% of vmax | 40–60% | Uncontrollable in corners | Cornering too easy |
+| Grip max | 90% of vmax | 80–100% | Best car can't corner | Unrealistic for arcade |
 | Efficiency modifier | `1 - stat × 0.025` | 0.50–0.90 | Fuel/tire balance is lost | Fuel/tire balance is lost |
 | Stability multiplier | stat/20 | — | All cars spin out | No car ever loses control |
 | Weight constant | 505 kg | 450–600 kg | Cars feel weightless | Cars feel like trucks |
@@ -368,14 +412,14 @@ Display format: 6 stat names with bar fills or numeric values. No formula detail
 
 ## Acceptance Criteria
 
-- **GIVEN** a car definition with Top Speed stat at 4, **WHEN** the fixed MVP max_velocity formula is applied with min 250 km/h, **THEN** the result is 262 km/h ± 0.1.
-- **GIVEN** a car definition with Top Speed stat at 20, **WHEN** the max_velocity formula is applied at any difficulty, **THEN** the result is exactly 310 km/h.
-- **GIVEN** a car definition with Acceleration stat at 4, **WHEN** the accel_time formula is applied, **THEN** the result is 4.4 seconds ± 0.01.
-- **GIVEN** a car definition with Acceleration stat at 20, **WHEN** the accel_time formula is applied, **THEN** the result is exactly 2.0 seconds.
+- **GIVEN** a car definition with Top Speed stat at 4, **WHEN** the max_velocity formula (300 + stat×2) is applied, **THEN** the result is 308 km/h ± 0.1.
+- **GIVEN** a car definition with Top Speed stat at 20, **WHEN** the max_velocity formula is applied at any difficulty, **THEN** the result is exactly 340 km/h.
+- **GIVEN** a car definition with Acceleration stat at 4, **WHEN** the t300 metric (0→300 km/h) is evaluated, **THEN** the rank is bottom (Zakspeed reference: 11.38s).
+- **GIVEN** a car definition with Acceleration stat at 20, **WHEN** the t300 metric is evaluated, **THEN** the rank is top (McLaren/Ferrari reference: 8.58/8.59s).
 - **GIVEN** a car definition with Brake Power stat at 4, **WHEN** the brake_distance formula is applied, **THEN** the result is 70 meters ± 0.1.
 - **GIVEN** a car definition with Brake Power stat at 20, **WHEN** the brake_distance formula is applied, **THEN** the result is exactly 30 meters.
-- **GIVEN** a car definition with Grip Level stat at 4, **WHEN** the cornering_speed formula is applied, **THEN** the result is 136 km/h ± 0.1.
-- **GIVEN** a car definition with Grip Level stat at 20, **WHEN** the cornering_speed formula is applied, **THEN** the result is exactly 200 km/h.
+- **GIVEN** a car definition with Grip Level stat at 4, **WHEN** the grip % formula (gripLow→gripHigh, defaults 50/90) is applied, **THEN** the result is pct = 58% of the car's own vmax.
+- **GIVEN** a car definition with Grip Level stat at 20, **WHEN** the grip % formula is applied, **THEN** the result is exactly 90% of the car's own vmax.
 - **GIVEN** a car definition with Stability stat at 4, **WHEN** the control_threshold formula is applied, **THEN** the result is 0.2 ± 0.001.
 - **GIVEN** a car definition with Stability stat at 20, **WHEN** the control_threshold formula is applied, **THEN** the result is exactly 1.0.
 - **GIVEN** a car definition with Efficiency stat at 4, **WHEN** efficiency_modifier is evaluated, **THEN** the result is 0.90 ± 0.001.
@@ -388,7 +432,7 @@ Display format: 6 stat names with bar fills or numeric values. No formula detail
 - **GIVEN** a car definition with any valid stat, **WHEN** the weight value is read, **THEN** it is exactly 505 kg.
 - **GIVEN** a car definition with a stat value outside 0-20 or non-multiple of 4, **WHEN** the system processes the definition, **THEN** the stat is clamped to the nearest valid value {4, 8, 12, 16, 20}.
 - **GIVEN** a car definition with a missing or null stat field, **WHEN** the system processes the definition, **THEN** a default value of 12 (midpoint) is used and a warning is logged.
-- **GIVEN** a car definition with Top Speed stat at 16, **WHEN** the fixed MVP max_velocity formula is applied with min 250 km/h, **THEN** the result is 298 km/h ± 0.1 and is identical at every difficulty.
+- **GIVEN** a car definition with Top Speed stat at 16, **WHEN** the max_velocity formula (300 + stat×2) is applied, **THEN** the result is 332 km/h ± 0.1 and is identical at every difficulty.
 - **GIVEN** a car definition with corrupted numeric data (e.g., stat = -5 or stat = 25), **WHEN** the system processes the definition, **THEN** the value is clamped to the valid range [4, 20] and normalized to the nearest increment of 4.
 
 ## Open Questions
