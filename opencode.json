@@ -41,6 +41,16 @@
       "type": "remote",
       "url": "http://127.0.0.1:8080/mcp",
       "enabled": true
+    },
+    "unity-cli-pipeline": {
+      "type": "local",
+      "command": [
+        "powershell.exe",
+        "-NoProfile",
+        "-Command",
+        "& 'C:\\Users\\Johnatas\\AppData\\Local\\Unity\\bin\\unity.exe' mcp --project-path D:/projects/overdrive"
+      ],
+      "enabled": true
     }
   },
   "permission": {
