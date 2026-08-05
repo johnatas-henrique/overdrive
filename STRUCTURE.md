@@ -28,8 +28,13 @@
 │   ├── Scenes/                  # Unity scenes (SampleScene.unity)
 │   ├── source/                  # Game C# source code and local rules
 │   ├── Prototype/               # In-editor prototype scripts and test assets
-│   │   ├── CarAnimationTest.cs  # Car animation test script
 │   │   └── RaceFeel/            # RaceFeel prototype (car feel, camera, HUD, track)
+│   │       ├── Materials/       # 3D materials (car, road, props)
+│   │       ├── Meshes/          # FBX models (car, track props)
+│   │       ├── Prefabs/         # Prefab assemblies
+│   │       ├── Scenes/          # Unity scenes (RaceFeelPrototype.unity)
+│   │       ├── Scripts/         # C# scripts (ArcadeCar, PrototypeCamera, etc.)
+│   │       └── Textures/        # Textures (car livery, road, grass, etc.)
 │   ├── Materials/               # Unity materials (CoplayTestRed, CoplayTestSphere)
 │   ├── Plugins/                 # Unity native plugins
 │   │   └── Roslyn/              # Roslyn C# compiler assemblies
@@ -298,8 +303,8 @@
 
 **`design/`:**
 - Purpose: Game design documentation, art bible, asset specs, UX design, cross-system registries, and cross-GDD consistency analysis
-- Contains: GDDs (`design/gdd/`), art bible and palettes (`design/art/`), asset specifications (`design/assets/`), UX design (`design/ux/`), entity/formula registry, design standards, cross-GDD reviews
-- Key files: `gdd/game-concept.md`, `art/art-bible.md`, `assets/asset-manifest.md`, `ux/race-hud.md`, `registry/entities.yaml`, `AGENTS.md`, `reviews/cross-gdd-consistency-report.md`
+- Contains: GDDs (`design/gdd/`), art bible and palettes (`design/art/`), asset specifications (`design/assets/`), UX design (`design/ux/`), quick specs (`design/quick-specs/`), entity/formula registry, design standards, cross-GDD reviews
+- Key files: `gdd/game-concept.md`, `art/art-bible.md`, `assets/asset-manifest.md`, `ux/race-hud.md`, `quick-specs/camera-chase-velocity-direction-2026-08-05.md`, `registry/entities.yaml`, `AGENTS.md`, `reviews/cross-gdd-consistency-report.md`
 
 **`docs/`:**
 - Purpose: Technical documentation — architecture decisions, framework reference, workflow guides, research
@@ -316,13 +321,14 @@
 - Key files: `aseprite-mcp/`, `assign-models.js`, `ksanim/parse_ksanim.py`
 
 **`production/`:**
-- Purpose: Production management — session logs, audit trails, active state, quality gate checks
-- Contains: Session logs, agent audit log, session state checkpoint, gate checks, review mode state
-- Key files: `session-logs/agent-audit.log`, `session-logs/session-log.md`, `session-state/active.md`, `gate-checks/concept-to-systems-design.md`, `gate-checks/technical-setup-to-pre-production-2026-07-28.md`, `stage.txt`, `review-mode.txt`
+- Purpose: Production management — session logs, audit trails, active state, quality gate checks, QA playtest reports
+- Contains: Session logs, agent audit log, session state checkpoint, gate checks, QA playtest reports, review mode state
+- Key files: `session-logs/agent-audit.log`, `session-logs/session-log.md`, `session-state/active.md`, `gate-checks/concept-to-systems-design.md`, `gate-checks/technical-setup-to-pre-production-2026-07-28.md`, `qa/playtests/playtest-2026-08-05-thawane.md`, `stage.txt`, `review-mode.txt`
 
 **`prototypes/`:**
 - Purpose: Throwaway prototypes isolated from main source
 - Contains: `race-feel/` (race feel prototype documentation)
+- Key files: `race-feel/REPORT.md`, `race-feel/engine-data.md`, `race-feel/README.md`, `race-feel/tuning-panel-reference.html`
 
 ## Key File Locations
 
@@ -357,6 +363,7 @@
 - `design/assets/asset-manifest.md` — Master asset manifest
 - `design/ux/race-hud.md` — Race HUD UX specification
 - `design/ux/ui-menu.md` — UI menu system design
+- `design/quick-specs/` — Quick specifications for validated findings (camera chase velocity, track validation)
 - `design/registry/entities.yaml`: Cross-GDD entity/formula/constant registry
 - `design/reviews/cross-gdd-consistency-report.md`: Cross-GDD consistency analysis
 - `docs/architecture/architecture.md`: Master architecture document
@@ -366,6 +373,7 @@
 - `docs/architecture/tr-registry.yaml`: Technical requirement ID persistence
 - `docs/architecture/complete-traceability-matrix.md`: Full traceability matrix
 - `docs/architecture/architecture-traceability.md`: Architecture traceability
+- `docs/architecture/change-impact-2026-08-05-vehicle-physics.md`: Change impact report for vehicle physics grip model update
 - `docs/registry/architecture.yaml`: Architecture registry data
 - `docs/framework/workflow-catalog.yaml`: Phase definitions and artifact checks
 - `docs/framework/director-gates.md`: Shared review gate prompts

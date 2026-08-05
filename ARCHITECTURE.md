@@ -30,8 +30,8 @@
 - Purpose: Actual game code, scenes, assets, and Unity project configuration
 - Location: `Assets/`, `ProjectSettings/`, `Packages/`
 - Contains: Unity C# scripts, scenes, materials, sprites, input actions, render pipeline assets
-- Depends on: Unity 6 (6000.3.19f1), URP 17.3.0, Input System 1.19.0, AI Navigation 2.0.14, Addressables 3.1.0
-- Used by: Unity Editor, build pipeline
+- Depends on: Unity 6 (6000.3.19f1), URP 17.3.0, Input System 1.19.0, AI Navigation 2.0.14, Addressables 3.1.0, Unity CLI pipeline 0.4.0-exp.1
+- Used by: Unity Editor, build pipeline, Unity CLI commands
 
 **Design Layer:**
 - Purpose: Game design documentation, art bible, asset specs, UX design, entity/formula registry, design standards
@@ -50,9 +50,9 @@
 **Tooling Layer:**
 - Purpose: Build utilities, MCP integrations, model assignment
 - Location: `tools/`
-- Contains: Aseprite MCP server (`tools/aseprite-mcp/`, git submodule), Blender MCP server (`blender-mcp` in `opencode.json`), Unity MCP server (`unityMCP` in `opencode.json`), model assignment utility (`tools/assign-models.js`), ksan animation parser (`tools/ksanim/`)
-- Depends on: Node.js, Python/uv (for Aseprite MCP), Blender (for Blender MCP), Unity Editor (for Unity MCP)
-- Used by: Asset pipeline, 3D asset workflow, Unity scene inspection, animation pipeline, project tooling
+- Contains: Aseprite MCP server (`tools/aseprite-mcp/`, git submodule), Blender MCP server (`blender-mcp` in `opencode.json`), Unity MCP server (`unityMCP` in `opencode.json`), Unity CLI pipeline MCP server (`unity-cli-pipeline` in `opencode.json`), model assignment utility (`tools/assign-models.js`), ksan animation parser (`tools/ksanim/`)
+- Depends on: Node.js, Python/uv (for Aseprite MCP), Blender (for Blender MCP), Unity Editor (for Unity MCP), Unity CLI pipeline package (for Unity CLI pipeline MCP)
+- Used by: Asset pipeline, 3D asset workflow, Unity scene inspection, animation pipeline, Unity CLI commands, project tooling
 
 ## Data Flow
 
