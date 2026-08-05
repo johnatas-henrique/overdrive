@@ -304,3 +304,16 @@ The registry (`docs/registry/architecture.yaml`) references them correctly. Howe
 2. **Amend existing ADRs**: Add explicit definitions for the 90% anti-cut threshold, position ranking tiebreaker, Perfect Start arming window/thresholds, TireCompound asset format.
 3. **Resolve cross-ADR discrepancies**: ADR-0006's pipeline sub-step numbering vs ADR-0001's pipeline; ADR-0009's dangling ADR-0011 reference; ADR-0002's "forthcoming" labels for now-Accepted ADRs.
 4. **Full audit scope**: Extend this traceability matrix to the remaining ~11 GDDs (simulation-architecture, input-system, settings, content-pipeline, camera, vfx, audio-system, ghost-recording, hud, multiplayer-architecture, menu-ui) for complete coverage.
+
+## Superseded Requirements
+
+| Date | GDD | Requirement | Changed To | ADRs Affected | Resolution |
+|------|-----|-------------|------------|---------------|------------|
+| 2026-08-05 | vehicle-physics | Grip stack includes `control_threshold` (grip_base × surface × tire × stability) | `control_threshold` removed — stack = grip_base × surface_grip_multiplier × tire_runtime_grip_multiplier; Stability modulates slip only (validated 2026-08-04) | ADR-0002 | Updated |
+| 2026-08-05 | vehicle-physics | Multi-state / curvature-aware steering | 1-state model: `maxYaw = min(steerCeiling(v), v/minTurnRadius, gripCeiling)` | ADR-0002 | Updated |
+| 2026-08-05 | vehicle-physics | Lift-off bonus applied after grip ceiling (no high-speed tuck-in) | Fixed +3.0g applied inside both consumers (yaw request + velocity rotation) — tuck-in at any speed | ADR-0002 | Updated |
+| 2026-08-05 | vehicle-physics | Acceleration capped by enginePower only | `accel = min(enginePower, P/m ÷ v) − K·v²` (real-engine power curve, quadratic drag) | ADR-0002 | Updated |
+| 2026-08-05 | vehicle-physics | No drift mechanic | Drift factor (track-radius activated, F=1.15, driftHeadBoost=1.40) | ADR-0002 | Updated |
+| 2026-08-05 | car-definition-data | TS-20 = 310 km/h; AC = 0-100 time; GR = cornering speed; ST in grip stack | TS linear 310-338 (4-20); AC = 0-280 time; GR = % of vmax (global high/low knobs); ST = slip-only (not in stack) | ADR-0015, ADR-0002 | Valid (tuning knobs in data) |
+| 2026-08-05 | camera | Chase rotation follows car heading (forward) | Chase follows velocity direction — drift visible when heading diverges | ADR-0010 | Updated |
+| 2026-08-05 | ai-rival, vfx | Top speed 310 km/h | Top speed 340 km/h | ADR-0009 | Valid (data propagation) |

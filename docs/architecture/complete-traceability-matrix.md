@@ -2,7 +2,7 @@
 
 > **Generated:** 2026-07-28
 > **Scope:** 21 GDD systems × 194 Technical Requirements cross-referenced against 12 Accepted ADRs (ADR-0001 through ADR-0011, ADR-0013)
-> **Method:** Manual verification of each TR against ADR text, existing traceability matrices (`traceability-matrix.md`, `traceability-index.md`, `architecture-traceability-matrix.md`)
+> **Method:** Manual verification of each TR against ADR text, existing traceability matrices (`traceability-matrix.md`, `traceability-index.md`, `architecture-traceability.md`)
 
 ## Legend
 

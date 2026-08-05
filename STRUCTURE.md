@@ -179,7 +179,7 @@
 │   │   ├── architecture-review-2026-07-28-v6.md
 │   │   ├── architecture-review-2026-07-28.md
 │   │   ├── architecture-review-2026-08-01.md
-│   │   ├── architecture-traceability-matrix.md
+│   │   ├── architecture-traceability.md
 │   │   ├── architecture.md          # Master architecture doc
 │   │   ├── complete-traceability-matrix.md
 │   │   ├── control-manifest.md
@@ -365,7 +365,7 @@
 - `docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md` through `adr-0015-car-definition-data-validation.md`: 14 additional ADRs
 - `docs/architecture/tr-registry.yaml`: Technical requirement ID persistence
 - `docs/architecture/complete-traceability-matrix.md`: Full traceability matrix
-- `docs/architecture/architecture-traceability-matrix.md`: Architecture traceability
+- `docs/architecture/architecture-traceability.md`: Architecture traceability
 - `docs/registry/architecture.yaml`: Architecture registry data
 - `docs/framework/workflow-catalog.yaml`: Phase definitions and artifact checks
 - `docs/framework/director-gates.md`: Shared review gate prompts
