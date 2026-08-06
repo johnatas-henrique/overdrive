@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: ""
+last_updated: "2026-08-05"
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -92,8 +92,8 @@ state_ownership:
     status: active
     owner_system: pit-stop-system
     adr: docs/architecture/adr-0011-pit-stop-architecture.md
-    interface: "PitState per car per tick: carId, assignedBoxId, phase (PitServicePhase: NotPitting/PitTransit/InPitBox/PitExiting), serviceTimer, tireSwapComplete, fuelLoaded, playerCanExit, pitThisLap"
-    write_access: pit-stop-system-only
+    interface: "PitState per car per tick: carId, assignedBoxId, phase (PitPhase: NotPitting/PitTransit/InPitBox/PitExiting), serviceTimer, tireSwapComplete, fuelLoaded, playerCanExit, pitThisLap"
+    write_access: pit-stop-system-only (PitState); Vehicle Physics sole writer of CarState.PitPhase
     referenced_by:
       - docs/architecture/adr-0011-pit-stop-architecture.md
     added: 2026-07-28
@@ -128,7 +128,7 @@ state_ownership:
     api: AudioSystem.Tick(CarAudioState[], SimulationState, RaceMode, PitPhase, CameraMode, AudioSettings) → audio output
     not: FMOD, Wwise, pre-recorded engine samples per car (procedural-first)
     adr: docs/architecture/adr-0012-audio-system-architecture.md
-    reason: "Unity Audio Mixer covers all MVP needs. Procedural-first engine (2-oscillator) with IEngineSoundProvider seam for future sample replacement. DynamicUpdate per ADR-0010 pattern."
+    reason: "Unity Audio Mixer covers all MVP needs. Procedural-first engine (2-oscillator) with IEngineSoundProvider seam for future sample replacement. Presentation consumes interpolated published snapshot in LateUpdate (ADR-0001)."
     referenced_by:
       - docs/architecture/adr-0012-audio-system-architecture.md
     added: 2026-07-28
@@ -241,16 +241,16 @@ interfaces:
 
   - contract: hud_data_pipeline
     status: active
-    pattern: direct_read
-    producer: multiple (vehicle-physics, fuel-system, tire-system, race-session-manager, simulation, pit-stop, track-system)
+    pattern: snapshot_only
+    producer: simulation-architecture
     consumers:
       - hud-system
     adr: docs/architecture/adr-0014-hud-data-contract-and-layout.md
-    signature: "12 HUD elements mapped to 6 producer systems. Each element reads from exactly one owner via PublishedSimulationSnapshot or direct interface."
+    signature: "HUD consumes PublishedSimulationSnapshot only (ADR-0014 snapshot-only boundary). No direct reads from Vehicle Physics, Fuel, Tire, RSM, Pit Stop, or Track. Corrected 2026-08-05: previous 'direct interface' wording contradicted ADR-0014."
     referenced_by:
       - docs/architecture/adr-0014-hud-data-contract-and-layout.md
     added: 2026-07-31
-    revised: ""
+    revised: 2026-08-05
 
   - contract: hud_performance_budget
     status: active
@@ -289,7 +289,7 @@ interfaces:
       - ai-rival-system
       - audio-system
     adr: docs/architecture/adr-0015-car-definition-data-validation.md
-    signature: "CarDefinition ScriptableObject with CarStats (6 stats), weight, audioProfile. Read-only accessors via CarStatsAccessor."
+    signature: "CarDefinition ScriptableObject with CarStats (6 integer stats in [0,20]), TeamColor (opaque, presentation-owned), CockpitOffset (Vector3), CarAudioProfile. Global mass constant 505 kg (not per-car content). Read-only accessors via CarStatsAccessor."
     referenced_by:
       - docs/architecture/adr-0015-car-definition-data-validation.md
     added: 2026-07-31
@@ -316,10 +316,23 @@ interfaces:
     consumers:
       - car-definition-data
     adr: docs/architecture/adr-0015-car-definition-data-validation.md
-    signature: "CarValidationConfig: ScriptableObject with StatValidationConfig (validValues[], defaultValue) and DifferentiationConfig (maxSpreadPercentage, withinTierOnly). Loaded via Shared/CarValidationConfig Addressable."
+    signature: "CarValidationConfig: ScriptableObject with StatValidationConfig (continuous [0,20] integer clamp with warning, per ADR-0015) — no validValues[]/maxSpreadPercentage differentiation config in MVP; corrected 2026-08-05."
     referenced_by:
       - docs/architecture/adr-0015-car-definition-data-validation.md
     added: 2026-07-31
+    revised: 2026-08-05
+
+  - contract: network_simulation_driver
+    status: active
+    pattern: direct_call
+    producer: network-driver (Beta)
+    consumers:
+      - simulation-architecture
+    adr: docs/architecture/adr-0017-network-simulation-driver-interface-and-beta-canonical-state-model.md
+    signature: "INetworkSimulationDriver (Beta scope): SubmitInputs(ReadOnlySpan<SimulationInput>, uint); SerializeSnapshot(in PublishedSimulationSnapshot, Span<byte>); Rollback(uint, in SimulationRollbackState); GetPredictedInput(int, uint); event RemoteInputsReceivedHandler. IClientConnection owned by driver, NOT an input parameter."
+    referenced_by:
+      - docs/architecture/adr-0017-network-simulation-driver-interface-and-beta-canonical-state-model.md
+    added: 2026-08-05
     revised: ""
 
 
@@ -361,12 +374,22 @@ performance_budgets:
     status: pending_empirical_baseline
     budget_ms_p95: 6.0
     maximum_observed_ms: 8.0
-    measurement_scope: "Complete fixed pipeline Steps 1–13 including input, domain updates, Physics.Simulate, readout, RSM, snapshots and next-tick AI; excludes rendering and UI."
+    measurement_scope: "Complete fixed pipeline Steps 1–14 including input, domain updates, Physics.Simulate, readout, RSM, snapshots and next-tick AI; excludes rendering and UI."
     adr: docs/architecture/adr-0001-manual-simulation-authority-and-determinism-boundary.md
     referenced_by:
       - design/gdd/simulation-architecture.md
     added: 2026-07-24
     revised: ""
+  - system: beta_network_rollback
+    status: pending_empirical_baseline
+    budget_ms_p95: null
+    maximum_observed_ms: null
+    measurement_scope: "Beta measured rollback re-simulation p95/max. Mechanism decided 2026-08-05: full kinematic restore of all 16 cars per replay frame (ADR-0017 D4). Input reliability policy defines W_drop and W_rollback; cost measured at Beta implementation."
+    adr: docs/architecture/adr-0017-network-simulation-driver-interface-and-beta-canonical-state-model.md
+    referenced_by:
+      - design/gdd/multiplayer-architecture.md
+    added: 2026-08-05
+    revised: "2026-08-05"
 
 # Example:
 #
@@ -401,14 +424,14 @@ performance_budgets:
 api_decisions:
   - purpose: arcade_force_application
     status: active
-    api: ForceMode.Acceleration (with Rigidbody.AddForce)
-    not: ForceMode.Force (respects mass, more sim-like)
+    api: ForceMode.Force (with Rigidbody.AddForce)
+    not: ForceMode.Acceleration / ForceMode.Impulse (implicitly apply mass — passing force-semantics values multiplies by vehicle mass, observed 14,140 m/s² error)
     adr: docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md
-    reason: "Arcade handling model requires mass-independent force response."
+    reason: "ForceMode.Force respects mass correctly; Acceleration/Impulse apply mass implicitly and produce extreme values when force-semantics inputs are passed (constraint #1737)."
     referenced_by:
       - docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md
     added: 2026-07-27
-    revised: ""
+    revised: "2026-08-05"
 
   - purpose: async_content_loading
     status: active
@@ -476,6 +499,29 @@ api_decisions:
     added: 2026-07-28
     revised: ""
 
+  - purpose: network_sdk_deferral
+    status: active
+    api: "Deferred — MVP selects no provider. Alpha selects online services for identity and durable ghost sharing; Beta separately selects a real-time SDK. MVP gameplay systems import no transport type or network runtime state."
+    not: "com.unity.netcode.gameobjects, DOTS/Unity.Entities, any network SDK in MVP gameplay systems"
+    adr: docs/architecture/adr-0016-multiplayer-sdk-deferral-and-boundary.md
+    reason: "MVP is offline single-player. Alpha storage/auth and Beta real-time racing have different requirements, so neither provider is selected on stale data."
+    referenced_by:
+      - docs/architecture/adr-0016-multiplayer-sdk-deferral-and-boundary.md
+      - docs/architecture/adr-0017-network-simulation-driver-interface-and-beta-canonical-state-model.md
+    added: 2026-08-05
+    revised: "2026-08-05"
+
+  - purpose: network_clock_source
+    status: proposed
+    api: "Beta: clock source, synchronization cadence, drift correction, and maximum clock uncertainty are measured with the selected SDK; relay/room frame number is a candidate, not a fixed choice"
+    not: "Local simulationStepCount as the network clock source (candidate only; pending measurement)"
+    adr: docs/architecture/adr-0017-network-simulation-driver-interface-and-beta-canonical-state-model.md
+    reason: "ADR-0017 requires empirical clock selection: relay/room frame mapping, sync cadence, drift correction, and uncertainty are defined only after SDK selection. A fixed relay-clock choice contradicts the pending-measurement contract."
+    referenced_by:
+      - docs/architecture/adr-0017-network-simulation-driver-interface-and-beta-canonical-state-model.md
+    added: 2026-08-05
+    revised: "2026-08-05"
+
 
 # ─── FORBIDDEN PATTERNS ──────────────────────────────────────────────────────
 # Architecture anti-patterns explicitly banned by accepted ADRs.
@@ -492,6 +538,13 @@ forbidden_patterns:
     why: "Physics callbacks run inside Physics.Simulate() — mutating state there breaks the tick pipeline ordering and creates race conditions with domain systems that read CarState at Step 9."
     adr: docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md
     added: 2026-07-27
+
+  - pattern: transport_type_import_in_mvp_gameplay
+    status: active
+    description: "MVP gameplay systems must NOT import transport types (IClientConnection, network runtime state) or a network SDK. The MVP boundary keeps gameplay independent of transport."
+    why: "Selecting or coupling a network SDK before Beta contradicts the SDK-agnostic boundary (ADR-0016). MVP is offline; any transport import creates premature vendor coupling and violates AC-NP1."
+    adr: docs/architecture/adr-0016-multiplayer-sdk-deferral-and-boundary.md
+    added: 2026-08-05
 
 
 # Example:

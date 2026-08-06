@@ -23,7 +23,7 @@ Realistic options for self-hosted / free:
 
 Managed hosting / high-physics contenders:
 | **Reactor (KinematicSoup)** | Best server-side physics (PhysX at 120 Hz), built-in prediction/reconciliation, 9.5× less transform bandwidth than Fusion/NGO. WebGL supported. Proprietary hosting model. |
-| **Coherence** | Managed relay + simulator. No server-side physics, 30 Hz tick cap. WebGL supported. Most expensive bandwidth. |
+| **Coherence** | Managed relay + Simulator. Simulation clock and per-binding sampling can reach 60 Hz; uploaded Simulators are capped at 30 FPS; RS send defaults to 20 Hz. WebGL uses WebRTC. Candidate only; validate against current primary docs before any selection. |
 
 ---
 
@@ -349,21 +349,21 @@ Managed hosting / high-physics contenders:
 
 ## 10. Coherence
 
-**Current version:** 2026  
-**License:** Per-CCU + CPU-time (credit system)
+**Current version:** 2.3 documentation consulted on 2026-08-05  
+**License:** Starter below $200K revenue; Pro $1,000/month or $8,000/year; Cloud credits and self/client-hosting terms require fresh verification at selection.
 
 ### Architecture
-- Managed relay + simulator model. For server authority, requires a headless Unity instance running alongside Coherence — you construct the authority layer yourself. [C: kinematicsoup.com/blog/reactor-vs-coherence-unity-multiplayer]
-- 30 Hz tick cap on server-side simulation. [C]
+- Replication Server relay plus Simulator model. Centralized authority uses a headless Unity Simulator; client-hosting and self-hosting are separate options. [C: official Coherence docs, verification note 2026-08-05]
+- Simulation frame and per-binding sampling support up to 60 Hz, but uploaded Cloud Simulators are capped at 30 FPS and Replication Server send defaults to 20 Hz. [C]
 
 ### Client Prediction with Rollback
-- Not built in at the architecture level. Shared authority means clients drive their objects. [C]
+- Per-binding client prediction with manual reconciliation is documented. GGPO-style input prediction/rollback is documented but explicitly not production-ready out-of-the-box. [C]
 
 ### WebGL Support
-- Yes, via WebSocket relay. [I]
+- Yes, via WebRTC to the Replication Server. WebGL has no multithreading and documented browser limitations. [C]
 
 ### Suitability for Racing
-- **Not suitable.** No built-in server authority, 30 Hz tick cap is insufficient for responsive vehicle physics, no server-side physics support. Highest bandwidth cost of all solutions.
+- **Candidate only.** Do not pre-select it. Current Cloud Storage has one-hour retention and open access by known identifier, which is insufficient to assume durable ghost sharing. Real-time suitability requires a fresh Beta proof-of-concept against ADR-0017; no cross-vendor bandwidth verdict is established. [C/I]
 
 ---
 
@@ -420,7 +420,7 @@ Managed hosting / high-physics contenders:
 - **NGO 2.12** — No prediction = too much custom work.
 - **Mirror** — Prediction experimental, not validated for vehicles.
 - **PUN 2** — No server authority, no prediction.
-- **Coherence** — No server-side physics, 30 Hz cap, expensive bandwidth.
+- **Coherence** — Candidate only; current primary-source limits and fit must be re-evaluated at the Alpha/Beta decision points.
 
 ### For Async Multiplayer (Ghosts, Leaderboards)
 
