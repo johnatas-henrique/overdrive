@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 1 — Style, Technique, Standard &amp; Conformance Checking</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production · Lesson 1</p>
+  <h1>Style, Technique, Standard — and how to prove an asset is "on style"</h1>
+  <p class="meta">2026-08-06 · Mission: <a href="../MISSION.md">MISSION.md</a> · ~20 min</p>
+</header>
+
+<h2>The problem: "I like it" is not conformance</h2>
+
+<p>You generated 93 images for the McLaren (team_tier1_a) with the prompts from the asset spec. You liked them. We then checked 6 of them against the art bible with an objective checklist. The result: <strong>2 conform nearly, 2 conform partially, and 2 failed outright</strong> — one with the wrong livery color, one with a completely different car (green/yellow/blue instead of white/red).</p>
+
+<p>That is the core lesson of this course: <strong>liking an asset is a feeling; conformance is a measurement.</strong> Overdrive needs 16 cars and 16 tracks that look like one game. Feelings don't scale to 16 cars — a checklist does.</p>
+
+<h2>The hierarchy: Style → Technique → Standard</h2>
+
+<p>Three layers that people confuse. They answer three different questions.</p>
+
+<table>
+  <tr><th>Layer</th><th>Question</th><th>Overdrive example</th><th>Where it lives</th></tr>
+  <tr><td><strong>Style</strong> (identity)</td><td><em>What does the game feel like?</em></td><td>"Hand-crafted 1990s Japanese racing anime": Fujishima's heroic clarity + Hino Matsuri's delicate linework</td><td>Art Bible §1</td></tr>
+  <tr><td><strong>Technique</strong> (how we render it)</td><td><em>How do we implement the style in the engine?</em></td><td>Painted textures (cel-style), URP Simple Lit with controlled specular, Unlit for sky/grass. "No PBR metallic."</td><td>Art Bible §8.5</td></tr>
+  <tr><td><strong>Standard</strong> (numbers)</td><td><em>What are the budgets?</em></td><td>LOD0 35k tris, 2048² texture, ASTC 6×6, 8–12 texels/m, ≤150 draw calls</td><td>Art Bible §8.1 / §8.3</td></tr>
+</table>
+
+<p>"Texturas pintadas + Simple Lit" is <em>not</em> the style — it is the technical implementation the art bible chose to materialize the style in 3D. When someone says "NPR" they usually mean a family of techniques (cel shading, toon ramps, outlines, matcap) — Overdrive uses a specific subset of them.</p>
+
+<h2>Why copying the prompt does not guarantee the style</h2>
+
+<p>A prompt is an <em>instruction in text</em>, not a contract. What the model draws depends on things the prompt text does not control: the checkpoint/base model, the sampler, steps, CFG, seed, LoRAs, resolution. The <strong>same prompt with different seeds gives different images</strong>, and different models interpret "cel-shaded" differently.</p>
+
+<p>Evidence from your own output folder:</p>
+<ul>
+  <li><code>team_tier1_a-2_00030_.png</code> — cockpit of a <strong>gray/silver</strong> car. Livery was supposed to be white + fluorescent red.</li>
+  <li><code>team_tier1_a-2_00059_.png</code> — cockpit of a <strong>green/yellow/blue</strong> car. Completely different car.</li>
+  <li><code>img_00172_.png</code> … — the model <strong>wrote "Kosuke"</strong> on the car body. The spec says "no text".</li>
+  <li>Nearly every image has <strong>tire sidewall text</strong> (Pirelli, Bridgestone) — the model loves to write.</li>
+</ul>
+
+<p>Conclusion: the prompts <em>raised the probability</em> of the style; they did not <em>guarantee</em> it. Production needs a verification step after every generation. That step is a checklist.</p>
+
+<h2>The conformance checklist (8 criteria)</h2>
+
+<p>Extracted from the art bible and the asset spec. These are the questions to ask of <em>every</em> generated image:</p>
+
+<table>
+  <tr><th>#</th><th>Criterion</th><th>What to look at</th></tr>
+  <tr><td>1</td><td>Flat gray background</td><td>Solid #CCCCCC, no environment, no scenery</td></tr>
+  <tr><td>2</td><td>No text, no real logos</td><td>Tires, cockpit, bodywork — geometric blocks only</td></tr>
+  <tr><td>3</td><td>Flat cel shading</td><td>Hard shadow edges, two-tone; no smooth photographic gradients</td></tr>
+  <tr><td>4</td><td>No photo-realism artifacts</td><td>No carbon-fiber weave, no dirt/scratches, no lens reflections, no fine PBR detail</td></tr>
+  <tr><td>5</td><td>1989 F1 silhouette</td><td>Low nose, open cockpit, exposed wheels, high rear wing, no halo</td></tr>
+  <tr><td>6</td><td>Livery colors correct</td><td>Against the palette in Art Bible §2.2 (e.g. Marlboro Red #E03C31)</td></tr>
+  <tr><td>7</td><td>Anime drawing style</td><td>Clean linework, bold color shapes, heroic proportions</td></tr>
+  <tr><td>8</td><td>Overall: 2D anime illustration</td><td>Does it read as an illustration, not a 3D render or photo?</td></tr>
+</table>
+
+<p>Score each item PASS / PARTIAL / FAIL. Any FAIL means the image needs a prompt fix and a regenerate — or an explicit accept decision.</p>
+
+<h2>How to apply it (your tools)</h2>
+
+<p>You don't need a trained eye. You need criteria + a tool that can see:</p>
+
+<ol>
+  <li><strong>The vision agent.</strong> This session's model cannot see images, but the project's <code>vision</code> subagent can. Delegate with the checklist in the prompt (copy the block below) and the file path(s). It returns a per-criterion table + verdict.</li>
+  <li><strong>Programmatic checks</strong> (next lesson): extract dominant colors with a script to verify background #CCCCCC and palette conformance objectively.</li>
+</ol>
+
+<pre><code>You are performing a visual style-conformance check for the game Overdrive
+(1990s Japanese racing anime style). Look at the image(s) and score each one
+against this checklist, item by item, PASS/PARTIAL/FAIL:
+1. Flat gray background (no environment)  2. No text, no real logos
+3. Flat cel shading (hard shadow edges)   4. No photo-realism artifacts
+5. 1989 F1 silhouette (low nose, open cockpit, exposed wheels)
+6. Livery colors correct (white body + fluorescent red sidepods)
+7. Anime drawing style (clean, bold shapes)  8. Overall: 2D anime illustration
+Then give a one-line verdict per image: CONFORMS / NEARLY CONFORMS / DOES NOT CONFORM.</code></pre>
+
+<h2>Study case: your 6 checked images</h2>
+
+<table>
+  <tr><th>Image</th><th>View</th><th>Verdict</th><th>Main failures</th></tr>
+  <tr><td><code>_00001_</code> (batch 1)</td><td>Exterior rear 3/4</td><td><span class="badge partial">NEARLY</span></td><td>Text on tires, red leans orange, soft gradients</td></tr>
+  <tr><td><code>_00007_</code> (batch 1)</td><td>Cockpit</td><td><span class="badge fail">NO</span></td><td>Photoreal camera lens, carbon fiber, gradients</td></tr>
+  <tr><td><code>_00013_</code> (batch 1)</td><td>Cockpit</td><td><span class="badge partial">NEARLY</span></td><td>"MP" text, carbon fiber</td></tr>
+  <tr><td><code>-2_00001_</code> (batch 2)</td><td>Cockpit</td><td><span class="badge partial">NEARLY</span></td><td>Best interior; "H" logo, mild carbon fiber</td></tr>
+  <tr><td><code>-2_00030_</code> (batch 2)</td><td>Cockpit</td><td><span class="badge fail">NO</span></td><td><strong>Gray car — wrong livery</strong>, realistic display</td></tr>
+  <tr><td><code>-2_00059_</code> (batch 2)</td><td>Cockpit</td><td><span class="badge fail">NO</span></td><td><strong>Green/yellow/blue car — completely wrong</strong></td></tr>
+</table>
+
+<h3>The 4 systematic problems and their prompt fixes</h3>
+
+<table>
+  <tr><th>Problem</th><th>Prompt fix</th></tr>
+  <tr><td>Text/logos on tires and cockpit</td><td>Add: "no text on tires, no text anywhere, pure geometric shapes only"</td></tr>
+  <tr><td>Carbon-fiber / material texture</td><td>Add: "flat painted surfaces, no material textures, no carbon fiber"</td></tr>
+  <tr><td>Smooth gradients instead of cel</td><td>Add: "two-tone shading, hard shadow edges, no smooth gradients"</td></tr>
+  <tr><td>Livery not pinned in cockpit prompts</td><td>Paste the FULL livery description into every prompt (the cockpit prompts only said "red and white livery panels" — the model filled in the rest)</td></tr>
+</table>
+
+<h2>Exercise (5 minutes)</h2>
+
+<p>Look at the two conforming references below and apply the checklist yourself. Write down the FAIL/PARTIAL items before opening the answers.</p>
+
+<figure>
+  <img src="../../design/art/reference/generated/team_tier1_a/front-d-1.png" alt="McLaren MP4/5 parody — front view">
+  <figcaption>Reference A — front view (`front-d-1.png`)</figcaption>
+</figure>
+
+<figure>
+  <img src="../../design/art/reference/generated/team_tier1_a/side-1.png" alt="McLaren MP4/5 parody — side profile">
+  <figcaption>Reference B — side profile (`side-1.png`)</figcaption>
+</figure>
+
+<details>
+  <summary>Expected answers</summary>
+  <div class="answer">
+    <p><strong>Reference A (front):</strong> PASS on 1 (gray background), 5 (period silhouette), and 6 (white/red livery). PARTIAL on 3, 7, and 8 because the rendering still has smooth gradients and mechanical detail. FAIL on 2 if tire lettering or invented marks are legible. Verdict: NEARLY CONFORMS.</p>
+    <p><strong>Reference B (side):</strong> PASS on 1 (gray background), 5 (low nose, open cockpit, exposed wheels), and 6 (white/red livery). PARTIAL on 3, 7, and 8 because the painted shadows are softer than strict cel shading. FAIL on 2 if the tire lettering is readable. Verdict: NEARLY CONFORMS.</p>
+    <p>Both are usable as study references because their remaining issues are named and fixable at the prompt or paint stage.</p>
+  </div>
+</details>
+
+<p><strong>Quick recall question:</strong> the model wrote "Kosuke" on a car body in <code>img_00172_</code>. Which checklist criterion fails, and what does the fix look like?</p>
+
+<details>
+  <summary>Answer</summary>
+  <div class="answer">Criterion 2 (no text, no real logos). The fix is a prompt addition: "no text anywhere, pure geometric shapes only" — and verifying on the next generation.</div>
+</details>
+
+<h2>Primary source for this lesson</h2>
+
+<p>The <a href="../../design/art/art-bible.md">Overdrive Art Bible</a> — §1 (Visual Identity), §2.2 (Team palette), §8.5 (Material &amp; Shader Standards). It is the contract every asset must satisfy. When in doubt about style, the art bible wins.</p>
+
+<div class="callout">
+  <strong>Next:</strong> Lesson 2 will add the <em>programmatic</em> verification layer (color extraction against the palette) and then we start the generation pipeline proper: 2D concept → multiview → 3D. Anything unclear? <strong>Ask the agent</strong> — it is your teacher in this workspace.
+</div>
+
+<footer>
+  Overdrive Learning Workspace · Lesson 1 of the asset-production track · Mission: <a href="../MISSION.md">MISSION.md</a>
+</footer>
+
+</body>
+</html>

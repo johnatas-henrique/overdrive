@@ -1,0 +1,186 @@
+/* Overdrive Learning — shared lesson stylesheet (Tufte-inspired, print-friendly) */
+
+:root {
+  --ink: #1a1a1a;
+  --paper: #fffff8;
+  --accent: #8b1a1a;
+  --muted: #666;
+  --line: #ddd;
+  --pass: #1a7a3a;
+  --partial: #b07d10;
+  --fail: #b02318;
+  --code-bg: #f4f1ea;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.55;
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+  font-size: 1.02rem;
+}
+
+header.lesson-head {
+  border-bottom: 3px solid var(--accent);
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+}
+
+header.lesson-head .kicker {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 0.4rem;
+}
+
+header.lesson-head h1 {
+  font-size: 1.7rem;
+  line-height: 1.2;
+  margin: 0;
+}
+
+header.lesson-head .meta {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.5rem;
+}
+
+h2 {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 1.15rem;
+  margin-top: 2.2rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.25rem;
+}
+
+h3 {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.95rem;
+  margin-top: 1.5rem;
+}
+
+p, li { orphans: 2; widows: 2; }
+
+strong { font-weight: 700; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.82rem;
+  margin: 1rem 0;
+}
+
+th {
+  text-align: left;
+  background: var(--code-bg);
+  border-bottom: 2px solid var(--ink);
+  padding: 0.45rem 0.6rem;
+}
+
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.45rem 0.6rem;
+  vertical-align: top;
+}
+
+.badge {
+  display: inline-block;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.badge.pass { color: var(--pass); background: #e6f2e9; }
+.badge.partial { color: var(--partial); background: #f7efd9; }
+.badge.fail { color: var(--fail); background: #f6e3e1; }
+
+pre, code {
+  font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+}
+
+pre {
+  background: var(--code-bg);
+  border-left: 3px solid var(--accent);
+  padding: 0.8rem 1rem;
+  overflow-x: auto;
+  line-height: 1.45;
+}
+
+code { background: var(--code-bg); padding: 0.05rem 0.25rem; }
+
+pre code { background: none; padding: 0; }
+
+blockquote {
+  margin: 1rem 0;
+  padding: 0.1rem 1rem;
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+  font-style: italic;
+}
+
+details {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.6rem 0.9rem;
+  margin: 0.8rem 0;
+}
+
+details summary { cursor: pointer; font-weight: 600; }
+
+figure {
+  margin: 1.2rem 0;
+  text-align: center;
+}
+
+figure img {
+  max-width: 100%;
+  border: 1px solid var(--line);
+}
+
+figcaption {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.4rem;
+}
+
+.callout {
+  background: var(--code-bg);
+  border-left: 3px solid var(--accent);
+  padding: 0.7rem 1rem;
+  margin: 1.2rem 0;
+  font-size: 0.92rem;
+}
+
+footer {
+  margin-top: 3rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+@media print {
+  body { background: #fff; padding: 0; }
+  details { border: none; }
+  details summary { display: none; }
+  details .answer { display: block; }
+  a { color: var(--ink); text-decoration: none; }
+}
