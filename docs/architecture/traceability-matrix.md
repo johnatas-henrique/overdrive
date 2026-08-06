@@ -3,6 +3,8 @@
 Generated: 2026-07-28
 Method: Cross-reference each Foundation GDD Technical Requirement against the 11 Accepted ADRs.
 
+> **Superseded for multiplayer and networking decisions on 2026-08-05.** ADR-0016 and ADR-0017 are not represented here. Do not use this artifact for current networking traceability; a formal `/architecture-review full` regeneration is pending.
+
 ## Legend
 
 | Status | Meaning |

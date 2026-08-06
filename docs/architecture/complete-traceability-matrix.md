@@ -4,6 +4,12 @@
 > **Scope:** 21 GDD systems × 194 Technical Requirements cross-referenced against 12 Accepted ADRs (ADR-0001 through ADR-0011, ADR-0013)
 > **Method:** Manual verification of each TR against ADR text, existing traceability matrices (`traceability-matrix.md`, `traceability-index.md`, `architecture-traceability.md`)
 
+> **Superseded on 2026-08-05 by the formal `/architecture-review full` regeneration.**
+> Current authority: `docs/architecture/architecture-review-2026-08-05-v3.md` and
+> `docs/architecture/architecture-traceability.md` (144 TRs, 21 GDDs, 17 ADRs,
+> incl. ADR-0016/0017). Do not use this 2026-07-28 artifact for current
+> traceability.
+
 ## Legend
 
 | Status | Meaning |

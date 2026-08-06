@@ -4,6 +4,8 @@
 > **Engine:** Unity 6000.3.19f1
 > **ADRs:** 15 (0001–0015)
 
+> **Superseded for multiplayer and networking decisions on 2026-08-05.** ADR-0016 and ADR-0017 are not represented here. Do not use this artifact for current networking traceability; a formal `/architecture-review full` regeneration is pending.
+
 ## Coverage Summary
 
 - Total requirements assessed: 271
@@ -106,7 +108,7 @@
 | TR-MP-5 | multiplayer-architecture.md | Simulation loop independence | ADR-0001 | ✅ |
 | TR-MP-6 | multiplayer-architecture.md | Beta NetworkInput packet format | — | ❌ Beta |
 | TR-MP-7 | multiplayer-architecture.md | GGPO-style rollback | — | ❌ Beta |
-| TR-MP-8 | multiplayer-architecture.md | Coherence relay model | — | ❌ Beta |
+| TR-MP-8 | multiplayer-architecture.md | SDK-agnostic relay-compatible real-time model | — | ❌ Beta |
 | TR-MP-9 | multiplayer-architecture.md | Disconnection handling | — | ❌ Beta |
 | TR-MP-10 | multiplayer-architecture.md | No global leaderboard | — | ❌ Beta |
 | TR-MP-11 | multiplayer-architecture.md | 16-player rooms | — | ❌ Beta |
