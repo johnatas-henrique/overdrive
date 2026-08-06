@@ -157,12 +157,12 @@ File Integrity Table
 4. Client-side replay and CRC32 detect file corruption only; they do not establish trust outside the local ghost artifact.
 5. No global leaderboard exists in MVP, Alpha, or the current Beta relay design.
 
-**6. Cloud Storage (Coherence, Alpha)**
+**6. Cloud Storage (Alpha — provider selected at the Alpha decision point)**
 
-- **Upload:** `cloudStorage.SaveObjectAsync(("ghost", "trackId_playerId"), ghostData)` for ghost sharing only.
-- **Download:** `cloudStorage.LoadObjectAsync<string>(("ghost", "trackId_playerId"))`
-- **Delete:** `cloudStorage.DeleteObjectAsync(("ghost", "trackId_playerId"))`
-- **Requires:** PlayerAccount login to Coherence Cloud
+- **Upload:** `ghostStorage.UploadAsync(key = "ghost_{trackId}_{playerId}", ghostData)` for ghost sharing only (generic storage interface per ADR-0008; the Alpha-selected provider implements it per ADR-0016).
+- **Download:** `ghostStorage.DownloadAsync(key = "ghost_{trackId}_{playerId}")`
+- **Delete:** `ghostStorage.DeleteAsync(key = "ghost_{trackId}_{playerId}")`
+- **Requires:** identity authentication from the Alpha-selected provider (ADR-0016 scope: player identity)
 
 **Note:** Deterministic replay depends on Vehicle Physics being deterministic. If a future ADR selects periodic state snapshots as a fallback, that format and its server-validation implications must be specified before implementation.
 
@@ -174,7 +174,7 @@ File Integrity Table
 | `Recording` | Alpha Ghost ownership; MVP buffer remains Simulation-owned | Yes (live) | Yes (player) | Optional (Alpha rival ghosts) |
 | `Paused` | Frozen | No | No | No |
 | `Result` | Finalizing recorded race | No | No | No |
-| `PendingUpload` | Personal-best artifact queued for CloudStorage | No | No | No |
+| `PendingUpload` | Personal-best artifact queued for the Alpha-selected cloud storage | No | No | No |
 | `Replay` | No | Yes (from file) | No (from file) | Yes (this ghost) |
 
 **Transition rules:**
@@ -201,7 +201,7 @@ File Integrity Table
 | Simulation Architecture | Bidirectional | Sim → boundary: ReplayInitialState, continuous SimulationInput, standalone Pause edges; Alpha Ghost → Sim: initial state + recorded inputs/events | GO, completed Racing tick, lifecycle edge, or Replay tick |
 | Race Session Manager | Inbound | RSM → Ghost: RaceStarted, LapCompleted, RaceFinished, RaceAborted events | Per lifecycle boundary |
 | Content Pipeline | Inbound | Content → Ghost: track data reference for replay initialization | At Ready state |
-| Coherence | Alpha / Deferred | Ghost → CloudStorage: upload ghost artifact; CloudStorage → Ghost: download rival ghost | Post-race / pre-race in Alpha only |
+| Network SDK | Alpha / Deferred | Ghost → Alpha-selected storage: upload ghost artifact; storage → Ghost: download rival ghost | Post-race / pre-race in Alpha only |
 | HUD | Outbound | Ghost → HUD: time delta, lap splits, ghost indicator | Per sim tick |
 | Global Leaderboard | Deferred | Requires a future dedicated leaderboard-service architecture | Not part of MVP, Alpha, or current Beta relay design |
 
@@ -250,7 +250,7 @@ File Integrity Table
 - **If player quits mid-race:** Discard partial recording. No ghost file created.
 - **If completed result is not a new local personal best:** Discard the in-memory buffer. No ghost file or upload is created.
 - **If file integrity check fails (checksum mismatch):** Ghost file is rejected as corrupt. The player is notified and the file is not used for replay.
-- **If Coherence CloudStorage upload fails:** Retry in-session after 1s, 2s, and 4s. If all three attempts fail, retain the artifact in a persistent upload queue for retry on the next game launch.
+- **If the network SDK CloudStorage upload fails:** Retry in-session after 1s, 2s, and 4s. If all three attempts fail, retain the artifact in a persistent upload queue for retry on the next game launch.
 - **If downloaded ghost fails file-integrity validation:** Reject ghost. Player notified. Ghost not added to selection pool.
 - **If sim seed is missing from ghost file:** Cannot replay. Ghost file considered corrupt. Discard.
 - **If ghost file is corrupted (invalid magic/header):** Discard file. Log error. No crash.
@@ -265,7 +265,7 @@ File Integrity Table
 | Simulation Architecture | Bidirectional | Hard | Simulation supplies ReplayInitialState, continuous input and standalone Pause events; Alpha Ghost returns the validated streams during Replay |
 | Race Session Manager | Inbound | Hard | RSM supplies RaceStarted, LapCompleted, RaceFinished, RaceAborted events for lap-split recording and lifecycle hooks |
 | Content Pipeline | Inbound | Soft | Content supplies track data reference for replay initialization at Ready state |
-| Coherence | Alpha / Deferred | Future hard | Ghost → CloudStorage: upload ghost artifact; CloudStorage → Ghost: download rival ghost in Alpha only |
+| Network SDK | Alpha / Deferred | Future hard | Ghost → CloudStorage: upload ghost artifact; CloudStorage → Ghost: download rival ghost in Alpha only |
 | HUD | Outbound | Soft | Ghost → HUD: time delta, lap splits, ghost indicator |
 | Global leaderboard | Deferred | Future hard | No global leaderboard exists in MVP, Alpha, or the current Beta relay design; a future service decision owns any ranked feature. |
 | Input System | Indirect via Simulation | Architecture constraint | MVP exposes a recordable SimulationInput + tick boundary; Alpha Ghost consumes it |
@@ -318,7 +318,7 @@ Ghost-related UI:
 - **AC-V3:** Given checksum mismatch, When validation fails, Then the ghost is rejected as corrupt and is not used for replay.
 
 ### Cloud Storage (Alpha)
-- **AC-CS1:** Given a new local personal best has been confirmed and serialized into a locally valid ghost file, When upload is requested, Then the ghost artifact is saved to Coherence CloudStorage with key ("ghost", "trackId_playerId").
+- **AC-CS1:** Given a new local personal best has been confirmed and serialized into a locally valid ghost file, When upload is requested, Then the ghost artifact is saved to the network SDK CloudStorage with key ("ghost", "trackId_playerId").
 - **AC-CS2:** Given ghost exists in CloudStorage, When download is requested, Then ghost data is retrieved and passes local file-integrity validation before replay.
 - **AC-CS3:** Given CloudStorage upload fails, When failure is detected, Then retries occur after 1s, 2s, and 4s; if all fail, the artifact is retained in a persistent queue for retry on the next game launch.
 

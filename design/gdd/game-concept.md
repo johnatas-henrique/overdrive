@@ -73,7 +73,7 @@ The primary feel is high-speed, accessible arcade racing: strong grip, readable 
 - **Recovery:** Loss of traction is recoverable within 1–2 seconds. No unrecoverable spins from normal driving. Wall contact slows the car but does not stop it.
 - **Skill expression:** Faster lap times come from optimal racing line, braking points, fuel/tire management, and strategic timing — not from controlling slides or managing oversteer.
 - **Speed perception:** Velocity is communicated through Directional Velocity visual language (streaks, blur, camera shake) and audio feedback, not through physics instability.
-- **Deterministic:** The simulation uses a fixed timestep (60 Hz) with deterministic physics within the same platform. Cross-platform determinism is not required — client prediction and interpolation handle discrepancies for arcade gameplay. Architecture is designed from the start to support multiplayer: simulation separated from rendering, input recording for replay/ghost, fixed timestep for determinism. Async ghost sharing enters in Alpha via Coherence CloudStorage. Real-time multiplayer enters in Beta via Coherence Rooms + relay. A global ranked leaderboard is deferred until a dedicated service and integrity architecture are selected.
+- **Deterministic:** The simulation uses a fixed timestep (60 Hz) with deterministic physics within the same platform. Cross-platform determinism is not required — client prediction and interpolation handle discrepancies for arcade gameplay. Architecture is designed from the start to support multiplayer: simulation separated from rendering, input recording for replay/ghost, fixed timestep for determinism. Async ghost sharing enters in Alpha via the network SDK's async storage (SDK deferred to ADR-0016). Real-time multiplayer enters in Beta via the network SDK's rooms + relay (SDK deferred to ADR-0016). A global ranked leaderboard is deferred until a dedicated service and integrity architecture are selected.
 
 ### Five-Minute Race Loop
 
@@ -286,7 +286,7 @@ Based on Super Monaco GP (1989 to 1991 era). 16 teams, 1 car each, 16 cars on gr
 - Intra-tier challenges (Tier 1: Madonna vs Firenze for grid position).
 - Save/load system.
 - Basic rival memory.
-- Async ghost sharing via Coherence CloudStorage. A global ranked leaderboard is deferred until a dedicated service and integrity architecture are selected.
+- Async ghost sharing via the network SDK's async storage (SDK deferred to ADR-0016). A global ranked leaderboard is deferred until a dedicated service and integrity architecture are selected.
 
 ### Tier System
 - Each team has stats that transfer to the car: Tier 1 teams have the best cars, Tier 4 the worst.
@@ -339,14 +339,14 @@ A session consists of 3 races (approximately 25-30 minutes total including menus
 - Championship standings persist across races.
 - Save/load system.
 - Basic rival memory.
-- Async ghost sharing via Coherence CloudStorage. A global ranked leaderboard is deferred until a dedicated service and integrity architecture are selected.
+- Async ghost sharing via the network SDK's async storage (SDK deferred to ADR-0016). A global ranked leaderboard is deferred until a dedicated service and integrity architecture are selected.
 - Web/Browser build for investor access.
 - More tracks added progressively.
 
 ### Beta — Multiplayer + Polish
 
 - 8+ tracks.
-- Real-time online multiplayer (Coherence Rooms + relay).
+- Real-time online multiplayer (network SDK rooms + relay, SDK deferred to ADR-0016).
 - Expanded rival memory and career consequences.
 - Performance profiling and optimization.
 

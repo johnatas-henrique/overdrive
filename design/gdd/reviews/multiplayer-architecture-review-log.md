@@ -84,3 +84,26 @@ Prior verdict resolved: Yes — all prior findings resolved; this pass found a p
 ### Files Revised During This Review
 
 - `design/gdd/multiplayer-architecture.md`
+## Review — 2026-08-06 — Verdict: APPROVED (NEEDS REVISION → revised → approved)
+
+Scope signal: XL
+
+Specialists: network-programmer, game-designer, systems-designer, creative-director (full review)
+
+Blocking items: 7 (all resolved) | Recommended: 0 (formula corrections, ghost-presentation contract, design-test measurability, and WebGL transport deep-dive deferred to later passes)
+
+Summary: First full-mode review of the 2026-08-05 SDK-agnostic edit. The creative-director verdict was NEEDS REVISION: the SDK-agnostic edit was half-applied — the intro declared "SDK-agnostic" while integration sections still named Coherence as the integration shape. The MVP boundary is intact; the blockers affected the GDD's readiness as input for ADR-0016. All 7 blockers resolved and verified: (1) completed the SDK-agnostic edit (MVP table now "no network SDK linked"; CoherenceInputSimulation<TState> replaced by a network simulation driver interface contract); (2) added SDK Selection Criteria (7 dimensions) for ADR-0016; (3) refreshed stale header; (4) synced systems-index Coherence drift; (5) synced game-concept, ghost-recording, settings (zero Coherence in commitment contexts — reference-SDK mentions remain only in labeled examples); (6) consolidated the disconnect model into jitter (10-tick rollback, no AI takeover) vs disconnection (RECONNECTING + backoff, AI after ~10s/5 retries) and corrected AC-DC1; (7) fixed section numbering.
+
+Prior verdict resolved: Yes — the 2026-07-26 APPROVED did not cover the 2026-08-05 SDK-agnostic edit; this review covered it and re-approved.
+
+### Blockers → Fixes
+
+| # | Blocker | Fix |
+|---|---|---|
+| 1 | SDK-agnostic edit incomplete (MVP "SDK present", CoherenceInputSimulation named) | No network SDK linked in MVP; network simulation driver interface contract |
+| 2 | No SDK selection criteria declared | Added SDK Selection Criteria (7 dimensions) for ADR-0016 |
+| 3 | Stale header (Approved / 2026-07-26) | Status + Last Updated refreshed |
+| 4 | systems-index Coherence drift (lines 18, 110) | Synced to SDK-agnostic |
+| 5 | Coherence in downstream GDDs (game-concept, ghost-recording, settings) | Synced to SDK-agnostic |
+| 6 | Disconnect contradictions (AC-DC1 2s vs 10-tick window; 3 AI thresholds) | Jitter vs disconnection model; AC-DC1 corrected; duplicate edge case removed |
+| 7 | Section numbering skipped 8 → 10 | Renumbered 9 (Network Degradation), 10 (Data Flow) |
