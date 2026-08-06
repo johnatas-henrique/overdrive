@@ -410,6 +410,28 @@ or before finalizing any engine-specific implementation approach
 
 ---
 
+### TD-MANIFEST — Control Manifest Review
+
+**Trigger**: After `/create-control-manifest` extracts rules from Accepted ADRs
+(Phase 4b), before the manifest is written
+
+**Context to pass**:
+- Consolidated rule extraction (all Accepted ADRs, each rule with explicit source)
+- Global rules from `docs/framework/technical-preferences.md` and engine reference
+- Layer classification (Foundation / Core / Feature / Presentation)
+
+**Prompt**:
+> "Review the control manifest extraction. (1) Are all mandatory ADR patterns
+> captured and accurately stated? (2) Are forbidden approaches complete and
+> correctly attributed? (3) Does every rule have a source ADR or preference
+> document — were any rules invented? (4) Are performance guardrails consistent
+> with the ADR constraints? Return APPROVE, CONCERNS [specific gaps], or
+> REJECT [rules are inaccurate, contradictory, missing, or unattributed]."
+
+**Verdicts**: APPROVE / CONCERNS / REJECT
+
+---
+
 ## Tier 1 — Producer Gates
 
 Agent: `producer` | Model tier: Opus | Domain: Scope, timeline, dependencies, production risk

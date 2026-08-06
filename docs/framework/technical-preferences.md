@@ -9,7 +9,7 @@
 - **Language**: C#
 - **Rendering**: Universal Render Pipeline 17.3.0
 - **Physics**: Unity Physics 3D. Vehicle simulation remains pending prototype evaluation.
-- **Networking**: Coherence 2.1 (multiplayer SDK). Free Starter tier for development (<$200k revenue). 60 Hz bidirectional (server send + client send). Client-side prediction with rollback via `CoherenceInputSimulation<TState>`. Kinematic state for cross-machine determinism (PhysX non-deterministic). Built-in matchmaking (Rooms), relay, leaderboards (KV Database), ghost storage (CloudStorage). Revenue share 3% for hosting above $15k/quarter.
+- **Networking**: Deferred. MVP selects no provider. Alpha selects an online-services provider for identity and durable ghost sharing; Beta separately selects a real-time racing SDK. No provider-specific API, transport, rollback, storage, pricing, or leaderboard claim is an approved project fact before those decisions are accepted.
 
 ## Input & Platform
 
@@ -57,7 +57,7 @@
 - Input System 1.19.0
 - AI Navigation 2.0.14
 - Addressables 3.1.0
-- Coherence 2.1 (multiplayer SDK)
+- No online-services provider or real-time networking SDK is approved before its Alpha or Beta selection ADR is Accepted.
 - Unity Test Framework 1.6.0
 - MCP for Unity (CoplayDev) via `com.coplaydev.unity-mcp`
 
