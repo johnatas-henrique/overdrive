@@ -15,7 +15,7 @@
 | 3 | Settings | Foundation | Foundation | Difficulty (3-5 levels), controls, audio | Implicit |
 | 4 | Content Pipeline | Foundation | Foundation | Addressables, per-race asset loading | Implicit |
 | 5 | Ghost Recording | Foundation | Foundation | Input recording for future ghost/replay system | Implicit |
-| 6 | Multiplayer Architecture | Foundation | Foundation | Coherence integration, sim/render separation for network | Implicit |
+| 6 | Multiplayer Architecture | Foundation | Foundation | SDK-agnostic boundary, sim/render separation for network | Implicit |
 | 7 | Vehicle Physics | Core | Core+Presentation | Grip, recovery, deterministic, arcade handling | Explicit |
 | 8 | Camera | Presentation | Core+Presentation | Cockpit primary, chase option | Explicit |
 | 9 | HUD | Presentation | Core+Presentation | Fuel, tire, speed, position, lap, rival info | Explicit |
@@ -107,18 +107,18 @@ For an MVP review, Alpha, Beta, and Release behavior is compatibility context on
 | Vehicle Physics | Core feel — if this doesn't feel right, nothing works | Prototype early, external playtest |
 | Simulation Architecture | Fixed timestep + determinism — foundational | Validate with 16 cars before content |
 | AI Rival | 16 distinct personalities — perception threshold | Test player recognition, not just parameters |
-| Multiplayer Architecture | Coherence integration — external dependency | ADR first, validate early |
+| Multiplayer Architecture | Network SDK — external dependency (ADR-0016 deferred) | ADR first, validate early |
 
 ## Progress Tracker
 
 | System | Status | GDD | Review |
 |--------|--------|-----|--------|
-| Input | Approved | design/gdd/input-system.md | Re-review — APPROVED — 2026-08-01 — cross-review 08-01 resolved (CW1 asym 26/27/31 synced); cross-ADR note: ADR-0005 InputEventQueue obsolete vs ADR-0010 direct route (for architecture-review) |
-| Simulation Architecture | Approved | design/gdd/simulation-architecture.md | Re-review — APPROVED — 2026-08-01 — pipeline synced to 14 steps (ADR-0001/0006/0011): Step 9b PitStopSystem, 5a/5b Fuel/Tire, PitServiceCommand in snapshots, Pit Stop in deps/interactions; 6 blocking resolved |
+| Input | Needs Revision | design/gdd/input-system.md | GDD 2026-08-01 postdates ADR-0005 (2026-07-27) — sanitization/lifecycle contract needs confirmation (architecture-review 2026-08-06) |
+| Simulation Architecture | Needs Revision | design/gdd/simulation-architecture.md | GDD 2026-08-01 postdates ADR-0001 (amended 2026-07-25) — 14-step/lifecycle detail needs confirmation (architecture-review 2026-08-06) |
 | Settings | Approved | design/gdd/settings.md | Approved 2026-07-26 — cross-review 08-01 resolved (CB3 eight Chase elements; CW1 asym 15 synced) |
-| Content Pipeline | Approved | design/gdd/content-pipeline.md | Re-review — APPROVED — 2026-08-01 — LOD0 budget aligned to art bible (25-50K), car textures aligned to 2048×2048 atlas; rename Grid Display→Qualifying Results verified |
+| Content Pipeline | Needs Revision | design/gdd/content-pipeline.md | GDD 2026-08-01 postdates ADR-0003 (2026-07-27) — PC/Web load ceilings absent from ADR (architecture-review 2026-08-06) |
 | Ghost Recording | Approved | design/gdd/ghost-recording.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + one recommended issue remaining (future-service dependency labeling) |
-| Multiplayer Architecture | Approved | design/gdd/multiplayer-architecture.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + zero recommended issues |
+| Multiplayer Architecture | Approved | design/gdd/multiplayer-architecture.md | Full design-review 2026-08-06 — SDK-agnostic revision — APPROVED (7 blockers resolved) |
 | Vehicle Physics | Approved | design/gdd/vehicle-physics.md | Approved 2026-07-25 — cross-review 08-01 resolved (CB2 AC-R1 2.16L/27%; CW7 wear formula synced; CW1 asym 7/13 synced) |
 | Camera | Approved | design/gdd/camera.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW1 asym 1/2 synced) |
 | HUD | Approved | design/gdd/hud.md | Re-review — APPROVED — 2026-08-01 — cross-review 08-01 resolved (CW5 internal counts 8/4; CW1 asym 4/11 synced) |
@@ -130,10 +130,10 @@ For an MVP review, Alpha, Beta, and Release behavior is compatibility context on
 | AI Rival | Approved | design/gdd/ai-rival.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW6 1.10 ownership explicit; DW5 tier gap deferred to playtest; CW1 asym 29 synced) |
 | Track | Approved | design/gdd/track-system.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW1 asym 1/3/17/22 synced) |
 | Car Definition Data | Approved | design/gdd/car-definition-data.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW4 CarAudioProfile; CW1 asym 5/6/8/9 synced) |
-| Race Session Manager | Approved | design/gdd/race-session-manager.md | Re-review — APPROVED — 2026-08-01 — cross-review 08-01 resolved (CW1 asym 9/10/12/13/28 synced) |
-| Grid & Start | Approved | design/gdd/grid-start.md | Re-review — APPROVED — 2026-08-01 — cross-review 08-01 resolved (CW2 residuals renamed; CW1 asym 4/14 synced) |
+| Race Session Manager | Needs Revision | design/gdd/race-session-manager.md | GDD 2026-08-01 postdates ADR-0001 (amended 2026-07-25) — ranking/classification detail needs confirmation (architecture-review 2026-08-06) |
+| Grid & Start | Needs Revision | design/gdd/grid-start.md | GDD 2026-08-01 postdates ADR-0001/0007 (2026-07-27) — Perfect Start arming + Qualifying Results details untraced (architecture-review 2026-08-06) |
 | VFX | Approved | design/gdd/vfx.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW3 global_max_velocity derived from per-car max_velocity; CW1 asym 6/23 synced) |
-| UI Menu | Approved | design/gdd/ui-menu.md | Re-review — APPROVED — 2026-08-01 — cross-review 08-01 resolved (CW2 knob renamed; CW1 asym 2/10/16 synced) |
+| UI Menu | Needs Revision | design/gdd/ui-menu.md | GDD 2026-08-01 postdates ADR-0001/0003/0004/0005 (2026-07-27) — Qualifying Results terminology + non-stack nav needs confirmation (architecture-review 2026-08-06) |
 
 ## Prototype Findings — Race Feel (2026-08-03)
 

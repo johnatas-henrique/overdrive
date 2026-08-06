@@ -40,7 +40,7 @@ Persistent rival behavior is non-blocking unless MVP AI interfaces cannot accept
 
 **1. AI Decision Loop**
 
-Every physics tick (60 Hz), each AI agent reads the immutable final `PublishedSimulationSnapshot` from tick N, evaluates behavior and deterministic PCG32 error/noise using `(race_seed, car_id, simulationStepCount)`, then writes cached `AIInput` for tick N+1. Vehicle Physics consumes that cached input on the next tick; AI never partially changes the world state it just observed.
+Every physics tick (60 Hz), each AI agent reads the immutable final `PublishedSimulationSnapshot` from tick N, evaluates behavior and deterministic PCG32 error/noise using counter-based draws keyed by `(race_seed, car_id, simulationStepCount, slotId)` (pure function — no stateful stream, ADR-0009), then writes cached `AIInput` for tick N+1. Vehicle Physics consumes that cached input on the next tick; AI never partially changes the world state it just observed.
 
 **2. Target Speed Formula**
 
@@ -286,7 +286,7 @@ AI exposes no archetype/state UI. Race Session Manager owns the player-facing po
 ## Acceptance Criteria
 
 - **GIVEN** a Tier 1 AI car in Racing state with neutral personality, `pace_noise = 1.0`, and `error_noise = 1.0`, **WHEN** target speed is calculated, **THEN** it is approximately 340 km/h before the max-velocity clamp.
-- **GIVEN** a Tier 4 AI car with Top Speed stat 16 in Racing state with neutral personality, `pace_noise = 1.0`, and `error_noise = 1.0`, **WHEN** target speed is calculated, **THEN** it is approximately 332 km/h before the max-velocity clamp.
+- **GIVEN** a Tier 4 AI car with Top Speed stat 8 in Racing state with neutral personality, `pace_noise = 1.0`, and `error_noise = 1.0`, **WHEN** target speed is calculated, **THEN** it is approximately 316 km/h before the max-velocity clamp.
 - **GIVEN** AI with Aggressive archetype, **WHEN** car ahead within 100m with 8% speed advantage, **WHEN** overtake probability is calculated, **THEN** it is approximately 69%.
 - **GIVEN** AI with Cautious archetype, **WHEN** car behind within 80m with 5% threat, **WHEN** defend probability is calculated, **THEN** it is approximately 25%.
 - **GIVEN** an AI with post-current-lap Fuel or Tire resource below 110% of its last completed-lap use, **WHEN** the next lap is not final, **THEN** it commits to pit entry regardless of difficulty.

@@ -411,7 +411,7 @@ The Settings system requires a dedicated Settings menu screen with the following
 
 ## Open Questions
 
-- **Cloud Settings Sync:** Should settings sync across devices via Coherence KV storage? (Alpha+ feature — not MVP)
+- **Cloud Settings Sync:** Should settings sync across devices via the network SDK's KV storage? (Alpha+ feature — not MVP; SDK deferred to ADR-0016)
 - **Subtitles:** Return in Alpha+ only when spoken content defines explicit subtitle events, ownership, and presentation requirements.
 - **Preset sharing:** Should players be able to share their control bindings as a code? (Nice-to-have for community)
 - **Per-track quality overrides:** Should the game auto-lower quality on demanding tracks to maintain 60 FPS? (Dynamic quality scaling)

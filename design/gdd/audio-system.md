@@ -60,7 +60,7 @@ Engine sound is generated procedurally, not from samples. A two-oscillator model
 
 | Component | Formula | Description |
 |-----------|---------|-------------|
-| **Base frequency** | `f_base = RPM × cylinders / (60 × 2)` | Fundamental engine frequency |
+| **Base frequency** | `f_base = RPM × EngineCylinders / (60 × 2)` | Fundamental engine frequency |
 | **Harmonic frequency** | `f_harmonic = 2 × f_base` | Second oscillator harmonic |
 | **Pitch multiplier** | `pitch = f_base × fuel_factor × gear_ratio` | Final audible pitch |
 | **Amplitude** | `amp = 0.3 + 0.7 × throttle` | louder under load |
@@ -70,12 +70,12 @@ Engine sound is generated procedurally, not from samples. A two-oscillator model
 | Symbol | Type | Range | Description |
 |--------|------|-------|-------------|
 | RPM | float | 800–14000 | Engine revolutions per minute (from Vehicle Physics) |
-| cylinders | int | 6–12 | Per-car constant from Car Definition Data |
+| EngineCylinders | int | 8, 10, 12 | Per-car constant from `CarDefinition.AudioProfile` |
 | fuel_factor | float | 0.85–1.0 | Pitch scaling based on fuel level (from Fuel System) |
 | gear_ratio | float | 0.4–1.2 | Gear-dependent pitch multiplier (from Vehicle Physics) |
 | throttle | float | 0.0–1.0 | Current throttle input (from Vehicle Physics) |
 
-**Output Range:** Formula output is clamped to the audible range 40–20000 Hz. With the declared RPM, cylinder, fuel, and gear ranges, the unclamped output spans approximately 16–16800 Hz; the audible output therefore bottoms at 40 Hz.
+**Output Range:** Formula output is clamped to the audible range 40–20000 Hz. With the declared RPM, cylinder, fuel, and gear ranges, the unclamped output spans approximately 18–1680 Hz; the audible output therefore bottoms at 40 Hz.
 
 **Fuel factor curve:**
 
@@ -223,7 +223,7 @@ When `State = OffTrack`:
 | **Settings** | Inbound | Master, Music, SFX, UI volumes, Mute state | AudioSettings | Working-copy preview immediately; persisted only after successful Apply |
 | **Camera** | Inbound | Camera mode (cockpit/chase), camera speed | CameraState | Per frame; Audio adjusts engine/ambient mix for cockpit (internal) vs chase (external) |
 | **Pit Stop** | Bidirectional | pit_state (entry/service/exit) → audio triggers | PitEvent | On state change |
-| **Car Definition Data** | Inbound | `CarAudioProfile` (cylinders, exhaust note) | CarAudioProfile | On car select (once per race) |
+| **Car Definition Data** | Inbound | `CarAudioProfile` (`EngineCylinders`, `ExhaustNote`) | CarAudioProfile | On car select (once per race) |
 | **Simulation** | Inbound | `SimulationState`, countdown ticks, Finished Presentation, Results | SimulationSnapshot | Per tick/state transition |
 | **Race Session Manager** | Inbound | lap completion, final-lap event, finish classification | RaceEvent | On event |
 
@@ -233,7 +233,7 @@ When `State = OffTrack`:
 
 ### Engine Pitch
 
-`engine_pitch = (RPM × cylinders / 120) × fuel_factor × gear_ratio`
+`engine_pitch = (RPM × EngineCylinders / 120) × fuel_factor × gear_ratio`
 
 **Output Range:** 40 Hz to 20000 Hz (clamped). Typical audible output: 40 Hz at idle after clamping to approximately 8000 Hz near redline for the reference profile.
 
@@ -277,7 +277,7 @@ When `State = OffTrack`:
 | **Settings** | Inbound | volumes, mute | Hard — drives all audio levels |
 | **Camera** | Inbound | camera mode, camera speed | Hard — drives engine/ambient mix for cockpit vs chase |
 | **Pit Stop** | Bidirectional | pit_state → audio triggers | Hard — drives pit sounds |
-| **Car Definition Data** | Inbound | `CarAudioProfile` (cylinders, exhaust note) | Hard — drives engine character |
+| **Car Definition Data** | Inbound | `CarAudioProfile` (`EngineCylinders`, `ExhaustNote`) | Hard — drives engine character |
 | **Simulation** | Inbound | SimulationState, countdown, terminal presentation, Results | Hard — drives state-specific audio |
 | **Race Session Manager** | Inbound | lap, final-lap, finish events | Hard — drives stings |
 | **Grid & Start** | Inbound | Countdown beeps, launch sounds | Hard — drives start audio |
@@ -310,7 +310,7 @@ No UI requirements for this system. Audio is controlled via Settings (already de
 
 ## Acceptance Criteria
 
-- **GIVEN** a 10-cylinder car at 8000 RPM in 4th gear with full fuel, **WHEN** engine sound is played, **THEN** pitch is approximately 5667 Hz before audio smoothing and clamping.
+- **GIVEN** a 10-cylinder car at 8000 RPM in 4th gear with full fuel, **WHEN** engine sound is played, **THEN** pitch is approximately 567 Hz before audio smoothing and clamping.
 - **GIVEN** fuel at 0%, **WHEN** engine sound is active, **THEN** engine fades to silence over 0.5s ± 0.1s.
 - **GIVEN** fuel refilled after 0%, **WHEN** engine resumes, **THEN** pitch fades back in over 0.3s ± 0.1s.
 - **GIVEN** fuel crosses from 25.1% to 24.9%, **WHEN** race audio is active, **THEN** `fuel_critical_stinger` plays once and does not loop while fuel remains below 25%.
@@ -325,7 +325,7 @@ No UI requirements for this system. Audio is controlled via Settings (already de
 
 ## Open Questions
 
-- **Engine sound per car:** Ownership is resolved: Car Definition supplies `CarAudioProfile` (cylinders, exhaustNote); Audio supplies the procedural interpretation. Concrete per-team values are assigned during the Car Definition review.
+- **Engine sound per car:** Ownership is resolved: Car Definition supplies `CarAudioProfile` (`EngineCylinders`, `ExhaustNote`); Audio supplies the procedural interpretation. Concrete per-team values are assigned during the Car Definition review.
 - **Adaptive music (Alpha):** When should adaptive music be added? Per-biome? Per-race-state? Per-position?
 - **3D spatial audio:** Should rival engine sounds be spatialized (3D positioned)? Or is stereo sufficient for arcade?
 - **Audio memory budget:** How many simultaneous audio sources can WebGL handle before performance degrades?
