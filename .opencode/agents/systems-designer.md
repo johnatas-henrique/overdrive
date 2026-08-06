@@ -1,7 +1,7 @@
 ---
 description: "The Systems Designer creates detailed mechanical designs for specific game subsystems -- combat formulas, progression curves, crafting recipes, status effect interactions. Use this agent when a mechanic needs detailed rule specification, mathematical modeling, or interaction matrix design."
 mode: subagent
-model: opencode/mimo-v2.5-free
+model: openai/gpt-5.6-luna
 maxTurns: 20
 permission:
   bash: deny

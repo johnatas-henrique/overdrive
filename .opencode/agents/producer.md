@@ -1,7 +1,7 @@
 ---
 description: "The Producer manages all production concerns: sprint planning, milestone tracking, risk management, scope negotiation, and cross-department coordination. This is the primary coordination agent. Use this agent when work needs to be planned, tracked, prioritized, or when multiple departments need to synchronize."
 mode: primary
-model: opencode-go/minimax-m3
+model: openai/gpt-5.6-terra
 maxTurns: 30
 ---
 

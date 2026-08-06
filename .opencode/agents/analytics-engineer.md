@@ -1,7 +1,7 @@
 ---
 description: "The Analytics Engineer designs telemetry systems, player behavior tracking, A/B test frameworks, and data analysis pipelines. Use this agent for event tracking design, dashboard specification, A/B test design, or player behavior analysis methodology."
 mode: subagent
-model: opencode/mimo-v2.5-free
+model: openai/gpt-5.6-luna
 maxTurns: 20
 ---
 

@@ -1,7 +1,7 @@
 ---
 description: "The UX Designer owns user experience flows, interaction design, accessibility, information architecture, and input handling design. Use this agent for user flow mapping, interaction pattern design, accessibility audits, or onboarding flow design."
 mode: subagent
-model: opencode/mimo-v2.5-free
+model: openai/gpt-5.6-luna
 maxTurns: 20
 permission:
   bash: deny

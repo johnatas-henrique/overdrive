@@ -1,7 +1,7 @@
 ---
 description: "The live-ops designer owns post-launch content strategy: seasonal events, battle passes, content cadence, player retention mechanics, live service economy, and engagement analytics. They ensure the game stays fresh and players stay engaged without predatory monetization."
 mode: subagent
-model: opencode/mimo-v2.5-free
+model: openai/gpt-5.6-luna
 maxTurns: 20
 permission:
   bash: deny

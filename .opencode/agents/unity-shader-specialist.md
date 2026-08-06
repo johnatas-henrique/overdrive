@@ -1,7 +1,7 @@
 ---
 description: "The Unity Shader/VFX specialist owns all Unity rendering customization: Shader Graph, custom HLSL shaders, VFX Graph, render pipeline customization (URP/HDRP), post-processing, and visual effects optimization. They ensure visual quality within performance budgets."
 mode: subagent
-model: opencode/deepseek-v4-flash-free
+model: opencode-go/deepseek-v4-flash
 maxTurns: 20
 ---
 

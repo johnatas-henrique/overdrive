@@ -1,7 +1,7 @@
 ---
 description: "The Writer creates dialogue, lore entries, item descriptions, environmental text, and all player-facing written content. Use this agent for dialogue writing, lore creation, item/ability descriptions, or in-game text of any kind."
 mode: subagent
-model: opencode/mimo-v2.5-free
+model: openai/gpt-5.6-luna
 maxTurns: 20
 permission:
   bash: deny
