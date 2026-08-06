@@ -44,7 +44,7 @@ Deferred weather, night, and damage effects are non-blocking during MVP review.
 |----------|-------------|---------|-----------------|
 | **Speed Streaks** | Directional lines at screen edges | Speed > 100 km/h | Speed relative to `streak_onset_speed` and `global_max_velocity` |
 | **Motion Blur** | World blur based on speed | Speed > 50 km/h | Speed relative to `global_max_velocity` |
-| **Tire Smoke** | White particles from tire contact | Grip loss > 0.3 | Wear % + grip loss |
+| **Tire Smoke** | White/gray particles from tire contact | Grip loss > 0.3 | Wear % + grip loss; requested emission is bounded by the per-car live-particle cap |
 | **Sparks** | Orange particles from wall contact | Wall hit velocity > 50 km/h | Impact speed |
 | **Dust** | Brown particles from off-track | Surface = gravel/grass | Speed + surface type |
 | **Impact Shake Request** | Impact signal for Camera | Wall hit, curb contact, high speed | Impact force; Camera owns shake amplitude, duration, and composition |
@@ -55,10 +55,10 @@ Deferred weather, night, and damage effects are non-blocking during MVP review.
 
 | Preset | Streaks | Blur | Particles | Screen Effects | Shake |
 |--------|---------|------|-----------|----------------|-------|
-| **Low** | 50% intensity | 50% intensity | 25% count | Vignette off; streaks retained | 50% amplitude |
-| **Medium** | 75% intensity | 75% intensity | 50% count | Vignette only | 75% amplitude |
-| **High** | 100% intensity | 100% intensity | 100% count | Full | 100% amplitude |
-| **Ultra** | 100% + extra trails | 100% + quality | 150% count | Full + extras | 100% + duration |
+| **Low** | 50% intensity | 50% intensity | 25 live smoke particles/car | Vignette off; streaks retained | 50% amplitude |
+| **Medium** | 75% intensity | 75% intensity | 50 live smoke particles/car | Vignette only | 75% amplitude |
+| **High** | 100% intensity | 100% intensity | 100 live smoke particles/car | Full | 100% amplitude |
+| **Ultra** | 100% + extra trails | 100% + quality | 150 live smoke particles/car | Full + extras | 100% + duration |
 
 **3. Cockpit vs Chase**
 
@@ -89,7 +89,7 @@ VFX scales relative to the fastest car's max velocity (read from Car Definition 
 | Speed | Intensity | Visual |
 |-------|-----------|--------|
 | 0 km/h | 0.0 | No streaks |
-| 155 km/h (50% of max) | 0.262 | Mild streaks |
+| 170 km/h (50% of max) | 0.292 | Mild streaks |
 | 340 km/h (100% of max, tier 1) | 1.0 | Maximum streaks |
 
 **6. Motion Blur Formula**
@@ -106,10 +106,16 @@ Where `global_max_velocity` = max(all car top speeds). Vignette starts at 60% of
 
 **8. Tire Smoke**
 
-| Trigger | Particle Count | Lifetime | Color |
-|---------|---------------|----------|-------|
+| Trigger | Requested Emission | Lifetime | Color |
+|---------|--------------------|----------|-------|
 | Grip loss > 0.3 | 300–1200 particles/s, frame-delta scaled | 0.5–1.0s | White/gray |
 | Grip loss > 0.7 | 1200–3000 particles/s, frame-delta scaled | 1.0–2.0s | White/gray |
+
+The requested per-frame emission is clamped by the available capacity in the
+selected `MaxAliveSmokeParticlesPerCar` preset: Low 25, Medium 50, High 100,
+Ultra 150. The cap is per car across all tire-smoke emitters; it is the
+performance authority, while requested emission controls density until the cap
+is reached.
 
 **9. Sparks (Wall Contact)**
 
@@ -217,7 +223,7 @@ VFX emits `impactShakeRequest { source, impact_factor }`. Camera converts this r
 | Streak onset speed | 100 km/h | 50–150 km/h | Streaks too early | Streaks too late |
 | Blur max amount | 0.5 | 0.3–0.7 | Blur too subtle | Blur too strong |
 | Vignette max | 0.4 | 0.2–0.6 | Vignette invisible | Vignette too dark |
-| Particle count (Low) | 25% | 10–50% | Too few particles | Performance hit |
+| Max alive smoke particles/car (Low/Medium/High/Ultra) | 25 / 50 / 100 / 150 | 10–200 | Too few particles | Performance hit |
 | Impact request factor max | 1.0 | Fixed | Impact response too weak | Camera owns the final cap |
 | VFX frame budget | 1.6ms | 1.0–2.5ms | Effects cut short | Frame drops |
 
@@ -243,8 +249,8 @@ No UI requirements for this system. VFX is visual-only.
 - **GIVEN** car at 50% of global max, **WHEN** blur is rendered, **THEN** amount is 0.25.
 - **GIVEN** car at 60% of global max, **WHEN** vignette is checked, **THEN** intensity is 0.0 (threshold).
 - **GIVEN** wall hit at 100 km/h, **WHEN** sparks are rendered, **THEN** 10-30 particles burst.
-- **GIVEN** grip loss at 0.5 and a 60 FPS frame, **WHEN** tire smoke is rendered, **THEN** emission is 300–1200 particles/s converted by frame delta to approximately 5–20 particles per frame.
-- **GIVEN** VFX density Low, **WHEN** particles are rendered, **THEN** count is 25% of High.
+- **GIVEN** grip loss at 0.5 and a 60 FPS frame, **WHEN** tire smoke is rendered, **THEN** requested emission is 300–1200 particles/s converted by frame delta to approximately 5–20 particles per frame and actual emission never exceeds the available live-particle capacity.
+- **GIVEN** VFX density Low, Medium, High, or Ultra, **WHEN** particles are rendered, **THEN** live tire-smoke particles never exceed 25, 50, 100, or 150 per car respectively.
 - **GIVEN** cockpit camera, **WHEN** VFX intensity is checked, **THEN** same as chase camera unless Reduced Motion or a density preset changes the output.
 - **GIVEN** Simulation emits `PerformanceReduced`, **WHEN** VFX updates (LateUpdate, per ADR-0010 — reads interpolated VisualTransform after the α is computed), **THEN** density is Low, minimum speed streaks remain available, and VFX does not alter Simulation timing.
 - **GIVEN** Reduced Motion is enabled while saved Motion Blur is On, **WHEN** VFX resolves runtime effects, **THEN** Motion Blur is Off without mutating the saved preference; disabling Reduced Motion restores the working Motion Blur value.

@@ -557,13 +557,12 @@ formulas:
       - grip_base
       - tire_runtime_grip_multiplier
       - surface_grip_multiplier
-      - control_threshold
     output_range: [0.20, 1.20]
-    # was: variables used generic names (base_grip, tire_multiplier, surface_modifier, stability_modifier) before 2026-07-27 — aligned to VP's effective_grip
-    expression: "clamp(grip_base × surface_grip_multiplier × tire_runtime_grip_multiplier × control_threshold, 0.20, 1.20)"
-    notes: "Tire System outputs tire_runtime_grip_multiplier = grip_base × (1.0 - (wear_fraction × (1.0 - grip_floor))) where grip_floor = 0.20. Vehicle Physics consumes this multiplier in the multiplicative stack and clamps the final result to 0.20–1.20."
+    # was: expression included × control_threshold before 2026-08-04 — stability removed from grip stack (validated 2026-08-04); control_threshold now modulates slip only (car-definition-data.md)
+    expression: "clamp(grip_base × surface_grip_multiplier × tire_runtime_grip_multiplier, 0.20, 1.20)"
+    notes: "Tire System outputs tire_runtime_grip_multiplier = grip_base × (1.0 - (wear_fraction × (1.0 - grip_floor))) where grip_floor = 0.20. Vehicle Physics consumes this multiplier in the multiplicative stack and clamps the final result to 0.20–1.20. Stability (control_threshold) is NOT part of this stack — it modulates slip behavior only."
     added: 2026-07-22
-    revised: "2026-07-24"
+    revised: "2026-08-04"
 
   - name: vfx_intensity
     status: active
@@ -737,7 +736,7 @@ constants:
     value: "max(all car top speeds)"
     unit: km/h
     # was: note stated that every VFX intensity used only global_max_velocity before 2026-07-24
-    notes: "Computed at runtime as the maximum top speed across all 16 cars on the current grid. Tier 1 max = ~310 km/h. Used as the denominator in blur/vignette mappings and as the upper bound in the onset-adjusted streak_intensity formula."
+    notes: "Computed at runtime as the maximum top speed across all 16 cars on the current grid. Tier 1 max = ~340 km/h (top_speed 20 → 300 + 20×2). Used as the denominator in blur/vignette mappings and as the upper bound in the onset-adjusted streak_intensity formula."
     added: 2026-07-22
     revised: "2026-07-24"
 
