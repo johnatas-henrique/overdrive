@@ -1,11 +1,14 @@
 # Overdrive — Master Architecture
 
 ## Document Status
-- **Last Updated:** 2026-07-28
+- **Version:** 7 (regenerated 2026-08-06 by the formal /create-architecture full after the v6 architecture review)
+- **Last Updated:** 2026-08-06
 - **Engine:** Unity 6000.3.19f1 (Unity 6.3 LTS)
 - **GDDs Covered:** 21 MVP GDDs (all APPROVED)
-- **ADRs Referenced:** All 15 ADRs (0001-0015). See `docs/architecture/control-manifest.md` for the consolidated rules sheet and `docs/architecture/` for individual ADRs.
+- **ADRs Referenced:** 19 Accepted ADRs (0001-0019); ADR-0016 and ADR-0017 are Accepted selection-boundary documents (network driver interface, Alpha services / Beta real-time); ADR-0018 (RSM Authority) and ADR-0019 (UI Presentation) Accepted 2026-08-05. See `docs/architecture/control-manifest.md` for the Accepted-ADR rules sheet and `docs/architecture/` for individual ADRs.
 - **Technical Director Sign-Off:** 2026-07-27 — APPROVED WITH CONDITIONS. All 5 Foundation ADRs now exist (0001, 0003, 0004, 0005, 0008). Conditions met.
+- **Technical Director Sign-Off (v7 regeneration):** 2026-08-06 — APPROVED. TD-ARCHITECTURE self-review: 144/144 TRs covered, HIGH-risk domains flagged, boundaries implementable, Foundation gaps 0.
+- **Lead Programmer Feasibility:** 2026-08-06 — FEASIBLE. LP-FEASIBILITY: 0 BLOCKING; 5 MAJOR + 7 MINOR items all resolved in v7 (SimulationInput, GameState, PitServiceCommand, SimulationRollbackState defined; wrapper template; ContentErrorType; deprecated-API notes).
 
 ---
 
@@ -23,6 +26,7 @@
 | Input System 1.19.0 | MEDIUM | 📄 Referenced | Patterns captured in engine reference docs. Package-specific API not re-verified |
 | Addressables 3.1.0 | MEDIUM | 📄 Referenced | Patterns captured in engine reference docs |
 | WebGL (ASTC, heap) | MEDIUM | ✅ Verified | Wasm heap up to 4GB, ASTC as extension. Captured in CONSTRAINTS #1534 |
+| Unity.Mathematics | LOW | ✅ Core | Core Unity 6 package, available without explicit installation — sim-path math (float3, quaternion) |
 
 ### Systems touching HIGH risk domains (flagged throughout):
 - **Vehicle Physics** → Physics API (velocity→linearVelocity renames)
@@ -67,9 +71,19 @@
 
 **Feature Layer:** Gameplay features built on Core. AI Rival controls 15 opponents with 4 archetypes, deterministic PCG32 noise, and state-based behavior. Pit Stop manages service logic (tire swap + fuel fill in parallel) and the player pit advisory. Qualifying is a RaceMode variant within SimulationState.Racing (no Countdown, no tire wear, single flying lap). Grid & Start manages 16-car grid formation, 5-light Countdown, and Perfect Start evaluation. Multiplayer Architecture is ADR-only in MVP.
 
-**Presentation Layer:** Visual and audio output. Camera provides two modes (Cockpit primary, Chase secondary), FOV response, shake composition, and collision avoidance. HUD renders 7 chase elements with strict readability targets (0.5s at 200 km/h, max 2 items per glance). Audio drives procedural engine model (two-oscillator), SFX (tire squeal, wall impact, wind), and music stings. VFX produces speed streaks, motion blur, tire smoke, sparks, and vignette within a 1.6ms frame budget. UI Menu manages screen flow, navigation (keyboard + gamepad + pointer), and all menu state.
+**Presentation Layer:** Visual and audio output. Camera provides two modes (Cockpit default/primary per ADR-0010, Chase as accessibility/spectacle option), FOV response, three additive angular shake layers clamped at 3.0° total, and collision avoidance (preserved during PerformanceReduced). HUD renders 8 chase elements with strict readability targets (0.5s at 200 km/h, max 2 items per glance); HUD consumes only PublishedSimulationSnapshot (ADR-0014 — no direct system reads). Audio drives procedural engine model (two-oscillator), SFX (tire squeal, wall impact, wind), and music stings across a 9-state audio machine mirroring SimulationState. VFX produces speed streaks, motion blur, tire smoke, sparks, and vignette within the 2.25ms planned / 2.4ms ceiling camera+VFX budget (ADR-0010). UI Menu manages screen flow, navigation (keyboard + gamepad + pointer), and all menu state per ADR-0019.
 
 ### System-to-Layer Table
+
+> **Layer taxonomy note (2026-08-05):** The `Layer` column here is an
+> **implementation-layer dimension** (Foundation = always-on plumbing, Core =
+> simulation domain, Feature = optional/conditional systems, Presentation =
+> output consumers). `design/gdd/systems-index.md` uses a **design-category
+> dimension** (Foundation/Core/Presentation for design ordering), which is why
+> Multiplayer, AI Rival, Pit Stop, Qualifying, and Grid & Start are assigned
+> differently across the two documents. Both dimensions are valid and
+> intentional; they answer different questions (how systems are built vs how
+> design work is ordered). Do not "reconcile" them into a single taxonomy.
 
 | System | Layer | GDD | Dependencies |
 |--------|-------|-----|-------------|
@@ -126,7 +140,7 @@
 | **Owns** | `PlayerPrefs` blob `"OverdriveSettings"` + backup `"OverdriveSettings_Backup"`, schema migration (v1→v3), `SettingsEditSession` (snapshot + working + preview), `DisplayConfirm` timer, 5 DifficultyProfile data, control profile validation |
 | **Exposes** | Immutable `DifficultyProfile` (snapshotted at race init), `ControlProfile` (dead zones, alphas, bindings), `QualitySettings` preset, per-system setting values |
 | **Consumes** | Input System binding IDs (stable after first shipped schema) |
-| **Engine APIs** | `PlayerPrefs.SetString/GetString`, `Screen.SetResolution`. No HIGH risk APIs |
+| **Engine APIs** | `PlayerPrefs.SetString/GetString`, `Screen.SetResolution` (use the `RefreshRate` overload — integer-refresh overloads are obsolete in 6000.3, deprecated-apis.md:15). No HIGH risk APIs |
 
 #### Content Pipeline
 
@@ -142,7 +156,7 @@
 | Aspect | Definition |
 |--------|-----------|
 | **Owns** | In-memory recordable buffer (12 bytes/tick × 22,500 cap + EdgeEvent stream), buffer lifecycle (discard on Results/Forfeit/Idle), 80-byte binary header format, integrity CRC32 |
-| **Exposes** | (MVP) None — buffer is internal and always discarded. Alpha: `GhostFile` serialization, local cache, CloudStorage upload/download |
+| **Exposes** | (MVP) None — buffer is internal and always discarded. Alpha: `GhostFile` serialization, local cache, upload/download via the Alpha-selected storage interface (ADR-0016) |
 | **Consumes** | `SimulationInput` per Racing tick (from Simulation), `Pause` edge events, `ReplayInitialState` (captured at GO) |
 | **Engine APIs** | None in MVP (pure memory buffer). Alpha deferred |
 
@@ -155,7 +169,7 @@
 | **Owns** | `ResolvedCarInput[carId]` consumption, 5 car states (Driving/OffTrack/WallHit/Pitting/GridLocked), `effective_grip` multiplicative stack (grip_base × surface × tire), `longitudinalDriveForceFinal` with perfect-start multiplier, high-speed steer reduction, lift-off rotation assist, wall contact cooldown, collision response (speed loss + push impulse), per-tick `CarState[16]` production |
 | **Exposes** | `CarState` per car per physics tick: position, rotation, speed, throttle, brake, steer, gripState, forwardDot, isGridLocked, rpm, gear, wallContact, slideState, surface, pitPhase |
 | **Consumes** | `SimulationInput.accelerateOut/brakeOut/steerOut`, `tire_runtime_grip_multiplier` (Tire), fuel state + low-fuel modifier (Fuel), `surface_grip_multiplier` (Track), `AIInput` (AI Rival), grid_lock state (Simulation) |
-| **Engine APIs** | `Rigidbody.linearVelocity` (✅), `linearDamping` (✅), `angularDamping` (✅), `AddForce()`, `MovePosition()`, `interpolation = None`. HIGH RISK: all verified |
+| **Engine APIs** | `Rigidbody.linearVelocity` (✅), `linearDamping` (✅), `angularDamping` (✅), `AddForce()` (ForceMode.Force or raw acceleration only — never Acceleration/Impulse: implicit mass multiply, deprecated-apis.md:29), `MovePosition()`, `interpolation = None`. HIGH RISK: all verified |
 
 #### Fuel System
 
@@ -188,7 +202,7 @@
 
 | Aspect | Definition |
 |--------|-----------|
-| **Owns** | 16 `ScriptableObject` assets (6 stats each 0–20, engine audio profile), stat-to-behavior formulas (`max_velocity` = 300 + TS×2, `t300` Acceleration metric, `brake_distance`, grip % of vmax, `control_threshold` slip-only (NOT in effective_grip stack), `efficiency_modifier`), `global_max_velocity` runtime computation |
+| **Owns** | 16 `ScriptableObject` assets (6 stats each 0–20, engine audio profile), the **raw stat values** (data — not behavior formulas; per ADR-0015 the consuming system owns each stat-to-behavior formula: Vehicle Physics owns Top Speed / Acceleration / Brake Power / Grip Level / Stability; Fuel/Tire owns Efficiency), `efficiency_modifier` schema definition (consumed by Fuel/Tire), `global_max_velocity` runtime computation (for VFX) |
 | **Exposes** | Per-car: 6 stat values, computed metrics, engine audio profile. `global_max_velocity = max(all car top speeds)` for VFX |
 | **Consumes** | None — static data loaded at race start via Addressables `Cars/{teamId}` |
 | **Engine APIs** | `ScriptableObject`, loaded via `Addressables.LoadAssetAsync<CarDefinition>()`. MEDIUM RISK |
@@ -210,16 +224,16 @@
 | **Pit Stop** | 4 pit states, pit lane speed clamp (80 km/h), tire swap (2s) + fuel fill (0.8 L/s) parallel, player exit (after 2s), AI full tank, `player_pit_advisory`, pit box assignment | `PitState` per car, `PitThisLap` flag | `FuelState`, `TireState`, `pit_entry_progress` from Track, `PitEntry`/`PitExit`/`LapCompleted` from RSM | Pure C# logic |
 | **Qualifying** | RaceMode variant, single flying lap, qualifying fuel load, AI time gen (PCG32), `GridAssignment`, Pit blocked, no tire wear | `GridAssignment` (via RSM) | `RaceMode.Qualifying`, `DifficultyProfile`, track `reference_flying_lap_time`, Car Def stats | Pure C# + PCG32 |
 | **Grid & Start** | 16-car grid (8 rows × 2), 5-light Countdown (300 ticks), grid-lock, Perfect Start evaluation (GO-12 through GO, 1.15× for 600 ticks) | `PerfectStartResult{active, remainingTicks}` | `GridAssignment`, grid transforms from Track | Pure C# logic |
-| **Multiplayer Arch** | (ADR-only MVP) — Coherence SDK integration defined for Beta. MVP defines transport-independent simulation boundary only | Network phase enum (MVP: Disconnected) | Architecture constraints, no runtime deps in MVP | None in MVP |
+| **Multiplayer Arch** | (ADR-only MVP) — MVP has no provider. Alpha selects online services for identity/ghost sharing; Beta separately selects real-time racing SDK. MVP defines a transport-independent simulation boundary only | Network phase enum (MVP: Disconnected) | Architecture constraints, no runtime deps in MVP | None in MVP |
 
 ### Presentation Layer
 
 | System | Owns | Exposes | Consumes | Engine APIs |
 |--------|------|---------|----------|-------------|
-| **Camera** | 2 modes (Cockpit/Chase), FOV response (quadratic, 78-95°/70-90°), 3-layer shake (clamped 3.0°), look-ahead, 0.35s transitions, SphereCast collision avoidance, PitCamera, terminal presentation blend, CameraToggle routing | Camera transform + FOV + mode per frame | Interpolated car transform from Simulation, `PublishedSimulationSnapshot`, `impactShakeRequest` from VFX, Settings (shake, Reduced Motion) | `Camera`, `Physics.SphereCast()` (✅ verified) |
-| **HUD** | 8 chase + 4 cockpit elements, 7 states, team color tinting, 85% opacity, 150ms transitions, Track Map rendering, `PIT THIS LAP` advisory | Rendered screen-space canvas output | `CarState`, `GameState`, `FuelState`, `TireState`, `PitThisLap`, Camera mode, Settings overlay toggle, Performance signals | uGUI (Canvas, Image, TextMeshPro) |
-| **Audio** | Procedural 2-oscillator engine, 5 audio layers, SFX (squeal/impact/wind), fuel factor curve, 6-speed gear ratios, 8 states, music sting priority | Mixed audio output to `AudioListener` | `CarState` (rpm, speed, throttle, gear, gripState), Camera mode, Fuel state, Car Def (cylinders) | `AudioSource`, `AudioMixer`, `AudioListener` |
-| **VFX** | Speed streaks, motion blur (max 0.5), vignette (60%+ speed), tire smoke (300-3000 particles), sparks (wall hits), `impactShakeRequest`, 4 density presets (Low/Medium/High/Ultra), max 16 smoke/8 sparks/16 dust | `impactShakeRequest{source, factor}` to Camera | `CarState`, `TireState`, `global_max_velocity` from Car Def, Settings (density, Motion Blur, Reduced Motion), `PerformanceReduced` | URP post-processing, `ParticleSystem`. HIGH RISK (RenderGraph) |
+| **Camera** | 2 modes (Cockpit/Chase), FOV response (quadratic, 78-95°/70-90°), 3-layer shake (clamped 3.0°), Chase look-ahead (velocity direction × speed × lookAheadFactor, quadratic ~0.5-3 m; none in Cockpit — TR-camera-004), 0.35s transitions, SphereCast collision avoidance, PitCamera, terminal presentation blend, CameraToggle routing | Camera transform + FOV + mode per frame | Interpolated car transform from Simulation, `PublishedSimulationSnapshot`, `impactShakeRequest` from VFX, Settings (shake, Reduced Motion) | `Camera`, `Physics.SphereCast()` (✅ verified) |
+| **HUD** | 8 chase + 4 cockpit elements, 7 states, team color tinting, 85% opacity, 150ms transitions, Track Map rendering, `PIT THIS LAP` advisory | Rendered screen-space canvas output | `PublishedSimulationSnapshot` only (ADR-0014 snapshot-only boundary — no direct CarState/GameState/FuelState/TireState reads), Camera mode, Settings overlay toggle, Performance signals | uGUI (Canvas, Image, TextMeshPro) |
+| **Audio** | Procedural 2-oscillator engine, 5 audio layers, SFX (squeal/impact/wind), fuel factor curve, 6-speed gear ratios, 9 states mirroring SimulationState, music sting priority + 6dB ducking (ADR-0012) | Mixed audio output to `AudioListener` | `PublishedSimulationSnapshot` (CarState/FuelState fields **via the published boundary** — no direct mutable-state reads), Camera mode, `CarDefinition.AudioProfile.EngineCylinders` | `AudioSource`, `AudioMixer`, `AudioListener` |
+| **VFX** | Environment-colored speed streaks, motion blur (max 0.5), speed-driven vignette, white/gray tire smoke (requested 300-3000 particles/s, capped at 25/50/100/150 live particles per car for Low/Medium/High/Ultra), orange/yellow impact sparks, brown dust, `impactShakeRequest`, 4 density presets (Low/Medium/High/Ultra), up to 16 tire-smoke emitters/8 spark bursts/16 dust emitters | `impactShakeRequest{source, factor}` to Camera | `PublishedSimulationSnapshot` (CarState/TireState fields **via the published boundary** — no direct mutable-state reads), `global_max_velocity` from Car Def, Settings (density, Motion Blur, Reduced Motion), `PerformanceReduced` | URP post-processing, `ParticleSystem`. HIGH RISK (RenderGraph) |
 | **UI Menu** | Screen flow (Title→Track→Car→Qualifying→Grid→Race→Results), linear stack navigation, 3 input coexistence, 3D car turntable (15 RPM), pause menu, Settings preview, results/forfeit display | Navigation state, screen transitions | `PublishedSimulationSnapshot`, Content Pipeline signals, `OverdriveUI` action map, Car Def stats, Track data | uGUI, `InputSystemUIInputModule`, `EventSystem` |
 
 ## Data Flow
@@ -228,19 +242,20 @@
 
 ```
 Simulation Update() — per render frame:
+  0. InputSystem.CaptureLatestRawSample() — exactly once, before accumulator
   1. Consume focus-loss/focus-return
   2. Accumulate Time.unscaledDeltaTime (clamp to 2×FIXED_DT)
   3. While accumulator ≥ FIXED_DT:
      → EXECUTE ONE TICK (Steps 1-14 below)
      → accumulator -= FIXED_DT
   4. Compute interpolation factor α = accumulator / FIXED_DT
-  5. Camera + Audio + VFX + HUD render from interpolated state
+     (VisualTransform interpolation and all presentation consumers run in LateUpdate via PresentationDriver — ADR-0001 Interpolation Phases; they never run in the Simulation Update path)
 
-Per tick (60 Hz fixed):
+Per tick (60 Hz fixed; multiple ticks per frame reuse the same raw sample):
 
-STEP  1:  Build TickStartSnapshot (includes PitServiceCommand from previous Step 9b)
-STEP  2:  InputSystem.CaptureLatestRawSample() → enqueue InputEventQueue
-STEP  3:  Consume Pause (from InputEventQueue) + pendingPerformancePause
+STEP  1:  Build TickStartSnapshot (from the prior PublishedSimulationSnapshot + cached AIInput; includes PitServiceCommand from previous Step 9b)
+STEP  2:  Invoke Input tick processor with the latest captured RawInputSample → ResolvedCarInput[16]
+STEP  3:  Consume Pause edge + pendingPerformancePause
 STEP  4:  Decrement countdown (if Countdown state)
 STEP  5a: FuelSystem.Tick → FuelState[16] (consumes PitServiceCommand for refuel)
 STEP  5b: TireSystem.Tick → TireState[16] (consumes PitServiceCommand for swap)
@@ -254,13 +269,14 @@ STEP 11:  Increment counters (simulationStepCount, activeRaceStepCount)
 STEP 12:  Publish PublishedSimulationSnapshot
           → Ghost Recording captures continuous SimulationInput (if Racing state)
 STEP 13:  AI reads snapshot → produces AIInput[16]
-STEP 14:  Resolve ResolvedCarInput[16] (player SimulationInput + cached AIInput)
+STEP 14:  Resolve next-tick ResolvedCarInput[16] (cached AIInput from Step 13; player input is processed at Step 2 of the current tick per ADR-0005)
           → feeds into next tick's TickStartSnapshot
 ```
 
 **Cross-step data:**
+- Step 0 (frame) → Step 2: captured RawInputSample (once per render frame, pre-accumulator; reused by multiple ticks in the same frame)
 - Step 1 → Steps 5a/5b: TickStartSnapshot (surface, speed, slideState, PitServiceCommand, surfaceWearMultiplier)
-- Step 2 → Steps 5a/5b/6: RawInputSample → processed into SimulationInput
+- Step 2 → Steps 5a/5b/6: ResolvedCarInput (player SimulationInput + cached AIInput)
 - Step 5a → Step 6: FuelState (topSpeedModifier)
 - Step 5b → Step 6: TireState (runtimeGripMultiplier)
 - Step 7 → Step 9: PhysX mutable state → CarState (read-only)
@@ -280,7 +296,7 @@ BOOT:
   Content Pipeline initializes Addressables catalog
 
 PRE-RACE:
-  Content Pipeline: LoadShared() → LoadTrack(id) → LoadCars(16 ids)
+  Content Pipeline: LoadShared() → parallel LoadTrack(id) + LoadCars(16 ids) (parallel race bundle, ADR-0003)
   Car Definition Data: deserialize 16 CarDefinition assets
   Track System: load + validate track JSON → build spline geometry
   RSM: receives GridAssignment → publishes to Grid & Start
@@ -288,11 +304,11 @@ PRE-RACE:
 RACE START:
   Grid & Start: position 16 cars on grid
   Simulation: enter Countdown (300 ticks)
-  AI: seed PCG32 per car
+  AI: derive per-car draws from counter-based PCG32 (seed, carId, step, slot) — no mutable per-car stream (ADR-0009)
   Fuel/Tire: initialize to race start values
 
 RACING LOOP:
-  13-step tick pipeline at 60 Hz
+  14-step tick pipeline at 60 Hz
   All systems read from PublishedSimulationSnapshot
   Camera/HUD/Audio/VFX render from interpolated state
 
@@ -306,7 +322,7 @@ POST-RACE:
 
 | Event | Producer | Consumers | Type |
 |-------|----------|-----------|------|
-| `LapCompleted(carId, lap, time, pos)` | RSM | Fuel (snapshot), Tire (snapshot), AI, HUD | Sync, Step 10-11 |
+| `LapCompleted(carId, lapNumber, lapTime)` | RSM | Fuel (snapshot), Tire (snapshot), AI, HUD | Sync, Step 10-11 |
 | `PitEntry` / `PitExit` | RSM | Pit Stop, Camera, HUD, Audio | Sync |
 | `RaceFinished(carId, pos, time)` | RSM | UI Menu, Camera, Audio | Lifecycle |
 | `TransitionRequest(targetState, ...)` | RSM | Simulation Architecture | Sync |
@@ -318,7 +334,7 @@ POST-RACE:
 ### Save/Load Path
 
 - **Settings:** `PlayerPrefs` blob + backup. Migration v1→v3. Snapshot/preview model
-- **Ghost files (Alpha):** Binary file on disk (LZ4 compressed). CloudStorage (Coherence). Key: `("ghost", "trackId_playerId")`
+- **Ghost files (Alpha):** Binary file on disk (LZ4 compressed). A provider selected in Alpha supplies authenticated durable upload/download. Key format is selected with that provider contract.
 - **No other persistence in MVP** — race results are ephemeral, no career, no save game
 
 ## API Boundaries
@@ -333,7 +349,7 @@ public enum SimulationState : byte { Idle, Loading, Countdown, Racing, Finished,
 public enum RaceMode : byte { Race, Qualifying }
 public enum ResultKind : byte { Race, Qualifying }
 public enum SurfaceType : byte { Asphalt, Kerb, Gravel, Grass, Runoff, PitLane }
-public enum PitPhase : byte { None, PitTransit, InPitBox, Exiting }
+public enum PitPhase : byte { NotPitting, PitTransit, InPitBox, PitExiting }
 public enum SlipState : byte { Normal, Slipping, SpinOut }
 public enum InputAvailability : byte { Available, NoInputDevice }
 public enum ControlScheme : byte { KeyboardMouse, Gamepad }
@@ -346,13 +362,22 @@ public struct GridAssignment {
     public int playerSlot;
 }
 
-public struct FinishOrder {
-    public ushort[] positions;     // position 1-16 → carId
-    public ushort[] dnf;
+public enum FinishClassification : byte { Finished, DNF, Forfeit }
+
+public struct ResolvedFinishEntry {
+    public ushort carId;
+    public FinishClassification classification;
+    public ushort position;        // 0 when classification != Finished (no fabricated position)
+    public float time;             // final or pace-projected from one PostFinishSnapshot
+}
+
+public struct ResolvedFinishOrder {
+    public ResolvedFinishEntry[] entriesByPosition;  // finished entries 1-16, then DNF/Forfeit entries
 }
 
 public struct PlayerResult {
-    public ushort position;
+    public FinishClassification classification;   // Finished/DNF/Forfeit (ADR-0018)
+    public ushort position;                       // 0 when classification != Finished
     public float raceTime;
     public ushort completedLaps;
     public ResultKind resultKind;
@@ -363,7 +388,6 @@ public struct PlayerResult {
 
 ```csharp
 // Simulation → all downstream systems (read-only per tick)
-[NoGC, ValueType]
 public readonly struct PublishedSimulationSnapshot {
     public readonly SimulationState State;
     public readonly RaceMode RaceMode;
@@ -371,7 +395,7 @@ public readonly struct PublishedSimulationSnapshot {
     public readonly uint ActiveRaceStepCount;
     public readonly float SimTime;
     public readonly CarStateArray16 CarStates;
-    public readonly GameState State;
+    public readonly GameState RaceState;      // renamed — was `State`, collided with SimulationState State
     public readonly FuelStateArray16 FuelStates;
     public readonly TireStateArray16 TireStates;
     public readonly PitStateArray16 PitStates;
@@ -379,8 +403,34 @@ public readonly struct PublishedSimulationSnapshot {
     public readonly ResultKind ResultKind;
     public readonly PlayerResult PlayerResult;
 }
-// Note: fixed-size arrays (CarState[16], etc.) use custom value-type wrappers
-// (CarStateArray16 : IReadOnlyList<CarState>) to avoid heap allocation
+
+// RSM → all consumers (per tick via PublishedSimulationSnapshot)
+public readonly struct GameState {
+    public readonly ushort LapCount;               // player lap
+    public readonly ushort Position;               // live position ranking
+    public readonly float RaceTime;
+    public readonly float[] LapTimes;              // completed laps (allocated once at race init)
+    public readonly float TotalDistance;
+    public readonly bool IsFinished;
+    public readonly bool IsPitting;
+    public readonly RaceMode RaceMode;
+    public readonly ResultKind ResultKind;
+    public readonly FloatArray16 SplinePositions;  // per-car fractional spline progress (Track Map dots, ranking)
+}
+
+// Zero-allocation wrapper template (CarStateArray16, FuelStateArray16, TireStateArray16,
+// PitStateArray16, FloatArray16, Vector3Array16, QuaternionArray16) — hot path uses the
+// indexer; foreach allocates only via the explicit IEnumerator. No custom attributes
+// (the former [NoGC, ValueType] markers were documentation-only):
+public readonly struct CarStateArray16 : IReadOnlyList<CarState> {
+    private readonly CarState e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15;
+    public CarState this[int i] => i switch {
+        0 => e0, 1 => e1, 2 => e2, 3 => e3, 4 => e4, 5 => e5, 6 => e6, 7 => e7,
+        8 => e8, 9 => e9, 10 => e10, 11 => e11, 12 => e12, 13 => e13, 14 => e14, _ => e15 };
+    public int Count => 16;
+    public IEnumerator<CarState> GetEnumerator() { for (int i = 0; i < 16; i++) yield return this[i]; }
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
 
 // Input System → Simulation (called 1x/frame before accumulator)
 RawInputSample CaptureLatestRawSample();
@@ -392,6 +442,14 @@ struct RawInputSample {
     InputAvailability inputAvailability;
 }
 
+// Input System → Simulation (per tick) — the sole gameplay-input contract
+// (input-system.md; 12 bytes — the exact record Ghost stores per tick, ghost-recording.md:108)
+public struct SimulationInput {
+    public float accelerateOut;    // 0–1, post dead-zone + EMA
+    public float brakeOut;         // 0–1, post dead-zone + EMA
+    public float steerOut;         // -1–1, post dead-zone + EMA
+}
+
 // Settings → Simulation (snapshotted at race init)
 struct DifficultyProfile {
     float aiPrecision, aiErrorMultiplier, paceNoise;
@@ -400,7 +458,9 @@ struct DifficultyProfile {
 
 // Content Pipeline → Simulation (lifecycle signals)
 void RaceLoadReady(RaceMode mode, GridAssignment grid);
-void ContentLoadError(string reason);
+void ContentLoadError(string reason, ContentErrorType type);  // Car failure is never abortive (CarLoadDegraded)
+
+public enum ContentErrorType : byte { Track, Shared, Catalog }   // per ADR-0003
 void RaceReconfigureStart();
 void ContentUnloadComplete();
 ```
@@ -409,12 +469,12 @@ void ContentUnloadComplete();
 
 ```csharp
 // Vehicle Physics → all consumers (per tick)
-[NoGC, ValueType]
 public readonly struct CarState {
     public readonly float3 Position;              // Unity.Mathematics (not Vector3 — sim-path math)
     public readonly quaternion Rotation;          // quaternion, not Euler angles (no gimbal lock)
     public readonly float3 LinearVelocity;        // full velocity vector for AI racing-line logic
-    public readonly float SpeedKmh, Rpm, Gear;
+    public readonly float SpeedKmh, Rpm;
+    public readonly byte Gear;                    // 6-speed discrete gear (1-6, 0 = neutral)
     public readonly float Throttle, Brake, Steer;
     public readonly bool IsGridLocked;
     public readonly SurfaceType Surface;
@@ -438,7 +498,6 @@ struct FuelState {
 }
 
 // Tire System → Pit Stop, HUD, AI, VFX
-[NoGC, ValueType]
 public readonly struct TireState {
     public readonly float WearFraction;              // 0.0–1.0
     public readonly float RuntimeGripMultiplier;     // 0.20–1.0
@@ -446,31 +505,38 @@ public readonly struct TireState {
     public readonly float LastLapTireWear;
 }   // compound name is a data-driven lookup (read once at race init), not per-tick
 
+// Pit Stop → Fuel/Tire (via TickStartSnapshot, Step 9b → next tick Step 5)
+public struct PitServiceCommand {
+    public bool active;              // true when pit service should be applied
+    public float targetFuel;         // 8.0 L (full tank) when fueling
+    public bool tireSwapRequired;    // true when tire swap is needed this service
+    public bool requestExit;         // service complete/player exit — VP consumes to set PitPhase = PitExiting
+}   // ADR-0011:62-67
+
 // RSM → Simulation (state machine request — typed per transition)
-// Using a tagged union pattern to avoid overloaded structs
-[NoGC, ValueType]
+// Discriminated payload struct — only one field is valid per TargetState.
+// Not a true union: all fields are stored (~150 bytes/request), negligible at
+// <10 lifecycle events per race.
 public readonly struct TransitionRequest {
     public readonly SimulationState TargetState;
     public readonly TransitionPayload Payload;
 }
 
-[NoGC, ValueType]
 public readonly struct TransitionPayload {
     // Only one of these is valid per TargetState:
     public readonly GridAssignment GridAssignment;      // Idle → Loading (race start)
     public readonly RaceMode RaceMode;                  // Loading → Countdown/Qualifying
-    public readonly FinishResult FinishResult;           // Racing → Finished/Results
-    public readonly ForfeitParams ForfeitParams;         // Countdown/Racing → Forfeit
+    public readonly FinishResult FinishResult;           // Racing/Countdown/Paused → Finished/Results
 }
+// Forfeit is NOT a SimulationState — it is a FinishClassification (ADR-0018:82).
+// Return to Menu from Countdown/Racing/Paused produces TransitionRequest(Results)
+// with FinishResult carrying classification = Forfeit; Forfeit never invokes
+// FinishOrderResolver and has no final position.
 
 public readonly struct FinishResult {
     public readonly ResultKind Kind;
-    public readonly FinishOrder Order;
-}
-
-public readonly struct ForfeitParams {
-    public readonly ushort ForfeitLapCount;
-    public readonly float RaceTimeAtForfeit;
+    public readonly ResolvedFinishOrder Order;
+    public readonly PlayerResult Player;               // player entry incl. classification
 }
 ```
 
@@ -478,13 +544,13 @@ public readonly struct ForfeitParams {
 
 ```csharp
 // Simulation → Presentation systems (per LateUpdate, after interpolation)
-[NoGC, ValueType]
 public readonly struct InterpolatedCarState {
     public readonly float3 Position;                // Lerp(TickN, TickN+1, α)
     public readonly quaternion Rotation;            // Slerp(TickN, TickN+1, α)
     public readonly float SpeedKmh;                 // Lerp
     // Non-interpolated fields (snapped to latest simulation value):
-    public readonly float Rpm, Gear, Throttle, Brake, Steer;
+    public readonly float Rpm, Throttle, Brake, Steer;
+    public readonly byte Gear;                    // snapped (discrete)
     public readonly SurfaceType Surface;
     public readonly PitPhase PitPhase;
 }
@@ -496,14 +562,12 @@ public readonly struct InterpolatedCarState {
 
 ```csharp
 // AI Rival → Vehicle Physics (cached per tick)
-[NoGC, ValueType]
 public readonly struct AIInput {
     public readonly float AccelerateOut, BrakeOut, SteerOut;
     public readonly uint CarId;
 }
 
 // Simulation Step 2: ResolvedCarInput — the single contract for all downstream systems
-[NoGC, ValueType]
 public readonly struct ResolvedCarInput {
     public readonly float AccelerateOut;        // 0–1, post-dead-zone and EMA
     public readonly float BrakeOut;             // 0–1, post-dead-zone and EMA
@@ -530,6 +594,43 @@ struct ImpactShakeRequest {
 }
 ```
 
+### Networking Boundaries (ADR-0016/0017 — Accepted, Beta-scoped)
+
+MVP and Alpha do not link any real-time networking SDK. Alpha selects one online-services provider (identity, durable ghost storage, account/privacy, quota, retry, deletion/export). Beta separately selects the real-time racing SDK against the ADR-0017 driver interface, which operates as a **guest of the manual accumulator** — Simulation retains sole authority over focus-loss, performance gating, Pause consumption, countdown, and the 14-step pipeline.
+
+```csharp
+// ADR-0017 driver boundary (Beta) — project-owned, SDK-agnostic
+public delegate void RemoteInputsReceivedHandler(uint simulationFrame, ReadOnlySpan<NetworkInput> inputs);
+
+public interface INetworkSimulationDriver {
+    void SubmitInputs(ReadOnlySpan<SimulationInput> localInputs, uint simulationFrame);
+    int SerializeSnapshot(in PublishedSimulationSnapshot snapshot, Span<byte> destination);
+    void Rollback(uint toFrame, in SimulationRollbackState state);
+    NetworkInput GetPredictedInput(int carId, uint frame);
+    event RemoteInputsReceivedHandler RemoteInputsReceived;
+}
+// The 14-byte NetworkInput transport layout maps the consumed 12-byte
+// SimulationInput plus network metadata (ADR-0017:88-91); connection objects are
+// never input parameters — one connection multiplexes all player streams.
+// Metadata bit map (ADR-0017:90-91): bits 0-2 GDD packet table, bit 3 reserved,
+// bit 4 InputAvailability, bits 5-7 reserved until explicitly defined.
+
+// Per-car corrective kinematic state for all 16 cars (ADR-0017:117-121) —
+// captured before replay, restored before re-simulation. All arrays use the
+// zero-allocation wrapper template:
+public readonly struct SimulationRollbackState {
+    public readonly Vector3Array16 Positions;         // per-car world position
+    public readonly QuaternionArray16 Rotations;      // per-car rotation
+    public readonly Vector3Array16 LinearVelocities;  // per-car
+    public readonly Vector3Array16 AngularVelocities; // per-car
+}
+```
+
+- **Rollback scope:** whole-scene `Physics.Simulate(FIXED_DT)` per replay frame with all 16 cars restored (kinematics captured in `SimulationRollbackState`); Fuel, Tire, Pit Stop, RSM, countdown, counters, AI (PCG32), and Ghost Recording are **forward-only**, never re-run (ADR-0017 D4).
+- **Reliability:** `InputReliabilityPolicy` (clock alignment, input delay, jitter buffer, redundancy, `W_drop`, `W_rollback`, held-last) is measured at Beta — no fixed tick window (ADR-0017 D3).
+- **Disconnect lifecycle:** five reconnect attempts with exponential backoff, resync, then AI takeover via the cached-input path; the missing-input policy is never a disconnect timer (ADR-0017 D7).
+- **Alpha services** (identity, ghost storage) are provider-agnostic per ADR-0016; no provider import is allowed before the selection boundary is exercised.
+
 ## ADR Audit
 
 ### Audit Summary
@@ -551,6 +652,10 @@ struct ImpactShakeRequest {
 | 0013 | Qualifying Session Format | Accepted | PASS | Valid |
 | 0014 | HUD Data Contract & Layout | Accepted | PASS | Valid |
 | 0015 | Car Definition Data Validation | Accepted | PASS | Valid |
+| 0016 | Alpha Services / Beta Real-time Selection Boundary | Accepted | PASS | Valid |
+| 0017 | Network Simulation Driver Interface & Beta Canonical State Model | Accepted | PASS | Valid |
+| 0018 | RSM Authority (ranking, lap, finish resolution) | Accepted | PASS | Valid |
+| 0019 | UI Presentation (screen flow, navigation, turntable) | Accepted | PASS | Valid |
 
 ### ADR-0001 Detail (Root ADR — template for all)
 
@@ -559,7 +664,7 @@ struct ImpactShakeRequest {
 | Engine Compatibility section | Present (version 6000.3.19f1, HIGH risk flagged) |
 | Post-cutoff APIs flagged | Knowledge Risk: HIGH — verified against Unity 6000.3 runtime |
 | GDD Requirements Addressed | 6 GDDs (Simulation, Input, RSM, Grid and Start, AI, Ghost) |
-| Conflicts with Phase 1-4 decisions | None — all decisions reflected in ownership + data flow |
+| Conflicts with Phase 1-4 decisions | None — this regeneration (2026-08-06) aligned all 13 drift points found by the v6 review |
 | Still valid for pinned engine | Physics.Simulate and SimulationMode.Script verified |
 
 **Verdict:** Valid. No revision needed.
@@ -568,25 +673,26 @@ All ADRs follow the same structure (Engine Compatibility, Registry Check, Decisi
 
 ### Traceability Coverage
 
-| Layer | TRs Total | ADR Coverage | Gaps |
-|-------|-----------|-------------|------|
-| Foundation (6 GDDs) | 76 | 63 | 13 |
-| Core (10 GDDs) | 82 | 56 | 26 |
-| Presentation (5 GDDs) | 36 | 34 | 2 |
-| **Total** | **194** | **137 (70.6%)** | **57 (29.4%)** |
+| Metric | Value |
+|--------|-------|
+| Registry | 144 TRs, version 8 (all active) |
+| Covered | 144 (100%) |
+| Partial | 0 |
+| Gaps | 0 |
 
-Gaps are documented per TR in `docs/architecture/complete-traceability-matrix.md` (511 lines). Of the 57 gaps, 15 are presentation/UX detail resolvable during story creation; 1 is architectural (resultClassification — resolved in ADR-0001).
+Audit 2026-08-06 (v6 + create-architecture regeneration): 0 cross-ADR conflicts (C1 player-input timing, C2 presentation timing, C3 premature CloudStorage contract all resolved by amends); the regeneration aligned all 13 drift points and the TR-camera-004 partial (Chase look-ahead formula). See `docs/architecture/architecture-traceability.md` (144-row matrix) and `docs/architecture/complete-traceability-matrix.md` for the per-TR mapping. Registry: `docs/architecture/tr-registry.yaml`.
 
 ## Required ADRs (All Completed)
 
-All 15 ADRs (0001-0015) are created and Accepted. See `docs/architecture/` for each ADR's full text and `docs/architecture/control-manifest.md` for the consolidated rules sheet. The table below links each layer to its governing ADRs.
+All 19 ADRs (0001-0019) are created and Accepted. See `docs/architecture/` for each ADR's full text and `docs/architecture/control-manifest.md` for the consolidated rules sheet. The table below links each layer to its governing ADRs.
 
 | Layer | ADRs | Key Decisions |
 |-------|------|---------------|
 | Foundation | 0001, 0003, 0004, 0005, 0008 | Manual simulation, Addressables groups, PlayerPrefs blob, InputContextController, Ghost binary format |
-| Core | 0002, 0006, 0007, 0011 | Rigidbody + custom grip, Fuel/Tire Step 5a/5b, JSON spline format, PitStopSystem |
-| Feature | 0009 | AI deterministic per-car PCG32, AIInput from PublishedSimulationSnapshot |
-| Presentation | 0010, 0012 | Custom camera (no Cinemachine), ParticleSystem (no VFX Graph), RenderGraph, budget 2.1ms, Unity Audio Mixer + procedural engine |
+| Core | 0002, 0006, 0007, 0011, 0015, 0018 | Rigidbody + custom grip, Fuel/Tire Step 5a/5b, JSON spline format, PitStopSystem, CarDefinition validation, RSM authority |
+| Feature | 0009, 0013 | AI deterministic counter-based PCG32, AIInput from PublishedSimulationSnapshot, qualifying session format |
+| Presentation | 0010, 0012, 0014, 0019 | Custom camera (no Cinemachine), ParticleSystem (no VFX Graph), RenderGraph, budget 2.4ms ceiling, Unity Audio Mixer + procedural engine, HUD snapshot contract, UI screen flow |
+| Networking (Beta) | 0016, 0017 | Alpha services / Beta real-time selection boundary, driver interface + rollback boundary |
 
 ## Architecture Principles
 
@@ -602,7 +708,6 @@ All 15 ADRs (0001-0015) are created and Accepted. See `docs/architecture/` for e
 
 ## Open Questions
 
-- **Audio architecture** — Audio GDD exists but no ADR covers the system boundary, profile schema, or performance budget. ADR needed before audio implementation (Pre-Production Sprint 1).
-- **Multiplayer network seam** — MVP is offline-only. Simulation/render separation is designed for future Coherence integration, but exact state boundary needs Beta-phase ADR (deferred by design).
+- **Multiplayer network seam** — MVP is offline-only. Simulation/render separation is provider-agnostic. Alpha selects online services; Beta separately selects the real-time SDK under ADR-0017's driver and reconciliation contract.
 - **UI Toolkit vs uGUI for menus** — HUD uses uGUI (proven, performant). Menu screens could use UI Toolkit (UXML/USS workflow). Decision deferred to UX spec phase.
 - **Tire-wear multi-sensory feedback** — How Camera, Audio, and VFX receive tire degradation signals for non-HUD feedback (steering lightness, squeal intensity, smoke density). Cross-system contract needed before prototype. See ADR-0006 (TireSystem) and ADR-0010 (Camera shake chain).
