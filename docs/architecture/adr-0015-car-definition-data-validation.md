@@ -62,31 +62,75 @@ Car Definition Data uses **ScriptableObjects** with **load-time validation** and
 ### ScriptableObject Schema
 
 ```csharp
-[Serializable]
-public class CarDefinition : ScriptableObject {
-    public string teamId;                    // "team_tier1_a" through "team_tier4_d"
-    public CarStats stats;                   // 6 stats, validated at load
-    public float weightKg;                   // constant, not differentiating
-    public CarAudioProfile audioProfile;     // engine profile (per ADR-0012)
+[CreateAssetMenu(fileName = "team_XXX.asset", menuName = "Overdrive/Car Definition")]
+public sealed class CarDefinition : ScriptableObject {
+    [SerializeField] private string _teamId;                 // "team_tier1_a" through "team_tier4_d"
+    [SerializeField] private CarStats _stats;                // 6 stats, validated at load
+    [SerializeField] private CarAudioProfile _audioProfile;  // engine profile (per ADR-0012)
+    [SerializeField] private Color _teamColor;               // opaque team identity; HUD applies contrast fallback
+    [SerializeField] private Vector3 _cockpitOffset;         // meters relative to the car visual root
+
+    /// <summary>Returns the stable identifier used to derive the team tier.</summary>
+    public string TeamId => _teamId;
+    /// <summary>Returns the validated tier encoded by TeamId.</summary>
+    public int Tier => ParseTier(_teamId);
+    /// <summary>Returns immutable performance stats for this car definition.</summary>
+    public CarStats Stats => _stats;
+    /// <summary>Returns the immutable audio profile for this car definition.</summary>
+    public CarAudioProfile AudioProfile => _audioProfile;
+    /// <summary>Returns the opaque team identity color for HUD and livery consumers.</summary>
+    public Color TeamColor => _teamColor;
+    /// <summary>Returns the cockpit camera offset relative to the car visual root.</summary>
+    public Vector3 CockpitOffset => _cockpitOffset;
+
+    static int ParseTier(string teamId) {
+        if (teamId is not { Length: 12 } || !teamId.StartsWith("team_tier")
+            || teamId[9] is < '1' or > '4' || teamId[10] != '_'
+            || teamId[11] is < 'a' or > 'd') {
+            throw new InvalidOperationException(
+                $"TeamId '{teamId}' must match team_tier{{1-4}}_{{a-d}}.");
+        }
+
+        return teamId[9] - '0';
+    }
 }
 
 [Serializable]
 public struct CarStats {
-    public int topSpeed;                     // validated at load
-    public int acceleration;                 // validated at load
-    public int brakePower;                   // validated at load
-    public int gripLevel;                    // validated at load
-    public int stability;                    // validated at load
-    public int efficiency;                   // validated at load
+    [SerializeField] private int _topSpeed;
+    [SerializeField] private int _acceleration;
+    [SerializeField] private int _brakePower;
+    [SerializeField] private int _gripLevel;
+    [SerializeField] private int _stability;
+    [SerializeField] private int _efficiency;
+
+    /// <summary>Returns the top-speed stat.</summary>
+    public int TopSpeed => _topSpeed;
+    /// <summary>Returns the acceleration stat.</summary>
+    public int Acceleration => _acceleration;
+    /// <summary>Returns the braking-power stat.</summary>
+    public int BrakePower => _brakePower;
+    /// <summary>Returns the grip stat.</summary>
+    public int GripLevel => _gripLevel;
+    /// <summary>Returns the stability stat.</summary>
+    public int Stability => _stability;
+    /// <summary>Returns the fuel-efficiency stat.</summary>
+    public int Efficiency => _efficiency;
 }
 
-// CarAudioProfile mirrors ADR-0012 (engineType string was removed 2026-07-28):
-// engineCylinders (8, 10, or 12), engineBasePitch (0.8–1.2), exhaustNote enum {Standard, Deep, Sharp}
+// CarAudioProfile is defined in ADR-0012. engineType string was removed 2026-07-28.
 [Serializable]
 public struct CarAudioProfile {
-    public int engineCylinders;              // 8, 10, or 12 (ADR-0012)
-    public float engineBasePitch;            // 0.8–1.2 (ADR-0012)
-    public ExhaustNote exhaustNote;          // Standard, Deep, Sharp (ADR-0012)
+    [SerializeField] private int _engineCylinders;
+    [SerializeField] private float _engineBasePitch;
+    [SerializeField] private ExhaustNote _exhaustNote;
+
+    /// <summary>Returns the engine cylinder count.</summary>
+    public int EngineCylinders => _engineCylinders;   // 8, 10, or 12
+    /// <summary>Returns the engine pitch multiplier.</summary>
+    public float EngineBasePitch => _engineBasePitch; // 0.8–1.2
+    /// <summary>Returns the procedural exhaust timbre.</summary>
+    public ExhaustNote ExhaustNote => _exhaustNote;   // Standard, Deep, Sharp
 }
 ```
 
@@ -95,30 +139,18 @@ public struct CarAudioProfile {
 Stats are validated when the ScriptableObject is loaded at race init:
 
 ```csharp
-// Validation is data-driven — valid values and default are configurable
-public struct StatValidationConfig {
-    public int[] validValues;    // e.g., {4, 8, 12, 16, 20} — configurable
-    public int defaultValue;     // e.g., 12 — configurable
-}
-
-public static int ClampStat(int value, StatValidationConfig config) {
-    int closest = config.defaultValue;
-    int minDistance = int.MaxValue;
-    foreach (int valid in config.validValues) {
-        int distance = Mathf.Abs(value - valid);
-        if (distance < minDistance) {
-            minDistance = distance;
-            closest = valid;
-        }
+// Stats are integer in [0,20] per entities.yaml (2026-08-04 stat correction);
+// any out-of-range value clamps to the nearest integer in [0,20] with a warning
+public static int ClampStat(int value) {
+    int clamped = Mathf.Clamp(value, 0, 20);
+    if (clamped != value) {
+        Debug.LogWarning($"CarDefinition: stat {value} clamped to {clamped} (valid range: 0–20)");
     }
-    if (closest != value) {
-        Debug.LogWarning($"CarDefinitionData: stat {value} clamped to {closest} (valid: {string.Join(", ", config.validValues)})");
-    }
-    return closest;
+    return clamped;
 }
 ```
 
-- Valid values are configurable (not hardcoded in ADR)
+- Valid range is integer `[0,20]` — no sparse valid-value set (prior "increments of 4" model retired 2026-08-05)
 - Default value for missing fields is configurable
 - Validation runs once at race init, not per tick
 - Cost: negligible (N comparisons per car × 16 cars)
@@ -130,14 +162,14 @@ Differentiation is checked in Unity Editor when car assets are edited:
 ```csharp
 // Differentiation is data-driven — threshold and scope are configurable
 public struct DifferentiationConfig {
-    public float maxSpreadPercentage;  // e.g., 5.0 — configurable
-    public bool withinTierOnly;        // e.g., true — configurable
+    public float minimumRequiredDifference;  // e.g., 1.0 stat point — configurable
+    public bool withinTierOnly;              // e.g., true — configurable
 }
 
 public static bool ValidateDifferentiation(CarDefinition[] allCars, DifferentiationConfig config) {
     // Group by tier if withinTierOnly
-    // Check spread between all pairs in scope
-    // Warn when spread > threshold (non-blocking)
+    // Check distance between all pairs in scope (e.g., Euclidean over 6 stats)
+    // Warn when distance < minimumRequiredDifference (insufficient differentiation)
     // Returns true (warning, not error)
 }
 ```
@@ -146,6 +178,7 @@ public static bool ValidateDifferentiation(CarDefinition[] allCars, Differentiat
 - Scope is configurable (within-tier or cross-tier)
 - Runs in Editor, not runtime
 - Warns but does not block — designer decides
+- Warning condition is **insufficient** spread (`distance < minimumRequiredDifference`), not excess spread — duplicate or near-duplicate profiles are the defect (2026-08-05 correction)
 
 ### Stat Ownership
 
@@ -191,7 +224,7 @@ Assets/Data/Shared/CarValidationConfig.asset
 ### Efficiency Modifier Flow
 
 ```
-CarDefinition.stats.efficiency (int 0–20)
+CarDefinition.Stats.Efficiency (int 0–20)
     ↓ (race init: int → float conversion)
 efficiency_modifier (float, configurable formula)
     ↓ (per tick: consumed by)
@@ -212,12 +245,12 @@ public struct CarStatsAccessor {
     private readonly CarStats _stats;
     
     // Int-to-float conversions (tuning knobs)
-    public float TopSpeedKph => _stats.topSpeed; // formula applied by Vehicle Physics
-    public float AccelerationSecs => _stats.acceleration; // formula applied by Vehicle Physics
-    public float BrakePowerSecs => _stats.brakePower; // formula applied by Vehicle Physics
-    public float GripMultiplier => _stats.gripLevel; // formula applied by Vehicle Physics
-    public float StabilityMultiplier => _stats.stability; // formula applied by Vehicle Physics
-    public float EfficiencyModifier => _stats.efficiency; // formula applied here (race init)
+    public float TopSpeedKph => _stats.TopSpeed; // formula applied by Vehicle Physics
+    public float AccelerationSecs => _stats.Acceleration; // formula applied by Vehicle Physics
+    public float BrakePowerSecs => _stats.BrakePower; // formula applied by Vehicle Physics
+    public float GripMultiplier => _stats.GripLevel; // formula applied by Vehicle Physics
+    public float StabilityMultiplier => _stats.Stability; // formula applied by Vehicle Physics
+    public float EfficiencyModifier => _stats.Efficiency; // formula applied here (race init)
 }
 ```
 

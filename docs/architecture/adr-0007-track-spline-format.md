@@ -26,7 +26,7 @@ Accepted
 | **Depends On** | ADR-0003 (`Tracks/{trackId}` Addressable group). ADR-0006 (surface modifiers consumed by TireSystem at Step 5b) |
 | **Enables** | AI Rival (racing line), RSM (pit→racing mapping, lap validation), HUD (track map), Pit Stop (16 boxes) |
 | **Blocks** | Track content authoring until JSON schema is finalized |
-| **Ordering Note** | Schema version 1 must be frozen before first track is authored. JSON file naming convention: `snake_case` |
+| **Ordering Note** | Schema version 1 must be frozen before first track is authored. JSON field names must EXACTLY match the C# schema field names (camelCase: `segmentLengths`, `curvatureRad`, `startPointIndex`...) — JsonUtility is case-sensitive, matches field names exactly, and has no renaming attribute; a snake_case-emitting pipeline silently deserializes to defaults (engine consultation 2026-08-05; former snake_case contract rejected) |
 
 ## Context
 
@@ -47,7 +47,7 @@ Track data is stored as **JSON files** loaded via Addressables (`Tracks/{trackId
 ### Key Interfaces
 
 ```csharp
-// JSON schema — snake_case field naming, schemaVersion=1
+// JSON schema — field names EXACTLY match the C# fields below (camelCase), schemaVersion=1
 [Serializable]
 public sealed class TrackDataContainer {
     public TrackData data;
@@ -138,7 +138,7 @@ public struct SplineMetadata {
 
 ### Addressables Loading
 
-TrackData is loaded via `Addressables.LoadAssetAsync<TextAsset>($"Tracks/{trackId}")` then deserialized via `JsonUtility.FromJson<TrackDataContainer>(textAsset.text).data`. The `TrackDataContainer` wrapper is required because `JsonUtility.FromJson<T>` uses `UnityEngine.JSONNode` internally and can't deserialize generic `float3[]` at the top level of a non-`[Serializable]` class. After deserialization, `Addressables.Release(handle)` frees the TextAsset memory. Schema version mismatch or corrupt JSON produces `ContentLoadError(ContentErrorType.Track)`.
+TrackData is loaded via `Addressables.LoadAssetAsync<TextAsset>($"Tracks/{trackId}")` then deserialized via `JsonUtility.FromJson<TrackDataContainer>(textAsset.text).data`. The `TrackDataContainer` wrapper is required because `JsonUtility` (Unity 6.3) can only deserialize into a `[Serializable]` class root — it cannot bind a bare top-level array or a generic container; `float3[]` fields must live inside a `[Serializable]` wrapper class (all schema classes below are `[Serializable]`). After deserialization, `Addressables.Release(handle)` frees the TextAsset memory. Schema version mismatch or corrupt JSON produces `ContentLoadError(ContentErrorType.Track)`.
 
 ### Runtime API
 

@@ -48,7 +48,8 @@ Overdrive has 16 unique cars (each with prefab, materials, textures, engine audi
 - Must load exactly one track, one player car, and 15 AI cars per race
 - Must support parallel loading of all 17 bundles
 - Must produce `RaceLoadReady(RaceMode, GridAssignment)` when loading is complete
-- Must produce `ContentLoadError(reason)` on failure
+- Must produce `ContentLoadError(reason)` on abortive failure (track, shared, catalog, memory)
+- Must produce `CarLoadDegraded(reason, teamId)` on non-fatal per-car failure (skip, placeholder, continue with 15)
 - Must support `RaceReconfigureStart` for lightweight race restart (no asset unload/reload)
 - Must unload all race-specific assets on race end
 - Must handle per-car load failure gracefully (skip car, placeholder, continue with 15)
@@ -98,11 +99,12 @@ CP_ state ↔ SimulationState mapping:
 // Content Pipeline → Simulation → UI Menu
 public delegate void RaceLoadReady(RaceMode mode, GridAssignment grid);
 public delegate void ContentLoadError(string reason, ContentErrorType type);
+public delegate void CarLoadDegraded(string reason, string teamId);  // non-fatal: skip car, placeholder, continue with 15
 public delegate void RaceReconfigureStart();
 public delegate void ContentUnloadComplete();
 public delegate void LoadingProgress(float progress);  // 0.0–1.0
 
-public enum ContentErrorType : byte { Track, Car, Shared, Catalog }
+public enum ContentErrorType : byte { Track, Shared, Catalog }  // Car is never abortive; car failure emits CarLoadDegraded
 
 // Public API
 public class ContentPipelineSystem {
@@ -117,21 +119,32 @@ public class ContentPipelineSystem {
     
     // Events
     public event RaceLoadReady OnRaceLoadReady;
-    public event ContentLoadError OnContentLoadError;
+    public event ContentLoadError OnContentLoadError;      // abortive only (track, shared, catalog, memory)
+    public event CarLoadDegraded OnCarLoadDegraded;        // non-fatal degradation
     public event RaceReconfigureStart OnRaceReconfigureStart;
     public event ContentUnloadComplete OnContentUnloadComplete;
     public event LoadingProgress OnLoadingProgress;
 }
 
 // Addressable key constants (used by editor tooling to assign groups)
+// NOTE (2026-08-05, unity-specialist): Addressable GROUP NAMES are never
+// runtime load keys. The load key is the asset's ADDRESS. Group names
+// (`Cars/{teamId}`, `Tracks/{trackId}`, `Shared`) must be mirrored by explicit
+// address assignment in editor tooling — each car bundle's root asset is
+// addressed `Cars/{teamId}` and each track's root asset `Tracks/{trackId}`.
+// Without this mirror the load calls below fail at runtime. Validation
+// criterion: editor import script asserts every group's assets carry the
+// matching address.
 public static class AddressableKeys {
     public const string SharedGroup = "Shared";
     public static string CarGroup(string teamId) => $"Cars/{teamId}";
     public static string TrackGroup(string trackId) => $"Tracks/{trackId}";
     
     public const string CarPrefab = "CarPrefab";
-    public const string CarDefinition = "CarDefinition";
-    public const string TrackData = "TrackData";
+    // Per-car address — never a shared constant. "CarDefinition" alone would
+    // resolve ambiguously across 16 cars (same key, 16 assets).
+    public static string CarDefinition(string teamId) => $"Cars/{teamId}/CarDefinition";
+    public static string TrackData(string trackId) => $"Tracks/{trackId}/TrackData";
     public const string TrackEnvironment = "TrackEnvironment";
 }
 
@@ -196,7 +209,7 @@ Qualifying → Results → GridDisplay → StartRaceRequested
 
 ### Risks
 
-- **WebGL OOM on first load:** If catalog initialization + parallel 17 bundles exceeds 4 GB heap. Mitigation: Catalog is ~50 KB; shared group loads at startup (not during race). 17 bundles at once is ~500 MB spread across ~8–25 seconds on WebGL (IndexedDB throughput bound, not CPU). Well within 4 GB heap. Profiling checkbox: verify WebGL bundle-load throughput on first load vs subsequent loads — known Addressables 2.x/3.x WebGL performance regression reported (2025).
+- **WebGL OOM on first load:** If catalog initialization + parallel 17 bundles exceeds 4 GB heap. Mitigation: Catalog is ~50 KB; shared group loads at startup (not during race). 17 bundles at once is ~500 MB; WebGL throughput must keep the first load within the 10s ceiling (TR-content-007 — IndexedDB throughput bound, not CPU; validate first-load throughput in profiling). Well within 4 GB heap. Profiling checkbox: verify WebGL bundle-load throughput on first load vs subsequent loads — known Addressables 2.x/3.x WebGL performance regression reported (2025).
 - **Car load failure during next race:** If a car Addressable that loaded successfully in one race fails to load in a subsequent race (e.g., cache corruption or catalog change), the placeholder path handles it identically to first-time failure. No mid-race failure path exists — handles are valid for their loaded lifetime.
 - **Memory pressure during load:** If `ContentPipelineSystem` detects memory usage > 95% threshold during loading, it must abort the current load, release partial handles, and emit `ContentLoadError("Memory pressure", ContentErrorType.Track)`. Alpha remote scenario needs offline catalog fallback.
 
@@ -208,9 +221,9 @@ Qualifying → Results → GridDisplay → StartRaceRequested
 | content-pipeline.md | Parallel loading of track + 16 car bundles | LoadRace() initiates 17 async handles in parallel, tracks completion collectively |
 | content-pipeline.md | CP_ state machine (7 states) | CP_Idle/CP_LoadingTrack/CP_LoadingCars/CP_Ready/CP_Racing/CP_Unloading/CP_Error defined |
 | content-pipeline.md | Memory budgets per platform (PC 730-1320 MB, WebGL 415-670 MB) | ADR-0003 confirms the budgets from GDD and delegates profiling to Week 1 prototype |
-| content-pipeline.md | Error handling (car skip, track abort, shared fatal) | CarLoadResult enum, ContentErrorType enum, event-driven error propagation |
+| content-pipeline.md | Error handling (car skip via CarLoadDegraded, track abort via ContentLoadError, shared fatal) | CarLoadResult enum, ContentErrorType enum, event-driven error propagation |
 | content-pipeline.md | Race Reconfigure (no asset unload/reload) | RaceReconfigure() flow defined with cache-hit semantics |
-| content-pipeline.md | Loading progress from byte counts | OnLoadingProgress events derived from AsyncOperationHandle.PercentComplete |
+| content-pipeline.md | Loading progress from byte counts | OnLoadingProgress events derived from AsyncOperationHandle.GetDownloadStatus() (byte-weighted: DownloadedBytes / TotalBytes per the GDD contract) |
 | content-pipeline.md | CP_ prefix naming convention | ADR-0003 uses CP_ prefix for all Content Pipeline states |
 | simulation-architecture.md | Loading state blocks Cancel/Back, emits RaceLoadReady only on success | ContentLoadError event provides the failure path; Simulation transitions to Idle on error |
 | simulation-architecture.md | Race Reconfigure cross-system event | RaceReconfigureStart event for Fuel, Tire, AI, RSM reset |
@@ -224,7 +237,7 @@ Qualifying → Results → GridDisplay → StartRaceRequested
 |--------|----------------|-------|
 | **CPU** | ~1–10 ms during loading (burst), 0 ms during racing | Loading is async and does not block the tick pipeline |
 | **Memory** | PC: 730-1320 MB, WebGL: 415-670 MB per race | Verified per GDD budgets. Shared group adds ~40-60 MB at startup |
-| **Load Time** | ~3–10s on PC SSD, ~5–15s on WebGL (first load) | Subsequent races faster due to OS cache and Addressable bundle cache |
+| **Load Time** | **Ceiling (ratified 2026-08-05): ≤5s on PC SSD, ≤10s on WebGL (first load)** | GDD contract (content-pipeline.md TR-content-007). Subsequent races faster due to OS cache and Addressable bundle cache. Load time is a race-load acceptance criterion, not a prediction; ~3–10s/5–15s earlier figures were estimates and are superseded |
 | **Network** | None (MVP) | Local content only |
 
 ## Migration Plan
@@ -239,12 +252,12 @@ N/A — this is a greenfield MVP. No existing content to migrate. Addressable gr
 
 ## Validation Criteria
 
-- [ ] All 16 car bundles load in parallel within 15s on WebGL target
+- [ ] All 16 car bundles + track load in parallel within **5s on PC SSD and 10s on WebGL** (first load, acceptance criterion TR-content-007)
 - [ ] All 4 track bundles load individually within 10s
 - [ ] Shared group loads at startup within 2s
 - [ ] Loading progress reports 0.0–1.0 derived from total bytes
 - [ ] RaceLoadReady fires only when ALL 17 bundles (track + 16 cars) are loaded
-- [ ] Car bundle failure: log warning, emit ContentLoadError(ErrorType.Car), race continues with 15 cars + placeholder (Unity primitive, not Addressable asset)
+- [ ] Car bundle failure: log warning, emit CarLoadDegraded(teamId), race continues with 15 cars + placeholder (Unity primitive, not Addressable asset); no ContentLoadError
 - [ ] Track bundle failure: emit ContentLoadError(ErrorType.Track), return to Idle, no crash
 - [ ] Shared group failure at startup: app closes (fatal)
 - [ ] Catalog init failure: retry once. If retry fails, app closes.

@@ -24,7 +24,7 @@ Accepted
 | Field | Value |
 |-------|-------|
 | **Depends On** | ADR-0001 (for SimulationInput contract, tick pipeline, ReplayInitialState). ADR-0002 (for VehicleSimState schema) |
-| **Enables** | Alpha ghost persistence, replay, CloudStorage sharing |
+| **Enables** | Alpha ghost persistence, replay, cloud storage sharing |
 | **Blocks** | None (MVP buffer is always discarded) |
 | **Ordering Note** | Binary format must be finalized before Alpha ghost serialization begins |
 
@@ -50,7 +50,7 @@ Ghost Recording captures player input per completed Racing tick for future perso
 - Must capture Pause edge events as separate stream (standalone lifecycle boundary)
 - Must cap at 22,500 ticks — never discard oldest ticks or create replay without ReplayInitialState
 - Must compute CRC32 per block (256 ticks) for integrity validation
-- Must support LZ4 compression (optional, flagged in header)
+- Must support LZ4 compression (optional, flagged in header). Dependency note (2026-08-05, unity-specialist): Unity's core API does not ship a managed LZ4 codec — the implementation must add an explicit LZ4 dependency (e.g. Unity.Collections `LZ4Codec`, available via the Unity.Collections package, or a third-party MIT codec). The header flag keeps the format codec-agnostic; the codec choice is an implementation decision made at build time, not a format change. Unity engine types are still avoided on the format path — LZ4 operates on raw byte blocks.
 - Must not depend on Unity engine types (pure C# binary)
 
 ## Decision
@@ -80,7 +80,7 @@ Ghost Recording uses a **80-byte binary header** with **continuous input stream*
 │  │ lap_stream_bytes            │ uint32 (4 B)         │ │
 │  │ correction_stream_bytes     │ uint32 (4 B)         │ │
 │  │ header_crc32                │ uint32 (4 B)         │ │
-│  │ reserved (zeroed)           │ byte[6]   (6 B)      │ │
+│  │ reserved (zeroed)           │ byte[14]  (14 B)     │ │
 │  └─────────────────────────────────────────────────────┘ │
 │                           Total = 80 bytes               │
 │                                                            │
@@ -124,7 +124,7 @@ public class GhostBuffer {
     public void RecordEdgeEvent(uint tickIndex, EdgeEventFlags flags);
     public GhostBufferStats GetStats();
     public void Discard();                                   // always called in MVP
-    public bool IsSerializable { get; }                      // false if capped at 22500
+    public bool IsSerializable { get; }                      // false only on attempted overflow beyond 22,500
 }
 
 [Flags]
@@ -187,14 +187,14 @@ Idle (from Results) → GhostBuffer.Discard()
 
 ### Alpha Persistence Gate
 
-> **Note:** The cloud persistence architecture (service selection, auth, quota management, versioning) is not defined in any current ADR. ADR-0008 defines the binary format and the persistence trigger (PB → serialize → upload), but the service-layer infrastructure belongs in a future ADR (Alpha phase). ADR-0003 (Content Pipeline) is the likely home for cloud storage contracts.
+> **Note:** The cloud persistence architecture (service selection, auth, quota management, versioning) is selected at the Alpha decision point per ADR-0016. ADR-0008 defines only the binary format and the persistence trigger (PB → serialize → upload); the generic `ghostStorage` interface is implemented by the Alpha-selected provider — no provider API is named in this ADR.
 
 ```
 Results → IsPersonalBest?
   ├── YES AND isSerializable:
   │     Serialize(GhostBuffer, ReplayInitialState)
   │     → Validate CRC32 → Write to local ghost cache (max 5)
-  │     → CloudStorage.UploadAsync (key: "ghost_trackId_playerId")
+  │     → ghostStorage.UploadAsync(key = "ghost_{trackId}_{playerId}")  // storage interface selected at the Alpha decision point (ADR-0016); no provider API is named here
   │     → On failure: retry queue (3 attempts, 1s→2s→4s)
   └── NO: Discard()
 ```
@@ -243,7 +243,7 @@ Results → IsPersonalBest?
 |------------|-------------|--------------------------|
 | ghost-recording.md | Continuous 12 bytes/tick (3 × float32) | GhostBuffer.RecordTick(SimulationInput) |
 | ghost-recording.md | Edge events (Pause) as separate stream | GhostBuffer.RecordEdgeEvent(tick_index, flags) |
-| ghost-recording.md | 22,500 tick cap | GhostBuffer(maxTicks: 22500), IsSerializable = false if capped |
+| ghost-recording.md | 22,500 tick cap | GhostBuffer(maxTicks: 22500); IsSerializable = false only on attempted overflow beyond 22,500 (a full valid race at exactly 22,500 remains serializable) |
 | ghost-recording.md | 80-byte header with magic 0x47485354 | GhostHeader struct with all defined fields |
 | ghost-recording.md | LZ4 compression (optional) | Flags bitfield in header; compression available in Alpha |
 | ghost-recording.md | CRC32 per 256-tick block | Computed per block and at stream end |
@@ -258,7 +258,7 @@ Results → IsPersonalBest?
 - [ ] CRC32 computed per 256-tick block — any single byte change invalidates exactly one block
 - [ ] Buffer discarded on Results — verified via memory profiler (no leak)
 - [ ] Buffer discarded on Forfeit — same verification
-- [ ] `IsSerializable == false` when tick count reaches 22,500
+- [ ] `IsSerializable == false` only when RecordTick is called beyond 22,500 (attempted overflow); a race at exactly 22,500 ticks remains serializable
 - [ ] Header magic + version validated on deserialize (Alpha forward compatibility)
 - [ ] Ghost visualization: LOD0 car at opacity 0.4, URP Unlit shader, no collision, no engine audio (Alpha)
 

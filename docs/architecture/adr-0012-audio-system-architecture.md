@@ -32,22 +32,22 @@ Accepted
 
 ### Problem Statement
 
-Overdrive's audio GDD (210 lines) defines 5 mixer layers, a procedural engine formula (2-oscillator), tire squeal with wear scaling, 8 SFX categories, music stings, and a 9-state audio machine. But no architectural decision exists on: which audio engine to use (Unity Audio Mixer vs FMOD/Wwise), how to generate engine sound (procedural vs samples), system boundary (who owns what), performance budget, and the seam for future sample replacement.
+Overdrive's audio GDD (210 lines) defines 5 audio layers (engine, tire, music, UI, ambient) that map onto 3 mixer groups, a procedural engine formula (2-oscillator), tire squeal with wear scaling, 8 SFX categories, music stings, and a 9-state audio machine. But no architectural decision exists on: which audio engine to use (Unity Audio Mixer vs FMOD/Wwise), how to generate engine sound (procedural vs samples), system boundary (who owns what), performance budget, and the seam for future sample replacement.
 
 ### Constraints
 
 - **No FMOD/Wwise installed** — dependency must be zero at MVP. Adding middleware requires separate approval and package installation.
 - **3 engine types only** (V8, V10, V12 per 1989-1990 F1) — not 16 unique engines. Fallback to samples is viable with only 3 base profiles.
-- **Unity Audio Mixer** is installed and stable. 3 groups (Master → Music/SFX/UI).
+- **Unity Audio Mixer** is installed and stable. 3 groups (Master → Music/SFX/UI). Layer-to-group reconciliation (review v4 LOW): the GDD's 5 layers are routing SOURCES (engine and tire both route through SFX); the 3 mixer groups are the routing topology; ADR-0004 exposes 4 player-facing volume settings (Master, Music, SFX, UI — one per group). No discrepancy: layers = sources, groups = mixers, volumes = settings.
 - **LateUpdate consumption** per ADR-0001 §Interpolation Phases — AudioSystem runs in LateUpdate, not per tick.
 - **Addressables 3.1.0** for audio asset loading (Shared group for UI/engine, Tracks/{trackId} for ambient).
 
 ### Requirements
 
 - Must generate engine sound from RPM, gear, throttle, fuel level (procedural-first)
-- Must support tire squeal volume scaling with wear_percent
+- Must support tire squeal volume scaling with wear_percent (TR-audio-003: `squeal_active = (grip_loss > 0.15) AND (speed > 30 km/h)`; `squeal_vol = grip_loss × (0.25 + 0.75 × wear_percent/100) × sfx_volume`; pitch constant 1200 Hz; `squeal_event_rate_mult = 0.1 + 0.9 × wear_percent/100`)
 - Must support 8 SFX categories triggered from CarState events
-- Must support 4 music stings with priority and ducking rules
+- Must support 4 music stings with priority and ducking rules (TR-audio-002: named stings `race_start_sting`, `final_lap_sting`, `finish_sting`, `pit_entry_sting`; duck background music by 6 dB during playback; max 1 sting active at a time — priority Finish > Final Lap > Race Start > Pit Entry; two triggers within 2s → higher priority wins)
 - Must support 9 audio states mirroring SimulationState
 - Must support AudioSettings volume per mixer group (Master/SFX/Music/UI)
 - Must support replacement of engine sound implementation without changing AudioSystem public interface
@@ -129,17 +129,20 @@ public struct CarAudioState {
     public CarStateEnum CarState;   // Driving/OffTrack/WallHit/Pitting/GridLocked
     public PitPhase PitPhase;       // from VP
     public SurfaceType Surface;     // from Track
-    public int Cylinders;           // from CarDef (8/10/12 — engine type)
+    public int EngineCylinders;     // from CarDef.AudioProfile (8/10/12)
 }
 
-// Per-car audio profile (adds to CarDefinitionData SO — see car-definition-data.md)
-// engineType field is removed; EngineBasePitch and ExhaustNote are new.
-// Cylinders already exists as engineCylinders in CarDef.
+// Per-car audio profile (serialized by CarDefinition — see car-definition-data.md)
+// engineType is removed; CarDefinition.AudioProfile is the single owner.
 [Serializable]
 public struct CarAudioProfile {
-    public int Cylinders;           // 8, 10, or 12
-    public float EngineBasePitch;   // 0.8-1.2 (engine character)
-    public ExhaustNote ExhaustNote; // Standard, Deep, Sharp
+    [SerializeField] int _engineCylinders;
+    [SerializeField] float _engineBasePitch;
+    [SerializeField] ExhaustNote _exhaustNote;
+
+    public int EngineCylinders => _engineCylinders;       // 8, 10, or 12
+    public float EngineBasePitch => _engineBasePitch;      // 0.8-1.2 (engine character)
+    public ExhaustNote ExhaustNote => _exhaustNote;        // Standard, Deep, Sharp
 }
 
 public enum ExhaustNote : byte { Standard, Deep, Sharp }
@@ -162,7 +165,7 @@ Engine routes through the SFX group per GDD Rule 1 — if SFX is muted, engine i
 |-------|-------|-----------|
 | UI sounds (clicks, navigation, rebinding) | Shared | Startup |
 | Menu music | Shared | Startup |
-| Music stings (start, final lap, finish) | Shared | Startup |
+| Music stings (start, final lap, finish, pit entry) | Shared | Startup |
 | Ambient loops (per track) | Tracks/{trackId} | Race init |
 | Engine samples (if fallback used) | Cars/{teamId} | Per-car load |
 
@@ -196,7 +199,7 @@ Engine routes through the SFX group per GDD Rule 1 — if SFX is muted, engine i
 - Procedural engine fails playtest → fallback to samples adds asset production time. Mitigation: prototype procedural engine in Sprint 1 of Pre-Production; if rejected, purchase Asset Store pack and implement SampleEngineProvider in Sprint 2.
 - Audio state machine drifts from SimulationState → false silence or missed stings. Mitigation: Tick() receives SimulationState, RaceMode, PitPhase as separate params — no fourth enum to maintain.
 - `AudioClip.Create` `_3D` overload deprecated in Unity 6000.3. Mitigation: engineering team must use the overload without `_3D` parameter; use `AudioSource.spatialBlend` for 2D/3D control.
-- PCMReaderCallback fires on the audio thread, not main thread. RPM/frequency values computed on main thread must reach the callback thread-safely. Mitigation: use per-car ring buffer or Volatile.Read/Interlocked.Exchange for parameter handoff. ≤0.1ms budget covers buffer swap.
+- PCMReaderCallback fires on the audio thread, not main thread. RPM/frequency values computed on main thread must reach the callback thread-safely. Mitigation: single-slot immutable parameter snapshot with atomic reference swap — `Volatile.Write`/`Interlocked.Exchange` on the main thread, `Volatile.Read` on the audio thread. A multi-field FIFO/ring buffer is REJECTED: the audio callback cadence (~188 Hz at 48 kHz / 256 samples) exceeds the 60 Hz sim tick, so a queue accumulates lag, and a multi-field latest-wins struct can tear. Keep the oscillator running through focus-loss/pause with last-known parameters; guard denormals; use `AudioSettings.outputSampleRate`. Audio-thread side budget: 16 cars × PCMReaderCallback must fit the DSP buffer period (≤0.1 ms main-thread budget covers the swap).
 
 ## GDD Requirements Addressed
 

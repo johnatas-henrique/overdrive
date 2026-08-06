@@ -8,6 +8,8 @@ Accepted
 
 2026-07-27
 
+**Amended:** 2026-08-05 — added Validated Force Models section: track-radius drift factor (TR-vp-008) and real-engine longitudinal model (TR-vp-009) ratified from vehicle-physics.md, closing the two coverage gaps found by the 2026-08-05 architecture review.
+
 ## Engine Compatibility
 
 | Field | Value |
@@ -23,7 +25,7 @@ Accepted
 
 | Field | Value |
 |-------|-------|
-| **Depends On** | ADR-0001 (Manual Simulation Authority and Determinism Boundary — Accepted). This ADR's 13-step tick pipeline and `Physics.simulationMode = SimulationMode.Script` are prerequisites. |
+| **Depends On** | ADR-0001 (Manual Simulation Authority and Determinism Boundary — Accepted). This ADR's 14-step tick pipeline and `Physics.simulationMode = SimulationMode.Script` are prerequisites. |
 | **Enables** | ADR-0006 (Fuel/Tire State Ownership & Tick Timing), ADR-0009 (AI Rival Deterministic Architecture), ADR-0010 (Camera-VFX Rendering Budget & Interpolation) |
 | **Blocks** | Any Vehicle Physics implementation work. All 10 downstream systems (Fuel, Tire, Pit Stop, AI Rival, Camera, HUD, Audio, VFX, Ghost Recording, Multiplayer Arch) depend on this decision. |
 | **Ordering Note** | Must be Accepted before any vehicle code is written. Prototype spike in Week 1 of Pre-Production to validate performance assumptions. |
@@ -37,7 +39,7 @@ Vehicle Physics is the core simulation layer — it translates player input (thr
 ### Constraints
 
 - **Physics Engine:** Must use Unity's PhysX engine (installed by default). DOTS/ECS entities package is not installed and will not be added for MVP.
-- **Tick Pipeline:** Must integrate into the 13-step manual accumulator pipeline from ADR-0001. `Physics.Simulate(FIXED_DT)` is called once per tick. No code runs in `FixedUpdate()`.
+- **Tick Pipeline:** Must integrate into the 14-step manual accumulator pipeline from ADR-0001. `Physics.Simulate(FIXED_DT)` is called once per tick. No code runs in `FixedUpdate()`.
 - **Interpolation:** `Rigidbody.interpolation = None`. Simulation Architecture owns manual LateUpdate interpolation.
 - **No WheelCollider:** The arcade grip model uses a custom grip force formula, not WheelCollider slip curves (which are designed for simulation/realism).
 - **16 Cars:** All 16 cars (player + 15 AI) simulate in the same Physics.Simulate() call. No per-car isolation.
@@ -46,12 +48,14 @@ Vehicle Physics is the core simulation layer — it translates player input (thr
 ### Requirements
 
 - Must support the arcade grip stack: `effective_grip = clamp(grip_base × surface_grip_multiplier × tire_runtime_grip_multiplier, 0.20, 1.20)` (control_threshold REMOVED from the stack — Stability modulates slip behavior only, validated 2026-08-04)
-- Must produce a `CarState` per car per physics tick (position, rotation, speed, throttle, brake, steer, gripState, rpm, gear, wallContact, slideState, surface, pitPhase, isGridLocked, forwardDot)
+- Must produce a `CarState` per car per physics tick (Position, Rotation, LinearVelocity, SpeedKmh, Rpm, Gear, Throttle, Brake, Steer, IsGridLocked, Surface, PitPhase, State, SlipState, SlideState, WallContact, ForwardDot)
 - Must consume `ResolvedCarInput[carId]` (accelerateOut, brakeOut, steerOut) at Tick Step 6
 - Must support 5 car states: Driving, OffTrack, WallHit, Pitting, GridLocked
 - Must support `perfectStartDriveForceMultiplier = 1.15` for 600 ticks after GO (written by Grid & Start)
 - Must support the 1-state steering model (validated 2026-08-04): `maxYaw = min(steerCeiling(v), v / minTurnRadius, gripCeiling)` — steering capacity falls with speed (falloff start → 99% of vmax), minTurnRadius prevents turning in place, grip is the anti-slide ceiling
 - Must support lift-off grip bonus (tuck-in, validated 2026-08-03): fixed +3.0 g to maxLateralAccel when throttle ≤ 0, applied in both the yaw request and the velocity rotation rate
+- Must support the track-radius drift factor (validated 2026-08-03): while accelerating above a corner's grip limit (`v > sqrt(aMax × R_ahead)`, R from track curvature ahead), heading may request up to `driftFactor × grip` (default 1.15) while velocity follows only the real grip — the rear axle slides out. Below the limit F = 1 (clean line); lifting off returns F = 1 immediately (tuck-in). F applies to BOTH consumers; `driftHeadBoost` (default 1.40) makes heading ask F × boost while velocity follows only F — the gap between them is the slip angle. Implemented via `track.GetCornerRadiusAhead(pos, driftLookahead=40m)` with a 12% transition band (InverseLerp(vLimit, vLimit × 1.12)).
+- Must support the real-engine longitudinal model (validated 2026-08-02): `accel = min(enginePower, P/m ÷ v) − K·v²` where K = P/m ÷ vmax³; below ~90 km/h the traction limit (13.5 m/s²) dominates (tire-limited launch, all cars 0-100 in 2.11 s); equilibrium lands exactly at vmax (asymptote); LinearDamping = 0 when the quadratic model is active (real-engine presets)
 - Must support wall contact (0.2–0.5s persist, repeated bounce impulse reduction by 50%)
 - Must support car-to-car collision (15–25% speed loss + push impulse, cooldown between repeated impacts)
 - Must be replaceable by a DOTS/ECS implementation in the future without rewriting game logic
@@ -150,7 +154,7 @@ public static class GripMath {
 
 ### Implementation Notes
 
-**ForceMode:** Use `ForceMode.Force` (or raw acceleration values applied directly). `ForceMode.Acceleration` and `ForceMode.Impulse` apply mass implicitly — multiplying by Rigidbody.mass again produces extreme values (observed in the prototype: 28 m/s² × 505 kg = 14,140 m/s²; corrected 2026-08-03).
+**ForceMode:** Use `ForceMode.Force` (or raw acceleration values applied directly). `ForceMode.Acceleration` ignores mass, so passing a force-like `mass × acceleration` value over-applies acceleration by the mass factor (observed: 28 m/s² × 505 kg = 14,140 m/s²). `ForceMode.Impulse` expects impulse rather than force. Neither mode accepts this grip path's force-semantics values. Corrected 2026-08-03. Cross-referenced in `docs/engine-reference/unity/deprecated-apis.md`.
 
 **CollisionDetectionMode:** Player car uses `ContinuousDynamic` (prevents tunneling with thin walls/kerbs at high speed). AI cars use `Continuous` (detects collisions at reduced cost). All cars fall back to `Discrete` if profiling shows the continuous modes exceed the simulation budget.
 
@@ -163,11 +167,43 @@ public static class GripMath {
 - `CarState.ForwardDot` is a float for RSM lap validation
 - `CarState.LinearVelocity` (float3) added for AI racing-line logic
 
+### Validated Force Models (2026-08-05, TR-vp-008 / TR-vp-009 coverage)
+
+**Drift Factor (track-radius activated)** — see vehicle-physics.md §Drift Factor:
+
+```
+F = 1.0 when v ≤ sqrt(aMax × R_ahead)                      // clean line below corner limit
+F = driftFactor (default 1.15) when v > sqrt(aMax × R_ahead) and throttle > 0
+F = 1.0 immediately on lift-off                               // tuck-in
+
+heading yaw request:    maxYaw = min(steerCeiling(v), v / minTurnRadius, F × driftHeadBoost × gripCeiling)
+velocity rotation rate:  maxCentripetal = F × gripCeiling     // follows only the real grip
+```
+
+- `R_ahead` comes from `track.GetCornerRadiusAhead(pos, driftLookahead=40m)` (ADR-0007 track spline)
+- 12% transition band: `InverseLerp(vLimit, vLimit × 1.12)` smooths F between clean line and drift
+- F MUST be applied to BOTH consumers (heading and velocity rotation). F on heading alone causes understeer because velocity follows only real grip and slip grows too slowly
+- `driftHeadBoost` (default 1.40) creates the heading-vs-velocity gap that IS the slip angle; without the boost, equal F on both consumers produces zero slip (no drift)
+- Knobs are global tuning values (identical for all cars): driftFactor 1.15, driftHeadBoost 1.40, driftLookahead 40 m
+
+**Longitudinal Model (real-engine power curve)** — see vehicle-physics.md §Acceleration Model:
+
+```
+accel = min(enginePower, P/m ÷ v) − K·v²
+K = (P/m) ÷ vmax³
+```
+
+- `enginePower` caps low-speed acceleration (strong launch); `P/m ÷ v` (real 1989 engine power / 505 kg, e.g. Honda 1012 m²/s³) dominates mid-to-high speed
+- Traction limit below ~90 km/h: ~13.5 m/s² (tire-limited launch; all cars 0-100 in 2.11 s)
+- Quadratic drag `K·v²` replaces linear Rigidbody damping; equilibrium lands exactly at vmax (asymptote — no car reaches the theoretical ceiling; practical top speed = theoretical − 2 km/h)
+- `LinearDamping = 0` when the quadratic model is active (real-engine presets); GDD/prototype presets use `DragCoeff = 0` (linear damping only)
+- Motor force is applied along heading (not velocity) — acts as a slip stabilizer: the motor's perpendicular component realigns velocity toward heading each tick, making acceleration above grip limit produce understeer rather than drift
+
 **PitPhase Ownership:**
 - Vehicle Physics is the sole writer of `PitPhase` in CarState. VP detects pit-entry/exit zone crossing during Physics.Simulate and queues the transition.
 - PitPhase values: `NotPitting`, `PitTransit`, `InPitBox`, `PitExiting` (defined in ADR-0011).
 - On tick N: VP detects car crossed pit-entry zone → sets `PitPhase = PitTransit` on tick N+1's ReadCarState (1-tick latency per VP GDD).
-- PitStopSystem reads `PitPhase` from CarState but never writes it — VP remains the sole author.
+- On tick N: VP reads `PitServiceCommand[carId].requestExit == true` from TickStartSnapshot (written by PitStopSystem at Step 9b of tick N-1) → sets `PitPhase = PitExiting` on tick N+1's ReadCarState, then clears requestExit. VP is the only writer of PitPhase; PitStopSystem requests the transition via the command, never by writing PitPhase (ADR-0011).
 - This ownership boundary is formalized in ADR-0011 §Registry Check and enforced by the tick pipeline ordering (Step 9 VP.ReadCarState → Step 9b PitStopSystem.Tick).
 - Refer to architecture.md CarState struct for authoritative field list
 
@@ -184,7 +220,7 @@ public static class GripMath {
 
 - **Description:** Use Entities package, Burst compiler, and custom physics via `IJobEntity`. All vehicle state in ECS components.
 - **Pros:** Maximum performance (SIMD Burst, multi-threaded). Deterministic physics within Unity Physics (not PhysX). Native job system integration.
-- **Cons:** DOTS package is NOT installed and would need to be added. Steep learning curve. Coherence multiplayer (future Beta) has limited DOTS support. Overkill for 16 cars at 60 Hz — PhysX handles this trivially. Migration seam (IVehicleDriver) preserves the option to adopt DOTS later if scaling demands it.
+- **Cons:** DOTS package is NOT installed and would need to be added. Steep learning curve. Future networking-provider compatibility is not a reason to adopt DOTS before a Beta SDK decision. Overkill for 16 cars at 60 Hz — PhysX handles this trivially. Migration seam (IVehicleDriver) preserves the option to adopt DOTS later if scaling demands it.
 - **Rejection Reason:** Not needed for MVP. The IVehicleDriver seam keeps the door open without incurring DOTS complexity now.
 
 ## Consequences
@@ -218,14 +254,14 @@ public static class GripMath {
 | vehicle-physics.md | Arcade handling model (4PGP/Horizon Chase feel) | Custom grip formula (GripMath.ComputeEffectiveGrip) over Rigidbody forces — not WheelCollider slip curves |
 | vehicle-physics.md | `effective_grip = clamp(grip_base × surface × tire, 0.20, 1.20)` (no stability term) | Pure C# math in GripMath, testable without Unity |
 | vehicle-physics.md | 5 car states (Driving/OffTrack/WallHit/Pitting/GridLocked) | VehicleSimState.Flags, evaluated per tick in pure C# |
-| vehicle-physics.md | CarState[16] per physics tick (position, rotation, speed, throttle, brake, steer, gripState, rpm, gear, wallContact, slideState, surface, pitPhase, isGridLocked, forwardDot) | ReadCarState() at Tick Step 9 after Physics.Simulate. CarState now includes LinearVelocity (float3 for AI) and ForwardDot (float for RSM). gripState split into State (5-state machine) + SlipState (Normal/Slipping/SpinOut) |
+| vehicle-physics.md | CarState[16] per physics tick (Position, Rotation, LinearVelocity, SpeedKmh, Rpm, Gear, Throttle, Brake, Steer, IsGridLocked, Surface, PitPhase, State, SlipState, SlideState, WallContact, ForwardDot) | ReadCarState() at Tick Step 9 after Physics.Simulate. CarState now includes LinearVelocity (float3 for AI) and ForwardDot (float for RSM). gripState split into State (5-state machine) + SlipState (Normal/Slipping/SpinOut) |
 | vehicle-physics.md | Steering is instant at physics boundary (no input ramp) | steerOut applied directly without additional smoothing layer |
 | vehicle-physics.md | 1-state steering: maxYaw = min(steerCeiling(v), v/minTurnRadius, gripCeiling) | Steering model in ComputeMaxYaw; global knobs (maxSteerLow 2.5, maxSteerHigh 1.5, liftOffSteerBonus 0.5, minTurnRadius 10, falloff start 60); grip is the anti-slide ceiling |
 | vehicle-physics.md | Lift-off grip bonus (tuck-in), fixed +3 g | Added to maxLateralAccel in both the yaw request and the velocity rotation rate when throttle ≤ 0 |
 | vehicle-physics.md | Wall contact 0.2-0.5s persist, bounce impulse reduction 50% | WallHit state timer + impulse scaling in pure C# |
 | vehicle-physics.md | Car-to-car collision 15-25% speed loss + push impulse | Post-collision speed evaluation in pure C# after Physics.Simulate |
 | vehicle-physics.md | `Rigidbody.interpolation = None`, manual LateUpdate interpolation | Applied via IVehicleDriver adapter; interpolation owned by Simulation Architecture |
-| simulation-architecture.md | 13-step tick pipeline, manual accumulator | VehiclePhysicsSystem.SimulateTick() called at Step 6, Physics.Simulate at Step 7, CarState read at Step 9 |
+| simulation-architecture.md | 14-step tick pipeline, manual accumulator | VehiclePhysicsSystem.SimulateTick() called at Step 6, Physics.Simulate at Step 7, CarState read at Step 9 |
 | simulation-architecture.md | All sim math uses Unity.Mathematics | VehicleSimState uses float3/quaternion, GripMath uses math.* |
 | car-definition-data.md | 6 stats mapped to performance formulas | Stats consumed as data by force calculation; CarDefinition loaded once at race init via Addressables |
 | tire-system.md | `tire_runtime_grip_multiplier` consumed in grip stack | Consumed at Tick Step 6 as part of effective_grip formula |

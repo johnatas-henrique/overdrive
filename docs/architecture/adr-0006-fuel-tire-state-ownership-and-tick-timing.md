@@ -36,9 +36,9 @@ Fuel and Tire are paired because both consume `ResolvedCarInput[carId]` (throttl
 
 Existing architectural stances confirmed:
 - **CarState[16]** → vehicle-physics-system (ADR-0002). Fuel/Tire read CarState fields (surface, speed, slideState) but must NOT write them.
-- **ForceMode.Acceleration** — grip modifiers must be compatible with mass-independent force model.
+- **ForceMode.Force** — grip modifiers must use the mass-aware force model defined by ADR-0002; `ForceMode.Acceleration` is prohibited on this path.
 - **Forbidden pattern: physics_callback_mutates_gameplay_state** — Fuel/Tire are pure C# per-tick, no physics callbacks.
-- **efficiency_modifier** → car-definition-data (ADR-0015). FuelSystem and TireSystem read `CarDefinition.stats.efficiency` at race init and store it as a per-car scaling factor. The formula is a tuning knob defined in ADR-0015. This ADR consumes the modifier but does not define it.
+- **efficiency_modifier** → car-definition-data (ADR-0015). FuelSystem and TireSystem read `CarDefinition.Stats.Efficiency` at race init and store it as a per-car scaling factor. The formula is a tuning knob defined in ADR-0015. This ADR consumes the modifier but does not define it.
 
 ## Decision
 
@@ -88,7 +88,7 @@ public struct TireState {
 
 ```
 Step 1:  Simulation.AdvanceClock()
-Step 2:  InputSystem.CaptureLatestRawSample() → resolve input
+Step 2:  Input tick processor consumes the frame's captured RawInputSample → ResolvedCarInput
 Step 3:  Consume Pause
 Step 4:  Decrement Countdown (if active)
 Step 5a: FuelSystem.Tick() → FuelState[16]               [consumes throttle from Step 2; during PitServiceCommand.active, applies refuel rate]
@@ -162,4 +162,4 @@ On the first Racing tick (no previous CarState with valid surface), surface defa
 | tire-system.md | Tire wear formula, TireState struct, runtimeGripMultiplier, continuous linear grip curve, lastLapTireWear |
 | vehicle-physics.md | Grip stack consumes topSpeedModifier + runtimeGripMultiplier at Step 6 |
 | simulation-architecture.md | Step 5a/5b pipeline position, countdown gating, qualifying reduced fuel + no wear |
-| pit-stop.md | Pit refueling via CarState.PitPhase read (Option B), pit tire swap |
+| pit-stop.md | Pit refueling and tire swap via TickStartSnapshot.PitServiceCommand (Option B) |

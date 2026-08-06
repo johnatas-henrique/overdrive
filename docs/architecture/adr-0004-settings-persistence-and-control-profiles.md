@@ -59,6 +59,8 @@ Settings serves 9 consumer systems (Input, Simulation, Audio, HUD, UI Menu, Came
 
 Settings uses **PlayerPrefs single JSON blob** with **backup-first write** and **transactional preview** (`SettingsEditSession`). Schema migration runs on load. Control profiles are validated per-field with fallback to approved defaults. DifficultyProfile is immutable snapshotted at race init.
 
+Persistence note (2026-08-05): every successful `SaveResult.Success` must be followed by an explicit `PlayerPrefs.Save()` call. `PlayerPrefs.SetString` alone does not flush to disk synchronously — on some platforms the write is deferred and can be lost on abrupt termination. `Save()` is called once after the backup-first write completes, before the result is reported as Success.
+
 ### Key Interfaces
 
 ```csharp
@@ -106,7 +108,8 @@ public readonly struct CameraSettings {
 }
 
 public readonly struct VfxSettings {
-    public readonly bool ReducedMotion => false; // reads from CameraSettings.ReducedMotion at runtime; stored as const
+    // Reduced Motion is NOT owned here — consumed from CameraSettings.ReducedMotion
+    // (CameraSettings is the single source of truth, per ADR-0004)
     public readonly VfxQualityPreset Quality;    // Low/Medium/High/Ultra
 }
 

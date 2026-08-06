@@ -23,7 +23,7 @@ Accepted
 
 | Field | Value |
 |-------|-------|
-| **Depends On** | ADR-0002 (CarState.PitPhase — VP entry detection, 1-tick latency). ADR-0005 (InputContextController disables generic UI in all pit phases; Confirm routes directly to PitStop in PitService context). ADR-0006 (FuelState for refueling, TireState for swap — via TickStartSnapshot PitPhase read, not direct mutation). ADR-0007 (Track pit geometry: 16 boxes, pitSpline, pitToRacingProgress, pitSpeedLimitKph=80). ADR-0009 (AI pitProjectionMargin = 1.10). ADR-0010 (PitCamera activation via PitPhase.InPitBox) |
+| **Depends On** | ADR-0002 (CarState.PitPhase — VP entry detection, 1-tick latency). ADR-0005 (InputContextController disables generic UI in all pit phases; Confirm routes directly to PitStop in PitService context). ADR-0006 (FuelState for refueling, TireState for swap — via TickStartSnapshot.PitServiceCommand, not direct mutation). ADR-0007 (Track pit geometry: 16 boxes, pitSpline, pitToRacingProgress, pitSpeedLimitKph=80). ADR-0009 (AI pitProjectionMargin = 1.10). ADR-0010 (PitCamera activation via PitPhase.InPitBox) |
 | **Enables** | Pit Stop implementation, HUD pit advisory, AI pit behavior, PitCamera |
 | **Blocks** | None — pit stop can be implemented after Foundation ADRs |
 | **Ordering Note** | Pit Stop requires Track JSON format (ADR-0007) finalized for pit geometry |
@@ -36,8 +36,8 @@ Pit Stop is a new domain system owning the pit service lifecycle: entry detectio
 
 Existing stances relevant to Pit Stop:
 - **CarState.PitPhase** → vehicle-physics-system (ADR-0002). VP owns the pit state machine values (Transit, InPitBox, Exiting). PitStopSystem reads PitPhase, triggers transitions.
-- **FuelState** → fuel-system (ADR-0006). FuelSystem reads CarState.PitPhase from TickStartSnapshot and applies refuel rate (0.8 L/s) internally during InPitBox — no direct PitStop → FuelSystem call.
-- **TireState** → tire-system (ADR-0006). TireSystem reads CarState.PitPhase from TickStartSnapshot and resets wearFraction to 0 after 2s of InPitBox — no direct PitStop → TireSystem call.
+- **FuelState** → fuel-system (ADR-0006). FuelSystem reads TickStartSnapshot.PitServiceCommand and applies refuel rate (0.8 L/s) internally during active service — no direct PitStop → FuelSystem call.
+- **TireState** → tire-system (ADR-0006). TireSystem reads TickStartSnapshot.PitServiceCommand and resets wearFraction to 0 after 2s of continuous active service — no direct PitStop → TireSystem call.
 - **Track pit geometry** → ADR-0007. Pit Stop consumes pitSpline, pitToRacingProgress, PitBox[16], pitSpeedLimitKph.
 - **AI pit projection** → ADR-0009. `AiArchetype.pitProjectionMargin = 1.10` applies to both AI and player pit advisory.
 - **PitCamera** → ADR-0010. CameraSystem reads CarState.PitPhase from interpolated visual snapshot. When PitPhase == InPitBox, CameraSystem initiates 0.2s blend to PitCamera. Camera offset is side-aware: reads `PitLaneSide` from TrackData (per-circuit, not direction-derived) and mirrors camera position accordingly (ADR-0007).
@@ -63,12 +63,13 @@ public struct PitServiceCommand {
     public bool active;              // true when pit service should be applied
     public float targetFuel;         // 8.0 L (full tank) when fueling
     public bool tireSwapRequired;    // true when tire swap is needed this service
+    public bool requestExit;         // true when service complete/player exit — VP consumes to set PitPhase = PitExiting
 }
 
 public struct PitState {
     public int carId;
     public int assignedBoxId;           // 0-15, assigned at race init
-    public PitServicePhase phase;       // NotPitting, PitTransit, InPitBox, PitExiting
+    public PitPhase phase;              // NotPitting, PitTransit, InPitBox, PitExiting
     public float serviceTimer;          // seconds elapsed in InPitBox
     public bool tireSwapComplete;       // true after 2s
     public float fuelLoaded;            // liters loaded so far
@@ -76,7 +77,7 @@ public struct PitState {
     public bool pitThisLap;             // advisory: true when resources insufficient
 }
 
-public enum PitServicePhase : byte {
+public enum PitPhase : byte {
     NotPitting,
     PitTransit,     // auto-navigating to box (80 km/h clamp active)
     InPitBox,       // service active
@@ -93,15 +94,18 @@ public struct PitServiceCommand {
     public bool active;              // true when pit service should be applied
     public float targetFuel;         // 8.0 L (full tank) when fueling
     public bool tireSwapRequired;    // true when tire swap is needed this service
+    public bool requestExit;         // true when service complete/player exit — VP consumes to set PitPhase = PitExiting
 }
 ```
 
 Contract rules:
 - PitStopSystem sets `active = true` when `PitPhase == InPitBox` and service is in progress
 - `active = false` when not pitting, during PitTransit, or after service is complete (PitExiting or NotPitting)
+- PitStopSystem sets `requestExit = true` when service is complete (tireSwapComplete && full fuel or player early exit); VP consumes it on the next authoritative tick and transitions `CarState.PitPhase = PitExiting` — PitStopSystem never writes PitPhase (ADR-0002 ownership)
 - FuelSystem reads `PitServiceCommand[carId].active` and `targetFuel` — applies 0.8 L/s toward targetFuel when true
 - TireSystem reads `PitServiceCommand[carId].active` and `tireSwapRequired` — resets `wearFraction = 0` after 2s of continuous InPitBox when true
 - Neither FuelSystem nor TireSystem mutate `PitServiceCommand` — it is read-only at consumption
+- VP clears `requestExit` after applying the PitExiting transition
 
 ### Data Flow
 
@@ -125,8 +129,9 @@ Service (Option B — explicit PitServiceCommand contract):
   → at full tank or player exit: PitStopSystem clears PitServiceCommand (active=false), transitions to PitExiting
 
 Exit:
-  PitStopSystem transitions to PitExiting → VP resumes player control
-  → RSM publishes PitExit event → CameraSystem reads CarState.PitPhase = PitExiting
+  PitStopSystem completes service (or player early exit) → sets PitServiceCommand[carId].requestExit = true
+  → VP consumes requestExit from TickStartSnapshot on the next tick and transitions CarState.PitPhase = PitExiting (PitStopSystem never writes PitPhase — ADR-0002 ownership)
+  → VP resumes player control; RSM publishes PitExit event → CameraSystem reads CarState.PitPhase = PitExiting
   → CameraSystem initiates 0.2s blend back to player-selected mode
   → PitState returns to NotPitting
 
@@ -160,7 +165,7 @@ Step 9b:   PitStopSystem.Tick — read PitPhase, write PitServiceCommand,
             advance service timer, evaluate pitThisLap advisory
 Step 10:   RSM evaluates → TransitionRequest (PitEntry, PitExit events)
 Step 11:   Simulation increments counters (raceStepCount)
-Step 12:   Simulation publishes snapshot (includes PitState, PitServiceCommand)
+Step 12:   Simulation publishes snapshot (includes PitState) and carries PitServiceCommand into the next TickStartSnapshot
 Step 13:   AI reads snapshot → AIInput
 Step 14:   Simulation resolves ResolvedCarInput
 ```
@@ -195,9 +200,9 @@ Step 14:   Simulation resolves ResolvedCarInput
 
 | GDD | Requirements |
 |-----|--------------|
-| pit-stop.md | Service lifecycle (4-phase PitServicePhase), entry detection (1-tick latency), parallel fuel+tire service, service duration formula, early-exit after 2s, PitThisLap advisory (fuel + tire), AI waits for full tank |
-| fuel-system.md | Pit refueling at 0.8 L/s via CarState.PitPhase read (Option B — no direct mutation) |
-| tire-system.md | Pit tire swap at 2s via CarState.PitPhase read, wearFraction reset |
+| pit-stop.md | Service lifecycle (4-phase PitPhase), entry detection (1-tick latency), parallel fuel+tire service, service duration formula, early-exit after 2s, PitThisLap advisory (fuel + tire), AI waits for full tank |
+| fuel-system.md | Pit refueling at 0.8 L/s via PitServiceCommand read from TickStartSnapshot (Option B — no direct mutation) |
+| tire-system.md | Pit tire swap at 2s via PitServiceCommand read from TickStartSnapshot, wearFraction reset |
 | track-system.md | Pit geometry consumption (PitBox[16], pitSpeedLimitKph, pitEntryProgress) |
 | camera.md | PitCamera activation during InPitBox only, blend on entry/exit |
 | hud.md | PIT THIS LAP advisory display |

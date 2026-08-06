@@ -8,6 +8,8 @@ Accepted
 
 **Amended:** 2026-07-25 — cross-document Input/Simulation lifecycle closure
 
+**Amended:** 2026-08-05 — TickStartSnapshot no longer carries `RawInputSample[16]` or frame `deltaTime` (single frame-level raw sample passed to Step 2; domain ticks receive explicit `FIXED_DT` — resolves architecture-review C1). PerformanceReduced is now producer-only signal ownership (consumer behavior defined in ADR-0010/ADR-0014; camera collision avoidance never disabled — resolves C2).
+
 ## Engine Compatibility
 
 | Field | Value |
@@ -39,9 +41,9 @@ MVP uses `Physics.simulationMode = SimulationMode.Script`, one whole-scene `Phys
 Input System processes platform events in Dynamic Update. `InputContextController` is the sole owner of action-map and UI-module activation. At the beginning of the Simulation driver's same `Update()` call, before reading or modifying the accumulator, Simulation invokes Input-owned `CaptureLatestRawSample()` exactly once. No relative MonoBehaviour script-order assumption is permitted.
 
 ```text
-CaptureLatestRawSample
-→ TickStartSnapshot
-→ player SimulationInput + cached AIInput
+CaptureLatestRawSample (exactly once, before accumulator evaluation)
+→ player SimulationInput + cached AIInput (raw sample passed to Step 2, NOT carried in TickStartSnapshot)
+→ TickStartSnapshot (prior domain state + cached AIInput only)
 → Pause consumption and Countdown decrement
 → Tire/Fuel pre-step state
 → force application by ascending carId
@@ -75,21 +77,20 @@ Consumption:
 
 ### TickStartSnapshot Schema
 
-`TickStartSnapshot` is the read-only per-tick input struct consumed by all domain systems (Fuel, Tire, VP, Pit Stop, AI). Its contents are assembled from the previous tick's outputs and the current tick's raw input, gated by SimulationState.
+`TickStartSnapshot` is the read-only per-tick input struct consumed by all domain systems (Fuel, Tire, VP, Pit Stop, AI). Its contents are assembled from the previous tick's outputs, gated by SimulationState. The frame-level raw input sample is **not** part of this struct: it is captured once per frame by `CaptureLatestRawSample()` and passed separately to input processing at Step 2 (see ADR-0005 §Single Frame-Level Capture). Domain ticks receive the fixed simulation duration `FIXED_DT` as an explicit argument — never the render-frame `Time.unscaledDeltaTime`.
 
 | Field | Source | Populated By |
 |-------|--------|-------------|
-| `RawInputSample[16]` | InputSystem dynamic update | `CaptureLatestRawSample()` at tick start |
 | `CarState[16]` | Previous tick VP.ReadCarState | Step 9 of previous tick |
 | `FuelState[16]` | Previous tick FuelSystem.Tick | Step 5a of previous tick |
 | `TireState[16]` | Previous tick TireSystem.Tick | Step 5b of previous tick |
 | `PitServiceCommand[16]` | Previous tick PitStopSystem | Step 9b of previous tick: PitStopSystem writes command; Simulation carries to next tick |
+| `AIInput[16]` | Previous tick AI system | Cached AI input for the next tick (Step 12 of previous tick) |
 | `TrackData` | Loaded at race init via Content Pipeline | Immutable for race duration |
 | `SimulationState` | Simulation owns | Current state + RaceMode from RSM |
 | `DifficultyProfile` | Loaded at race init | Immutable for race duration |
-| `float deltaTime` | Accumulator | Unity `Time.unscaledDeltaTime` (clamped to 2×FIXED_DT max) |
 
-Fields are assembled by the Simulation driver before Step 1 and distributed to all domain `Tick()` calls. No system reads from `TickStartSnapshot` before assembly is complete.
+Fields are assembled by the Simulation driver before Step 1 and distributed to all domain `Tick()` calls. No system reads from `TickStartSnapshot` before assembly is complete. Multi-tick render frames reuse the single latest raw sample; there is no per-tick raw sample array and no second-missing-tick undefined behavior.
 
 `PitServiceCommand[16]` is the formal pit-service contract: PitStopSystem writes it at Step 9b, Simulation carries it to the next tick's snapshot, and FuelSystem/TireSystem read it at Step 5 to apply refuel/tire-swap. The struct is defined in ADR-0011.
 
@@ -113,10 +114,10 @@ Fields are assembled by the Simulation driver before Step 1 and distributed to a
 
 ### PerformanceReduced Signal
 
-When Simulation detects sustained performance degradation (below 30 FPS for 3s), it publishes a `PerformanceReduced` event consumed by:
-- **VFX** — reduces particle count and speed-line density
-- **HUD** — shows discrete performance warning
-- **Camera** — disables look-ahead and collision avoidance
+When Simulation detects sustained performance degradation (below 30 FPS for 3s), it publishes a `PerformanceReduced` event. **Simulation owns the signal only** — it does not define consumer behavior. Each presentation consumer's degradation behavior is defined in its own ADR:
+
+- **VFX / Camera** — ADR-0010 (VFX moves to Low preset, camera shake disabled; camera collision avoidance is **never** disabled by performance degradation)
+- **HUD** — ADR-0014 (discrete performance warning)
 
 When FPS recovers (≥30 for 3s), Simulation publishes `PerformanceRestored` and affected systems restore normal operation. If FPS drops below 15 for 3s after reduction, Simulation pauses the race and offers Resume or Return to Menu.
 
@@ -130,6 +131,8 @@ Simulation architecture produces two interpolation outputs, both computed in **L
 2. **Consumer read:** CameraSystem, VfxSystem, and AudioSystem read the interpolated VisualTransform and latest `PublishedSimulationSnapshot` in LateUpdate — immediately after the α is computed. This gives zero-frame latency from physics tick to visual output with no jitter (no competing transform writes between Update and render).
 
 Neither Camera, VFX, nor Audio run in DynamicUpdate. All presentation-layer systems (Camera, VFX, Audio, HUD) read from the interpolated state in LateUpdate.
+
+**Presentation ordering (review 2026-08-06 C2):** presentation consumption runs inside a single **PresentationDriver** MonoBehaviour whose LateUpdate executes the fixed sequence: (1) interpolate VisualTransform, (2) CameraSystem.Tick, (3) VfxSystem.Tick, (4) AudioSystem.Tick, (5) HUD update. The driver is the only presentation entry point per frame; no presentation system is invoked from another MonoBehaviour's Update/LateUpdate, and no Script Execution Order configuration is used (relative script order remains forbidden).
 
 The accumulator consumes focus-change notifications before reading `Time.unscaledDeltaTime`; the focus-change frame adds no delta. Focus loss creates an immediate non-physics lifecycle boundary before accumulator evaluation, preserves the remainder and counters, publishes Paused, and requires explicit Resume. It never waits for another fixed tick.
 

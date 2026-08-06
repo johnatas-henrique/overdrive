@@ -168,11 +168,18 @@ This prevents erratic behavior from hardware defects or driver bugs (USB glitch,
 - **Reserved binding enforcement:** InputContextController owns the allowlist of rebindable actions. Confirm/Cancel/Pause are not in the rebindable set.
 - **CameraToggle isolation:** Never enters sim pipeline — no ghost recording, no replay contamination. Rising edge routes directly to Camera in the same frame.
 
+### Single Frame-Level Capture
+
+`CaptureLatestRawSample()` runs exactly once per render frame, before accumulator evaluation (ADR-0001:44). The captured raw sample is passed to input processing at Step 2 of the current tick and is **not** stored in TickStartSnapshot — it applies to the current tick only.
+
 ### ResolvedCarInput Timing
 
-`ResolvedCarInput[carId]` is produced by the Simulation driver at Step 14 of the tick pipeline (after AI produces AIInput). This output feeds into the NEXT tick's `TickStartSnapshot` assembly (Step 1). Consumers (FuelSystem Step 5a, TireSystem Step 5b, VehiclePhysics Step 6) read the value at their pipeline step on the following tick. This is the canonical 1-tick latency: AI decision at tick N → physics effect at tick N+1.
+`ResolvedCarInput[carId]` is assembled by the Simulation driver each tick from two sources (ADR-0001:41-46):
 
-For the player car, `SimulationInput` from InputSystem capture is placed directly into ResolvedCarInput at Step 14 — no AI input involvement. For AI cars, `AIInput` from AiRivalSystem (Step 13) is merged into ResolvedCarInput at Step 14.
+- **Player car:** the frame-level raw sample captured by `CaptureLatestRawSample()` is processed at Step 2 (dead zone → EMA → SimulationInput, per ADR-0004) and applies to the **current** tick — zero-tick player-input latency. It is not stored in TickStartSnapshot.
+- **AI cars:** `AIInput` from AiRivalSystem (Step 13) is merged into ResolvedCarInput at Step 14 and feeds the NEXT tick's `TickStartSnapshot` assembly (Step 1). This is the canonical 1-tick latency: AI decision at tick N → physics effect at tick N+1 (ADR-0009:85).
+
+Consumers (FuelSystem Step 5a, TireSystem Step 5b, VehiclePhysics Step 6) read the player's current-tick SimulationInput and the AI's cached AIInput at their pipeline step.
 
 ### Negative
 

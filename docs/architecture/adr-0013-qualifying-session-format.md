@@ -27,7 +27,7 @@ Accepted
 
 | Field | Value |
 |-------|-------|
-| **Depends On** | ADR-0001 (Simulation Authority — Racing state, tick pipeline), ADR-0006 (Fuel/Tire — qualifying fuel load, no tire wear), ADR-0009 (AI Rival — deterministic qualifying times) |
+| **Depends On** | ADR-0001 (Simulation Authority — Racing state, tick pipeline), ADR-0006 (Fuel/Tire — qualifying fuel load, no tire wear), ADR-0009 (AI Rival — deterministic qualifying times), ADR-0011 (Pit Stop — pit service blocked during qualifying) |
 | **Enables** | Grid & Start (receives GridAssignment), HUD (qualifying timer), Results (qualifying results display) |
 | **Blocks** | Qualifying implementation |
 | **Ordering Note** | Must be accepted before qualifying system is built |

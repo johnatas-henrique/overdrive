@@ -28,7 +28,7 @@ Accepted
 | Field | Value |
 |-------|-------|
 | **Depends On** | ADR-0001 (Simulation — PublishedSimulationSnapshot), ADR-0010 (Camera-VFX — performance budget separation), ADR-0002 (Vehicle Physics — CarState), ADR-0006 (Fuel/Tire — FuelState, TireState) |
-| **Enables** | HUD implementation (all 7 chase elements, 4 cockpit elements) |
+| **Enables** | HUD implementation (all 8 chase elements, 4 cockpit elements) |
 | **Blocks** | HUD story creation |
 | **Ordering Note** | Must be accepted before HUD implementation |
 
@@ -44,7 +44,7 @@ HUD has 3 gaps in the traceability matrix (TR-hud-001, TR-hud-003, TR-hud-005). 
 ### Constraints
 
 - HUD runs in LateUpdate (per ADR-0001 Interpolation Phases)
-- Performance budget: ≤0.5ms per frame (separate from Camera-VFX 2.1ms budget per ADR-0010)
+- Performance budget: ≤0.5ms per frame (separate from Camera-VFX 2.25ms planned / 2.4ms ceiling budget per ADR-0010)
 - uGUI Canvas (Screen Space - Overlay) for all HUD elements
 - 0.5s readability target at 200+ km/h
 - Maximum 2 pieces of information per glance
@@ -60,7 +60,7 @@ HUD has 3 gaps in the traceability matrix (TR-hud-001, TR-hud-003, TR-hud-005). 
 
 ## Decision
 
-HUD uses **uGUI Canvas** (Screen Space - Overlay) with data-driven elements. Each element reads from a single authoritative system via `PublishedSimulationSnapshot` or direct system interface.
+HUD uses **uGUI Canvas** (Screen Space - Overlay) with data-driven elements. Every HUD element reads exclusively from `PublishedSimulationSnapshot` (or a lifecycle snapshot for non-ticking states) in LateUpdate — no direct system interface reads. Domain values required by HUD (FuelState, TireState, GameState, PitThisLap, PerformanceReduced) are published in the snapshot at Step 12, so a single immutable boundary guarantees all elements render values from the same tick.
 
 ### Data Source Mapping
 
@@ -80,7 +80,7 @@ HUD uses **uGUI Canvas** (Screen Space - Overlay) with data-driven elements. Eac
 
 **Lap Time ownership split:** Current lap time is `sim_time` from Simulation (authoritative, ticks during Racing). Recorded laps (previous + best) are `GameState.lapTimes[]` from RSM (updated on lap completion). HUD reads both sources — current from Simulation, recorded from RSM.
 
-**Track Map dot identity:** Each dot's position comes from `GameState.splinePositions[16]`. The player dot is highlighted via `PlayerCarId` (from Simulation). Dot colors use team colors from `CarDefinitionData.teamColor` per car.
+**Track Map dot identity:** Each dot's position comes from `GameState.splinePositions[16]`. The player dot is highlighted via `PlayerCarId` (from Simulation). Dot colors use team colors from `CarDefinition.TeamColor` per car.
 
 **Ghost Recording 9th element (Alpha+):** Ghost Recording adds a 9th Chase element (ghost rival comparison indicator) outside MVP scope. The 8-element MVP layout is the canonical contract; the ghost element is additive and does not alter the data source mapping.
 
@@ -168,8 +168,8 @@ Total               | 0.50 ms   | Within 0.5ms budget
 ## Consequences
 
 ### Positive
-- **Clear data ownership:** Each element reads from exactly one system
-- **Performance budget separation:** HUD 0.5ms is separate from Camera-VFX 2.1ms
+- **Clear data ownership:** Each datum has one authoritative owner; composite elements (e.g. Track Map) combine separately owned snapshot fields
+- **Performance budget separation:** HUD 0.5ms is separate from Camera-VFX 2.25ms planned / 2.4ms ceiling (per ADR-0010)
 - **Team theming:** Data-driven, no code changes for new teams
 - **Readability contract:** 0.5s target enforces fast, scannable design
 
@@ -185,7 +185,7 @@ Total               | 0.50 ms   | Within 0.5ms budget
 
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|--------------------------|
-| hud.md | 7 chase elements with data sources | §Decision: Data Source Mapping |
+| hud.md | 8 chase elements with data sources | §Decision: Data Source Mapping |
 | hud.md | 0.5s readability budget | §Decision: Readability Contract |
 | hud.md | Rival gap display | §Decision: Data Source Mapping (Rival Gap row) |
 | hud.md | Team color theming | §Decision: Team Theming |
