@@ -99,7 +99,7 @@ When fuel < 25%, apply a +1% top speed bonus. This is a perception hack, not a p
 
 **8. Display**
 
-- HUD fuel bar: horizontal bar, 0-100%, positioned bottom-left of race HUD.
+- HUD fuel bar: horizontal bar, 0-100%, positioned bottom-right of race HUD.
 - Color states: green (>50%), yellow (50-25%), red (<25%).
 - Numeric readout: "X.X L" below the bar.
 - Audio cue: A discrete Critical stinger plays once when fuel first drops below 25%; Audio System owns the exact continuous `fuel_factor` curve.
@@ -214,7 +214,7 @@ All values below are serialized fields in `CarConfig.asset` (ScriptableObject).
 
 ## Visual/Audio Requirements
 
-- **Fuel bar:** Horizontal bar, 0-100%, color-coded (green > 50%, yellow 50-25%, red < 25%). Positioned bottom-left of race HUD.
+- **Fuel bar:** Horizontal bar, 0-100%, color-coded (green > 50%, yellow 50-25%, red < 25%). Positioned bottom-right of race HUD.
 - **Numeric readout:** "X.X L" below the bar. Updates in real time.
 - **Audio cue:** A discrete Critical stinger plays once when fuel first drops below 25%; Audio System owns the exact continuous `fuel_factor` curve.
 - **Empty fuel:** Engine sound cuts. Only wind and tire noise remain. Strong audio feedback that fuel is gone.

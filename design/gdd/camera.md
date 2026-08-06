@@ -82,6 +82,7 @@ Quadratic curve makes FOV change subtle at low speeds and aggressive near top sp
 |------|----------|---------|
 | Cockpit | 78° | 95° |
 | Chase | 70° | 90° |
+| PitCamera | 60° | 60° |
 
 *Note: All FOV values are initial defaults subject to playtest. See Tuning Knobs.*
 
@@ -99,16 +100,13 @@ When clamp triggers, speed vibration reduced first, then surface, then impact.
 
 **4. Look-Ahead**
 
-Camera anticipates turns using car's yaw rate.
+Chase anticipates the trajectory using the car's horizontal velocity direction (not heading) — the look-ahead follows where the car is going, so the drift stays visible when heading diverges (race-feel prototype validation 2026-08-03; quick-spec camera-chase-velocity-direction-2026-08-05).
 
-`lookahead_offset = forward_vector × (base_distance + yaw_rate × yaw_multiplier)`
+`lookahead_offset = velocityDirection × speed × lookAheadFactor`
 
-Clamped to [0, 15 m]. Smoothed over 0.2s. Chase mode uses 60% of cockpit values.
+`lookAheadFactor` scales quadratically with speed (~0.5 m at low speed, ~3 m at high speed). Smoothed over 0.2s.
 
-| Mode | base_distance | yaw_multiplier |
-|------|--------------|----------------|
-| Cockpit | 4.0 m | 3.0 m/(rad/s) |
-| Chase | 2.4 m | 1.8 m/(rad/s) |
+Cockpit: no look-ahead — the view is fixed to the driver eye position (the driver's head does not anticipate).
 
 **5. Transition Blending**
 
@@ -182,16 +180,17 @@ If cast distance < 0.3 m, camera teleports to fallback and lerps back over 0.25s
 
 ### Look-Ahead Offset
 
-`lookahead = forward × (base_distance + yaw_rate × yaw_multiplier)`
+`lookahead_offset = velocityDirection × speed × lookAheadFactor`
 
 | Variable | Symbol | Type | Range | Description |
 |----------|--------|------|-------|-------------|
-| Base Distance | base_distance | float | 2.4-4.0 m | Static forward offset |
-| Yaw Rate | yaw_rate | float | -∞ to +∞ rad/s | Car's angular velocity |
-| Yaw Multiplier | yaw_multiplier | float | 1.8-3.0 m/(rad/s) | How much yaw stretches lookahead |
+| Velocity Direction | velocityDirection | Vector3 (XZ) | unit | Car's horizontal velocity direction (trajectory, not heading) |
+| Speed | speed | float | 0-∞ m/s | Current speed |
+| Look-Ahead Factor | lookAheadFactor | float | ~0.5-3 m | Scales quadratically with speed |
 
-**Output Range:** 0-15 m (clamped)
-**Example:** Cockpit at tight corner (yaw=2 rad/s): 4.0 + 2.0 × 3.0 = 10.0 m ahead
+**Output Range:** ~0.5-3 m (bounded by the quadratic factor)
+**Example:** Chase at high speed: ≈3 m along the velocity direction
+**Cockpit:** no look-ahead — fixed driver eye position
 
 ### Shake Amplitude
 
@@ -233,9 +232,9 @@ Priority order for clamping: speed (lowest) → surface → impact (highest)
 | FOV Max (Cockpit) | 95° | 85-110° | Subtle speed feel | Motion sickness | **Needs playtest** |
 | FOV Base (Chase) | 70° | 60-80° | Can't see track | Can't see car | **Needs playtest** |
 | FOV Max (Chase) | 90° | 80-100° | Same as above | Same as above | **Needs playtest** |
+| FOV (PitCamera) | 60° | 50-70° | Excessive track context | Distorted external view | Fixed during `InPitBox`; **Needs playtest** |
 | FOV Smoothing | 0.15s | 0.05-0.3s | Snappy, jarring | Sluggish, delayed | |
-| Lookahead Base (Cockpit) | 4.0 m | 2.0-6.0 m | Can't see apex | Distortion at speed | |
-| Lookahead Yaw Multiplier | 3.0 | 1.0-5.0 | No anticipation | Over-rotates | |
+| Look-Ahead Factor (Chase) | quadratic, ~0.5-3 m | 0.3-5.0 m | Camera lag behind car | Excessive offset, loses drift view | Chase only; Cockpit has no look-ahead |
 | Shake Speed Amplitude | 0.15° | 0.05-0.3° | No vibration | Nauseating | |
 | Shake Impact Max | 2.5° | 1.0-4.0° | Weak feedback | Disorienting | |
 | Blend Time | 0.35s | 0.2-0.6s | Jarring switch | Sluggish switch | |
@@ -280,8 +279,9 @@ Camera has no direct UI. The player accesses camera mode switch via mapped input
 - **AC-SH5:** Given Settings working copy sets Reduced Motion On, When Camera resolves runtime presentation, Then shake, dynamic FOV, and look-ahead are suppressed immediately without changing the saved shake/FOV preferences; turning Reduced Motion Off restores the working values.
 
 ### Look-Ahead
-- **AC-LA1:** Given car in straight line (yaw rate = 0) at any speed, When rendering, Then camera lookahead is 3.0-5.0 m (target 4.0m ±1.0m).
-- **AC-LA2:** Given car in tight corner (yaw rate = 2.0 rad/s), When rendering, Then camera lookahead is 10.0-15.0 m (target 10.0m for cockpit: 4.0 + 2.0 × 3.0).
+- **AC-LA1:** Given the car driving straight (velocity direction aligned with heading), When rendering in Chase, Then the camera look-ahead offset is ~0.5 m at low speed and grows quadratically to ~3 m at top speed.
+- **AC-LA2:** Given the car drifting (heading diverging from velocity direction), When rendering in Chase, Then the look-ahead follows the velocity direction, keeping the drift visible on screen.
+- **AC-LA3:** Given Cockpit mode, When rendering, Then no look-ahead is applied — the view is fixed to the driver eye position.
 
 ### Collision Avoidance
 - **AC-CA1:** Given chase camera approaches wall within 0.5m, When sphere-cast hits geometry, Then camera position is pulled forward to hit point minus 0.3m buffer (±0.05m).

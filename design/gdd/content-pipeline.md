@@ -141,14 +141,14 @@ Loading screen progress is derived from byte counts of pending bundles.
 |------|----|---------|
 | `Idle` | `Loading Track` | Simulation accepts a race selection and enters Loading |
 | `Loading Track` | `Loading Cars` | Track loaded (or parallel — both start together) |
-| `Loading Cars` | `Ready` | All 16 cars loaded |
+| `Loading Cars` | `Ready` | All 16 cars loaded (a failed car is replaced by placeholder via `CarLoadDegraded`; race continues with 15 cars and does NOT block Ready) |
 | `Ready` | `Racing` | Simulation accepts `RaceLoadReady(mode)`; Content remains fully loaded while Simulation runs Countdown for Race or Racing for Qualifying |
 | `Racing` | `Race Reconfigure` | Simulation enters Loading after RSM accepts `StartRaceRequested` from Qualifying Results (after qualifying or skip) and sends `ContentLoadRequest(Race, gridAssignment)` |
 | `Racing` | `Loading Track` | Simulation sends `ContentLoadRequest(RaceMode.Race, gridAssignment)` for Next Race (not qualifying→race transition); Content Pipeline unloads current race and loads new one |
 | `Race Reconfigure` | `Ready` | Emit `RaceReconfigureStart` signal for domain owners (Fuel, Tire, AI, RSM) to reset their own state; instantiate cars from locked `gridAssignment`; re-emit `RaceLoadReady(RaceMode.Race, gridAssignment)` without unloading assets |
 | `Racing` | `Unloading` | Simulation remains Results after Continue/Back and sends `ContentUnloadRequest` |
 | `Unloading` | `Idle` | All handles released and instances destroyed; Content emits `ContentUnloadComplete`, after which Simulation may enter Idle/Title |
-| `Loading Track` or `Loading Cars` | `Unloading` | ContentLoadError; release partial handles and emit `ContentLoadError` to Simulation |
+| `Loading Track` or `Loading Cars` | `Unloading` | Abortive `ContentLoadError` (track, shared, catalog, memory); release partial handles and emit `ContentLoadError` to Simulation. Per-car `CarLoadDegraded` does NOT trigger Unloading |
 | `Racing` or `Race Reconfigure` | `Unloading` | Simulation sends `ContentUnloadRequest` from Results or a load-failure cleanup boundary; Content owns cleanup, not SimulationState |
 
 ### Interactions with Other Systems
@@ -191,7 +191,7 @@ Loading screen progress is derived from byte counts of pending bundles.
 ## Edge Cases
 
 - **If Addressables catalog fails to initialize:** Show error dialog. Retry once. If retry fails, close application. No game is possible without the catalog.
-- **If a car bundle fails to load:** Skip that car. Fill grid position with a "missing car" placeholder (visible but non-interactive). Log error. Race continues with 15 cars.
+- **If a car bundle fails to load:** Emit `CarLoadDegraded(teamId)` (non-fatal). Skip that car. Fill grid position with a "missing car" placeholder (visible but non-interactive). Log error. Race continues with 15 cars. No `ContentLoadError` is emitted.
 - **If track bundle fails to load:** Emit `ContentLoadError`, release partial handles, return Simulation to Idle/Title, and show error: "Track failed to load. Please try again."
 - **If memory exceeds 95% threshold during load:** Emit `ContentLoadError`, unload everything, return Simulation to Idle/Title, and show error: "Not enough memory to run this race. Try lowering quality settings."
 - **If player presses Cancel or Back mid-load:** Ignore the input after loading begins; the loading screen blocks navigation until `RaceLoadReady` or an explicit Content error. No pending async operation is cancelled by normal player input.

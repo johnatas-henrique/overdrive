@@ -63,31 +63,31 @@ Every car has exactly 6 stats on a 0–20 scale. Higher is better. Weight is a c
 
 Anchors (from SMGP reference):
 - `team_tier1_a`: Top Speed 20, Acceleration 20, Brake Power 16, Grip Level 20, Stability 20, Efficiency 20
-- `team_tier4_d`: Top Speed 16, Acceleration 8, Brake Power 4, Grip Level 12, Stability 12, Efficiency 8
+- `team_tier4_d`: Top Speed 6, Acceleration 6, Brake Power 4, Grip Level 12, Stability 12, Efficiency 8
 
-Complete distribution (all stats in increments of 4):
+Complete distribution (stats are integers 0–20, physics-derived; authoritative values in `design/registry/entities.yaml`):
 
 | Team ID | Top Speed | Accel | Brake | Grip | Stability | Eff |
 |---------|-----------|-------|-------|------|-----------|-----|
 | `team_tier1_a` | 20 | 20 | 16 | 20 | 20 | 20 |
-| `team_tier1_b` | 16 | 20 | 20 | 16 | 20 | 20 |
-| `team_tier1_c` | 20 | 16 | 20 | 16 | 16 | 16 |
-| `team_tier1_d` | 20 | 12 | 20 | 20 | 20 | 20 |
-| `team_tier2_a` | 16 | 16 | 16 | 16 | 16 | 16 |
-| `team_tier2_b` | 12 | 20 | 20 | 16 | 12 | 16 |
-| `team_tier2_c` | 20 | 12 | 16 | 16 | 16 | 16 |
-| `team_tier2_d` | 12 | 16 | 16 | 12 | 12 | 12 |
-| `team_tier3_a` | 12 | 12 | 12 | 12 | 12 | 12 |
-| `team_tier3_b` | 16 | 8 | 8 | 12 | 8 | 8 |
-| `team_tier3_c` | 16 | 8 | 16 | 16 | 16 | 16 |
-| `team_tier3_d` | 16 | 12 | 8 | 12 | 8 | 8 |
-| `team_tier4_a` | 16 | 8 | 8 | 12 | 12 | 8 |
-| `team_tier4_b` | 16 | 8 | 8 | 12 | 8 | 8 |
-| `team_tier4_c` | 12 | 8 | 8 | 8 | 8 | 8 |
-| `team_tier4_d` | 16 | 8 | 4 | 12 | 12 | 8 |
+| `team_tier1_b` | 20 | 20 | 20 | 16 | 20 | 20 |
+| `team_tier1_c` | 17 | 19 | 20 | 16 | 16 | 16 |
+| `team_tier1_d` | 15 | 17 | 20 | 20 | 20 | 20 |
+| `team_tier2_a` | 11 | 14 | 16 | 16 | 16 | 16 |
+| `team_tier2_b` | 11 | 14 | 20 | 16 | 12 | 16 |
+| `team_tier2_c` | 8 | 11 | 16 | 16 | 16 | 16 |
+| `team_tier2_d` | 11 | 14 | 16 | 12 | 12 | 12 |
+| `team_tier3_a` | 8 | 11 | 12 | 12 | 12 | 12 |
+| `team_tier3_b` | 8 | 11 | 8 | 12 | 8 | 8 |
+| `team_tier3_c` | 8 | 11 | 16 | 16 | 16 | 16 |
+| `team_tier3_d` | 8 | 11 | 8 | 12 | 8 | 8 |
+| `team_tier4_a` | 8 | 11 | 8 | 12 | 12 | 8 |
+| `team_tier4_b` | 8 | 11 | 8 | 12 | 8 | 8 |
+| `team_tier4_c` | 8 | 11 | 8 | 8 | 8 | 8 |
+| `team_tier4_d` | 6 | 6 | 4 | 12 | 12 | 8 |
 
 **Design rationale:**
-- Tier gap: ~4-point average drop between tiers (noticeable but not insurmountable)
+- Tier gap: ~3–4.5-point drop between adjacent tiers (T1→T2 ~4.5, T2→T3 ~3, T3→T4 ~2; noticeable but not insurmountable)
 - Within-tier spread: 1-3 points (teams feel different but tier identity is clear)
 - Each team has a distinct profile (e.g., `team_tier1_c` trades top speed for grip/efficiency, `team_tier2_b` trades brakes for speed/accel)
 
@@ -134,17 +134,17 @@ Each team is stored as a ScriptableObject asset:
 Assets/Data/Cars/team_tier1_a.asset
 ```
 
-ScriptableObject fields: `teamId` (string), `tier` (int), `topSpeed` (int), `acceleration` (int), `brakePower` (int), `gripLevel` (int), `stability` (int), `efficiency` (int), `engineCylinders` (int, 6–12), `audioProfile` (CarAudioProfile — see ADR-0012). Weight is a global constant, not per-car. The concrete audio-profile values for each team are assigned in the Car Definition review; Audio consumes them without duplicating ownership.
+Serialized backing fields: `_teamId` (string), `_stats` (CarStats: six ints 0–20), `_audioProfile` (CarAudioProfile — see ADR-0012), `_teamColor` (opaque Color), and `_cockpitOffset` (Vector3 in meters). Public read-only properties expose `TeamId`, derived-and-validated `Tier`, `Stats`, `AudioProfile`, `TeamColor`, and `CockpitOffset`. Vehicle mass is the global 505 kg Vehicle Physics constant, not per-car content. Audio consumes `AudioProfile` without duplicating ownership.
 
 ### CarAudioProfile (from ADR-0012)
 
 | Field | Type | Range | Description |
 |-------|------|-------|-------------|
-| cylinders | int | 8, 10, 12 | Engine cylinder count (V8/V10/V12). Replaces engineCylinders semantic. |
-| engineBasePitch | float | 0.8–1.2 | Engine character pitch multiplier |
-| exhaustNote | enum | Standard, Deep, Sharp | Timbre variant for procedural engine |
+| `EngineCylinders` | int | 8, 10, 12 | Engine cylinder count (V8/V10/V12) |
+| `EngineBasePitch` | float | 0.8–1.2 | Engine character pitch multiplier |
+| `ExhaustNote` | enum | Standard, Deep, Sharp | Timbre variant for procedural engine |
 
-The `engineType` (string) field is removed — replaced by structured `CarAudioProfile`. MVP default: `cylinders = 10`, `engineBasePitch = 1.0`, `exhaustNote = Standard`.
+The `engineType` (string) field is removed — replaced by structured `CarAudioProfile`. MVP default: `EngineCylinders = 10`, `EngineBasePitch = 1.0`, `ExhaustNote = Standard`.
 
 Loading: Addressables group `Cars/` — loaded per-race based on grid composition.
 
@@ -152,16 +152,19 @@ Loading: Addressables group `Cars/` — loaded per-race based on grid compositio
 
 | Data Field | Type | Range | Consuming System |
 |------------|------|-------|-----------------|
-| `team_id` | string | `team_tier{N}_{a-d}` | Race, UI, Save/Load |
-| `tier` | int | 1–4 | Matchmaking, Difficulty |
-| `top_speed` | int | 0–20 | Vehicle Physics → max velocity |
-| `acceleration` | int | 0–20 | Vehicle Physics → force/throttle curve |
-| `brake_power` | int | 0–20 | Vehicle Physics → deceleration rate |
-| `grip_level` | int | 0–20 | Vehicle Physics → lateral friction |
-| `stability` | int | 0–20 | Vehicle Physics → loss-of-control threshold |
-| `efficiency` | int | 0–20 | Fuel → consumption rate, Tire → wear rate |
-| `engine_cylinders` | int | 6–12 | Audio → procedural engine frequency |
-| `exhaust_note` | enum | Standard, Deep, Sharp | Audio → engine character |
+| `TeamId` | string | `team_tier{N}_{a-d}` | Race, UI, Save/Load |
+| `Tier` | int | 1–4, derived from `TeamId` | Matchmaking, Difficulty |
+| `Stats.TopSpeed` | int | 0–20 | Vehicle Physics → max velocity |
+| `Stats.Acceleration` | int | 0–20 | Vehicle Physics → force/throttle curve |
+| `Stats.BrakePower` | int | 0–20 | Vehicle Physics → deceleration rate |
+| `Stats.GripLevel` | int | 0–20 | Vehicle Physics → lateral friction |
+| `Stats.Stability` | int | 0–20 | Vehicle Physics → loss-of-control threshold |
+| `Stats.Efficiency` | int | 0–20 | Fuel → consumption rate, Tire → wear rate |
+| `AudioProfile.EngineCylinders` | int | 8, 10, 12 | Audio → procedural engine frequency |
+| `AudioProfile.EngineBasePitch` | float | 0.8–1.2 | Audio → engine pitch multiplier |
+| `AudioProfile.ExhaustNote` | enum | Standard, Deep, Sharp | Audio → engine character |
+| `TeamColor` | Color | opaque team identity | HUD → track-map dots; livery accent |
+| `CockpitOffset` | Vector3 | meters | Camera → cockpit POV offset |
 
 ### States and Transitions
 
@@ -364,10 +367,10 @@ The same **efficiency_modifier** applies to Tire System wear calculations:
 | **Fuel** | Outbound | Efficiency → consumption rate | Hard — fuel system needs base rate |
 | **Tire** | Outbound | Efficiency → wear rate | Hard — tire system needs base rate |
 | **AI Rival** | Outbound | All 6 stats → AI performance | Hard — AI ceiling defined by stats |
-| **Content Pipeline** | Outbound | team_id → asset path | Hard — loads correct car assets |
+| **Content Pipeline** | Outbound | TeamId → asset path | Hard — loads correct car assets |
 | **Settings** | Not consumed at runtime | Difficulty selection | Soft — AI consumes difficulty; Car Definition formulas remain fixed |
-| **Race Session Manager** | Outbound | team_id → grid composition | Hard — race needs to know which cars are on grid |
-| **HUD** | Outbound | Team color, icon | Hard — cosmetic theming |
+| **Race Session Manager** | Outbound | TeamId → grid composition | Hard — race needs to know which cars are on grid |
+| **HUD** | Outbound | TeamColor | Hard — cosmetic theming |
 | **VFX** | Outbound | Per-car `max_velocity` (derives `global_max_velocity`) | Hard — normalizes speed effects |
 
 ## Tuning Knobs
@@ -424,16 +427,16 @@ Display format: 6 stat names with bar fills or numeric values. No formula detail
 - **GIVEN** a car definition with Stability stat at 20, **WHEN** the control_threshold formula is applied, **THEN** the result is exactly 1.0.
 - **GIVEN** a car definition with Efficiency stat at 4, **WHEN** efficiency_modifier is evaluated, **THEN** the result is 0.90 ± 0.001.
 - **GIVEN** a car definition with Efficiency stat at 20, **WHEN** efficiency_modifier is evaluated, **THEN** the result is 0.50 ± 0.001.
-- **GIVEN** any of the 16 team car definitions, **WHEN** stat values are inspected, **THEN** every stat is one of {4, 8, 12, 16, 20}.
+- **GIVEN** any of the 16 team car definitions, **WHEN** stat values are inspected, **THEN** every stat is an integer in 0–20.
 - **GIVEN** any of the 16 team car definitions, **WHEN** the stat count is verified, **THEN** exactly 6 stats exist (Top Speed, Acceleration, Brake Power, Grip Level, Stability, Efficiency).
 - **GIVEN** any of the 16 team car definitions, **WHEN** the audio profile is validated, **THEN** `engine_cylinders` is an integer from 6–12 and `exhaust_note` is one of the defined enum values (Standard, Deep, Sharp).
 - **GIVEN** a team definition without audio-profile overrides, **WHEN** the asset is loaded, **THEN** it uses `engine_cylinders = 10` and `exhaust_note = Standard` without changing any racing stat.
-- **GIVEN** the 16 team car definitions across 4 tiers, **WHEN** the average stat per tier is computed, **THEN** each tier differs from adjacent tiers by approximately 2–4 points (T1→T2 and T2→T3 are ~3–3.5 points; T3→T4 is ~2 points).
+- **GIVEN** the 16 team car definitions across 4 tiers, **WHEN** the average stat per tier is computed, **THEN** each tier differs from adjacent tiers by approximately 2–4.5 points (T1→T2 ~4.5, T2→T3 ~3, T3→T4 ~2).
 - **GIVEN** a car definition with any valid stat, **WHEN** the weight value is read, **THEN** it is exactly 505 kg.
-- **GIVEN** a car definition with a stat value outside 0-20 or non-multiple of 4, **WHEN** the system processes the definition, **THEN** the stat is clamped to the nearest valid value {4, 8, 12, 16, 20}.
+- **GIVEN** a car definition with a stat value outside 0-20, **WHEN** the system processes the definition, **THEN** the stat is clamped to the nearest integer in [0, 20].
 - **GIVEN** a car definition with a missing or null stat field, **WHEN** the system processes the definition, **THEN** a default value of 12 (midpoint) is used and a warning is logged.
 - **GIVEN** a car definition with Top Speed stat at 16, **WHEN** the max_velocity formula (300 + stat×2) is applied, **THEN** the result is 332 km/h ± 0.1 and is identical at every difficulty.
-- **GIVEN** a car definition with corrupted numeric data (e.g., stat = -5 or stat = 25), **WHEN** the system processes the definition, **THEN** the value is clamped to the valid range [4, 20] and normalized to the nearest increment of 4.
+- **GIVEN** a car definition with corrupted numeric data (e.g., stat = -5 or stat = 25), **WHEN** the system processes the definition, **THEN** the value is clamped to the valid range [0, 20] and normalized to the nearest integer.
 
 ## Open Questions
 
