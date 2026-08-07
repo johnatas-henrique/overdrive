@@ -23,7 +23,7 @@ rule, see the referenced ADR.
 
 ### Required Patterns
 - **Input System processes platform events in Dynamic Update** (`ProcessEventsInDynamicUpdate` — the `UpdateMode` enum was renamed in Input System 1.19.0; there is no fixed update mode) — source: ADR-0001, ADR-0005
-- **`InputContextController` is the sole owner of action-map and UI-module activation** — no system else enables/disables maps — source: ADR-0001, ADR-0005
+- **`InputContextController` is the sole owner of action-map and UI-module activation** — no other system enables/disables maps — source: ADR-0001, ADR-0005
 - **Exactly two action maps in a single `.inputactions` asset**: OverdriveGameplay (5 actions) + OverdriveUI (6 actions); exactly one active at any time — source: ADR-0005
 - **Disable one action map before enabling the other** (no overlapping bindings); clear pending pauseEdge on Gameplay→UI transition — source: ADR-0005
 - **Latch every newly enabled digital action and UI Navigate control** actuated at transition until neutral/released; the latch evaluates on the frame AFTER the transition is committed; Accelerate/Brake/Steer are exempt on UI→Gameplay resume — source: ADR-0005
@@ -33,7 +33,7 @@ rule, see the referenced ADR.
 - **Brake priority**: when rawBrakePostDeadZone > 0, accelerateOut = 0 and Accelerate EMA is frozen — source: ADR-0005
 - **Input sanitization**: NaN/Infinity → 0.0f; values outside [-1.0, 1.0] → clamped — source: ADR-0005
 - **InputAvailability enum** {Available, NoInputDevice}: zeroed SimulationInput with NoInputDevice flag when no device connected — source: ADR-0005
-- **Pause (Escape/Start) is fixed and reserved across ALL contexts** — cannot be remapped, replaced, or removed. Confirm (Enter/South) and Cancel (Escape/East) are reserved in all UI contexts — source: ADR-0005
+- **Pause is fixed and reserved across ALL contexts** — cannot be remapped, replaced, or removed. Confirm and Cancel are reserved in all UI contexts (default bindings per GDD Core Rule 1) — source: ADR-0005
 - **Settings uses PlayerPrefs single JSON blob** with backup-first write and transactional preview (`SettingsEditSession`); schema migration runs on load (v1→v2→v3 sequentially, never by jump) — source: ADR-0004
 - **Every successful save must call `PlayerPrefs.Save()` explicitly** after the backup-first write completes, before reporting Success (SetString alone does not flush synchronously on some platforms) — source: ADR-0004
 - **SettingsEditSession**: snapshot (active values) + working copy (preview); Apply persists, Cancel restores; only one session at a time (Save is non-reentrant) — source: ADR-0004
@@ -264,9 +264,9 @@ rule, see the referenced ADR.
 - **Loading blocks Back/Cancel after loading begins** until RaceLoadReady or ContentLoadError (error → Title with message) — source: ADR-0019
 - **Finished Presentation is the visible screen; UI Presentation is its controller** (timer, pause flag, DismissTerminalPresentation; never changes simulation state/race clocks/results) — source: ADR-0019
 - **Qualifying Results permits Confirm (Start Race) only**; no timeout, no Back/Cancel path — source: ADR-0019
-- **Navigation**: pointer hover+click (menu-only, never controls the car); keyboard arrows/WASD + Enter/Escape; gamepad stick/d-pad + South/East; focus stops at group boundary (never wraps); 2px pointer movement or click activates mouse (click assigns focus before activation); keyboard/gamepad Navigate/Confirm/Cancel hides pointer and updates glyphs; Confirm/Cancel not remappable in MVP — source: ADR-0019
-- **Finished Presentation controls**: InputContextController disables InputSystemUIInputModule while SimulationState is Finished; routes P/Start + Enter/South directly to UI Presentation; suppresses Escape/East; terminal timer pauses on focus loss — source: ADR-0019
-- **`InputSystemUIInputModule` references OverdriveUI.Confirm as Submit and OverdriveUI.Cancel as Cancel**; Pause = Start/Menu during gameplay, Escape during pause menu — source: ADR-0019
+- **Navigation**: pointer hover+click (menu-only, never controls the car); keyboard/gamepad bindings per GDD Core Rule 1; focus stops at group boundary (never wraps); 2px pointer movement or click activates mouse (click assigns focus before activation); keyboard/gamepad Navigate/Confirm/Cancel hides pointer and updates glyphs; Confirm/Cancel not remappable in MVP — source: ADR-0019
+- **Finished Presentation controls**: InputContextController disables InputSystemUIInputModule while SimulationState is Finished; routes UI Pause + Confirm directly to UI Presentation; suppresses Cancel; terminal timer pauses on focus loss — source: ADR-0019
+- **`InputSystemUIInputModule` references OverdriveUI.Confirm as Submit and OverdriveUI.Cancel as Cancel**; Pause is a single logical action: OverdriveGameplay.Pause during gameplay, UI Cancel covers Escape in menus — source: ADR-0019
 - **Keyboard-only and controller-only navigation required**; per-screen focus layouts from the UX spec before implementation — source: ADR-0019
 - **Car Selection turntable**: 15 RPM (±10%; tuning range 5–30 RPM); Garage Lit warm lighting (amber/orange); stats as horizontal bars (0–20); fuel comparison bar/number; team colors on model + UI accents; turntable is presentation-only until "Select" confirmed — source: ADR-0019
 - **Ghost car visualization**: opacity 0.4, URP Unlit + alpha blend, no collision, no engine audio — source: ADR-0008

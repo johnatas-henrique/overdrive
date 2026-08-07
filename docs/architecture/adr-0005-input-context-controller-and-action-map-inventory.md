@@ -72,26 +72,25 @@ public class InputContextController {
     public event Action<ControlScheme> OnActiveSchemeChanged;
 }
 
-// Action map inventory (InputSystem_Actions.inputactions)
+// Action map inventory (names and routing rules — contract reference)
+// Default physical bindings and remappable binding slots are authoritative ONLY in
+// design/gdd/input-system.md (Core Rule 1); the story-001 tests verify the asset against
+// the GDD. Duplicating binding values in the ADR caused drift (2026-08-07 amend — the ADR
+// previously cited Steer's keys for Accelerate and the UI Confirm button for Brake).
 // OverdriveGameplay (contexts: GameplayRacing, GameplayQualifying, GameplayCountdown):
-//   - Accelerate (Axis, Keyboard: A/D keys or Right Trigger or Right Stick Y+)
-//   - Brake (Axis, Keyboard: S or Left Trigger or Left Stick Y+, gamepad South face button)
-//   - Steer (Axis, Keyboard: Left/Right arrows, Left Stick X)
-//   - Pause (Button, Escape, Start) — RESERVED, not rebindable
-//   - CameraToggle (Button, C, gamepad North-Y-Triangle) — presentation-only, no sim tick.
-//     Ignored during: PitTransit, InPitBox, Exiting, Finished Presentation, Replay.
-//
-// OverdriveUI (contexts: UI, PitTransit, PitService, Finished Presentation):
-//   - Navigate (Vector2, WASD/Arrows, Left Stick/D-pad)
-//   - Point (Vector2, Mouse)
-//   - Click (Button, Mouse Left Button)
-//   - Confirm (Button, Enter, gamepad South-A) — RESERVED, not rebindable.
+//   Accelerate, Brake, Steer — analog (see GDD Core Rule 1 for exact controls)
+//   Pause (Button) — RESERVED, not rebindable
+//   CameraToggle (Button) — presentation-only, no sim tick; Gameplay-map-only (cannot fire
+//     in UI/Pit/Replay contexts because its map is disabled there)
+// OverdriveUI (contexts: UI, PitTransit, PitService; Finished Presentation is a UI-context sub-state):
+//   Navigate, Point, Click
+//   Confirm (Button) — RESERVED, not rebindable.
 //     In Finished Presentation: routed to UI Presentation (skip timer), NOT InputSystemUIInputModule.
 //     In PitService: after tire swap eligibility, Confirm triggers early exit (routed to Pit Stop).
-//   - Cancel (Button, Escape, gamepad East-B) — RESERVED, not rebindable.
+//   Cancel (Button) — RESERVED, not rebindable.
 //     Suppressed in PitService (consumer ignores Cancel during active service).
 //     Suppressed in Finished Presentation (Escape does nothing during terminal presentation).
-//   - Pause (Button, P, gamepad Start) — RESERVED.
+//   Pause (Button) — RESERVED.
 //     Finished Presentation only. Routed to UI Presentation (pause terminal timer).
 //     Not bound to Escape — OverdriveUI.Cancel covers Escape.
 //     Not active during Racing/Qualifying/Countdown — OverdriveGameplay.Pause covers those.
@@ -195,7 +194,7 @@ Consumers (FuelSystem Step 5a, TireSystem Step 5b, VehiclePhysics Step 6) read t
 
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|--------------------------|
-| input-system.md | 2 action maps (OverdriveGameplay + OverdriveUI) | ADR-0005 defines exact action inventory per map and C# contract |
+| input-system.md | 2 action maps (OverdriveGameplay + OverdriveUI) | ADR-0005 defines map/action structure and C# contract; binding values owned by GDD Core Rule 1 |
 | input-system.md | InputContextController as sole owner | InputContextController.SetGameplayContext() / SetUIContext() |
 | input-system.md | Context handoff latching | InputContextTransition + latch rules per direction |
 | input-system.md | CameraToggle presentation-only | Routes via InputAction.performed directly to Camera, no SimulationInput |

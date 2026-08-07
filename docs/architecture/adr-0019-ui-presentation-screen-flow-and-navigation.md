@@ -62,7 +62,7 @@ Screen inventory (ui-menu.md:58-70, 111-121):
 | **Loading** | Loading indicator, optional error | Back/Cancel blocked after loading begins (ADR-0003); used before Qualifying and Race |
 | **Settings** | Volume, difficulty, control remapping, Chase-HUD toggle | Transactional preview (ADR-0004) |
 | **Qualifying Results** | 16 positions, player highlighted, Start Race only | Shared pre-race confirmation (ADR-0013); no timeout, no Back/Cancel |
-| **Pause Menu** | Resume, Settings, Return to Menu | `ReturnToMenuRequested` is the only route to Forfeit (ADR-0001); Escape/Start opens it during Race |
+| **Pause Menu** | Resume, Settings, Return to Menu | `ReturnToMenuRequested` is the only route to Forfeit (ADR-0001); the gameplay Pause action opens it during Race |
 | **Race** | HUD active (ADR-0014) | Gameplay |
 | **Finished Presentation** | Player-car terminal view | Owns the up-to-5-second timer, pauses on focus loss, emits `DismissTerminalPresentation` (ADR-0001); input routed directly to UI Presentation with Cancel suppressed |
 | **Results** | Position/car/time, or FORFEIT summary; Top 3 highlighted | Continue/Back → Idle/Title; Next Race → Loading |
@@ -76,15 +76,15 @@ Lifecycle rules:
 ### Navigation Rules (TR-ui-004)
 
 - **Pointer navigation:** Mouse hover selects a focusable element; primary click activates it. Pointer input is menu-only and never controls the car (ui-menu.md:74).
-- **Keyboard navigation:** Arrow keys or WASD move focus; Enter submits; Escape performs Back/Cancel (ui-menu.md:75).
-- **Gamepad navigation:** Left stick or D-pad move focus; South submits; East performs Back/Cancel (ui-menu.md:76).
+- **Keyboard navigation:** movement/submit/back per ui-menu.md default bindings (ui-menu.md:75).
+- **Gamepad navigation:** movement/submit/back per ui-menu.md default bindings (ui-menu.md:76).
 - **Focus boundary:** Navigation stops at the edge of the current focus group; it never wraps automatically (ui-menu.md:77). Focus layouts are per-screen, defined by the UI Menu UX specification (ui-menu.md:219).
 - **Pointer coexistence:** Pointer movement of at least 2 pixels or click makes mouse active; click assigns focus before activation. Keyboard/gamepad Navigate, Confirm, or Cancel hides the pointer and updates prompt glyphs to the active scheme (ui-menu.md:78).
-- **Pause contextual action:** During Race, Escape or Start opens the pause menu. In menu contexts, Escape or East performs Back/Cancel through the reserved UI Cancel action (ui-menu.md:79). Confirm and Cancel are not remappable in MVP (ADR-0005).
-- **Finished Presentation controls:** InputContextController disables `InputSystemUIInputModule` while SimulationState is Finished, routes P/Start and Enter/South directly to UI Presentation, and suppresses Escape/East (ui-menu.md:81).
+- **Pause contextual action:** During Race, the gameplay Pause action opens the pause menu. In menu contexts, the UI Cancel action performs Back/Cancel (ui-menu.md:79). Confirm and Cancel are not remappable in MVP (ADR-0005).
+- **Finished Presentation controls:** InputContextController disables `InputSystemUIInputModule` while SimulationState is Finished, routes the UI Pause and Confirm actions directly to UI Presentation, and suppresses Cancel (ui-menu.md:81).
 - **Accessibility:** Keyboard-only and controller-only navigation are required; screen-specific focus layouts are defined by the UX specification before implementation (ui-menu.md:219).
 
-Input routing is owned by Input System (ADR-0005): OverdriveUI action map supplies Confirm, Cancel, Pause, navigation, pointer, and active scheme; `InputSystemUIInputModule` references OverdriveUI.Confirm as Submit and OverdriveUI.Cancel as Cancel; Pause remains Start/Menu during gameplay and Escape during the pause menu (memory #1466).
+Input routing is owned by Input System (ADR-0005): OverdriveUI action map supplies Confirm, Cancel, Pause, navigation, pointer, and active scheme; `InputSystemUIInputModule` references OverdriveUI.Confirm as Submit and OverdriveUI.Cancel as Cancel; Pause remains a single logical action across gameplay and menus, with default bindings per GDD Core Rule 1 (memory #1466).
 
 ### Car Selection Turntable (TR-ui-002)
 
@@ -138,7 +138,7 @@ Input routing is owned by Input System (ADR-0005): OverdriveUI action map suppli
 - [ ] Turntable test: rotation speed is 15 RPM (±10%); Garage Lit lighting applied
 - [ ] Loading test: Back/Cancel blocked after loading begins; `RaceLoadReady` transitions to Countdown/Qualifying; `ContentLoadError` returns to Title with error message
 - [ ] Qualifying Results test: Confirm sends `StartRaceRequested`; Cancel does nothing; no timeout
-- [ ] Finished Presentation test: P/Start and Enter/South routed to UI Presentation; Escape/East suppressed; timer pauses on focus loss; `DismissTerminalPresentation` emitted
+- [ ] Finished Presentation test: UI Pause and Confirm routed to UI Presentation; Cancel suppressed; timer pauses on focus loss; `DismissTerminalPresentation` emitted
 - [ ] Results test: Continue/Back → Idle/Title; Next Race → Loading; Forfeit shows FORFEIT with no fabricated position
 
 ## Related Decisions
