@@ -79,3 +79,12 @@
 
 - Depends on: Story 001 (asset + context controller provide the sampled values)
 - Unlocks: Story 003, Story 004, Story 006 (all consume the captured sample)
+
+### Implementation constraint (from story-001 review round 6; path updated round 8)
+
+Story 002's raw input capture MUST consume the controller-owned asset via
+`InputContextController.ActiveAsset` (read-only accessor added in story 001, round 8) — read
+the actions from that asset — and MUST NOT create a second `InputSystem_Actions` wrapper and
+enable it. `EnforceGlobalSoleOwnership()` (`InputContextController`) disables any enabled
+action from a foreign asset instance (`ReferenceEquals` sweep at init and at both context
+transitions); a second enabled wrapper would be silently swept.
