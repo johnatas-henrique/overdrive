@@ -113,10 +113,10 @@ For an MVP review, Alpha, Beta, and Release behavior is compatibility context on
 
 | System | Status | GDD | Review |
 |--------|--------|-----|--------|
-| Input | Needs Revision | design/gdd/input-system.md | GDD 2026-08-01 postdates ADR-0005 (2026-07-27) — sanitization/lifecycle contract needs confirmation (architecture-review 2026-08-06) |
-| Simulation Architecture | Needs Revision | design/gdd/simulation-architecture.md | GDD 2026-08-01 postdates ADR-0001 (amended 2026-07-25) — 14-step/lifecycle detail needs confirmation (architecture-review 2026-08-06) |
+| Input | Approved | design/gdd/input-system.md | GDD 2026-08-01 verified against amended ADR-0005 — sanitization section adr-0005:136-140 (NaN/Infinity → 0.0f), input-system.md:111-128 agrees (architecture-review v6 2026-08-06: 0 conflicts) |
+| Simulation Architecture | Approved | design/gdd/simulation-architecture.md | 14-step/lifecycle confirmed — propagation fixed in v6 (Step 14 no re-carried raw sample); ADR-0001 amendment aligned (architecture-review v6 2026-08-06: 0 conflicts) |
 | Settings | Approved | design/gdd/settings.md | Approved 2026-07-26 — cross-review 08-01 resolved (CB3 eight Chase elements; CW1 asym 15 synced) |
-| Content Pipeline | Needs Revision | design/gdd/content-pipeline.md | GDD 2026-08-01 postdates ADR-0003 (2026-07-27) — PC/Web load ceilings absent from ADR (architecture-review 2026-08-06) |
+| Content Pipeline | Approved | design/gdd/content-pipeline.md | PC/Web load ceilings ratified in ADR-0003:240 (2026-08-05, ≤5s PC SSD / ≤10s WebGL first load + validation criteria :255); v6 0 conflicts |
 | Ghost Recording | Approved | design/gdd/ghost-recording.md | Lean re-review — APPROVED — 2026-07-26 — zero blocking + one recommended issue remaining (future-service dependency labeling) |
 | Multiplayer Architecture | Approved | design/gdd/multiplayer-architecture.md | Full design-review 2026-08-06 — SDK-agnostic revision — APPROVED (7 blockers resolved) |
 | Vehicle Physics | Approved | design/gdd/vehicle-physics.md | Approved 2026-07-25 — cross-review 08-01 resolved (CB2 AC-R1 2.16L/27%; CW7 wear formula synced; CW1 asym 7/13 synced) |
@@ -130,10 +130,10 @@ For an MVP review, Alpha, Beta, and Release behavior is compatibility context on
 | AI Rival | Approved | design/gdd/ai-rival.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW6 1.10 ownership explicit; DW5 tier gap deferred to playtest; CW1 asym 29 synced) |
 | Track | Approved | design/gdd/track-system.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW1 asym 1/3/17/22 synced) |
 | Car Definition Data | Approved | design/gdd/car-definition-data.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW4 CarAudioProfile; CW1 asym 5/6/8/9 synced) |
-| Race Session Manager | Needs Revision | design/gdd/race-session-manager.md | GDD 2026-08-01 postdates ADR-0001 (amended 2026-07-25) — ranking/classification detail needs confirmation (architecture-review 2026-08-06) |
-| Grid & Start | Needs Revision | design/gdd/grid-start.md | GDD 2026-08-01 postdates ADR-0001/0007 (2026-07-27) — Perfect Start arming + Qualifying Results details untraced (architecture-review 2026-08-06) |
+| Race Session Manager | Approved | design/gdd/race-session-manager.md | Ranking/classification confirmed against ADR-0018/0001 — race-session-manager.md:66-70 (lapCount→spline→entryStep→carId), :87 (anti-cut 90%), :55 (:99 Forfeit without resolver); v6 0 gaps (6/0/0) |
+| Grid & Start | Approved | design/gdd/grid-start.md | Perfect Start arming + Qualifying Results confirmed — grid-start.md:118 (arming GO-12..GO-1), :184 (holds at GO), :51-58 (Confirm-only, no timeout/Back-Cancel); TR-grid-002/005 covered; v6 0 gaps (5/0/0) |
 | VFX | Approved | design/gdd/vfx.md | Approved 2026-07-26 — cross-review 08-01 resolved (CW3 global_max_velocity derived from per-car max_velocity; CW1 asym 6/23 synced) |
-| UI Menu | Needs Revision | design/gdd/ui-menu.md | GDD 2026-08-01 postdates ADR-0001/0003/0004/0005 (2026-07-27) — Qualifying Results terminology + non-stack nav needs confirmation (architecture-review 2026-08-06) |
+| UI Menu | Approved | design/gdd/ui-menu.md | Qualifying Results terminology + non-stack nav confirmed — ui-menu.md:54,196 (non-stack), zero 'Grid Display' references; TR-ui-001/002/005 covered via ADR-0019; v6 0 gaps (5/0/0) |
 
 ## Prototype Findings — Race Feel (2026-08-03)
 

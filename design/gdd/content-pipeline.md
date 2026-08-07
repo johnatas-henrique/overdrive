@@ -2,7 +2,7 @@
 
 > **Status**: Approved
 > **Author**: User + Agents
-> **Last Updated**: 2026-08-01
+> **Last Updated**: 2026-08-05
 > **Implements Pillar**: Every Short Race Matters
 
 ## Phase Scope
