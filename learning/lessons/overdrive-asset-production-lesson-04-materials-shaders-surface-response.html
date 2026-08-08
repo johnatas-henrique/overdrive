@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 4 — Materials, Shaders, and Surface Response</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production · Lesson 4</p>
+  <h1>Materials, shaders, and surface response</h1>
+  <p class="meta">2026-08-06 · Mission: <a href="../MISSION.md">MISSION.md</a> · ~35 min</p>
+</header>
+
+<h2>The question this lesson answers</h2>
+
+<p>Lesson 3 taught you to locate a problem. This lesson explains what happens when the geometry is already acceptable but the surface looks wrong.</p>
+
+<blockquote><strong>How do texture, material, shader, and light combine to make the same mesh look painted, metallic, matte, transparent, or damaged?</strong></blockquote>
+
+<p>The practical goal is not to memorize Unity property names. It is to look at a surface and identify which part of the rendering chain is responsible for what you see.</p>
+
+<h2>1. The four layers of a visible surface</h2>
+
+<p>A surface seen in the scene is the result of several layers working together:</p>
+
+<ol>
+  <li><strong>Texture:</strong> image data such as color, decals, roughness, normal information, or emission.</li>
+  <li><strong>Material:</strong> the selected textures and numeric values assigned to a surface.</li>
+  <li><strong>Shader:</strong> the program that interprets the material and calculates the rendered result.</li>
+  <li><strong>Lighting:</strong> the scene light, environment, shadows, and reflections that reveal the surface response.</li>
+</ol>
+
+<p>The same mesh can therefore look completely different without changing its geometry:</p>
+
+<pre><code>same mesh
+  + painted texture + matte material + controlled light = graphic painted surface
+  + metallic material + smooth surface + reflections = polished metal
+  + transparent surface + glass settings + light transmission = glass
+  + normal map + strong specular + hard light = realistic micro-detail</code></pre>
+
+<h2>2. Texture is not the material</h2>
+
+<p>A texture is an image. A material decides how that image participates in rendering.</p>
+
+<p>The Ferrari body gives us a concrete example:</p>
+
+<pre><code>Mesh:       fer_body-3
+Material:   643_BODY / asr-car-body.mat
+Base Map:   asr-car-body.dds
+Shader:     Universal Render Pipeline/Lit</code></pre>
+
+<p>The base texture provides the red paint and historical livery. The material adds the surface response. If the material's smoothness is increased, the red paint reflects more strongly. If the shader or material receives a normal map, small-scale surface variation can appear even though the mesh itself has not changed.</p>
+
+<p>This is why “the texture is correct” does not prove that the asset looks correct. The same texture can look matte, glossy, metallic, flat, or noisy depending on the material and shader.</p>
+
+<h2>3. What the main material properties communicate</h2>
+
+<table>
+  <tr><th>Property</th><th>What it controls</th><th>Typical visual mistake</th></tr>
+  <tr><td><code>Base Map</code></td><td>Primary texture or color information</td><td>Wrong texture, missing texture, or wrong UV placement</td></tr>
+  <tr><td><code>Base Color</code></td><td>Color multiplier over the base texture</td><td>Texture becomes unintentionally darker, lighter, or tinted</td></tr>
+  <tr><td><code>Metallic</code></td><td>Whether the surface behaves like a metal</td><td>Paint, rubber, or plastic looks like chrome</td></tr>
+  <tr><td><code>Smoothness</code></td><td>How sharp or broad reflections appear</td><td>Every surface looks wet or polished</td></tr>
+  <tr><td><code>Normal Map</code></td><td>Small lighting changes that imitate surface relief</td><td>Damage, carbon weave, or noise appears where it should not</td></tr>
+  <tr><td><code>Emission</code></td><td>Surface appears to produce light</td><td>Ordinary paint glows, or a display fails to glow</td></tr>
+  <tr><td><code>Surface/Blend</code></td><td>Opaque, transparent, or alpha-blended behavior</td><td>Glass renders as solid, or opaque paint becomes translucent</td></tr>
+</table>
+
+<h2>4. The Ferrari damage-map example</h2>
+
+<p>The Ferrari learning import initially showed irregular dark marks across the red body. The body texture itself was not the cause. Unity inspection found:</p>
+
+<pre><code>asr-car-body.mat
+  _BaseMap  → asr-car-body.dds
+  _BumpMap  → damage.dds
+  _NORMALMAP → enabled</code></pre>
+
+<p>The game has no damage presentation in this learning scene. The correction was therefore to remove <code>damage.dds</code> from the material's normal-map slot and disable the normal-map keyword in the learning copy. The body mesh and the main livery texture remained unchanged.</p>
+
+<p>This is the pattern to remember:</p>
+
+<ul>
+  <li>If the shape is correct and the color image is correct, inspect the material inputs before rebuilding the mesh.</li>
+  <li>A texture can be valid as a source file and still be wrong in a particular material slot.</li>
+  <li>Removing an unwanted material input is different from deleting the texture asset.</li>
+</ul>
+
+<h2>5. URP/Lit, Simple Lit, and Unlit</h2>
+
+<p>These shaders are not interchangeable names for “quality.” They are different rendering strategies.</p>
+
+<table>
+  <tr><th>Shader family</th><th>What it is useful for</th><th>Overdrive reading</th></tr>
+  <tr><td><code>URP/Lit</code></td><td>Full physically based lighting features and many surface controls</td><td>Useful for inspection and selected realistic surfaces, but easy to make too reflective or detailed</td></tr>
+  <tr><td><code>URP/Simple Lit</code></td><td>Controlled lit response with a simpler surface model</td><td>Preferred direction for car paint, carbon, cockpit, and tires in the art bible</td></tr>
+  <tr><td><code>Unlit</code></td><td>Texture/color is shown without normal scene-light response</td><td>Useful for flat painted surfaces, sky, grass, crowd, or other graphic elements</td></tr>
+</table>
+
+<p>Overdrive does not use “no lighting” as a universal rule. It uses lighting selectively. The intended identity is painted textures plus controlled Simple Lit response, with Unlit reserved for surfaces that should remain graphically stable.</p>
+
+<h2>6. Reading the Porsche and Ferrari together</h2>
+
+<p>The Porsche's main material was inspected in Unity as <code>Assets/Prototype/RaceFeel/Materials/CARRERA_4096.mat</code>:</p>
+
+<ul>
+  <li>shader: <code>Universal Render Pipeline/Lit</code>;</li>
+  <li>smoothness: <code>0.483</code>;</li>
+  <li>metallic: <code>0.102</code>;</li>
+  <li>environment reflections: enabled;</li>
+  <li>shadow reception: enabled.</li>
+</ul>
+
+<p>Those values help explain why the Porsche reads as a more realistic sports car. Its mesh is not the only reason. The material permits a stronger reflective response than the Overdrive art direction generally wants.</p>
+
+<p>The Ferrari arrived with 33 external materials and 74 recognized textures. Its materials use <code>Universal Render Pipeline/Lit</code> after import. That makes the model visible and inspectable, but it does not make it final. A production pass would still need to consolidate material groups and convert them toward the Overdrive mapping.</p>
+
+<h2>7. Surface diagnosis exercise</h2>
+
+<p>For each observation, identify the most likely first place to inspect. Do not jump directly to remodeling.</p>
+
+<table>
+  <tr><th>Observation</th><th>First inspection target</th></tr>
+  <tr><td>The logo is stretched or mirrored</td><td>UVs, decal texture, and material assignment</td></tr>
+  <tr><td>The body has the correct color but looks wet</td><td>Smoothness, metallic, specular, and shader</td></tr>
+  <tr><td>Dark scratches appear across otherwise clean paint</td><td>Normal map, detail map, damage map, or material keyword</td></tr>
+  <tr><td>The glass is opaque</td><td>Surface mode, blend mode, alpha, and shader</td></tr>
+  <tr><td>The mesh is correct but stays bright in shadow</td><td>Shader choice, lighting response, and whether Unlit was used</td></tr>
+  <tr><td>The car has the right material but the wrong silhouette</td><td>Mesh and proportions, not shader</td></tr>
+</table>
+
+<h2>8. Controlled experiment</h2>
+
+<p>Use one isolated material or simple prop for the experiment. Do not change the Ferrari's tire lettering or side decal yet; those belong to the UV/decal lesson.</p>
+
+<ol>
+  <li>Record the baseline screenshot and material properties.</li>
+  <li>Change only one property, such as smoothness.</li>
+  <li>Capture the same camera view under the same light.</li>
+  <li>Describe exactly what changed: reflection sharpness, brightness, color, shadow readability, or transparency.</li>
+  <li>Restore the baseline before changing a different property.</li>
+</ol>
+
+<p>The purpose is to build a causal vocabulary:</p>
+
+<pre><code>“It looks too realistic”
+  → “The geometry is acceptable, but smoothness and reflections are too strong.”
+
+“The surface has strange dark marks”
+  → “A damage texture is connected to the normal-map slot.”
+
+“The logo is wrong”
+  → “This is probably a UV, decal texture, or material assignment problem.”</code></pre>
+
+<h2>Decision rule</h2>
+
+<p>Before modifying a mesh, ask:</p>
+
+<ol>
+  <li>Is the silhouette correct?</li>
+  <li>Is the texture itself correct?</li>
+  <li>Is the texture assigned to the correct material slot?</li>
+  <li>Are the material properties appropriate for the surface?</li>
+  <li>Is the shader appropriate for the Overdrive visual goal?</li>
+  <li>Is the lighting exposing a real problem or merely exaggerating a response?</li>
+</ol>
+
+<p>If the answer to the first question is yes, do not remodel until the other layers have been checked.</p>
+
+<h2>Primary sources</h2>
+
+<ul>
+  <li><a href="../../design/art/art-bible.md">Overdrive Art Bible</a> — painted textures, controlled Simple Lit, and Unlit mapping.</li>
+  <li><code>Assets/Prototype/RaceFeel/Materials/CARRERA_4096.mat</code> — Porsche material values inspected in Unity.</li>
+  <li><code>Assets/Prototype/RaceFeel/LearningAssets/ASR/Ferrari643/Materials/asr-car-body.mat</code> — Ferrari body material after damage-map removal.</li>
+  <li><code>Assets/Prototype/RaceFeel/Scenes/AssetLearningLab.unity</code> — comparison scene containing the Porsche and imported Ferrari.</li>
+</ul>
+
+<div class="callout">
+  <strong>Next:</strong> Lesson 5 will focus on UVs, decals, and mirrored text. The Ferrari's tire lettering and skewed <code>Marlboro / A. Prost</code> decal will become controlled correction cases rather than unexplained visual defects.
+</div>
+
+<footer>
+  Overdrive Learning Workspace · Lesson 4 of the asset-production track · <a href="overdrive-asset-production-lesson-03-3d-asset-anatomy.html">Previous lesson</a> · <a href="overdrive-asset-production-learning-index.html">Learning index</a> · <a href="../MISSION.md">Mission</a>
+</footer>
+
+</body>
+</html>

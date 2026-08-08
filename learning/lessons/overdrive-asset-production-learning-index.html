@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overdrive Asset Production — Learning Track</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production</p>
+  <h1>Learning track</h1>
+  <p class="meta">A navigable map of the asset-production lessons</p>
+</header>
+
+<div class="callout">
+  <strong>How to use this index:</strong> complete the available lessons in order. The roadmap below is planning information, not a claim that future lessons already exist. Each lesson separates visual judgment, measurable evidence, and production decisions.
+</div>
+
+<h2>Available lessons</h2>
+
+<ol>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-01-style-conformance.html">Lesson 1 — Style, Technique, Standard, and Conformance Checking</a></h3>
+    <p><strong>Purpose:</strong> distinguish visual identity from the technical method used to render it and from measurable production standards.</p>
+    <p><strong>Outcome:</strong> evaluate a generated image with an eight-point checklist instead of relying only on “I like it”.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-02-palette-measurement.html">Lesson 2 — Programmatic Palette Checks</a></h3>
+    <p><strong>Purpose:</strong> learn what a script can measure in an image: dimensions, background color, color distance, and dominant colors.</p>
+    <p><strong>Outcome:</strong> understand what the machine proved and what still requires visual inspection.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-03-3d-asset-anatomy.html">Lesson 3 — Anatomy of a 3D Asset</a></h3>
+    <p><strong>Purpose:</strong> locate problems in the mesh, silhouette, proportions, UVs, textures, materials, shader, prefab, or context.</p>
+    <p><strong>Case study:</strong> compare the Porsche Carrera and the Unity-imported ASR Ferrari 643 in <code>AssetLearningLab.unity</code>.</p>
+    <p><strong>Outcome:</strong> diagnose the Ferrari's damage-map artifact, material fragmentation, inverted tire lettering, and skewed <code>Marlboro / A. Prost</code> decal without confusing those problems with geometry.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-04-materials-shaders-surface-response.html">Lesson 4 — Materials, Shaders, and Surface Response</a></h3>
+    <p><strong>Purpose:</strong> understand how textures, material properties, shaders, and lighting combine to produce the visible surface.</p>
+    <p><strong>Case study:</strong> compare the Porsche's reflective URP/Lit material with the Ferrari's imported materials and removed damage-map input.</p>
+    <p><strong>Outcome:</strong> identify surface problems before changing geometry and perform controlled one-variable material experiments.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-05-uvs-decals-mirrored-text.html">Lesson 5 — UVs, Decals, and Mirrored Text</a></h3>
+    <p><strong>Purpose:</strong> understand how images are placed on meshes and how mirrored, rotated, stretched, or skewed decals are diagnosed.</p>
+    <p><strong>Case study:</strong> inspect the Ferrari's tire lettering and <code>Marlboro / A. Prost</code> body decal.</p>
+    <p><strong>Outcome:</strong> isolate texture, UV, material-assignment, and mesh-orientation problems; apply a targeted material-space correction to the tire lettering; and classify the crooked body decals as texture-space defects without remodeling the car.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-06-blender-export-validation.html">Lesson 6 — Blender Asset Preparation and Export Validation</a></h3>
+    <p><strong>Purpose:</strong> verify effective visibility, collections, variants, parentage, animation dependencies, and visual completeness before exporting an FBX.</p>
+    <p><strong>Case study:</strong> reproduce the Ferrari export failures involving hidden body objects, the <code>CINTURE_ON/OFF</code> variants, separate car/driver exports, and duplicated Unity animation clips.</p>
+    <p><strong>Outcome:</strong> export the smallest intentional scope and prove that the Unity import matches the Blender source.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-07-unity-import-material-routing-prefab-assembly.html">Lesson 7 — Unity Import, Material Routing, and Prefab Assembly</a></h3>
+    <p><strong>Purpose:</strong> trace an FBX through Unity's importer, subassets, renderer material slots, textures, shaders, scene instances, and prefab decisions.</p>
+    <p><strong>Case study:</strong> explain why two Ferrari instances accidentally shared materials and how to isolate a second-car shader experiment.</p>
+    <p><strong>Outcome:</strong> distinguish embedded materials from editable external materials and decide whether an imported model is still a learning reference or ready for production prefab assembly.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-08-practical-prop-restyling.html">Lesson 8 — Practical Restyling of a Simple Prop</a></h3>
+    <p><strong>Purpose:</strong> change surface treatment without changing geometry, hierarchy, or presentation.</p>
+    <p><strong>Case study:</strong> restyle <code>prop_wall_A</code> using isolated copies of <code>GARAGES.mat</code> and <code>FENCE.mat</code>.</p>
+    <p><strong>Outcome:</strong> perform a one-variable material experiment and prove that the original prop remains unchanged.</p>
+  </li>
+</ol>
+
+<h2>Planned roadmap</h2>
+
+<p>These topics are planned next. They will receive their own lesson files only after the preceding concepts and practical decisions are clear.</p>
+
+<ol start="9">
+  <li>
+    <h3>Lesson 9 — Vehicle Restyling: From Art Bible to Surface Specification <span class="badge partial">PLANNED</span></h3>
+    <p>Turn the Overdrive art bible into a concrete paint, palette, material, texture, and presentation specification for a reusable vehicle.</p>
+  </li>
+  <li>
+    <h3>Lesson 10 — Animation, Cutscene Assets, and Presentation Separation <span class="badge partial">PLANNED</span></h3>
+    <p>Separate car animation, driver animation, validation clips, and cutscene presentation so technical exports do not become production content by accident.</p>
+  </li>
+  <li>
+    <h3>Lesson 11 — Asset Acceptance and Evidence Loop <span class="badge partial">PLANNED</span></h3>
+    <p>Run the complete loop: baseline, change, save a copy, reopen, capture, measure, classify every criterion, and stop only when all required checks pass or a real blocker is documented.</p>
+  </li>
+</ol>
+
+<h2>Current position</h2>
+
+<p>You are currently at <strong>Lesson 8</strong>. The correct activity is to make one controlled surface change on a simple prop before attempting vehicle-scale restyling.</p>
+
+<h2>Reference pages</h2>
+
+<ul>
+  <li><a href="../MISSION.md">Learning mission</a></li>
+  <li><a href="../NOTES.md">Learning notes and working preferences</a></li>
+  <li><a href="../RESOURCES.md">Verified resources</a></li>
+</ul>
+
+<footer>
+  Overdrive Learning Workspace · <a href="../MISSION.md">Mission</a>
+</footer>
+
+</body>
+</html>

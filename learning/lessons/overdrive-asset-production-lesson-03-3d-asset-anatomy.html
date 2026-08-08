@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 3 — Anatomy of a 3D Asset: Unity-Verified Comparison</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production · Lesson 3</p>
+  <h1>Anatomy of a 3D asset: where does the problem live?</h1>
+  <p class="meta">2026-08-06 · Mission: <a href="../MISSION.md">MISSION.md</a> · ~35 min</p>
+</header>
+
+<h2>The question this lesson answers</h2>
+
+<p>When an asset feels wrong, “it does not fit” is a useful alarm but not yet a diagnosis. This lesson gives you a sequence for locating the problem:</p>
+
+<blockquote><strong>Does the problem live in the mesh, the silhouette, the proportions, the UVs, the texture, the material, the shader, the prefab, or the context?</strong></blockquote>
+
+<p>We compare two vehicles in the Unity scene <code>Assets/Prototype/RaceFeel/Scenes/AssetLearningLab.unity</code>: the Porsche Carrera from the RaceFeel prototype and the imported ASR Ferrari 643. This version includes observations made after the Ferrari was actually exported from Blender, imported into Unity, textured, and inspected in the scene. The original lesson remains available as the pre-import baseline.</p>
+
+<h2>Verification status</h2>
+
+<p>The Ferrari used for this comparison is <code>Reference_Ferrari643_Complete</code>, instantiated from <code>Assets/Prototype/RaceFeel/LearningAssets/ASR/Ferrari643/Ferrari643_Learning_Complete.fbx</code>.</p>
+
+<ul>
+  <li><strong>Geometry:</strong> verified in Unity; the imported root has 188 renderers and bounds of approximately 2.21 × 1.00 × 4.51 m.</li>
+  <li><strong>Textures:</strong> 80 source <code>.dds</code>/<code>.png</code> files were copied into the learning asset folder; Unity recognized 74 as <code>Texture2D</code> assets.</li>
+  <li><strong>Materials:</strong> Unity generated 33 external materials under the Ferrari learning folder.</li>
+  <li><strong>Shader:</strong> imported materials use <code>Universal Render Pipeline/Lit</code>; this is an observed import state, not the final Overdrive material standard.</li>
+  <li><strong>Damage:</strong> <code>damage.dds</code> was removed from the learning copy's <code>asr-car-body.mat</code> normal-map slot because the game has no damage presentation.</li>
+  <li><strong>Known source problems:</strong> the visible tire-sidewall lettering is incorrectly oriented, and the <code>Marlboro / A. Prost</code> decal is skewed on the side body. These remain documented defects for analysis; they are not silently presented as production-ready.</li>
+</ul>
+
+<h2>1. Mesh and geometry</h2>
+
+<p>The <strong>mesh</strong> is the polygonal surface that gives an object its three-dimensional shape. Geometry is broader than polygon count. It includes:</p>
+
+<ul>
+  <li>volumes and curves;</li>
+  <li>topology: how polygons connect;</li>
+  <li>modeled details;</li>
+  <li>separate parts and hierarchy;</li>
+  <li>collision geometry;</li>
+  <li>LOD variants.</li>
+</ul>
+
+<p>The Porsche prefab contains 44 objects, including body, doors, glass, wheels, brakes, mirrors, lamps, spoiler, steering wheel, collider, and a disabled <code>CARRERA_LOW</code> visual variant. That modularity is useful: different parts can receive different materials and can be animated or replaced independently.</p>
+
+<p>The imported Ferrari preserves a much deeper ASR hierarchy. It contains dedicated body sections, cockpit parts, wings, suspension, wheel assemblies, tire meshes, dashboard pieces, camera markers, and the driver-related objects. The hierarchy is useful for studying an authentic race-car asset, but it is more complex than a clean production-ready Overdrive prefab.</p>
+
+<h2>2. Silhouette</h2>
+
+<p>The <strong>silhouette</strong> is the outer contour that remains if the object is filled completely black. It is one of the fastest ways to identify whether an asset belongs to the correct category.</p>
+
+<table>
+  <tr><th>Asset</th><th>Silhouette communicates</th><th>Possible Overdrive role</th></tr>
+  <tr><td>Porsche Carrera</td><td>Closed-roof civilian sports car</td><td>Character car, paddock vehicle, cutscene prop</td></tr>
+  <tr><td>ASR Ferrari 643</td><td>1991 open-wheel Formula car</td><td>Race car, grid, garage, replay, hero shot</td></tr>
+</table>
+
+<p>Texture cannot turn the Porsche into an F1 car. It can make the Porsche a better Overdrive civilian car. Conversely, the Ferrari silhouette already belongs to the racing category, even if its surface, material count, and geometry detail need production treatment.</p>
+
+<h2>3. Proportions</h2>
+
+<p><strong>Proportion</strong> means the relationship between parts: wheel diameter to body height, cockpit size to car length, wing width to chassis width, and so on.</p>
+
+<p>Anime styling does not require every proportion to become unrealistic. Overdrive should preserve important historical anchors in its F1 cars: low nose, open cockpit, exposed wheels, and period-appropriate wings. Stylization can come from simplification, clearer shapes, controlled exaggeration, and graphic surface treatment.</p>
+
+<p>For the Porsche, real-world road-car proportions are acceptable if its role is a civilian vehicle. The Ferrari preserves the correct 1991 F1 proportions and silhouette anchors. That does not automatically make either asset final: proportions answer “does this belong to the category?”, not “does this already belong to the final visual identity?”</p>
+
+<h2>4. UVs</h2>
+
+<p><strong>UVs</strong> are the 2D layout that tells a texture where to appear on a 3D mesh. Imagine cutting the surface of a cardboard object and unfolding it flat. The unfolded pattern is the UV layout.</p>
+
+<p>Good geometry can still be difficult to repaint if:</p>
+
+<ul>
+  <li>UV islands are too small or fragmented;</li>
+  <li>left and right sides overlap when unique markings are needed;</li>
+  <li>the texture resolution is wasted on hidden surfaces;</li>
+  <li>decals stretch across seams;</li>
+  <li>text appears mirrored, rotated, or skewed on one side.</li>
+</ul>
+
+<p>The Ferrari gives us concrete examples. Its tire meshes use separate left/right sidewall materials: <code>9X_GWAL-L</code> uses <code>G9X_twall-l.dds</code>, while <code>9X_GWAL-R</code> uses <code>G9X_twall-r.dds</code>. The visible <code>GOODYEAR/EAGLE</code> lettering is incorrectly oriented. The <code>Marlboro / A. Prost</code> marking is on the separate <code>fer_body-6</code> decal mesh using <code>643_BODY_DECAL</code> and <code>643_INT_Decals_DIF.dds</code>. Those observations show why a readable logo is a UV and decal-placement test, not only a color test.</p>
+
+<p>The ASR import also creates a material-routing problem. The learning import produced 33 external materials and 74 recognized texture assets. A production car should consolidate these into semantic groups such as paint, carbon, interior, glass, rubber, brakes, and LEDs rather than carrying every source material forward unchanged.</p>
+
+<h2>5. Texture and surface</h2>
+
+<p>A <strong>texture</strong> is an image applied to the UV layout. It can provide base color, painted shadows, decals, roughness information, normal information, or emission. Overdrive's art bible prioritizes painted textures and explicitly prohibits normal maps for the car body workflow.</p>
+
+<p>The Porsche currently uses <code>CARRERA_4096.png</code> as its main base texture. Its original surface communicates a more realistic sports car through paint, glass, tire detail, and material separation. A restyle could preserve the mesh while changing the surface language:</p>
+
+<ul>
+  <li>replace realistic decals and logos;</li>
+  <li>reduce micro-detail;</li>
+  <li>paint clearer color blocks;</li>
+  <li>remove or reduce normal maps;</li>
+  <li>make highlights intentional instead of physically descriptive.</li>
+</ul>
+
+<p>The Ferrari demonstrates a different surface issue. Its original source textures contain historical livery, tire lettering, cockpit details, and damage-related data. The learning copy keeps the useful livery and detail textures but removes <code>damage.dds</code> from the body material. This is a surface correction that does not require changing the body mesh.</p>
+
+<h2>6. Material and shader</h2>
+
+<p>A <strong>material</strong> combines textures and numeric responses such as smoothness, metallic value, specular color, emission, and transparency. A <strong>shader</strong> is the program that uses those inputs to render the surface.</p>
+
+<p>Unity inspection found that the Porsche's main material, <code>Assets/Prototype/RaceFeel/Materials/CARRERA_4096.mat</code>, uses <code>Universal Render Pipeline/Lit</code>, smoothness <code>0.483</code>, metallic <code>0.102</code>, environment reflections, and shadow reception. Its matte material uses the same shader with smoothness and metallic set to zero.</p>
+
+<p>The Ferrari learning materials also imported as <code>Universal Render Pipeline/Lit</code>. That is sufficient for this anatomy lesson, but it is not the final Overdrive material mapping. The art bible calls for controlled Simple Lit materials for car paint, carbon, cockpit, and tires, with the visual identity carried primarily by painted textures.</p>
+
+<p>The Ferrari body provides a concrete material diagnosis: <code>asr-car-body.mat</code> originally had <code>damage.dds</code> connected to <code>_BumpMap</code> with <code>_NORMALMAP</code> enabled. Clearing that slot removed the dark damage artifacts while preserving the main body texture. This is the difference between removing a bad material input and discarding useful geometry.</p>
+
+<h2>7. Prefab and Unity role</h2>
+
+<p>A <strong>prefab</strong> is the reusable Unity package that combines an object's hierarchy, components, materials, colliders, and configuration. The same mesh can be useful or useless depending on how it is packaged.</p>
+
+<table>
+  <tr><th>Question</th><th>Porsche evidence</th><th>Ferrari learning evidence</th><th>Why it matters</th></tr>
+  <tr><td>Is the visual hierarchy separated?</td><td>Yes: body, doors, glass, wheels, lights, spoiler, steering wheel</td><td>Yes, but with a much deeper source hierarchy</td><td>Materials and animation can target meaningful parts</td></tr>
+  <tr><td>Is there collision geometry?</td><td>Yes: <code>CARRERA_COLLIDER</code></td><td>Not yet configured as a gameplay prefab</td><td>Visual import is not the same as gameplay readiness</td></tr>
+  <tr><td>Are materials available?</td><td>Yes, already present in the prototype</td><td>Yes, 33 external learning materials</td><td>Asset inspection requires actual material references, not only mesh visibility</td></tr>
+  <tr><td>Are animations clean?</td><td>Not the focus of the Porsche comparison</td><td>No: baking all actions produced 154 object/action AnimationClip combinations</td><td>Validation export is not automatically a production animation package</td></tr>
+  <tr><td>Does it automatically become Overdrive?</td><td>No</td><td>No</td><td>Prefab structure is not visual identity</td></tr>
+</table>
+
+<h2>8. Context and camera</h2>
+
+<p><strong>Context</strong> is the asset's role, placement, neighbors, lighting, and camera. A Porsche viewed in a warm garage beside an Overdrive mechanic can feel correct as a character vehicle. The same Porsche placed on the starting grid beside 16 Formula cars would communicate the wrong gameplay role.</p>
+
+<p>The Ferrari was inspected beside the Porsche in a neutral learning scene. That context makes the comparison useful, but it is not a final game presentation. The white/gray Porsche and textured Ferrari are being compared as assets, not judged as a finished race scene.</p>
+
+<h2>Comparison: diagnose before deciding</h2>
+
+<table>
+  <tr><th>Layer</th><th>Porsche Carrera</th><th>ASR Ferrari 643</th></tr>
+  <tr><td>Category/silhouette</td><td>Correct for civilian road car; wrong for F1</td><td>Correct for 1991 F1 race car</td></tr>
+  <tr><td>Modularity</td><td>44-object prefab with separated parts</td><td>Deep source hierarchy with separate body, cockpit, wheels, tires, wings, and driver-related objects</td></tr>
+  <tr><td>Surface risk</td><td>Realistic paint, glass, tire, and reflection response</td><td>Historical DDS livery, incorrectly oriented tire lettering, skewed body decal, and removed damage input</td></tr>
+  <tr><td>Material risk</td><td>Realistic URP/Lit response</td><td>33 imported external materials; current URP/Lit state still needs Overdrive conversion</td></tr>
+  <tr><td>Geometry risk</td><td>Road-car proportions are unsuitable for a race-car role</td><td>Category and silhouette fit, but source detail and hierarchy need production simplification</td></tr>
+  <tr><td>Best decision</td><td>Re-style and use in civilian/contextual roles</td><td>Evaluate as a race-car base; fix decal/UV issues, consolidate materials, and verify geometry before committing</td></tr>
+</table>
+
+<h2>Decision vocabulary</h2>
+
+<p>After this comparison, use one of four decisions:</p>
+
+<ul>
+  <li><strong>Use directly:</strong> geometry, surface, and role already fit.</li>
+  <li><strong>Re-style:</strong> geometry and role fit; surface/materials do not.</li>
+  <li><strong>Simplify or remodel:</strong> category is correct, but geometry detail or proportions fight the style.</li>
+  <li><strong>Reference only:</strong> valuable for history or study, but not a good production base.</li>
+</ul>
+
+<h2>Exercise</h2>
+
+<p>Classify each observation by the layer where the primary problem lives:</p>
+
+<ol>
+  <li>The Porsche has a realistic paint response but a usable civilian silhouette.</li>
+  <li>The Ferrari's <code>GOODYEAR/EAGLE</code> lettering is reversed on a visible tire sidewall.</li>
+  <li>The Ferrari's <code>Marlboro / A. Prost</code> decal is skewed on the side body.</li>
+  <li>The Ferrari body shows dark damage artifacts because <code>damage.dds</code> was connected as a normal map.</li>
+  <li>The Ferrari imports 154 object/action clips when the lesson only needs a clean static asset comparison.</li>
+</ol>
+
+<details>
+  <summary>Expected classification</summary>
+  <div class="answer">
+    <p>1 is primarily a <strong>material/shader</strong> issue. 2 is a <strong>UV/texture/material assignment</strong> issue. 3 is a <strong>UV/decal placement</strong> issue. 4 is a <strong>material input</strong> issue. 5 is an <strong>animation import/pipeline</strong> issue, not evidence that the mesh itself is unusable.</p>
+  </div>
+</details>
+
+<h2>Primary sources</h2>
+
+<ul>
+  <li><a href="../../docs/plans/asr-car-import-pipeline.md">ASR Car Import Pipeline</a> — hierarchy, triangle budgets, material consolidation, and import hazards.</li>
+  <li><a href="../../design/art/art-bible.md">Overdrive Art Bible</a> — style, shader, texture, and budget requirements.</li>
+  <li><code>Assets/Prototype/RaceFeel/Prefabs/CARRERA.prefab</code> — Porsche hierarchy inspected in Unity.</li>
+  <li><code>Assets/Prototype/RaceFeel/LearningAssets/ASR/Ferrari643/Ferrari643_Learning_Complete.fbx</code> — Ferrari learning import inspected in Unity.</li>
+  <li><code>Assets/Prototype/RaceFeel/LearningAssets/ASR/Ferrari643/Materials/asr-car-body.mat</code> — damage normal-map input removed from the learning copy.</li>
+</ul>
+
+<div class="callout">
+  <strong>Next:</strong> Use the diagnosis vocabulary before changing the Ferrari. The remaining tire-lettering and side-decal defects are evidence for the UV/texture exercise; do not hide them by calling the asset production-ready.
+</div>
+
+<footer>
+  Overdrive Learning Workspace · Lesson 3 verified edition · <a href="overdrive-asset-production-lesson-02-palette-measurement.html">Previous lesson</a> · <a href="../MISSION.md">Mission</a>
+</footer>
+
+</body>
+</html>

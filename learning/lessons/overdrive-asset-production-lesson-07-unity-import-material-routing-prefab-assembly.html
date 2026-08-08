@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 7 — Unity Import, Material Routing, and Prefab Assembly</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production · Lesson 7</p>
+  <h1>Unity import, material routing, and prefab assembly</h1>
+  <p class="meta">2026-08-07 · Mission: <a href="../MISSION.md">MISSION.md</a> · ~50 min</p>
+</header>
+
+<h2>The question this lesson answers</h2>
+
+<p>When an FBX enters Unity, what exactly is created, which material does each renderer use, and when is the imported model ready to become a reusable production asset?</p>
+
+<blockquote><strong>An imported model is not a single object. It is a routed group of meshes, materials, textures, shaders, animation clips, and scene instances.</strong></blockquote>
+
+<p>This lesson follows the real Ferrari import. The car appeared visually correct in some places, but its material source, shader, texture transform, embedded subassets, and external material copies were not the same thing. Understanding those routes prevents a material change on one car from silently changing another.</p>
+
+<h2>1. The import chain</h2>
+
+<p>The useful mental model is:</p>
+
+<pre><code>FBX file
+  ↓ Model Importer
+imported model prefab + subassets
+  ↓ scene instance
+GameObjects with MeshFilters and MeshRenderers
+  ↓ material slots
+Material
+  ↓ shader properties
+Shader + textures + surface settings
+  ↓ rendering
+visible object</code></pre>
+
+<p>The FBX is the source container. The visible car is produced by the complete chain, not by the filename alone.</p>
+
+<h2>2. One FBX becomes several Unity assets</h2>
+
+<p>When a model contains meshes, materials, textures, and animation data, Unity imports them as a group of assets and subassets. The main Project item may appear as a model prefab, while its meshes, materials, and AnimationClips are nested under the same imported file.</p>
+
+<p>This creates three different things that must not be confused:</p>
+
+<table>
+  <tr><th>Item</th><th>Meaning</th><th>Can it be deleted independently?</th></tr>
+  <tr><td>FBX source asset</td><td>The imported model container and importer settings</td><td>Yes, as the main Project asset</td></tr>
+  <tr><td>Embedded material subasset</td><td>A material generated inside the imported model</td><td>Not as an independent production material</td></tr>
+  <tr><td>Scene model instance</td><td>A placed copy of the imported model prefab</td><td>Yes; this removes only the scene instance</td></tr>
+</table>
+
+<p>Selecting a child such as <code>fer_coverengine-1</code> selects a scene GameObject. Selecting <code>WCCARBODY</code> under the FBX selects an embedded material subasset. Selecting the <code>.fbx</code> file in the Project window selects the importer and the main asset. These selections expose different controls.</p>
+
+<h2>3. Read the Model Importer before changing anything</h2>
+
+<p>Select the FBX file itself in the Project window. The Import Settings inspector exposes tabs such as:</p>
+
+<ul>
+  <li><strong>Model:</strong> geometry, hierarchy, normals, tangents, visibility, and mesh options;</li>
+  <li><strong>Rig:</strong> skeleton and avatar interpretation;</li>
+  <li><strong>Animation:</strong> imported clips and action ranges;</li>
+  <li><strong>Materials:</strong> material creation, location, naming, search, and texture extraction.</li>
+</ul>
+
+<p>Importer settings apply to that model asset. They are not the same as editing one renderer in the scene. Do not change Model settings to solve a material-routing problem, and do not change a shader to solve missing geometry.</p>
+
+<h2>4. Embedded materials versus external materials</h2>
+
+<p>The Materials tab controls where Unity stores or resolves imported materials. The labels can vary slightly by Unity version, but the two important concepts are:</p>
+
+<table>
+  <tr><th>Route</th><th>Result</th><th>Consequence</th></tr>
+  <tr><td>Embedded / In Prefab</td><td>Materials remain inside the imported model</td><td>Convenient for a quick import; Inspector editing is limited</td></tr>
+  <tr><td>External</td><td>Materials are extracted or resolved as separate <code>.mat</code> assets</td><td>They can be edited in the Inspector and reused by other renderers</td></tr>
+</table>
+
+<p>Unity's external-material route searches for existing material names before creating new ones. If a Materials folder already contains a material with the same name, Unity can resolve the existing asset instead of creating an isolated copy. This is why material search and folder structure are production decisions, not cosmetic settings.</p>
+
+<h3>The Ferrari routing failure</h3>
+
+<p>When the second Ferrari was changed to external materials, Unity resolved material names that already belonged to the first Ferrari. Both scene cars then appeared to use the same materials and the same shader treatment. The problem was not that Simple Lit or Unlit had merged. The problem was that both renderers pointed to the same material assets.</p>
+
+<p>The correct separation is:</p>
+
+<pre><code>First Ferrari
+  → original external materials
+
+Second Ferrari
+  → uniquely named or uniquely extracted material copies
+  → separate shader and surface experiments</code></pre>
+
+<p>For an isolated experiment, extract or create the second car's materials in a dedicated folder such as <code>Materials_SecondCar</code>. Then inspect the renderer's material slot and confirm that it points to the new asset, not merely to a material with a similar name.</p>
+
+<h2>5. Material routing is visible in the renderer</h2>
+
+<p>To trace a visible surface, follow this order:</p>
+
+<pre><code>GameObject
+  → MeshRenderer
+  → material slot
+  → .mat asset or embedded material
+  → Shader
+  → Base Map and other texture slots
+  → visible result</code></pre>
+
+<p>For the Ferrari, a renderer such as <code>fer_body-6</code> routes through a material and then to the decal texture. The tire renderers use separate left and right sidewall materials. A change is meaningful only after the complete route is recorded.</p>
+
+<p>Use a copied external material for an A/B experiment. Editing a shared material changes every renderer that references it, including other scene instances and other cars that resolve the same asset.</p>
+
+<h2>6. Why embedded material fields can be grey</h2>
+
+<p>An embedded material belongs to the imported FBX. It is not an ordinary standalone <code>.mat</code> file. The Inspector may display its shader and properties while preventing normal asset editing.</p>
+
+<p>The Editor workflow is:</p>
+
+<ol>
+  <li>select the <code>.fbx</code> file in the Project window;</li>
+  <li>open the <strong>Materials</strong> tab of the Model Importer;</li>
+  <li>use the extraction control or external-material location;</li>
+  <li>choose a dedicated folder when the experiment must not share materials;</li>
+  <li>select the resulting <code>.mat</code> file in the Project window;</li>
+  <li>edit the Shader, Base Map, Normal Map, Smoothness, and other properties.</li>
+</ol>
+
+<p>Do not treat a grey Inspector field as evidence that the material is broken. It usually means that the selected object is an embedded imported subasset rather than an external material asset.</p>
+
+<h2>7. Shader changes have a reference scope</h2>
+
+<p>Changing the Shader field on an external material changes the material asset itself. Every renderer using that asset receives the change.</p>
+
+<table>
+  <tr><th>Change target</th><th>Scope</th><th>Safe use</th></tr>
+  <tr><td>Imported embedded material</td><td>Model import result; may be regenerated on reimport</td><td>Short-lived inspection</td></tr>
+  <tr><td>Shared external material</td><td>Every renderer referencing the material</td><td>Intentional shared style</td></tr>
+  <tr><td>Copied external material</td><td>Only renderers assigned to the copy</td><td>A/B comparison and isolated restyling</td></tr>
+  <tr><td>Renderer material override</td><td>One scene instance or renderer</td><td>Temporary scene experiment</td></tr>
+</table>
+
+<p>The Ferrari comparison used this distinction: the first car retained its original material route, while the second car received separate material copies so its shader could be changed without changing the first car.</p>
+
+<h2>8. Import failures have recognizable signatures</h2>
+
+<table>
+  <tr><th>Visual symptom</th><th>First layer to inspect</th></tr>
+  <tr><td>Car is exploded or incomplete</td><td>Blender visibility, parentage, export selection, and hierarchy</td></tr>
+  <tr><td>Car is white or untextured</td><td>Texture files, texture search, material Base Map, and external paths</td></tr>
+  <tr><td>Dark body artifacts</td><td>Normal Map and damage texture assignment</td></tr>
+  <tr><td>Tire lettering is inverted</td><td>Left/right material route, UV orientation, or material texture transform</td></tr>
+  <tr><td>Two cars change together</td><td>Shared external material references</td></tr>
+  <tr><td>Too many AnimationClips</td><td>Exported action list and “all actions” baking</td></tr>
+</table>
+
+<p>Do not solve a symptom at a later layer until the earlier layer has been checked. A white car is not fixed by changing the shader if the Base Map is missing. A shared shader change is not fixed by changing lighting if both cars still use one material asset.</p>
+
+<h2>9. Model prefab versus production prefab</h2>
+
+<p>Dragging an FBX with a mesh into the Scene creates a model prefab instance. That makes the hierarchy easy to place, but it does not automatically make the asset production-ready.</p>
+
+<p>A learning instance is useful for:</p>
+
+<ul>
+  <li>checking imported geometry and hierarchy;</li>
+  <li>testing material routing;</li>
+  <li>comparing shaders and texture transforms;</li>
+  <li>checking animation subassets;</li>
+  <li>capturing evidence.</li>
+</ul>
+
+<p>A production prefab should be created only after the import contract is stable. It must have an intentional root, correct car/driver boundaries, controlled material references, required components, and a documented ownership of future overrides.</p>
+
+<p>The Ferrari was intentionally kept as a learning reference. Its 188 renderers, 74 textures, fragmented material structure, decal errors, and duplicated animation clips make it useful for diagnosis but expensive as a direct production prefab.</p>
+
+<h2>10. Controlled exercise</h2>
+
+<ol>
+  <li>Use <code>Ferrari643_Learning_Complete.fbx</code> as the imported model source.</li>
+  <li>Select the FBX in the Project window and record its Model, Animation, and Materials settings.</li>
+  <li>Expand the FBX subassets and identify one mesh, one material, one texture, and one AnimationClip.</li>
+  <li>Choose one renderer and trace its material slot to the material and Base Map.</li>
+  <li>Place one temporary instance in <code>AssetLearningLab.unity</code>.</li>
+  <li>Create an isolated material route for a second test instance; do not reuse the first car's material assets.</li>
+  <li>Change only the second instance's shader to Simple Lit.</li>
+  <li>Confirm that the first instance remains unchanged.</li>
+  <li>Record whether the result is still a learning instance or is ready for a production prefab.</li>
+</ol>
+
+<details>
+  <summary>Expected reasoning</summary>
+  <div class="answer">
+    <p>The important result is not merely “the second car looks different.” The result must show that the second car reaches a different material asset through a different routing path. If both cars change together, the material is shared. If the fields are grey, the selected material is probably embedded. If the model is white, inspect texture resolution before changing the shader.</p>
+  </div>
+</details>
+
+<h2>Acceptance matrix</h2>
+
+<table>
+  <tr><th>Criterion</th><th>Evidence required</th><th>Status</th></tr>
+  <tr><td>Importer identified</td><td>FBX selected; Model, Animation, and Materials settings recorded</td><td>PASS / FAIL</td></tr>
+  <tr><td>Subassets traced</td><td>Mesh, material, texture, and clip linked by asset references</td><td>PASS / FAIL</td></tr>
+  <tr><td>Material route isolated</td><td>Second test uses a separate external material asset</td><td>PASS / FAIL</td></tr>
+  <tr><td>Shader scope understood</td><td>First car unchanged after second-car shader edit</td><td>PASS / FAIL</td></tr>
+  <tr><td>Texture route resolved</td><td>Base Map and texture path verified</td><td>PASS / FAIL</td></tr>
+  <tr><td>Prefab decision made</td><td>Learning instance or production prefab status recorded</td><td>PASS / FAIL</td></tr>
+</table>
+
+<h2>Decision rule</h2>
+
+<pre><code>select the FBX
+  → inspect importer settings
+  → trace renderer material slots
+  → separate shared and isolated material routes
+  → verify textures and shaders
+  → test a temporary instance
+  → create a production prefab only after the route is stable</code></pre>
+
+<h2>Primary sources</h2>
+
+<ul>
+  <li><code>Assets/Prototype/RaceFeel/LearningAssets/ASR/Ferrari643/Ferrari643_Learning_Complete.fbx</code> — imported Ferrari learning asset.</li>
+  <li><code>Assets/Prototype/RaceFeel/LearningAssets/ASR/Ferrari643/Materials/</code> — external Ferrari material set.</li>
+  <li><code>Assets/Prototype/RaceFeel/LearningAssets/ASR/Ferrari643/Textures/</code> — Ferrari texture set.</li>
+  <li><code>AssetLearningLab.unity</code> — temporary comparison scene.</li>
+  <li><a href="https://docs.unity3d.com/6000.0/Manual/ImportingModelFiles.html">Unity Manual — Importing Model Files</a>.</li>
+  <li><a href="https://docs.unity3d.com/6000.0/Manual/FBXImporter-Materials.html">Unity Manual — FBX Importer Materials tab</a>.</li>
+  <li><a href="https://docs.unity3d.com/ja/current/ScriptReference/ModelImporterMaterialLocation.External.html">Unity Scripting API — External material location</a>.</li>
+  <li><a href="overdrive-asset-production-lesson-06-blender-export-validation.html">Lesson 6</a> — Blender export validation.</li>
+</ul>
+
+<div class="callout">
+  <strong>Next:</strong> Lesson 8 is now available and applies controlled restyling to a simple prop before vehicle-scale visual changes.
+</div>
+
+<footer>
+  Overdrive Learning Workspace · Lesson 7 of the asset-production track · <a href="overdrive-asset-production-lesson-06-blender-export-validation.html">Previous lesson</a> · <a href="overdrive-asset-production-learning-index.html">Learning index</a> · <a href="../MISSION.md">Mission</a>
+</footer>
+
+</body>
+</html>
