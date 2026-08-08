@@ -1,5 +1,3 @@
 ﻿<Solution>
   <Project Path="Assembly-CSharp.csproj" />
-  <Project Path="Overdrive.Input.csproj" />
-  <Project Path="InputIntegrationTests.csproj" />
 </Solution>
