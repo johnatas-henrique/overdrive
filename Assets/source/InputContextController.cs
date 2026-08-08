@@ -48,6 +48,16 @@ public class InputContextController : MonoBehaviour
     private InputActionMap _gameplayMap;
     private InputActionMap _uiMap;
     private InputSystemUIInputModule _uiModule;
+    private InputAction _accelerateAction;
+    private InputAction _brakeAction;
+    private InputAction _steerAction;
+    private InputActionReference _submitReference;
+    private InputActionReference _cancelReference;
+    private InputActionReference _moveReference;
+    private InputActionReference _pointReference;
+    private InputActionReference _leftClickReference;
+    private ulong _captureSequence;
+    private bool _observedPausePending;
 
     /// <summary>
     /// Rises exactly once per press of OverdriveGameplay.Pause while the Gameplay context is
@@ -105,7 +115,64 @@ public class InputContextController : MonoBehaviour
 
     private void Awake()
     {
+        DontDestroyOnLoad(gameObject);
         EnsureInitialized();
+    }
+
+    /// <summary>
+    /// Captures the controller-owned gameplay actions exactly once for the current render-frame
+    /// simulation update. The returned value is immutable and does not consume the pending Pause
+    /// edge; tick processing owns Pause consumption in Story 006.
+    ///
+    /// <example>
+    /// <code>
+    /// RawInputSample sample = inputController.CaptureLatestRawSample();
+    /// simulation.Process(sample);
+    /// </code>
+    /// </example>
+    /// <remarks>
+    /// Calling this method after the controller has been destroyed is undefined because
+    /// <see cref="OnDestroy"/> disposes the controller-owned action asset.
+    /// </remarks>
+    /// </summary>
+    public RawInputSample CaptureLatestRawSample()
+    {
+        EnsureInitialized();
+
+        var (accelerateRaw, brakeRaw, steerRaw) = ReadRawChannels();
+        var pauseRise = ActiveContext == InputContext.Gameplay
+            && HasPendingPauseEdge
+            && !_observedPausePending;
+        _observedPausePending = HasPendingPauseEdge;
+
+        var sample = new RawInputSample(
+            _captureSequence++,
+            DetermineControlScheme(),
+            accelerateRaw,
+            brakeRaw,
+            steerRaw,
+            pauseRise,
+            DetectAvailability(),
+            RawInputSampleValidity.GetFlags(accelerateRaw, brakeRaw, steerRaw));
+        return sample;
+    }
+
+    private (float accelerate, float brake, float steer) ReadRawChannels()
+    {
+        return (_accelerateAction.ReadValue<float>(),
+            _brakeAction.ReadValue<float>(),
+            _steerAction.ReadValue<float>());
+    }
+
+    private InputAvailability DetectAvailability()
+    {
+        // Story-008 owns final scheme-aware availability arbitration; Story-002 uses the same
+        // eligible-device proxy as DetermineControlScheme().
+        return Keyboard.current != null
+            || Mouse.current != null
+            || Gamepad.current != null
+            ? InputAvailability.Available
+            : InputAvailability.NoInputDevice;
     }
 
     private void OnDestroy()
@@ -114,6 +181,13 @@ public class InputContextController : MonoBehaviour
         // asset is still alive; the null guard tolerates arbitrary component-destroy order.
         if (_uiModule != null)
             _uiModule.enabled = false;
+        // Story-001 module wiring creates these ScriptableObject references; destroy them here
+        // or every controller lifecycle leaks five references until the next domain reload.
+        DestroyInputReference(ref _submitReference);
+        DestroyInputReference(ref _cancelReference);
+        DestroyInputReference(ref _moveReference);
+        DestroyInputReference(ref _pointReference);
+        DestroyInputReference(ref _leftClickReference);
         if (_actions != null)
         {
             _actions.OverdriveGameplay.Pause.performed -= OnGameplayPausePerformed;
@@ -174,7 +248,7 @@ public class InputContextController : MonoBehaviour
         // (leaked wrappers, stale module residue) are swept before our UI map comes up.
         EnforceGlobalSoleOwnership();
         _gameplayMap.Disable();
-        HasPendingPauseEdge = false;
+        ClearPendingPauseEdge();
         _uiMap.Enable();
         _uiModule.enabled = true;
         ActiveContext = InputContext.UI;
@@ -185,14 +259,32 @@ public class InputContextController : MonoBehaviour
         if (_actions != null)
             return;
 
+        CreateActionWrapper();
+        SetupEventSystemAndModule();
+        StripDefaultModuleActions();
+        WireUiModuleReferences();
+        SubscribePauseAndEnforceOwnership();
+    }
+
+    private void CreateActionWrapper()
+    {
         _actions = new InputSystem_Actions();
         _gameplayMap = _actions.OverdriveGameplay.Get();
         _uiMap = _actions.OverdriveUI.Get();
+        _accelerateAction = _actions.OverdriveGameplay.Accelerate;
+        _brakeAction = _actions.OverdriveGameplay.Brake;
+        _steerAction = _actions.OverdriveGameplay.Steer;
+    }
 
-        // Scene invariant: exactly one active EventSystem must exist at bootstrap; the
-        // controller reuses it when present, otherwise creates one on this GameObject so it
+    private void SetupEventSystemAndModule()
+    {
+        // Scene invariant: exactly one ACTIVE EventSystem must exist at bootstrap; an inactive
+        // EventSystem is skipped by FindFirstObjectByType and would silently produce a second.
+        // The controller reuses it when present, otherwise creates one on this GameObject so it
         // fully owns its input lifecycle. The module must live on the EventSystem GameObject
         // for the UI event system to drive it.
+        // Bootstrap-time one-shot singleton acquisition; sanctioned exception to the no-Find
+        // standard. This is never performed per-frame.
         var eventSystem = FindFirstObjectByType<EventSystem>();
         if (eventSystem == null)
             eventSystem = gameObject.AddComponent<EventSystem>();
@@ -202,7 +294,10 @@ public class InputContextController : MonoBehaviour
         // Keep the module off until the UI context is entered; the module's OnEnable would
         // otherwise bind and enable the package's default actions.
         _uiModule.enabled = false;
+    }
 
+    private void StripDefaultModuleActions()
+    {
         // N-1 safety (second review round; mechanism corrected by the third, guarantee by the
         // fourth — see EnforceGlobalSoleOwnership below): a module added via AddComponent on
         // an active GameObject runs OnEnable synchronously, and with no actions assigned it
@@ -224,22 +319,57 @@ public class InputContextController : MonoBehaviour
         // class actually was (see EnforceGlobalSoleOwnership). UnassignActions() nulls
         // actionsAsset too, so the actionsAsset assignment below must stay AFTER this call.
         _uiModule.UnassignActions();
+    }
 
+    private void WireUiModuleReferences()
+    {
         // OverdriveUI is wired into the UI input module: Confirm → Submit, Cancel → Cancel,
         // plus Navigate/Point/Click for normal menu routing (ADR-0005).
         _uiModule.actionsAsset = _actions.asset;
-        _uiModule.submit = InputActionReference.Create(_actions.OverdriveUI.Confirm);
-        _uiModule.cancel = InputActionReference.Create(_actions.OverdriveUI.Cancel);
-        _uiModule.move = InputActionReference.Create(_actions.OverdriveUI.Navigate);
-        _uiModule.point = InputActionReference.Create(_actions.OverdriveUI.Point);
-        _uiModule.leftClick = InputActionReference.Create(_actions.OverdriveUI.Click);
+        _submitReference = InputActionReference.Create(_actions.OverdriveUI.Confirm);
+        _cancelReference = InputActionReference.Create(_actions.OverdriveUI.Cancel);
+        _moveReference = InputActionReference.Create(_actions.OverdriveUI.Navigate);
+        _pointReference = InputActionReference.Create(_actions.OverdriveUI.Point);
+        _leftClickReference = InputActionReference.Create(_actions.OverdriveUI.Click);
+        _uiModule.submit = _submitReference;
+        _uiModule.cancel = _cancelReference;
+        _uiModule.move = _moveReference;
+        _uiModule.point = _pointReference;
+        _uiModule.leftClick = _leftClickReference;
+    }
 
+    private void SubscribePauseAndEnforceOwnership()
+    {
         _actions.OverdriveGameplay.Pause.performed += OnGameplayPausePerformed;
 
         // Establish sole ownership the moment this controller exists (AC-45, fourth review
         // round): wipes anything the module's OnEnable just enabled transiently AND any
         // foreign asset that leaked in before us.
         EnforceGlobalSoleOwnership();
+    }
+
+    private void ClearPendingPauseEdge()
+    {
+        HasPendingPauseEdge = false;
+        _observedPausePending = false;
+    }
+
+    private static void DestroyInputReference(ref InputActionReference reference)
+    {
+        if (reference == null)
+            return;
+        UnityEngine.Object.Destroy(reference);
+        reference = null;
+    }
+
+    private ControlScheme DetermineControlScheme()
+    {
+        if (Keyboard.current != null || Mouse.current != null)
+            return ControlScheme.KeyboardMouse;
+        if (Gamepad.current != null)
+            return ControlScheme.Gamepad;
+        // TODO story-007: replace with last-meaningful-device arbitration (ADR-0005).
+        return ControlScheme.KeyboardMouse;
     }
 
     /// <summary>
