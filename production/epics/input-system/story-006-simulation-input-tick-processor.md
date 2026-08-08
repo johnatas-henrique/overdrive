@@ -49,6 +49,9 @@
   - Rate-limit policy: max 1 warning per channel per second (documented implementation detail; the GDD requires "rate-limited").
 - `pauseEdge`: only Pause rising edges enter the pending simulation flag while OverdriveGameplay is active. Repeated rises while pending are ignored; the first simulation tick in that render update consumes and clears it. On active scheme change, the pending pauseEdge is cleared (Story 007 arbitration triggers this).
 - AC-19 is cross-epic: the Input side exposes the raw post-dead-zone values; the Perfect Start evaluation and its GO-12..GO window belong to the Grid & Start epic. The integration test is cross-epic and marked as a dependency — not a blocker of this story.
+- **Review note (story-002 round 7, 2026-08-07):** `pauseRise` is consumable by ANY `CaptureLatestRawSample()` call — a `PauseEdge` subscriber that captures inside its callback marks the edge observed and the driver's sample then reports false. Decide the sole-consumer rule (tick processor only) and document it at implementation.
+- **Review note (story-002 round 7):** first-tick consumption must also reset `_observedPausePending` — reuse `ClearPendingPauseEdge()` (lineage: story-002 :51; covers AC-40 scheme-change clearing). Verify in this story's review.
+- **Review note (story-002 round 7):** add a pin test locking finite out-of-range values → `validityFlags.None` (GDD:124 "non-finite or invalid"; wording reconciliation from story-002 :56) — or document the gap explicitly.
 
 ## Out of Scope
 

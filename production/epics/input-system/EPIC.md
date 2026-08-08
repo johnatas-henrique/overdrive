@@ -53,8 +53,8 @@ This epic is complete when:
 
 | # | Story | Type | Status | ADR |
 |---|-------|------|--------|-----|
-| 001 | Input Action Asset and Context Controller | Integration | Ready | ADR-0005 |
-| 002 | RawInputSample Capture | Integration | Ready | ADR-0001, ADR-0005 |
+| 001 | Input Action Asset and Context Controller | Integration | Complete | ADR-0005 |
+| 002 | RawInputSample Capture | Integration | Complete | ADR-0001, ADR-0005 |
 | 003 | Dead-Zone Normalization | Logic | Ready | ADR-0004, ADR-0005 |
 | 004 | EMA Smoothing Engine | Logic | Ready | ADR-0004, ADR-0005 |
 | 005 | Brake Priority and EMA Freeze | Logic | Ready | ADR-0005 |
@@ -73,4 +73,4 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/story-readiness production/epics/input-system/story-001-input-action-asset-context-controller.md` then `/dev-story` to begin implementation. Work through stories in order — each story's `Depends on:` field tells you what must be DONE before you can start it.
+Run `/story-readiness production/epics/input-system/story-003-dead-zone-normalization.md` then `/dev-story` to begin implementation. Work through stories in order — each story's `Depends on:` field tells you what must be DONE before you can start it.
