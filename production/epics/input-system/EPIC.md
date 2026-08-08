@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/input-system.md
 > **Architecture Module**: Input System (Foundation Layer — module ownership per docs/architecture/architecture.md:118-125)
 > **Status**: Ready
-> **Stories**: 15 created — see table below
+> **Stories**: 8 created — see table below
 
 ## Overview
 
@@ -53,24 +53,17 @@ This epic is complete when:
 
 | # | Story | Type | Status | ADR |
 |---|-------|------|--------|-----|
-| 001 | Input Action Asset and Context Controller | Integration | Complete | ADR-0005 |
-| 002 | RawInputSample Capture | Integration | Complete | ADR-0001, ADR-0005 |
-| 003 | Dead-Zone Normalization | Logic | Ready | ADR-0004, ADR-0005 |
-| 004 | EMA Smoothing Engine | Logic | Ready | ADR-0004, ADR-0005 |
-| 005 | Brake Priority and EMA Freeze | Logic | Ready | ADR-0005 |
-| 006 | SimulationInput Tick Processor | Integration | Ready | ADR-0001, ADR-0005 |
-| 007 | ActiveControlScheme Arbitration | Logic | Ready | ADR-0005 |
-| 008 | NoInputDevice Handling | Logic | Ready | ADR-0001, ADR-0005 |
-| 009 | Context Handoff Latching | Integration | Ready | ADR-0005 |
-| 010 | Countdown and Loading Context Transitions | Integration | Ready | ADR-0005, ADR-0001 |
-| 011 | CameraToggle Routing | Integration | Ready | ADR-0005, ADR-0010 |
-| 012 | Mouse UI Policy | Logic | Ready | ADR-0005 |
-| 013 | Settings Listening and Binding Overrides | Integration | Ready | ADR-0004, ADR-0005 |
-| 014 | Control Profile Integration and Preview | Integration | Ready | ADR-0004, ADR-0005 |
-| 015 | PitService and Finished Presentation Direct Routing | Integration | Ready | ADR-0005 |
+| 001 | Input Action Asset & Context Controller | Integration | Ready | ADR-0005, ADR-0001 |
+| 002 | Raw Capture & Dead-Zone Normalization | Integration | Ready | ADR-0001, ADR-0005 |
+| 003 | EMA & Brake Priority | Logic | Ready | ADR-0005 |
+| 004 | SimulationInput Tick Processor | Integration | Ready | ADR-0001, ADR-0005 |
+| 005 | Scheme Arbitration & No-Device | Logic | Ready | ADR-0005 |
+| 006 | Context Handoff & Transitions | Integration | Ready | ADR-0001, ADR-0005 |
+| 007 | Special Input Routing | Integration | Ready | ADR-0010, ADR-0005, ADR-0019 |
+| 008 | Settings Configuration | Integration | Ready | ADR-0004, ADR-0005 |
 
-**Coverage**: 14/14 TR-input requirements traced; 0 untraced. QL-STORY-READY passed (4 review rounds; all refinements incorporated with GDD/ADR sources). DEFERRED: AC-21/55 (WebGL platform validation), AC-19 (cross-epic Grid & Start integration).
+**Coverage**: 14/14 TR-input requirements traced; 0 untraced. 66 ACs (all MVP scope) + 14 TRs across 8 stories; QL-STORY-READY passed (2 gate rounds → all 8 ADEQUATE; 66 test specs final). DEFERRED: AC-19 (cross-epic Grid & Start), AC-20 (Replay — Alpha), AC-21/55 (WebGL — Alpha platform). No MVP AC is excluded.
 
 ## Next Step
 
-Run `/story-readiness production/epics/input-system/story-003-dead-zone-normalization.md` then `/dev-story` to begin implementation. Work through stories in order — each story's `Depends on:` field tells you what must be DONE before you can start it.
+Run `/story-readiness production/epics/input-system/story-001-input-action-asset-context-controller.md` then `/dev-story` to begin implementation. Work through stories in order — each story's `Depends on:` field tells you what must be DONE before you can start it.
