@@ -22,11 +22,11 @@ stories:
     name: "Raw Capture & Dead-Zone Normalization"
     file: "production/epics/input-system/story-002-raw-capture-dead-zone-normalization.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.625
     blocker: ""
-    completed: ""
+    completed: "2026-08-08"
   - id: "1-3"
     name: "EMA & Brake Priority"
     file: "production/epics/input-system/story-003-ema-brake-priority.md"
