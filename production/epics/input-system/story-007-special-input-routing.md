@@ -1,7 +1,7 @@
 # Story 007: Special Input Routing
 
 > **Epic**: Input System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Integration
 > **Manifest Version**: 2026-08-05
@@ -18,6 +18,8 @@
 
 **Engine**: Unity 6000.3.19f1 + Input System 1.19.0 | **Risk**: MEDIUM
 **Engine Notes**: This story owns the direct-routing destinations (Camera, UI Presentation, Pit Stop). `InputSystemUIInputModule` is disabled during blocked/direct-routing modes. Unity `EventSystem` skips `Process()` on the activation frame — tests must wait one settle frame.
+
+**Performance Budget**: O(1) per event — CameraToggle, PitService Confirm, Finished Presentation routing, and pointer visibility are event-driven (`performed` callbacks), not per-frame work. No per-frame allocations or device iteration; one `CameraToggleRequest` per press, one `PitStopConfirmCommand` per eligible press, one terminal timer toggle per Pause press. Pointer visibility + scheme arbitration evaluate only on pointer delta (≥ 2 px) or keyboard/gamepad UI input — no per-frame scan. Fits the simulation gate (p95 ≤ 6 ms / max ≤ 8 ms); routing adds no measurable per-frame cost.
 
 **Control Manifest Rules (Foundation)**:
 - Required: `CameraToggle` routes rising edge same-frame via `InputAction.performed` → `Camera.ToggleRequest`; holding does not repeat; one toggle per press (ADR-0010).
@@ -53,6 +55,8 @@
 - **PitService**: `Confirm` routes directly to Pit Stop (after tire-swap eligibility, ~2s); Cancel ignored. `PitTransit`: OverdriveUI enabled but all UI actions ignored; no driving actions.
 - **Blocked modes** (Loading, PitTransit): `InputSystemUIInputModule` disabled; no navigation/Submit/Cancel/gameplay event emitted.
 - `InputSystemUIInputModule` enabled only for normal menu routing inside UI.
+- Held input across a transition never routes (Input System no-repeat on action-map enable is the real protection; the latch is defense-in-depth, see AC-54/57/64 regression tests). PitService/Finished/PitTransit latch on cross-context entry.
+- **Deferred (downstream)**: AC-54 `QualifyingResults` destination identifier is carried by the UI Presentation consumer (the controller event is destination-agnostic); AC-36/48 focus assignment belongs to the UI/EventSystem integration suite; AC-58 Simulation/Ghost exclusion is verified in the downstream Simulation/Replay pipeline gate. AC-48 pointer threshold boundaries (2 px / 1.99 px) are covered in `SpecialRoutingTests` (AC48_PointerDeltaThresholdBoundaries).
 
 ---
 
@@ -147,7 +151,7 @@
 **Story Type**: Integration
 **Required evidence**: `Assets/tests/integration/input/SpecialRoutingTests.cs` — must exist and pass (asmdef `InputIntegrationTests`).
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 17 tests / 121 suite PASS (AC26/36/48/58/52/54/57/63/64/65).
 
 ---
 
@@ -155,3 +159,13 @@
 
 - Depends on: Story 001 (controller), Story 006 (context machine).
 - Unlocks: Story 008 (Settings interaction with direct routes); Core UI Menu / Pit Stop / Camera epics consume the routed actions.
+
+---
+
+## Completion Notes
+**Completed**: 2026-08-09
+**Criteria**: 10/10 passing (17 tests, 121/121 suite PASS)
+**Deviations**: None. ADR-0010/0005/0019 compliant (LP-CODE-REVIEW APPROVED, QL-TEST-COVERAGE ADEQUATE).
+**Test Evidence**: Assets/tests/integration/input/SpecialRoutingTests.cs (17 tests)
+**Code Review**: Complete — converged in 4 rounds (unity-specialist APPROVED r2, qa-tester APPROVED WITH SUGGESTIONS r4)
+**Downstream deferred (TD-009)**: AC-54 QualifyingResults identifier → UI Presentation consumer; AC-36/48 focus assignment → UI/EventSystem integration; AC-58 Simulation/Ghost exclusion → pipeline gate. AC-48 pointer thresholds covered in-suite.
