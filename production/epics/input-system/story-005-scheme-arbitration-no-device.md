@@ -181,4 +181,3 @@
 **Real defects caught**: redundant AC-9 zeroing (mutation-inadequate — ReadGamepadAxis already returns 0), reinitializer capture-count inflation (AC-59 violation), same-scheme reconnect stale EMA leak, non-idempotent Enable.
 
 **Test Evidence section**: updated to 26 tests / 87/87.
-
