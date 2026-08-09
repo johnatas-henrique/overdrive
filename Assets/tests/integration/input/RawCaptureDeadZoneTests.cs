@@ -240,6 +240,8 @@ namespace Overdrive.Input.Tests
             Set(_gamepad.leftTrigger, 0.3f);
             yield return null;
 
+            // Story 005: the scheme is resolved before capture (meaningful trigger input → Gamepad).
+            _controller.ResolveActiveScheme();
             RawInputSample sample = _controller.CaptureLatestRawSample();
             Assert.AreEqual(ControlScheme.Gamepad, sample.ActiveScheme);
             Assert.AreEqual(0.4f, sample.AccelerateRaw, 1e-4f);
@@ -264,6 +266,7 @@ namespace Overdrive.Input.Tests
             Assert.AreEqual(InputAvailability.NoInputDevice, sample.Availability);
             Assert.AreEqual(ControlScheme.KeyboardMouse, sample.ActiveScheme);
             Assert.AreEqual(0f, sample.AccelerateRaw, 1e-4f);
+            Assert.AreEqual(0f, sample.BrakeRaw, 1e-4f);
             Assert.AreEqual(0f, sample.SteerRaw, 1e-4f);
         }
 
@@ -272,6 +275,11 @@ namespace Overdrive.Input.Tests
         {
             _controller.SetGameplayContext();
             yield return null;
+
+            // Activate the Gamepad scheme via meaningful trigger input so capture reads raw.
+            Set(_gamepad.rightTrigger, 0.4f);
+            yield return null;
+            _controller.ResolveActiveScheme();
 
             // 0.1 magnitude is inside the StickControl's embedded axisDeadzone (0.125/0.925).
             // ReadValue() would yield 0; ReadUnprocessedValue() must yield the raw 0.1.
@@ -288,6 +296,12 @@ namespace Overdrive.Input.Tests
         {
             _controller.SetGameplayContext();
             yield return null;
+
+            // Activate the Gamepad scheme via meaningful trigger input so capture reads via
+            // ReadUnprocessedValue on the gamepad controls.
+            Set(_gamepad.rightTrigger, 0.4f);
+            yield return null;
+            _controller.ResolveActiveScheme();
 
             // Input System does not clean NaN from queued state; the capture must flag it.
             InputSystem.QueueStateEvent(_gamepad, new GamepadState { leftStick = new Vector2(float.NaN, 0f) });

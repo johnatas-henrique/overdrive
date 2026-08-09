@@ -1,7 +1,10 @@
 {
   "name": "InputUnitTests",
   "references": [
-    "Overdrive.Input"
+    "Unity.InputSystem",
+    "Unity.InputSystem.TestFramework",
+    "Overdrive.Input",
+    "UnityEngine.UI"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
