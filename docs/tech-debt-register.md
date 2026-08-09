@@ -1,6 +1,6 @@
 ## Technical Debt Register
 Last updated: 2026-08-09
-Total items: 7 | Estimated total effort: S×7
+Total items: 8 | Estimated total effort: S×8
 
 | ID | Category | Description | Files | Effort | Impact | Priority | Added | Sprint |
 |----|----------|-------------|-------|--------|--------|----------|-------|--------|
@@ -11,6 +11,7 @@ Total items: 7 | Estimated total effort: S×7
 | TD-005 | Coverage | Controller new-press-after-consumption test (Story 004 AC-28): the tick-processor-level new-rise is tested (`AC28_NewRiseAfterConsumptionProducesNewEdge`), but a fresh controller button press after `ConsumePendingPauseEdge()` re-latching `_pendingPauseEdge` is not directly asserted at controller level. Accepted: the PauseRise latch (`PauseRiseIsLatchedUntilConsumed`) and `SetUIContextClearsPendingPauseEdge` cover the latch behavior; the re-press path is an extra controller-level assertion. | InputContextController.cs / RawCaptureDeadZoneTests.cs | S | Low | 2 | 2026-08-09 | Backlog |
 | TD-006 | Coverage | AC-8 telemetry continuity + AC-39 qualifying timer continuity (Story 005) are verified test-local: the external consumers (Simulation driver telemetry observer, RSM qualifying timer) do not exist yet, so the tests prove arbitration side-effect-freedom via real capture progress (`CaptureCount`) rather than a wired production observer. Accepted: downstream Simulation Kernel / RSM epic must connect the real observers. | SchemeArbitrationTests.cs + Simulation Kernel/RSM epic | S | Low | 3 | 2026-08-09 | Backlog |
 | TD-007 | Integration | `SchemeChangeEmaReinitializer` + `TickProcessor.InitializeFromPostDeadZone(sample)` are produced by Story 005 (EMA re-seed on scheme change + device recovery) but no Simulation driver instantiates them yet. The Simulation Kernel driver must own one reinitializer per race (Enable on driver start, Disable on teardown) to close the AC-23/AC-39/AC-62 handoff. Accepted: seam ownership — the driver does not exist in the Input epic. | SchemeChangeEmaReinitializer.cs + Simulation Kernel epic | S | Medium | 3 | 2026-08-09 | Backlog |
+| TD-008 | Coverage | QL-TEST-COVERAGE GAPS for Story 006: the downstream consumers are mocked self-sufficiently because they do not exist in this epic — AC-14/16 grid-lock pose + pit-entry (Vehicle Physics + Pit Stop), AC-15/18/37 Countdown ticks, Pause/Resume, GO, RaceMode (Simulation Kernel + RSM), AC-56/70 RaceLoadReady transition coordination. When those epics are implemented, the ContextTransitionsTests mocks (GridLockMock, SettingsContextObserver, LifecycleDriverMock) must be replaced by real test doubles that record pose/pit-entry/ticks/race-mode and are exercised through the production transition coordinator. Accepted: consumer ownership — the Input epic verifies the controller, not the downstream systems. | ContextTransitionsTests.cs + Vehicle Physics / Pit Stop / Simulation Kernel / RSM epics | S | Low | 3 | 2026-08-09 | Backlog |
 
 ### Notes
 - Every entry records WHY it was accepted (Story 002 scope boundary or redundant requirement) — none is a behavioral defect.
@@ -18,3 +19,4 @@ Total items: 7 | Estimated total effort: S×7
 - TD-004 has a defined destination (Story 006 AC-41a seam) and should be closed when the EMA initialization is implemented.
 - TD-006 has a defined destination (Simulation Kernel/RSM epic) and should be closed when the real telemetry/qualifying observers are wired.
 - TD-007 has a defined destination (Simulation Kernel driver) and should be closed when the driver owns the reinitializer.
+- TD-008 has defined destinations (Vehicle Physics / Pit Stop / Simulation Kernel / RSM epics) and should be closed when those consumers replace the Story 006 mocks with real test doubles.
