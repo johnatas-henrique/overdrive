@@ -49,6 +49,7 @@
 - **Binding overrides** use stable action and binding GUIDs. Keyboard Steer rebinds the selected 1D-axis composite part by stable binding ID/index — never the composite root. If a saved override references an unknown ID, discard only that override, restore that slot's default, preserve valid overrides, report the migration result to Settings.
 - **Control profile validation**: before any tick, validate `0 ≤ stick_inner < stick_outer ≤ 1`, `0 ≤ trigger_inner < 1`, and every EMA alpha within `[0,1]`. Invalid fields fall back per-field to approved defaults with one rate-limited warning per settings load. `TriggerDeadZoneInner` is always overwritten from Input-owned tuning.
 - **Preview**: `SettingsInputPreviewEvaluator` renders the working profile (immediate preview while paused); the first 60 Hz tick after Resume/Apply uses the same profile. Apply persists; Cancel restores the snapshot.
+- **Config-ready interfaces (stories 002/003)**: `DeadZoneNormalizer.NormalizeStick(raw, inner, outer)` and `NormalizeTrigger(raw, inner)` accept optional thresholds (defaults 0.15/0.95/0.05); Story 003's EMA processor takes its three alphas as parameters (defaults 0.3/0.3/0.5). Story 008 passes control-profile values instead of the defaults — no signature rewrite. Stick dead-zone and EMA alphas are player-config (AC-50/AC-11); `TriggerDeadZoneInner` stays Input-owned tuning (control manifest:44) and is not exposed to the player.
 
 ---
 

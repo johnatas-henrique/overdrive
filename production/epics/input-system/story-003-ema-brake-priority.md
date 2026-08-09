@@ -46,6 +46,7 @@
 *Derived from ADR-0005 Implementation Guidelines:*
 
 - EMA recurrence: `output = α × raw + (1 − α) × previous_output`, one per tick. Alphas: Accelerate 0.3, Brake 0.3, Steer 0.5.
+- **Config-ready interface**: the EMA processor takes its three alphas as parameters (defaults 0.3/0.3/0.5) — no hardcoded alphas inside the recurrence beyond the defaults. Story 008 passes control-profile alphas instead. Mirrors Story 002's `DeadZoneNormalizer`, which accepts stick/trigger thresholds as optional parameters.
 - Input sanitization before EMA: raw channels with NaN/Infinity are replaced by 0.0f; values outside [-1.0, 1.0] are clamped. (Per-AC-22 tick-level validation with warning rate-limiting lives in story 004.)
 - Brake priority: `brakeOut = filteredBrake`; `accelerateOut = 0 when rawBrakePostDeadZone > 0, otherwise filteredAccelerate`.
 - While brake priority is active, Accelerate EMA state is FROZEN at its last pre-brake value — it neither advances toward current raw throttle nor resets. When raw brake returns to 0, the next tick resumes the EMA recurrence from that frozen value.
