@@ -1,0 +1,22 @@
+{
+  "name": "InputIntegrationTests",
+  "references": [
+    "Unity.InputSystem",
+    "Unity.InputSystem.TestFramework",
+    "Overdrive.Input",
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "noEngineReferences": false,
+  "rootNamespace": "Overdrive.Input.Tests"
+}
