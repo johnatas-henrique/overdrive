@@ -66,6 +66,22 @@ namespace Overdrive.Input
         }
 
         /// <summary>
+        /// Reinitializes the internal EMA previous-output state from the given raw sample's
+        /// post-dead-zone values (applies the dead-zone + sanitization exactly as
+        /// <see cref="ProcessTick"/> does). Called on active-scheme change (Story 005,
+        /// AC-23/AC-39) and on UI→Gameplay resume (Story 006, AC-41a); no filtered value
+        /// carries from the prior scheme/context.
+        /// </summary>
+        public void InitializeFromPostDeadZone(RawInputSample sample)
+        {
+            ApplyDeadZone(sample, out float acceleratePostDz, out float brakePostDz, out float steerPostDz);
+            _ema.InitializeFromPostDeadZone(
+                EmaBrakePriority.Sanitize(acceleratePostDz),
+                EmaBrakePriority.Sanitize(brakePostDz),
+                EmaBrakePriority.Sanitize(steerPostDz));
+        }
+
+        /// <summary>
         /// Processes one simulation tick and assembles the authoritative SimulationInput.
         /// </summary>
         /// <param name="sample">The latest immutable raw input sample captured this render frame.</param>
