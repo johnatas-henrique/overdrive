@@ -49,11 +49,11 @@ stories:
     name: "Scheme Arbitration & No-Device"
     file: "production/epics/input-system/story-005-scheme-arbitration-no-device.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-08-09"
   - id: "1-6"
     name: "Context Handoff & Transitions"
     file: "production/epics/input-system/story-006-context-handoff-transitions.md"

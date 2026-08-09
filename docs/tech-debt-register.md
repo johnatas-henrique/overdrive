@@ -1,6 +1,6 @@
 ## Technical Debt Register
 Last updated: 2026-08-09
-Total items: 5 | Estimated total effort: S×5
+Total items: 7 | Estimated total effort: S×7
 
 | ID | Category | Description | Files | Effort | Impact | Priority | Added | Sprint |
 |----|----------|-------------|-------|--------|--------|----------|-------|--------|
@@ -9,8 +9,12 @@ Total items: 5 | Estimated total effort: S×5
 | TD-003 | Coverage | Zero/one-tick capture counting (AC-59): the controller-seam test covers 1x/frame + monotonic; explicit zero-tick/one-tick counts belong to Story 004 (tick processor consuming the sample per tick), and the capture-before-accumulator ORDER is a Simulation-driver contract (ADR-0001:41) owned by the Simulation Kernel epic DoD. Accepted: scope boundary — Story 002 covers the seam, not the driver. | Story 004 + Simulation Kernel epic | S | Low | 2 | 2026-08-08 | Backlog |
 | TD-004 | Coverage | AC-27 EMA alpha=0 non-zero-previous retention (Story 003): the α=0 test covers only from-rest (prev 0) because with α=0 the previous value never becomes non-zero without an initialization seam. Retention of a non-zero previous value is verified in Story 006 once the `InitializeFromPostDeadZone` seam (AC-41a) exists; the handoff is annotated in Story 006 Implementation Notes referencing AC-27. Accepted: seam ownership — the initialization mechanism belongs to Story 006, not Story 003. | EmaBrakePriorityTests.cs / Story 006 | S | Low | 2 | 2026-08-09 | Backlog |
 | TD-005 | Coverage | Controller new-press-after-consumption test (Story 004 AC-28): the tick-processor-level new-rise is tested (`AC28_NewRiseAfterConsumptionProducesNewEdge`), but a fresh controller button press after `ConsumePendingPauseEdge()` re-latching `_pendingPauseEdge` is not directly asserted at controller level. Accepted: the PauseRise latch (`PauseRiseIsLatchedUntilConsumed`) and `SetUIContextClearsPendingPauseEdge` cover the latch behavior; the re-press path is an extra controller-level assertion. | InputContextController.cs / RawCaptureDeadZoneTests.cs | S | Low | 2 | 2026-08-09 | Backlog |
+| TD-006 | Coverage | AC-8 telemetry continuity + AC-39 qualifying timer continuity (Story 005) are verified test-local: the external consumers (Simulation driver telemetry observer, RSM qualifying timer) do not exist yet, so the tests prove arbitration side-effect-freedom via real capture progress (`CaptureCount`) rather than a wired production observer. Accepted: downstream Simulation Kernel / RSM epic must connect the real observers. | SchemeArbitrationTests.cs + Simulation Kernel/RSM epic | S | Low | 3 | 2026-08-09 | Backlog |
+| TD-007 | Integration | `SchemeChangeEmaReinitializer` + `TickProcessor.InitializeFromPostDeadZone(sample)` are produced by Story 005 (EMA re-seed on scheme change + device recovery) but no Simulation driver instantiates them yet. The Simulation Kernel driver must own one reinitializer per race (Enable on driver start, Disable on teardown) to close the AC-23/AC-39/AC-62 handoff. Accepted: seam ownership — the driver does not exist in the Input epic. | SchemeChangeEmaReinitializer.cs + Simulation Kernel epic | S | Medium | 3 | 2026-08-09 | Backlog |
 
 ### Notes
 - Every entry records WHY it was accepted (Story 002 scope boundary or redundant requirement) — none is a behavioral defect.
 - TD-003 has a defined destination (Story 004 + Kernel DoD) and should be closed when the tick processor is implemented.
 - TD-004 has a defined destination (Story 006 AC-41a seam) and should be closed when the EMA initialization is implemented.
+- TD-006 has a defined destination (Simulation Kernel/RSM epic) and should be closed when the real telemetry/qualifying observers are wired.
+- TD-007 has a defined destination (Simulation Kernel driver) and should be closed when the driver owns the reinitializer.
