@@ -66,6 +66,7 @@ This epic is complete when:
 - All Visual/Feel and UI stories have evidence docs with sign-off in `production/qa/evidence/`
 - The MVP recordable buffer (12 bytes/tick continuous + standalone Pause edges, 22,500-tick cap, always discarded on Results/Forfeit/Idle/load failure) and `ReplayInitialState` capture are accepted as Ghost Recording criteria (TR-ghost-003/004/007) — the buffer is Kernel-owned in MVP
 - Every seam in the Integration Contract above is published with a documented contract (interface + data shape) that the owning Core epic implements
+- The Simulation driver test asserts `CaptureLatestRawSample()` runs before accumulator evaluation in the same `Update()` — this is the input-system story-002 AC-59 ordering debt (the capture-before-accumulator contract is ADR-0001:41; a controller-seam test cannot independently verify it, so the Kernel owns the test that does)
 - The lifecycle handshake with Content Pipeline (contracts in, readiness/error/unload signals out) closes the loop: Kernel lifecycle + replay capture integrated after Content implements its side
 - TR-sim-005 (16-car gate) verification is recorded as deferred to the ADR-0001 profiling gate once Core content exists — the Kernel declares the gate, does not claim to pass it
 
