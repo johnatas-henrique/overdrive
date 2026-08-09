@@ -1,6 +1,6 @@
 ## Technical Debt Register
 Last updated: 2026-08-09
-Total items: 4 | Estimated total effort: S×4
+Total items: 5 | Estimated total effort: S×5
 
 | ID | Category | Description | Files | Effort | Impact | Priority | Added | Sprint |
 |----|----------|-------------|-------|--------|--------|----------|-------|--------|
@@ -8,6 +8,7 @@ Total items: 4 | Estimated total effort: S×4
 | TD-002 | Coverage | Both-trigger normalization independence (AC-24/33): the pre-written test specs asked to exercise left and right triggers separately in the normalizer, but `NormalizeTrigger` is a symmetric pure function — one test covers it; both triggers are already exercised end-to-end via `GamepadTriggersCaptureRawAccelerateAndBrake` (capture). Accepted: redundant requirement, no behavioral gap. | RawCaptureDeadZoneTests.cs | S | Low | 1 | 2026-08-08 | Backlog |
 | TD-003 | Coverage | Zero/one-tick capture counting (AC-59): the controller-seam test covers 1x/frame + monotonic; explicit zero-tick/one-tick counts belong to Story 004 (tick processor consuming the sample per tick), and the capture-before-accumulator ORDER is a Simulation-driver contract (ADR-0001:41) owned by the Simulation Kernel epic DoD. Accepted: scope boundary — Story 002 covers the seam, not the driver. | Story 004 + Simulation Kernel epic | S | Low | 2 | 2026-08-08 | Backlog |
 | TD-004 | Coverage | AC-27 EMA alpha=0 non-zero-previous retention (Story 003): the α=0 test covers only from-rest (prev 0) because with α=0 the previous value never becomes non-zero without an initialization seam. Retention of a non-zero previous value is verified in Story 006 once the `InitializeFromPostDeadZone` seam (AC-41a) exists; the handoff is annotated in Story 006 Implementation Notes referencing AC-27. Accepted: seam ownership — the initialization mechanism belongs to Story 006, not Story 003. | EmaBrakePriorityTests.cs / Story 006 | S | Low | 2 | 2026-08-09 | Backlog |
+| TD-005 | Coverage | Controller new-press-after-consumption test (Story 004 AC-28): the tick-processor-level new-rise is tested (`AC28_NewRiseAfterConsumptionProducesNewEdge`), but a fresh controller button press after `ConsumePendingPauseEdge()` re-latching `_pendingPauseEdge` is not directly asserted at controller level. Accepted: the PauseRise latch (`PauseRiseIsLatchedUntilConsumed`) and `SetUIContextClearsPendingPauseEdge` cover the latch behavior; the re-press path is an extra controller-level assertion. | InputContextController.cs / RawCaptureDeadZoneTests.cs | S | Low | 2 | 2026-08-09 | Backlog |
 
 ### Notes
 - Every entry records WHY it was accepted (Story 002 scope boundary or redundant requirement) — none is a behavioral defect.
