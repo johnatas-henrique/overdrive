@@ -1,7 +1,7 @@
 # Story 006: Context Handoff & Transitions
 
 > **Epic**: Input System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Integration
 > **Manifest Version**: 2026-08-05
@@ -65,6 +65,13 @@
 - **AC-15**: Settings MVP categories enumerated via stub — Audio, Display, Controls, Accessibility, Camera (Difficulty disabled). Assert Difficulty disabled and the enumerated categories enabled. Cross-reference the Settings GDD for the canonical list.
 - **AC-17**: `SettingsRequested` event while Countdown is active and not paused — assert the request is ignored (no context transition, Settings stays closed).
 - **AC-41**: split into 4 independently verifiable assertions — (a) EMA prev == current post-dead-zone values; (b) analog applies immediately; (c) digital actions latched until neutral; (d) pending `pauseEdge` false.
+- **AC-18**: deterministic EMA fixture — known previous Accelerate/Brake/Steer values, known held raw values, and exact expected first Racing-tick outputs. The assertion must prove NO reinitialization occurs at Countdown → Racing: a reset would produce outputs equal to the raw post-dead-zone values (from-rest), while the correct behavior produces outputs derived from the retained EMA state. A test asserting only nonzero output would pass after a reset and is mutation-inadequate.
+- **AC-53 latching matrix (enumerated)**:
+  - Gameplay → UI: held Pause (Escape → no UI Cancel until release+repress, AC-44), held Confirm/Submit → no Confirm, held Cancel → no Cancel, held Navigate → no navigation.
+  - UI → Gameplay: held Pause, held CameraToggle → no toggle until neutral/release; Accelerate/Brake/Steer exempt (analog, AC-41).
+  - Point/Click are NOT latched: they are PassThrough handled by the UI module, whose pointer tracking (mouse position read immediately) is desired on activation. A held left-click may produce one click on the UI module's activation — accepted UI behavior, not a phantom-input defect (unity-specialist recommendation).
+  - CameraToggle scope: Story 006 owns the LATCHING (a held CameraToggle must not fire on the transition) via a mocked camera consumer; Story 007 owns the ROUTING (what a fired CameraToggle does).
+- **AC-56/AC-70 mocked lifecycle contract**: `StartRaceRequested` issued → mock Simulation accepts it; loading-blocked keeps Input in UI routing (no gameplay context); accepted `RaceLoadReady(RaceMode.Race, gridAssignment)` → GameplayCountdown (AC-56) / `RaceLoadReady(RaceMode.Qualifying)` → GameplayQualifying (AC-70); wrong-mode readiness (Qualifying when Race expected and vice-versa) ignored (Input stays in UI); duplicate readiness ignored (only the first accepted readiness transitions); exact resulting InputContext asserted after each event.
 - Transition tests drive explicit lifecycle events (PauseRequested, RaceLoadReady, StartRaceRequested) via mocked Simulation/Settings/Content Pipeline/RSM/Pit Stop services — not real scenes.
 
 ---
@@ -73,8 +80,14 @@
 
 *Handled by neighbouring stories — do not implement here:*
 
-- Story 007: special routing (CameraToggle, Mouse policy, PitService/Finished direct routes).
+- Story 007: special routing (CameraToggle ROUTING, Mouse policy, PitService/Finished direct routes) — the CameraToggle LATCHING is Story 006's scope.
 - Story 004: the tick pipeline itself (this story owns transitions/context, not the pipeline math).
+
+---
+
+## Performance Budget
+
+**O(1)** per context transition — latching/edge-clear runs only on Gameplay↔UI switches (never per-frame); no allocations, no per-device iteration. The per-tick cost is unchanged (story-004 pipeline is O(1)); transitions add a constant-time latch/clear on context change only. Fits the simulation gate: p95 ≤ 6 ms / max ≤ 8 ms.
 
 ---
 
@@ -155,7 +168,7 @@
 **Story Type**: Integration
 **Required evidence**: `Assets/tests/integration/input/ContextTransitionsTests.cs` — must exist and pass (asmdef `InputIntegrationTests`).
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 16 tests / 104 suite PASS (AC14/15/16/17/18/37/41/44/53/56/70 + AC18 brake, AC53 UI→Gameplay + Confirm, blocked-routing input, blocked clears pause, same-context no-latch, OnContextChanged).
 
 ---
 
@@ -163,3 +176,13 @@
 
 - Depends on: Story 001 (controller), Story 004 (pipeline), Story 005 (scheme state).
 - Unlocks: Story 007 (special routing interacts with the context machine).
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-08-09
+**Criteria**: 11/11 passing (0 deferred)
+**Deviations**: TD-008 — QL-TEST-COVERAGE GAPS: downstream consumers (Vehicle Physics grid lock, Pit Stop pit-entry, Simulation Kernel Countdown/GO/RaceMode, RSM) are mocked self-sufficiently because they do not exist in this epic; registered as tech-debt for the owning epics.
+**Test Evidence**: Integration — `ContextTransitionsTests.cs` (16 tests, 104/104 PASS). Updated via rule #1934 before gates.
+**Code Review**: Complete — converged round 5 (unity-specialist APPROVED r4, qa-tester APPROVED r5); LP-CODE-REVIEW APPROVED; QL-TEST-COVERAGE GAPS → TD-008.
