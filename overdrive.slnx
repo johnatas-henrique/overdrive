@@ -3,4 +3,5 @@
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Overdrive.Input.csproj" />
   <Project Path="InputIntegrationTests.csproj" />
+  <Project Path="InputUnitTests.csproj" />
 </Solution>
