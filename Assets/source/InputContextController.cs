@@ -20,6 +20,22 @@ namespace Overdrive.Input
         UI
     }
 
+    /// <summary>Identifies the direct-routing mode for special input destinations (Story 007).</summary>
+    public enum RoutingMode
+    {
+        /// <summary>Normal UI/menu routing: the UI module is active and Submit/Cancel/Pause route normally.</summary>
+        Normal,
+
+        /// <summary>Finished Presentation: Confirm + UI Pause route to UI Presentation, Cancel is suppressed, the UI module is disabled.</summary>
+        FinishedPresentation,
+
+        /// <summary>PitService: Confirm routes directly to Pit Stop, Cancel is suppressed, the UI module is disabled.</summary>
+        PitService,
+
+        /// <summary>PitTransit: all UI actions are ignored, the UI module is disabled.</summary>
+        PitTransit
+    }
+
     /// <summary>
     /// Owns activation of Overdrive's gameplay and UI action maps.
     /// Example: construct it with a generated <see cref="InputSystem_Actions"/> and call
@@ -45,6 +61,8 @@ namespace Overdrive.Input
         private bool _keyboardMeaningful;
         private bool _gamepadMeaningful;
         private InputAvailability _lastAvailability = InputAvailability.NoInputDevice;
+        private RoutingMode _routingMode = RoutingMode.Normal;
+        private bool _pointerVisible = true;
 
         /// <summary>Pointer movement (px) in one update that counts as meaningful keyboard/mouse input.</summary>
         private const float PointerMeaningfulDeltaPixels = 2f;
@@ -78,6 +96,33 @@ namespace Overdrive.Input
 
         /// <summary>Raised when the gameplay camera-toggle action is performed.</summary>
         public event Action OnCameraToggleRequested;
+
+        /// <summary>Gets the current direct-routing mode for special input destinations (Story 007).</summary>
+        public RoutingMode CurrentRoutingMode => _routingMode;
+
+        /// <summary>Gets whether the UI pointer is visible (mouse is UI-only, Story 007 AC-36/48).</summary>
+        public bool PointerVisible => _pointerVisible;
+
+        /// <summary>Raised when the UI pointer visibility changes (Story 007 AC-36/48).</summary>
+        public event Action<bool> OnPointerVisibilityChanged;
+
+        /// <summary>Raised when Confirm is performed during Finished Presentation (routes to UI Presentation, Story 007 AC-54).</summary>
+        public event Action OnFinishedConfirmRequested;
+
+        /// <summary>Raised when UI Pause is performed during Finished Presentation (toggles the terminal timer, Story 007 AC-57).</summary>
+        public event Action OnFinishedPauseRequested;
+
+        /// <summary>Raised when Confirm is performed during PitService (routes to Pit Stop, Story 007 AC-52/64).</summary>
+        public event Action OnPitServiceConfirmRequested;
+
+        /// <summary>Gets the number of direct Confirm requests routed during Finished Presentation.</summary>
+        public int FinishedConfirmCount { get; private set; }
+
+        /// <summary>Gets the number of UI Pause requests routed during Finished Presentation.</summary>
+        public int FinishedPauseCount { get; private set; }
+
+        /// <summary>Gets the number of direct Confirm requests routed during PitService.</summary>
+        public int PitServiceConfirmCount { get; private set; }
 
         /// <summary>Gets the number of UI submit actions performed.</summary>
         public int SubmitCount { get; private set; }
@@ -154,6 +199,7 @@ namespace Overdrive.Input
         /// <summary>Disables UI and enables the gameplay action map.</summary>
         public void SetGameplayContext()
         {
+            _routingMode = RoutingMode.Normal;
             _uiModule.enabled = false;
             _asset.UI.Disable();
             // Latch only on an actual transition (ADR-0005: latch on Gameplay↔UI change). A
@@ -176,6 +222,7 @@ namespace Overdrive.Input
         /// <summary>Disables gameplay and enables the UI action map and module.</summary>
         public void SetUIContext()
         {
+            _routingMode = RoutingMode.Normal;
             // ADR-0005:119 — the pending Pause edge is consumed by the transition that triggered it.
             _pendingPauseEdge = false;
             _asset.Gameplay.Disable();
@@ -201,10 +248,86 @@ namespace Overdrive.Input
         {
             // ADR-0005: any pending Pause edge is consumed by the transition that triggered it.
             _pendingPauseEdge = false;
+            _routingMode = RoutingMode.Normal;
             _asset.Gameplay.Disable();
             _asset.UI.Disable();
             _uiModule.enabled = false;
             SetContext(InputContextKind.None);
+            EnforceGlobalSoleOwnership();
+        }
+
+        /// <summary>
+        /// Enters the Finished Presentation routing mode (ADR-0019): the UI map is enabled so the
+        /// direct-routing callbacks fire, but the UI module is disabled. Confirm and UI Pause route
+        /// directly to UI Presentation; Cancel is suppressed. Used while <c>SimulationState.Finished</c>.
+        /// </summary>
+        public void SetFinishedPresentationContext()
+        {
+            _pendingPauseEdge = false;
+            _routingMode = RoutingMode.FinishedPresentation;
+            _asset.Gameplay.Disable();
+            if (CurrentContext != InputContextKind.UI)
+            {
+                // Latch UI digital actions + Navigate actuated at the transition (prevents a held
+                // Confirm from immediately dismissing the presentation, a held Pause toggling the
+                // timer, a held Cancel/arrow leaking — same rule as SetUIContext, Story 006 AC-53).
+                // Defense-in-depth: a held Button does not re-fire 'performed' on action-map enable
+                // (no initial-state check), so the no-repeat behavior is the real protection and the
+                // latch guards the engine edge where a performed arrives with a pre-transition startTime.
+                LatchActuatedUiActions();
+            }
+
+            _asset.UI.Enable();
+            _uiModule.enabled = false;
+            SetContext(InputContextKind.UI);
+            EnforceGlobalSoleOwnership();
+        }
+
+        /// <summary>
+        /// Enters the PitService routing mode (ADR-0005/GDD): the UI map is enabled so Confirm routes
+        /// directly to Pit Stop, but the UI module is disabled. Cancel is suppressed. Tire-swap
+        /// eligibility is owned by the Pit Stop consumer, which receives the unconditional
+        /// <see cref="OnPitServiceConfirmRequested"/> event and decides whether to exit.
+        /// </summary>
+        public void SetPitServiceContext()
+        {
+            _pendingPauseEdge = false;
+            _routingMode = RoutingMode.PitService;
+            _asset.Gameplay.Disable();
+            if (CurrentContext != InputContextKind.UI)
+            {
+                // Latch UI digital actions actuated at the transition (a held Confirm must not
+                // route to Pit Stop until release+repress, Story 007 AC-64).
+                LatchActuatedUiActions();
+            }
+
+            _asset.UI.Enable();
+            _uiModule.enabled = false;
+            SetContext(InputContextKind.UI);
+            EnforceGlobalSoleOwnership();
+        }
+
+        /// <summary>
+        /// Enters the PitTransit routing mode (ADR-0005): the UI map is enabled so the controller
+        /// receives callbacks (latch detection, meaningful-event flags), but all UI actions are
+        /// suppressed and the UI module is disabled. No navigation/Submit/Cancel/gameplay event is
+        /// emitted. The gameplay map stays disabled (no driving input).
+        /// </summary>
+        public void SetPitTransitContext()
+        {
+            _pendingPauseEdge = false;
+            _routingMode = RoutingMode.PitTransit;
+            _asset.Gameplay.Disable();
+            if (CurrentContext != InputContextKind.UI)
+            {
+                // Latch UI digital actions actuated at the transition (held input across entry into
+                // the blocked mode must not emit anything, Story 007 AC-65).
+                LatchActuatedUiActions();
+            }
+
+            _asset.UI.Enable();
+            _uiModule.enabled = false;
+            SetContext(InputContextKind.UI);
             EnforceGlobalSoleOwnership();
         }
 
@@ -253,6 +376,8 @@ namespace Overdrive.Input
             UnityEngine.Object.Destroy(_moveReference);
             UnityEngine.Object.Destroy(_pointReference);
             UnityEngine.Object.Destroy(_leftClickReference);
+            _routingMode = RoutingMode.Normal;
+            _pointerVisible = true;
             CurrentContext = InputContextKind.None;
         }
 
@@ -366,7 +491,15 @@ namespace Overdrive.Input
             bool keyboardEligible = Keyboard.current != null || Mouse.current != null;
             bool gamepadEligible = Gamepad.current != null;
 
-            bool keyboardMeaningful = _keyboardMeaningful || IsKeyboardPointerMeaningful();
+            bool pointerMeaningful = IsKeyboardPointerMeaningful();
+            if (pointerMeaningful)
+            {
+                // A pointer delta >= 2 px makes the pointer visible and counts as keyboard/mouse
+                // meaningful → the KeyboardMouse scheme becomes active (Story 007 AC-48).
+                ShowPointer();
+            }
+
+            bool keyboardMeaningful = _keyboardMeaningful || pointerMeaningful;
             bool gamepadMeaningful = _gamepadMeaningful || IsGamepadAnalogMeaningful();
 
             _keyboardMeaningful = false;
@@ -561,8 +694,27 @@ namespace Overdrive.Input
                 return;
             }
 
-            SubmitCount++;
-            FlagMeaningfulFromDevice(context.control);
+            switch (_routingMode)
+            {
+                case RoutingMode.FinishedPresentation:
+                    // ADR-0019: Confirm dismisses Finished Presentation → UI Presentation opens Results.
+                    FinishedConfirmCount++;
+                    OnFinishedConfirmRequested?.Invoke();
+                    return;
+                case RoutingMode.PitService:
+                    // ADR-0005/GDD: Confirm routes directly to Pit Stop (eligibility gated by the consumer).
+                    PitServiceConfirmCount++;
+                    OnPitServiceConfirmRequested?.Invoke();
+                    return;
+                case RoutingMode.PitTransit:
+                    // ADR-0019: all UI actions suppressed during PitTransit.
+                    return;
+                default:
+                    SubmitCount++;
+                    FlagMeaningfulFromDevice(context.control);
+                    HidePointer();
+                    break;
+            }
         }
 
         private void OnCancel(InputAction.CallbackContext context)
@@ -578,8 +730,15 @@ namespace Overdrive.Input
                 return;
             }
 
+            if (_routingMode != RoutingMode.Normal)
+            {
+                // ADR-0019: Cancel is suppressed in Finished Presentation, PitService, and PitTransit.
+                return;
+            }
+
             CancelCount++;
             FlagMeaningfulFromDevice(context.control);
+            HidePointer();
         }
 
         private void OnUiPause(InputAction.CallbackContext context)
@@ -595,8 +754,23 @@ namespace Overdrive.Input
                 return;
             }
 
+            if (_routingMode == RoutingMode.FinishedPresentation)
+            {
+                // ADR-0019: UI Pause toggles the terminal presentation timer while SimulationState stays Finished.
+                FinishedPauseCount++;
+                OnFinishedPauseRequested?.Invoke();
+                return;
+            }
+
+            if (_routingMode != RoutingMode.Normal)
+            {
+                // Pause is suppressed in PitService and PitTransit.
+                return;
+            }
+
             UiPauseCount++;
             FlagMeaningfulFromDevice(context.control);
+            HidePointer();
         }
 
         private void OnNavigate(InputAction.CallbackContext context)
@@ -612,12 +786,64 @@ namespace Overdrive.Input
                 return;
             }
 
+            if (_routingMode != RoutingMode.Normal)
+            {
+                // Navigation is suppressed in Finished Presentation, PitService, and PitTransit.
+                return;
+            }
+
             FlagMeaningfulFromDevice(context.control);
+            HidePointer();
         }
 
         private void OnClick(InputAction.CallbackContext context)
         {
+            if (_routingMode != RoutingMode.Normal)
+            {
+                return;
+            }
+
+            // A click makes the pointer visible (Story 007 AC-48) and counts as keyboard/mouse meaningful.
+            ShowPointer();
             FlagMeaningfulFromDevice(context.control);
+        }
+
+        private void ShowPointer()
+        {
+            if (!_pointerVisible)
+            {
+                _pointerVisible = true;
+                OnPointerVisibilityChanged?.Invoke(true);
+            }
+        }
+
+        private void HidePointer()
+        {
+            if (_pointerVisible)
+            {
+                _pointerVisible = false;
+                OnPointerVisibilityChanged?.Invoke(false);
+            }
+        }
+
+        /// <summary>
+        /// Observes the current pointer delta for UI scheme arbitration (Story 007 AC-36/48). Call once
+        /// per render frame while the UI context is active; a delta >= 2 px makes the pointer visible
+        /// and marks keyboard/mouse meaningful (the following <see cref="ResolveActiveScheme"/> selects
+        /// KeyboardMouse). No-op outside normal UI routing.
+        /// </summary>
+        public void UpdateUiPointerState()
+        {
+            if (_routingMode != RoutingMode.Normal)
+            {
+                return;
+            }
+
+            if (IsKeyboardPointerMeaningful())
+            {
+                ShowPointer();
+                _keyboardMeaningful = true;
+            }
         }
 
         /// <summary>Latches digital gameplay actions actuated at a UI→Gameplay transition (ADR-0005).</summary>
