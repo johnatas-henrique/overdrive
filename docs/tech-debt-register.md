@@ -1,13 +1,15 @@
 ## Technical Debt Register
-Last updated: 2026-08-08
-Total items: 3 | Estimated total effort: S×3
+Last updated: 2026-08-09
+Total items: 4 | Estimated total effort: S×4
 
 | ID | Category | Description | Files | Effort | Impact | Priority | Added | Sprint |
 |----|----------|-------------|-------|--------|--------|----------|-------|--------|
 | TD-001 | Coverage | Near-threshold trigger tests (AC-33): add cases for trigger values just above/below 0.05 inner to pin the boundary, mirroring the existing stick just-below/just-above cases. Accepted: Story 002 requirement met with exact-value assertions; boundary density is extra rigor, not a requirement. | RawCaptureDeadZoneTests.cs | S | Low | 1 | 2026-08-08 | Backlog |
 | TD-002 | Coverage | Both-trigger normalization independence (AC-24/33): the pre-written test specs asked to exercise left and right triggers separately in the normalizer, but `NormalizeTrigger` is a symmetric pure function — one test covers it; both triggers are already exercised end-to-end via `GamepadTriggersCaptureRawAccelerateAndBrake` (capture). Accepted: redundant requirement, no behavioral gap. | RawCaptureDeadZoneTests.cs | S | Low | 1 | 2026-08-08 | Backlog |
 | TD-003 | Coverage | Zero/one-tick capture counting (AC-59): the controller-seam test covers 1x/frame + monotonic; explicit zero-tick/one-tick counts belong to Story 004 (tick processor consuming the sample per tick), and the capture-before-accumulator ORDER is a Simulation-driver contract (ADR-0001:41) owned by the Simulation Kernel epic DoD. Accepted: scope boundary — Story 002 covers the seam, not the driver. | Story 004 + Simulation Kernel epic | S | Low | 2 | 2026-08-08 | Backlog |
+| TD-004 | Coverage | AC-27 EMA alpha=0 non-zero-previous retention (Story 003): the α=0 test covers only from-rest (prev 0) because with α=0 the previous value never becomes non-zero without an initialization seam. Retention of a non-zero previous value is verified in Story 006 once the `InitializeFromPostDeadZone` seam (AC-41a) exists; the handoff is annotated in Story 006 Implementation Notes referencing AC-27. Accepted: seam ownership — the initialization mechanism belongs to Story 006, not Story 003. | EmaBrakePriorityTests.cs / Story 006 | S | Low | 2 | 2026-08-09 | Backlog |
 
 ### Notes
 - Every entry records WHY it was accepted (Story 002 scope boundary or redundant requirement) — none is a behavioral defect.
 - TD-003 has a defined destination (Story 004 + Kernel DoD) and should be closed when the tick processor is implemented.
+- TD-004 has a defined destination (Story 006 AC-41a seam) and should be closed when the EMA initialization is implemented.
