@@ -1,7 +1,7 @@
 # Story 001: Input Action Asset & Context Controller
 
 > **Epic**: Input System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Integration
 > **Manifest Version**: 2026-08-05
@@ -30,14 +30,14 @@
 
 *From GDD `design/gdd/input-system.md`, scoped to this story:*
 
-- [ ] AC-12: GIVEN UI is active, WHEN Enter or gamepad South is pressed, THEN UI Submit fires and no gameplay edge is queued.
-- [ ] AC-13: GIVEN UI is active, WHEN Escape or gamepad East is pressed, THEN UI Cancel fires and no gameplay edge is queued.
-- [ ] AC-30: GIVEN the Input System configuration loads, WHEN its update mode is read, THEN it equals `ProcessEventsInDynamicUpdate`.
-- [ ] AC-35: GIVEN UI is active, WHEN Accelerate, Brake, or Steer is pressed, THEN no gameplay value or gameplay edge is emitted.
-- [ ] AC-45: GIVEN an MVP Input Context is active, WHEN enabled action maps are inspected, THEN exactly one of `OverdriveGameplay` or `OverdriveUI` is enabled.
-- [ ] AC-47: GIVEN Navigate reaches a UI focus-group boundary, WHEN the player continues navigating outward, THEN focus remains on the boundary element and never wraps.
-- [ ] AC-49: GIVEN gamepad UI is active, WHEN Submit or Cancel is triggered, THEN South triggers Submit and East triggers Cancel; GIVEN gameplay is active, Start triggers Pause.
-- [ ] AC-69: GIVEN the project input asset is prepared for implementation, WHEN its maps and actions are inspected, THEN it contains `OverdriveGameplay` and `OverdriveUI` with the actions defined in Core Rule 1 and no template Player gameplay actions remain enabled.
+- [x] AC-12: GIVEN UI is active, WHEN Enter or gamepad South is pressed, THEN UI Submit fires and no gameplay edge is queued.
+- [x] AC-13: GIVEN UI is active, WHEN Escape or gamepad East is pressed, THEN UI Cancel fires and no gameplay edge is queued.
+- [x] AC-30: GIVEN the Input System configuration loads, WHEN its update mode is read, THEN it equals `ProcessEventsInDynamicUpdate`.
+- [x] AC-35: GIVEN UI is active, WHEN Accelerate, Brake, or Steer is pressed, THEN no gameplay value or gameplay edge is emitted.
+- [x] AC-45: GIVEN an MVP Input Context is active, WHEN enabled action maps are inspected, THEN exactly one of `OverdriveGameplay` or `OverdriveUI` is enabled.
+- [x] AC-47: GIVEN Navigate reaches a UI focus-group boundary, WHEN the player continues navigating outward, THEN focus remains on the boundary element and never wraps.
+- [x] AC-49: GIVEN gamepad UI is active, WHEN Submit or Cancel is triggered, THEN South triggers Submit and East triggers Cancel; GIVEN gameplay is active, Start triggers Pause.
+- [x] AC-69: GIVEN the project input asset is prepared for implementation, WHEN its maps and actions are inspected, THEN it contains `OverdriveGameplay` and `OverdriveUI` with the actions defined in Core Rule 1 and no template Player gameplay actions remain enabled.
 
 ---
 
@@ -56,6 +56,14 @@
 
 ---
 
+## Performance Budget
+
+- Context transitions: O(1) — one map enable + one module activation per transition; no heap allocations at transition time.
+- Transitions occur only at lifecycle boundaries (context switch), never per tick — zero impact on the 60 Hz simulation tick path. Raw capture runs once per render frame (story 002), not here.
+- Fits the simulation gate (p95 ≤ 6 ms / max ≤ 8 ms per tick): the controller adds no per-tick work.
+
+---
+
 ## Embedded Definitions
 
 *Testability refinements from QL-STORY-READY gate. These make the verbatim ACs deterministic — the AC text does not change.*
@@ -63,6 +71,7 @@
 - **Named observers (AC-12/13/35/49)**: the controller exposes event counters on its output surface — `SubmitCount`, `CancelCount`, `GameplayEdgeCount`, `PauseEdgeCount`. Assert exact counts (`SubmitCount == 1` per press in UI, `CancelCount == 1`, `GameplayEdgeCount == 0` in UI, `PauseEdgeCount == 1` in gameplay). "Fires"/"queued"/"emitted" are defined as these counter increments.
 - **AC-47 ownership**: Navigate boundary processing is owned by this story via `InputSystemUIInputModule`. Test with a fake focus group of 3 elements + `FocusPositionObserver`; navigating beyond the first/last element keeps focus on the boundary and never wraps.
 - **AC-69 definition**: "template Player gameplay actions" = Unity template actions (`Jump`, `Move`, `Look`, `Fire`, `Sprint`, etc.) must neither exist nor be enabled. Assert: the asset contains exactly the 11 Core-Rule-1 actions (5 gameplay + 6 UI); zero template action names are present.
+- **AC-35 observer**: add a gameplay-value output observer (`GameplayValueEventCount`) that records every emitted Accelerate/Brake/Steer value. Assert: while UI context is active, `GameplayValueEventCount == 0` (no gameplay value is emitted at all) — complementary to `GameplayEdgeCount == 0`, which only covers edges.
 
 ---
 
@@ -132,9 +141,9 @@
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `Assets/tests/integration/input/Story001ContextControllerTests.cs` — must exist and pass (asmdef `InputIntegrationTests`, created at implementation time).
+**Required evidence**: `Assets/tests/integration/input/InputContextControllerTests.cs` — must exist and pass (asmdef `InputIntegrationTests`, created at implementation time).
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing (11/11)
 
 ---
 
@@ -142,3 +151,14 @@
 
 - Depends on: None (base story).
 - Unlocks: Story 002, Story 003, Story 004 (consume the controller and asset).
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-08-08
+**Criteria**: 8/8 passing (11/11 PlayMode tests)
+**Deviations**: None
+**Test Evidence**: Integration — `Assets/tests/integration/input/InputContextControllerTests.cs` (11/11 PASS)
+**Code Review**: Complete — 3 rounds converged (unity-specialist + qa-tester APPROVED x2); gates QL-TEST-COVERAGE ADEQUATE, LP-CODE-REVIEW APPROVE
+**Notes**: Bug `startButton`→`start` fixed in `InputAssetBootstrap.cs` (control is `start`, not `startButton` — a stale binding path the rebuild tool would have regenerated). AC-47 reworked from a false-positive into a real navigation test (Selectable.navigation requires `mode = Explicit` for selectOn* links).
