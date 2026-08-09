@@ -1,0 +1,19 @@
+{
+  "name": "InputUnitTests",
+  "references": [
+    "Overdrive.Input"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "noEngineReferences": false,
+  "rootNamespace": "Overdrive.Input.Tests"
+}
