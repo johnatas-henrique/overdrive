@@ -1,3 +1,6 @@
 ﻿<Solution>
+  <Project Path="Overdrive.Input.Editor.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="Overdrive.Input.csproj" />
+  <Project Path="InputIntegrationTests.csproj" />
 </Solution>
