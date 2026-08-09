@@ -145,7 +145,7 @@
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `Assets/tests/integration/input/Story007SpecialRoutingTests.cs` — must exist and pass (asmdef `InputIntegrationTests`).
+**Required evidence**: `Assets/tests/integration/input/SpecialRoutingTests.cs` — must exist and pass (asmdef `InputIntegrationTests`).
 
 **Status**: [ ] Not yet created
 

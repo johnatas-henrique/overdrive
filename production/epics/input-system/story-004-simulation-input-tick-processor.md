@@ -102,7 +102,7 @@
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `Assets/tests/integration/input/Story004TickProcessorTests.cs` — must exist and pass (asmdef `InputIntegrationTests`).
+**Required evidence**: `Assets/tests/integration/input/TickProcessorTests.cs` — must exist and pass (asmdef `InputIntegrationTests`).
 
 **Status**: [ ] Not yet created
 

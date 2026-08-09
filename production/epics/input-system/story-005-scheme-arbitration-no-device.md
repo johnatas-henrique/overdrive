@@ -136,7 +136,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `Assets/tests/unit/input/Story005SchemeArbitrationTests.cs` — must exist and pass (unit asmdef `InputUnitTests`).
+**Required evidence**: `Assets/tests/unit/input/SchemeArbitrationTests.cs` — must exist and pass (unit asmdef `InputUnitTests`).
 
 **Status**: [ ] Not yet created
 

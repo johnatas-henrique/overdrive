@@ -54,6 +54,7 @@
 - Loading transitions: Input stays in blocked UI routing while `ContentLoadRequest` is active; switches to GameplayQualifying/Countdown only after Simulation accepts `RaceLoadReady`.
 - Contexts (from the GDD table): GameplayRacing/Qualifying/Countdown allow gameplay actions + Pause + CameraToggle; UI allows Navigate/Point/Click/Confirm/Cancel (+ Pause only while Finished); PitTransit/PitService and Loading-blocked route nothing.
 - `EventSystem` settle frame: after activating a UI context, wait one frame before simulating presses in tests.
+- **Handoff da story-003**: quando o seam `InitializeFromPostDeadZone` (AC-41a) existir, adicionar o teste de retenção de prev NÃO-zero com α=0 **referenciando AC-27** — o EMA com α=0 deve reter um prev estabelecido (verificar os 3 canais), não só o from-rest. O `EmaBrakePriorityTests` da story-003 cobre apenas o from-rest (com α=0 o prev nunca se torna não-zero sem o seam); a retenção de um prev não-zero é verificada aqui, via o seam.
 
 ---
 
@@ -152,7 +153,7 @@
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `Assets/tests/integration/input/Story006ContextTransitionsTests.cs` — must exist and pass (asmdef `InputIntegrationTests`).
+**Required evidence**: `Assets/tests/integration/input/ContextTransitionsTests.cs` — must exist and pass (asmdef `InputIntegrationTests`).
 
 **Status**: [ ] Not yet created
 

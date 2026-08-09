@@ -130,7 +130,7 @@
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `Assets/tests/integration/input/Story008SettingsConfigurationTests.cs` — must exist and pass (asmdef `InputIntegrationTests`).
+**Required evidence**: `Assets/tests/integration/input/SettingsConfigurationTests.cs` — must exist and pass (asmdef `InputIntegrationTests`).
 
 **Status**: [ ] Not yet created
 
