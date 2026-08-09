@@ -12,14 +12,14 @@
 
 | Story | Type | Automated Test Required | Manual Verification Required |
 |-------|------|------------------------|------------------------------|
-| 1-1 Input Action Asset & Context Controller | Integration | Integration test — `Assets/tests/integration/input/Story001ContextControllerTests.cs` | Smoke check |
-| 1-2 Raw Capture & Dead-Zone Normalization | Integration | Integration test — `Assets/tests/integration/input/Story002RawCaptureDeadZoneTests.cs` | Smoke check |
-| 1-3 EMA & Brake Priority | Logic | Unit test — `Assets/tests/unit/input/Story003EmaBrakePriorityTests.cs` | None |
-| 1-4 SimulationInput Tick Processor | Integration | Integration test — `Assets/tests/integration/input/Story004TickProcessorTests.cs` | Smoke check |
-| 1-5 Scheme Arbitration & No-Device | Logic | Unit test — `Assets/tests/unit/input/Story005SchemeArbitrationTests.cs` | None |
-| 1-6 Context Handoff & Transitions | Integration | Integration test — `Assets/tests/integration/input/Story006ContextTransitionsTests.cs` | Smoke check |
-| 1-7 Special Input Routing | Integration | Integration test — `Assets/tests/integration/input/Story007SpecialRoutingTests.cs` | Smoke check |
-| 1-8 Settings Configuration | Integration | Integration test — `Assets/tests/integration/input/Story008SettingsConfigurationTests.cs` | Smoke check |
+| 1-1 Input Action Asset & Context Controller | Integration | Integration test — `Assets/tests/integration/input/InputContextControllerTests.cs` | Smoke check |
+| 1-2 Raw Capture & Dead-Zone Normalization | Integration | Integration test — `Assets/tests/integration/input/RawCaptureDeadZoneTests.cs` | Smoke check |
+| 1-3 EMA & Brake Priority | Logic | Unit test — `Assets/tests/unit/input/EmaBrakePriorityTests.cs` | None |
+| 1-4 SimulationInput Tick Processor | Integration | Integration test — `Assets/tests/integration/input/TickProcessorTests.cs` | Smoke check |
+| 1-5 Scheme Arbitration & No-Device | Logic | Unit test — `Assets/tests/unit/input/SchemeArbitrationTests.cs` | None |
+| 1-6 Context Handoff & Transitions | Integration | Integration test — `Assets/tests/integration/input/ContextTransitionsTests.cs` | Smoke check |
+| 1-7 Special Input Routing | Integration | Integration test — `Assets/tests/integration/input/SpecialRoutingTests.cs` | Smoke check |
+| 1-8 Settings Configuration | Integration | Integration test — `Assets/tests/integration/input/SettingsConfigurationTests.cs` | Smoke check |
 
 ---
 
@@ -27,7 +27,7 @@
 
 ### 1-1 Input Action Asset & Context Controller — Integration
 
-**Test file path**: `Assets/tests/integration/input/Story001ContextControllerTests.cs` (asmdef `InputIntegrationTests`)
+**Test file path**: `Assets/tests/integration/input/InputContextControllerTests.cs` (asmdef `InputIntegrationTests`)
 **What to test**:
 - Exactly-one-action-map invariant across all MVP contexts (AC-45, ADR-0005)
 - Submit/Cancel routing via named counters — `SubmitCount`/`CancelCount`/`GameplayEdgeCount`/`PauseEdgeCount` (AC-12/13/35/49)
@@ -47,7 +47,7 @@
 
 ### 1-2 Raw Capture & Dead-Zone Normalization — Integration
 
-**Test file path**: `Assets/tests/integration/input/Story002RawCaptureDeadZoneTests.cs`
+**Test file path**: `Assets/tests/integration/input/RawCaptureDeadZoneTests.cs`
 **What to test**:
 - Radial dead-zone: magnitudes 0 / 0.15 → 0.0; 0.55 → 0.5; 0.95 / 1.0 → 1.0, direction preserved (AC-4/25/32)
 - Axial trigger: 0.0 / 0.05 → 0.0; 0.525 → 0.5; 1.0 (AC-24/33)
@@ -65,7 +65,7 @@
 
 ### 1-3 EMA & Brake Priority — Logic
 
-**Test file path**: `Assets/tests/unit/input/Story003EmaBrakePriorityTests.cs` (asmdef `InputUnitTests`)
+**Test file path**: `Assets/tests/unit/input/EmaBrakePriorityTests.cs` (asmdef `InputUnitTests`)
 **What to test**:
 - EMA recurrence exact values (α=0.3, raw=1.0: 0.3, 0.51, 0.657, 0.7599, 0.83193; ≥0.95 on tick 9) (AC-1/2/3/6)
 - Alpha endpoints: α=0.0 retains previous; α=1.0 equals raw exactly (AC-27)
@@ -84,7 +84,7 @@
 
 ### 1-4 SimulationInput Tick Processor — Integration
 
-**Test file path**: `Assets/tests/integration/input/Story004TickProcessorTests.cs`
+**Test file path**: `Assets/tests/integration/input/TickProcessorTests.cs`
 **What to test**:
 - Render-rate independence: bitwise-identical `SimulationInput` at 30 FPS and 144 FPS for identical raw sequences across 60 ticks (AC-7, ADR-0001)
 - Raw NaN/Infinity → last valid output retained + `InvalidInputWarning` (channel id + value), 1 per channel per 60-tick window, identical for NaN and ±Infinity (AC-22)
@@ -101,7 +101,7 @@
 
 ### 1-5 Scheme Arbitration & No-Device — Logic
 
-**Test file path**: `Assets/tests/unit/input/Story005SchemeArbitrationTests.cs`
+**Test file path**: `Assets/tests/unit/input/SchemeArbitrationTests.cs`
 **What to test**:
 - Last-meaningful-device wins; KeyboardMouse startup default (AC-43)
 - Same-frame both-schemes meaningful events → no oscillation (AC-62)
@@ -120,7 +120,7 @@
 
 ### 1-6 Context Handoff & Transitions — Integration
 
-**Test file path**: `Assets/tests/integration/input/Story006ContextTransitionsTests.cs`
+**Test file path**: `Assets/tests/integration/input/ContextTransitionsTests.cs`
 **What to test**:
 - Handoff latching: digital actions + UI Navigate latched until neutral/release; pending `pauseEdge` cleared; EMA previous values initialized from current post-dead-zone (AC-41/53/44)
 - Countdown: grid lock holds car, driving input processed, no pit entry (AC-14/16)
@@ -140,7 +140,7 @@
 
 ### 1-7 Special Input Routing — Integration
 
-**Test file path**: `Assets/tests/integration/input/Story007SpecialRoutingTests.cs`
+**Test file path**: `Assets/tests/integration/input/SpecialRoutingTests.cs`
 **What to test**:
 - CameraToggle: exactly one same-frame `Camera.ToggleRequest` per press, none while held, never in SimulationInput/Ghost Recording (AC-58, ADR-0010)
 - Mouse UI-only: mouse never produces Accelerate/Brake/Steer (AC-26)
@@ -158,7 +158,7 @@
 
 ### 1-8 Settings Configuration — Integration
 
-**Test file path**: `Assets/tests/integration/input/Story008SettingsConfigurationTests.cs`
+**Test file path**: `Assets/tests/integration/input/SettingsConfigurationTests.cs`
 **What to test**:
 - Listening classification: Captured (valid non-conflicting) / Conflict (conflicts with non-reserved binding) / Rejected (reserved, malformed, exceeded) — AC-10/29, ADR-0005
 - Preview uses working profile; first resumed tick uses same profile (AC-11)
