@@ -52,6 +52,19 @@ namespace Overdrive.Input
         }
 
         /// <summary>
+        /// Reinitializes EMA previous-output state from the given post-dead-zone channel values.
+        /// Used on active-scheme change (Story 005, AC-23/AC-39) and on UI→Gameplay resume
+        /// (Story 006, AC-41a): no filtered value carries from the prior scheme/context. Values are
+        /// sanitized for consistency with <see cref="Process"/>.
+        /// </summary>
+        public void InitializeFromPostDeadZone(float accelerate, float brake, float steer)
+        {
+            _acceleratePrev = Sanitize(accelerate);
+            _brakePrev = Sanitize(brake);
+            _steerPrev = Sanitize(steer);
+        }
+
+        /// <summary>
         /// Processes one simulation tick: sanitizes each channel (NaN/Infinity → 0.0f, values
         /// outside [-1.0, 1.0] clamped), advances the EMA recurrence for Brake and Steer, then
         /// applies brake priority to Accelerate — when raw Brake (post dead-zone) is above zero,
