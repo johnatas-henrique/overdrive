@@ -123,7 +123,7 @@ The Input System captures player actions from keyboard, mouse, and gamepad devic
     | `inputAvailability` | Available / NoInputDevice | Whether an eligible scheme can provide gameplay input |
     | `validityFlags` | bit flags | Marks non-finite or invalid source channels before processing |
 
-    Non-finite raw channels retain the last valid filtered output for that channel and produce a rate-limited warning. While `OverdriveGameplay` is active, only Pause rising edges enter the pending simulation flag. Repeated rises while pending are ignored; the first simulation tick in that render update consumes and clears it. CameraToggle does not enter RawInputSample or a simulation flag: its performed/rising edge routes directly to Camera in the same Dynamic Update and cannot repeat until release.
+    Non-finite raw channels are sanitized to 0.0f before EMA and produce a rate-limited warning (1 per channel per 60-tick window, identically for NaN and ±Infinity). While `OverdriveGameplay` is active, only Pause rising edges enter the pending simulation flag. Repeated rises while pending are ignored; the first simulation tick in that render update consumes and clears it. CameraToggle does not enter RawInputSample or a simulation flag: its performed/rising edge routes directly to Camera in the same Dynamic Update and cannot repeat until release.
 
     Routing depends on the active Input Context. Normal UI routes Navigate, Point, Click, Confirm, and Cancel through `InputSystemUIInputModule`. Finished Presentation and PitService use their direct routes above; Loading and PitTransit route nothing. No gameplay edge is queued in any UI-map context. At every simulation tick, Simulation invokes the Input-owned tick processor with the latest immutable RawInputSample; Input applies validation, dead zone, EMA, and brake priority and returns SimulationInput. If one render frame contains multiple simulation ticks, every tick processes the same sample and advances EMA once; Pause is consumed only by the first. Replay bypasses live capture and the tick routine.
 
@@ -138,7 +138,7 @@ The Input System captures player actions from keyboard, mouse, and gamepad devic
     | `accelerateOut` | float 0.0–1.0 | Vehicle Physics throttle |
     | `brakeOut` | float 0.0–1.0 | Vehicle Physics brake |
     | `steerOut` | float -1.0–1.0 | Vehicle Physics steer |
-    | `rawThrottlePostDeadZone` | float 0.0–1.0 | Grid & Start Perfect Start evaluation |
+    | `rawAcceleratePostDeadZone` | float 0.0–1.0 | Grid & Start Perfect Start evaluation |
     | `rawBrakePostDeadZone` | float 0.0–1.0 | Grid & Start Perfect Start evaluation |
     | `rawSteerPostDeadZone` | float -1.0–1.0 | Diagnostics and future-compatible recording boundary |
     | `pauseEdge` | bool | One local gameplay request, consumed once |
@@ -194,7 +194,7 @@ Transitions:
 |--------|-----------|------|-----------|
 | Simulation Architecture | Outbound | `SimulationInput` | Generated once per 60 Hz tick from the latest RawInputSample. |
 | Vehicle Physics | Outbound via Simulation | Accelerate, Brake, Steer | Consumes the authoritative SimulationInput once per fixed tick. |
-| Grid & Start | Outbound via Simulation | `SimulationInput.rawThrottlePostDeadZone`, `rawBrakePostDeadZone` | Perfect Start owns the timing window and evaluates raw values, never EMA output. |
+| Grid & Start | Outbound via Simulation | `SimulationInput.rawAcceleratePostDeadZone`, `rawBrakePostDeadZone` | Perfect Start owns the timing window and evaluates raw values, never EMA output. |
 | UI Menu | Outbound | OverdriveUI Confirm, Cancel, navigation, pointer, active control scheme | UI-only input; mouse never controls the car. |
 | Camera | Outbound | `CameraToggle` performed/rising edge | Routes immediately during Dynamic Update, once per press; never enters SimulationInput or Ghost Recording. |
 | Ghost Recording | Outbound via Simulation | Recordable SimulationInput boundary + tick index | Simulation captures and discards the MVP stream; Alpha Ghost persistence consumes the same continuous input Vehicle Physics received. |
@@ -256,7 +256,7 @@ For a trigger with raw value `t` and inner threshold `i = 0.05`:
 |--------|-----------|------|-----------|
 | Simulation Architecture | Bidirectional | Hard | Simulation calls Input-owned `CaptureLatestRawSample()` before accumulator evaluation, selects the Input Context, and invokes the tick processor; Input returns authoritative SimulationInput once per fixed tick. |
 | Vehicle Physics | Outbound via Simulation | Hard | SimulationInput → Vehicle Physics once per 60 Hz tick. |
-| Grid & Start | Outbound via Simulation | Hard | SimulationInput.rawThrottlePostDeadZone and rawBrakePostDeadZone → Perfect Start evaluation; gameplay controls remain active during Countdown. |
+| Grid & Start | Outbound via Simulation | Hard | SimulationInput.rawAcceleratePostDeadZone and rawBrakePostDeadZone → Perfect Start evaluation; gameplay controls remain active during Countdown. |
 | UI Menu | Outbound | Hard | OverdriveUI navigation, pointer, and active scheme → UI Menu. |
 | Camera | Outbound | Hard | CameraToggle performed/rising edge → immediate presentation-only mode switch. |
 | Ghost Recording | Outbound via Simulation | Architecture constraint | MVP exposes a recordable SimulationInput + tick boundary; Alpha Ghost Recording consumes it. |
@@ -304,10 +304,10 @@ Settings displays the stable binding slots and Input-provided display strings. U
 16. **GIVEN** Countdown is active, **WHEN** the player provides any driving input, **THEN** grid lock keeps the car at its grid pose and no pit-lane entry can occur before GO.
 17. **GIVEN** Countdown is running and not paused, **WHEN** Settings is requested, **THEN** Settings does not open; it becomes available only after Pause transitions Countdown into UI context.
 18. **GIVEN** Countdown is active and Accelerate, Brake, or Steer is held, **WHEN** GO releases grid lock, **THEN** the first Racing tick consumes the existing EMA state without reset; Brake priority remains active.
-19. **GIVEN** `rawThrottlePostDeadZone > 0.5` and `rawBrakePostDeadZone == 0` occur on at least one tick from GO-12 through GO-1 and still hold on the GO tick, **WHEN** Grid & Start evaluates Perfect Start, **THEN** the result is independent of EMA output.
+19. **GIVEN** `rawAcceleratePostDeadZone > 0.5` and `rawBrakePostDeadZone == 0` occur on at least one tick from GO-12 through GO-1 and still hold on the GO tick, **WHEN** Grid & Start evaluates Perfect Start, **THEN** the result is independent of EMA output.
 20. **Alpha scope. GIVEN** Replay is active with recorded Steer = 0.6 for a tick, **WHEN** the tick executes, **THEN** Vehicle Physics receives Steer = 0.6 without dead-zone or EMA processing.
 21. **GIVEN** WebGL has not exposed a gamepad, **WHEN** the game starts, **THEN** KeyboardMouse remains active and gameplay input is functional.
-22. **GIVEN** raw input is NaN or infinity, **WHEN** the tick processor executes, **THEN** the last valid output is retained and a warning is logged.
+22. **GIVEN** raw input is NaN or infinity, **WHEN** the tick processor executes, **THEN** the channel is sanitized to 0.0f before EMA (the EMA advances from the sanitized value) and a rate-limited warning is logged. (Last-valid-output retention applies only to EMA-internal NaN, per the raw-stage sanitization note in Core Rule :152.)
 23. **GIVEN** a gamepad reconnects while KeyboardMouse is active, **WHEN** South, East, West, North, Start, or any D-pad direction is pressed, trigger input exceeds its threshold, or stick magnitude exceeds its inner threshold, **THEN** the active scheme changes to Gamepad and EMA initializes from the new post-dead-zone sample.
 24. **GIVEN** trigger raw input is 0.05 or below, **WHEN** a tick processes it, **THEN** its normalized output is exactly 0.0.
 25. **GIVEN** stick raw magnitude is 0.95 or above, **WHEN** a tick processes it, **THEN** its normalized magnitude is exactly 1.0.

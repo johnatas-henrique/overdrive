@@ -68,7 +68,7 @@ LIGHTS SEQUENCE: 5s
 **4. Perfect Start Mechanic**
 
 - Accelerate, Brake, and Steer remain active before/during/after GO; grid lock prevents movement before GO
-- From `GO_tick - 12` through `GO_tick - 1`, Input System arms Perfect Start if `rawThrottlePostDeadZone > 0.5` and `rawBrakePostDeadZone == 0` on any tick.
+- From `GO_tick - 12` through `GO_tick - 1`, Input System arms Perfect Start if `rawAcceleratePostDeadZone > 0.5` and `rawBrakePostDeadZone == 0` on any tick.
 - On the GO tick, the same raw condition must still hold. If it does and Perfect Start is armed, apply the **10s acceleration bonus** (+15% drive force).
 - A player who does not satisfy the condition during the 12-tick pre-GO window and at GO receives a normal start with no bonus. Beginning to accelerate earlier is allowed if the valid condition is present again during the approved window and at GO.
 - Bonus applies `perfectStartDriveForceMultiplier = 1.15` to Vehicle Physics `longitudinalDriveForceFinal` for 600 simulation ticks
@@ -117,7 +117,7 @@ AI qualifying times are pre-generated before the Qualifying Results screen (from
 
 `perfect_start_arming_window = [GO_tick - 12, GO_tick - 1]`
 
-`perfect_start = armed AND rawThrottlePostDeadZone(GO_tick) > 0.5 AND rawBrakePostDeadZone(GO_tick) == 0`
+`perfect_start = armed AND rawAcceleratePostDeadZone(GO_tick) > 0.5 AND rawBrakePostDeadZone(GO_tick) == 0`
 
 ### Acceleration Bonus
 

@@ -86,7 +86,7 @@ Prior verdict resolved: No — this review found residual defects in the post-ap
 |---|---|---|
 | Overview still listed `Pit` and `Menu` as gameplay actions after the Pit action had been removed from MVP | Blocking | Replaced the stale action list with the authoritative MVP input boundary: Accelerate, Brake, Steer, and Pause; UI navigation and physical pit entry are described separately. |
 | Processing formula labels did not consistently use the authoritative `SimulationInput` field names | Recommended | Aligned formula variables with `accelerateOut`, `brakeOut`, `steerOut`, and the post-dead-zone raw fields. |
-| Perfect Start acceptance criterion referred to an undefined “raw launch condition” | Recommended | Made the criterion explicit: `rawThrottlePostDeadZone > 0.5` and `rawBrakePostDeadZone == 0` within the approved GO window. |
+| Perfect Start acceptance criterion referred to an undefined “raw launch condition” | Recommended | Made the criterion explicit: `rawAcceleratePostDeadZone > 0.5` and `rawBrakePostDeadZone == 0` within the approved GO window. |
 | The update-mode requirement used an ambiguous API-style name | Recommended | Rephrased it as the configured Input System update mode and retained `ProcessEventsInDynamicUpdate` as the required value. |
 
 ### Revised MVP Contract Notes

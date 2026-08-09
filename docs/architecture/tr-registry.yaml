@@ -981,7 +981,7 @@ requirements:
   - id: TR-grid-002
     system: grid-start
     gdd: design/gdd/grid-start.md
-    requirement: "Perfect Start: rawThrottlePostDeadZone > 0.5 AND rawBrakePostDeadZone == 0 from GO-12 through GO"
+    requirement: "Perfect Start: rawAcceleratePostDeadZone > 0.5 AND rawBrakePostDeadZone == 0 from GO-12 through GO"
     created: "2026-07-27"
     revised: ""
     status: active
