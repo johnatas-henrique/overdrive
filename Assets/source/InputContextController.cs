@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
 using UnityEngine.InputSystem.UI;
 
 namespace Overdrive.Input
@@ -37,9 +39,32 @@ namespace Overdrive.Input
 
         private bool _pendingPauseEdge;
         private ulong _captureSequence;
+        private ControlScheme _activeScheme = ControlScheme.KeyboardMouse;
+        private bool _keyboardMeaningful;
+        private bool _gamepadMeaningful;
+        private InputAvailability _lastAvailability = InputAvailability.NoInputDevice;
+
+        /// <summary>Pointer movement (px) in one update that counts as meaningful keyboard/mouse input.</summary>
+        private const float PointerMeaningfulDeltaPixels = 2f;
 
         /// <summary>Gets the currently selected context.</summary>
         public InputContextKind CurrentContext { get; private set; }
+
+        /// <summary>Gets the currently active input device scheme (defaults to KeyboardMouse).</summary>
+        public ControlScheme ActiveScheme => _activeScheme;
+
+        /// <summary>Raised when the active scheme changes; prompt glyphs and pointer policy observe this.</summary>
+        public event Action<ControlScheme> OnActiveSchemeChanged;
+
+        /// <summary>
+        /// Raised when input availability transitions (e.g. NoInputDevice → Available on device
+        /// reconnect). Consumers that re-seed state on device recovery (the scheme-change EMA
+        /// reinitializer) observe this — a same-scheme reconnect emits no scheme change. Note:
+        /// the first capture after construction fires a synthetic transition from the initial
+        /// NoInputDevice default even if devices are already present; consumers must treat it as
+        /// a first-frame priming signal, not a device-recovery event.
+        /// </summary>
+        public event Action<InputAvailability> OnAvailabilityChanged;
 
         /// <summary>Raised when the gameplay camera-toggle action is performed.</summary>
         public event Action OnCameraToggleRequested;
@@ -88,6 +113,8 @@ namespace Overdrive.Input
             _asset.UI.Confirm.performed += OnSubmit;
             _asset.UI.Cancel.performed += OnCancel;
             _asset.UI.Pause.performed += OnUiPause;
+            _asset.UI.Navigate.performed += OnNavigate;
+            _asset.UI.Click.performed += OnClick;
 
             _uiModule.actionsAsset = _asset.asset;
             _submitReference = InputActionReference.Create(_asset.UI.Confirm);
@@ -141,6 +168,8 @@ namespace Overdrive.Input
             _asset.UI.Confirm.performed -= OnSubmit;
             _asset.UI.Cancel.performed -= OnCancel;
             _asset.UI.Pause.performed -= OnUiPause;
+            _asset.UI.Navigate.performed -= OnNavigate;
+            _asset.UI.Click.performed -= OnClick;
             _asset.Gameplay.Disable();
             _asset.UI.Disable();
             _uiModule.enabled = false;
@@ -164,18 +193,45 @@ namespace Overdrive.Input
         /// </summary>
         public RawInputSample CaptureLatestRawSample()
         {
-            ControlScheme scheme = DetermineActiveScheme();
-            ReadChannels(scheme, out float accelerate, out float brake, out float steer);
-            RawInputValidityFlags validity = ComputeValidityFlags(accelerate, brake, steer);
-            InputAvailability availability = InputSystem.devices.Count == 0
-                ? InputAvailability.NoInputDevice
-                : InputAvailability.Available;
+            InputAvailability availability = IsAnySchemeEligible()
+                ? InputAvailability.Available
+                : InputAvailability.NoInputDevice;
+
+            // Availability-transition notification: consumers that re-seed state on device recovery
+            // (e.g. the scheme-change EMA reinitializer) observe this. A pending Pause edge produced
+            // before a disconnect is intentionally NOT cleared here — the tick processor's caller
+            // decides whether to act on it alongside NoInputDevice availability.
+            if (availability != _lastAvailability)
+            {
+                _lastAvailability = availability;
+                OnAvailabilityChanged?.Invoke(availability);
+            }
 
             _captureSequence++;
             CaptureCount++;
+            return ReadSample(_captureSequence, availability);
+        }
+
+        /// <summary>
+        /// Reads the current raw channels without producing a capture sample (no sequence/count side
+        /// effects). Used by the scheme-change EMA reinitializer, which needs the new scheme's raw
+        /// values but must not consume a driver capture slot (AC-59: one capture per frame).
+        /// </summary>
+        public RawInputSample PeekLatestRawSample()
+        {
+            InputAvailability availability = IsAnySchemeEligible()
+                ? InputAvailability.Available
+                : InputAvailability.NoInputDevice;
+            return ReadSample(_captureSequence, availability);
+        }
+
+        private RawInputSample ReadSample(ulong sequence, InputAvailability availability)
+        {
+            ReadChannels(_activeScheme, out float accelerate, out float brake, out float steer);
+            RawInputValidityFlags validity = ComputeValidityFlags(accelerate, brake, steer);
             return new RawInputSample(
-                _captureSequence,
-                scheme,
+                sequence,
+                _activeScheme,
                 accelerate,
                 brake,
                 steer,
@@ -227,12 +283,133 @@ namespace Overdrive.Input
         }
 
         /// <summary>
-        /// Determines the active scheme. Placeholder (device presence) — Story 005 replaces this
-        /// with ADR-0005 last-meaningful-device arbitration.
+        /// Resolves the active input-device scheme for this Dynamic Update. Call once per render
+        /// frame BEFORE <see cref="CaptureLatestRawSample"/> (explicit call order — the Simulation
+        /// driver owns it, not Unity script execution order). Collects meaningful-event flags from
+        /// the update's processed actions plus the current analog and pointer values, then applies
+        /// ADR-0005 arbitration: KeyboardMouse default, last meaningful device wins, both meaningful
+        /// in one update preserves the current scheme (anti-oscillation), and a scheme that lost its
+        /// device loses arbitration (eligibility wins). Clears the pending Pause edge and raises
+        /// <see cref="OnActiveSchemeChanged"/> only on an actual change.
         /// </summary>
-        private ControlScheme DetermineActiveScheme()
+        public ControlScheme ResolveActiveScheme()
         {
-            return Gamepad.current != null ? ControlScheme.Gamepad : ControlScheme.KeyboardMouse;
+            bool keyboardEligible = Keyboard.current != null || Mouse.current != null;
+            bool gamepadEligible = Gamepad.current != null;
+
+            bool keyboardMeaningful = _keyboardMeaningful || IsKeyboardPointerMeaningful();
+            bool gamepadMeaningful = _gamepadMeaningful || IsGamepadAnalogMeaningful();
+
+            _keyboardMeaningful = false;
+            _gamepadMeaningful = false;
+
+            // Device-loss precedence (AC-62): a scheme that lost its device cannot be preserved,
+            // regardless of anti-oscillation.
+            if ((_activeScheme == ControlScheme.Gamepad && !gamepadEligible) ||
+                (_activeScheme == ControlScheme.KeyboardMouse && !keyboardEligible))
+            {
+                if (keyboardEligible)
+                {
+                    return SetActiveScheme(ControlScheme.KeyboardMouse);
+                }
+
+                if (gamepadEligible)
+                {
+                    return SetActiveScheme(ControlScheme.Gamepad);
+                }
+
+                return _activeScheme;
+            }
+
+            // Anti-oscillation (AC-62): both schemes meaningful this update → keep the current.
+            if (keyboardMeaningful && gamepadMeaningful)
+            {
+                return _activeScheme;
+            }
+
+            if (gamepadMeaningful)
+            {
+                return SetActiveScheme(ControlScheme.Gamepad);
+            }
+
+            if (keyboardMeaningful)
+            {
+                return SetActiveScheme(ControlScheme.KeyboardMouse);
+            }
+
+            return _activeScheme;
+        }
+
+        private ControlScheme SetActiveScheme(ControlScheme scheme)
+        {
+            if (scheme == _activeScheme)
+            {
+                return scheme;
+            }
+
+            _activeScheme = scheme;
+            // AC-40: a pending Pause edge is consumed by the scheme change that triggered it.
+            _pendingPauseEdge = false;
+            OnActiveSchemeChanged?.Invoke(scheme);
+            return scheme;
+        }
+
+        private static bool IsAnySchemeEligible()
+        {
+            return (Keyboard.current != null || Mouse.current != null) || Gamepad.current != null;
+        }
+
+        private bool IsKeyboardPointerMeaningful()
+        {
+            return Mouse.current != null && Mouse.current.delta.magnitude >= PointerMeaningfulDeltaPixels;
+        }
+
+        private bool IsGamepadAnalogMeaningful()
+        {
+            if (Gamepad.current == null)
+            {
+                return false;
+            }
+
+            float accelerate = ReadGamepadAxis(_asset.Gameplay.Accelerate);
+            float brake = ReadGamepadAxis(_asset.Gameplay.Brake);
+            if (accelerate > DeadZoneNormalizer.TriggerInnerThreshold ||
+                brake > DeadZoneNormalizer.TriggerInnerThreshold)
+            {
+                return true;
+            }
+
+            return IsStickMagnitudeMeaningful();
+        }
+
+        private bool IsStickMagnitudeMeaningful()
+        {
+            // Steer binds to a single gamepad stick (leftStick). If a future control profile
+            // added a second stick to the action, this returns on whichever control the Input
+            // System enumerates first — acceptable today, revisit if Story 008 allows stick rebinding.
+            foreach (InputControl control in _asset.Gameplay.Steer.controls)
+            {
+                if (control.parent is StickControl stick && stick.device is Gamepad)
+                {
+                    Vector2 raw = stick.ReadUnprocessedValue();
+                    return raw.magnitude > DeadZoneNormalizer.StickInnerThreshold;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Flags a meaningful digital event by the device that produced it.</summary>
+        private void FlagMeaningfulFromDevice(InputControl control)
+        {
+            if (control?.device is Gamepad)
+            {
+                _gamepadMeaningful = true;
+            }
+            else
+            {
+                _keyboardMeaningful = true;
+            }
         }
 
         private static float ReadGamepadAxis(InputAction action)
@@ -255,6 +432,7 @@ namespace Overdrive.Input
             _pendingPauseEdge = true;
             PauseEdgeCount++;
             GameplayEdgeCount++;
+            FlagMeaningfulFromDevice(context.control);
         }
 
         private void OnCameraToggle(InputAction.CallbackContext context)
@@ -262,26 +440,49 @@ namespace Overdrive.Input
             CameraToggleCount++;
             GameplayEdgeCount++;
             OnCameraToggleRequested?.Invoke();
+            FlagMeaningfulFromDevice(context.control);
         }
 
         private void OnGameplayValue(InputAction.CallbackContext context)
         {
             GameplayValueEventCount++;
+            // Keyboard/mouse gameplay actions count as keyboard meaningful; gamepad analog
+            // meaningfulness is measured by threshold read in ResolveActiveScheme (the action's
+            // 'performed' edge fires at the control's embedded dead-zone, not the game's 0.15).
+            if (context.control?.device is Gamepad)
+            {
+                return;
+            }
+
+            _keyboardMeaningful = true;
         }
 
         private void OnSubmit(InputAction.CallbackContext context)
         {
             SubmitCount++;
+            FlagMeaningfulFromDevice(context.control);
         }
 
         private void OnCancel(InputAction.CallbackContext context)
         {
             CancelCount++;
+            FlagMeaningfulFromDevice(context.control);
         }
 
         private void OnUiPause(InputAction.CallbackContext context)
         {
             UiPauseCount++;
+            FlagMeaningfulFromDevice(context.control);
+        }
+
+        private void OnNavigate(InputAction.CallbackContext context)
+        {
+            FlagMeaningfulFromDevice(context.control);
+        }
+
+        private void OnClick(InputAction.CallbackContext context)
+        {
+            FlagMeaningfulFromDevice(context.control);
         }
 
         private void EnforceGlobalSoleOwnership()
