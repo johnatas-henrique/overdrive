@@ -86,9 +86,10 @@ namespace Overdrive.Input
 
         /// <summary>
         /// Sanitizes a raw channel before the EMA recurrence: NaN/Infinity become 0.0f and
-        /// values outside the legal [-1.0, 1.0] range are clamped (TR-input-012).
+        /// values outside the legal [-1.0, 1.0] range are clamped (TR-input-012). Also used by the
+        /// tick processor to sanitize the SimulationInput rawXxxPostDeadZone fields.
         /// </summary>
-        private static float Sanitize(float value)
+        public static float Sanitize(float value)
         {
             if (float.IsNaN(value) || float.IsInfinity(value))
             {

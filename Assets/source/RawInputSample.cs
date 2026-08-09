@@ -58,7 +58,9 @@ namespace Overdrive.Input
         /// <summary>Gets the raw steer value before dead-zone normalization (stick x / keyboard -1..1).</summary>
         public readonly float SteerRaw;
 
-        /// <summary>Gets whether a Pause edge is pending (latched; consumed by the tick processor).</summary>
+        /// <summary>Gets whether a Pause edge is pending (latched; consumed by the tick processor).
+        /// Informative at capture time — the tick processor consumes the caller-provided
+        /// <c>pausePending</c> parameter instead (the sample is immutable across ticks of one frame).</summary>
         public readonly bool PauseRise;
 
         /// <summary>Gets the input availability at capture time.</summary>
