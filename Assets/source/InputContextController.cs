@@ -36,9 +36,11 @@ namespace Overdrive.Input
         private readonly InputActionReference _moveReference;
         private readonly InputActionReference _pointReference;
         private readonly InputActionReference _leftClickReference;
+        private readonly HashSet<InputAction> _latchedActions = new();
 
         private bool _pendingPauseEdge;
         private ulong _captureSequence;
+        private double _latchTime;
         private ControlScheme _activeScheme = ControlScheme.KeyboardMouse;
         private bool _keyboardMeaningful;
         private bool _gamepadMeaningful;
@@ -49,6 +51,14 @@ namespace Overdrive.Input
 
         /// <summary>Gets the currently selected context.</summary>
         public InputContextKind CurrentContext { get; private set; }
+
+        /// <summary>
+        /// Raised when the active context transitions (None/Gameplay/UI). Consumers that re-seed
+        /// state on UI→Gameplay resume (the context-resume EMA reinitializer) observe this. Raised
+        /// only on an ACTUAL context change — a same-context call (e.g. Countdown→Racing, both
+        /// Gameplay) does not fire, so EMA state is preserved across Gameplay sub-states.
+        /// </summary>
+        public event Action<InputContextKind> OnContextChanged;
 
         /// <summary>Gets the currently active input device scheme (defaults to KeyboardMouse).</summary>
         public ControlScheme ActiveScheme => _activeScheme;
@@ -106,14 +116,20 @@ namespace Overdrive.Input
             _uiModule = uiModule ?? throw new ArgumentNullException(nameof(uiModule));
 
             _asset.Gameplay.Pause.performed += OnGameplayPause;
+            _asset.Gameplay.Pause.canceled += OnGameplayPause;
             _asset.Gameplay.CameraToggle.performed += OnCameraToggle;
+            _asset.Gameplay.CameraToggle.canceled += OnCameraToggle;
             _asset.Gameplay.Accelerate.performed += OnGameplayValue;
             _asset.Gameplay.Brake.performed += OnGameplayValue;
             _asset.Gameplay.Steer.performed += OnGameplayValue;
             _asset.UI.Confirm.performed += OnSubmit;
+            _asset.UI.Confirm.canceled += OnSubmit;
             _asset.UI.Cancel.performed += OnCancel;
+            _asset.UI.Cancel.canceled += OnCancel;
             _asset.UI.Pause.performed += OnUiPause;
+            _asset.UI.Pause.canceled += OnUiPause;
             _asset.UI.Navigate.performed += OnNavigate;
+            _asset.UI.Navigate.canceled += OnNavigate;
             _asset.UI.Click.performed += OnClick;
 
             _uiModule.actionsAsset = _asset.asset;
@@ -140,8 +156,20 @@ namespace Overdrive.Input
         {
             _uiModule.enabled = false;
             _asset.UI.Disable();
+            // Latch only on an actual transition (ADR-0005: latch on Gameplay↔UI change). A
+            // same-context call (e.g. Countdown→Racing, both Gameplay) must not create latches.
+            if (CurrentContext != InputContextKind.Gameplay)
+            {
+                // ADR-0005 context handoff: latch every newly enabled digital gameplay action
+                // actuated at the transition until neutral/released (Pause, CameraToggle).
+                // Accelerate/Brake/Steer are exempt (analog, AC-41). The latch evaluates here
+                // (before enable), and the engine's deferred initial-state check runs on the next
+                // InputSystem.Update — the frame AFTER the transition — satisfying ADR-0005:191.
+                LatchActuatedGameplayActions();
+            }
+
             _asset.Gameplay.Enable();
-            CurrentContext = InputContextKind.Gameplay;
+            SetContext(InputContextKind.Gameplay);
             EnforceGlobalSoleOwnership();
         }
 
@@ -151,25 +179,66 @@ namespace Overdrive.Input
             // ADR-0005:119 — the pending Pause edge is consumed by the transition that triggered it.
             _pendingPauseEdge = false;
             _asset.Gameplay.Disable();
+            if (CurrentContext != InputContextKind.UI)
+            {
+                // Latch UI digital actions + Navigate actuated at the transition (prevents held
+                // Escape → Cancel in the pause menu, held Confirm, held Navigate skipping UI elements).
+                LatchActuatedUiActions();
+            }
+
             _asset.UI.Enable();
             _uiModule.enabled = true;
-            CurrentContext = InputContextKind.UI;
+            SetContext(InputContextKind.UI);
             EnforceGlobalSoleOwnership();
+        }
+
+        /// <summary>
+        /// Disables both action maps and the UI module (no input routing). Used for loading-blocked
+        /// transitions: Input stays in <see cref="InputContextKind.None"/> while content loads and
+        /// routes nothing; gameplay becomes active only after Simulation accepts RaceLoadReady.
+        /// </summary>
+        public void SetBlockedContext()
+        {
+            // ADR-0005: any pending Pause edge is consumed by the transition that triggered it.
+            _pendingPauseEdge = false;
+            _asset.Gameplay.Disable();
+            _asset.UI.Disable();
+            _uiModule.enabled = false;
+            SetContext(InputContextKind.None);
+            EnforceGlobalSoleOwnership();
+        }
+
+        /// <summary>Commits a context change, raising <see cref="OnContextChanged"/> only on an actual change.</summary>
+        private void SetContext(InputContextKind context)
+        {
+            InputContextKind previous = CurrentContext;
+            CurrentContext = context;
+            if (previous != context)
+            {
+                OnContextChanged?.Invoke(context);
+            }
         }
 
         /// <summary>Unsubscribes observers, destroys created references, and clears the UI module for test teardown.</summary>
         public void Unbind()
         {
             _asset.Gameplay.Pause.performed -= OnGameplayPause;
+            _asset.Gameplay.Pause.canceled -= OnGameplayPause;
             _asset.Gameplay.CameraToggle.performed -= OnCameraToggle;
+            _asset.Gameplay.CameraToggle.canceled -= OnCameraToggle;
             _asset.Gameplay.Accelerate.performed -= OnGameplayValue;
             _asset.Gameplay.Brake.performed -= OnGameplayValue;
             _asset.Gameplay.Steer.performed -= OnGameplayValue;
             _asset.UI.Confirm.performed -= OnSubmit;
+            _asset.UI.Confirm.canceled -= OnSubmit;
             _asset.UI.Cancel.performed -= OnCancel;
+            _asset.UI.Cancel.canceled -= OnCancel;
             _asset.UI.Pause.performed -= OnUiPause;
+            _asset.UI.Pause.canceled -= OnUiPause;
             _asset.UI.Navigate.performed -= OnNavigate;
+            _asset.UI.Navigate.canceled -= OnNavigate;
             _asset.UI.Click.performed -= OnClick;
+            _latchedActions.Clear();
             _asset.Gameplay.Disable();
             _asset.UI.Disable();
             _uiModule.enabled = false;
@@ -429,6 +498,17 @@ namespace Overdrive.Input
 
         private void OnGameplayPause(InputAction.CallbackContext context)
         {
+            if (context.phase == InputActionPhase.Canceled)
+            {
+                _latchedActions.Remove(_asset.Gameplay.Pause);
+                return;
+            }
+
+            if (ShouldSuppressPerformed(_asset.Gameplay.Pause, context))
+            {
+                return;
+            }
+
             _pendingPauseEdge = true;
             PauseEdgeCount++;
             GameplayEdgeCount++;
@@ -437,6 +517,17 @@ namespace Overdrive.Input
 
         private void OnCameraToggle(InputAction.CallbackContext context)
         {
+            if (context.phase == InputActionPhase.Canceled)
+            {
+                _latchedActions.Remove(_asset.Gameplay.CameraToggle);
+                return;
+            }
+
+            if (ShouldSuppressPerformed(_asset.Gameplay.CameraToggle, context))
+            {
+                return;
+            }
+
             CameraToggleCount++;
             GameplayEdgeCount++;
             OnCameraToggleRequested?.Invoke();
@@ -459,30 +550,142 @@ namespace Overdrive.Input
 
         private void OnSubmit(InputAction.CallbackContext context)
         {
+            if (context.phase == InputActionPhase.Canceled)
+            {
+                _latchedActions.Remove(_asset.UI.Confirm);
+                return;
+            }
+
+            if (ShouldSuppressPerformed(_asset.UI.Confirm, context))
+            {
+                return;
+            }
+
             SubmitCount++;
             FlagMeaningfulFromDevice(context.control);
         }
 
         private void OnCancel(InputAction.CallbackContext context)
         {
+            if (context.phase == InputActionPhase.Canceled)
+            {
+                _latchedActions.Remove(_asset.UI.Cancel);
+                return;
+            }
+
+            if (ShouldSuppressPerformed(_asset.UI.Cancel, context))
+            {
+                return;
+            }
+
             CancelCount++;
             FlagMeaningfulFromDevice(context.control);
         }
 
         private void OnUiPause(InputAction.CallbackContext context)
         {
+            if (context.phase == InputActionPhase.Canceled)
+            {
+                _latchedActions.Remove(_asset.UI.Pause);
+                return;
+            }
+
+            if (ShouldSuppressPerformed(_asset.UI.Pause, context))
+            {
+                return;
+            }
+
             UiPauseCount++;
             FlagMeaningfulFromDevice(context.control);
         }
 
         private void OnNavigate(InputAction.CallbackContext context)
         {
+            if (context.phase == InputActionPhase.Canceled)
+            {
+                _latchedActions.Remove(_asset.UI.Navigate);
+                return;
+            }
+
+            if (ShouldSuppressPerformed(_asset.UI.Navigate, context))
+            {
+                return;
+            }
+
             FlagMeaningfulFromDevice(context.control);
         }
 
         private void OnClick(InputAction.CallbackContext context)
         {
             FlagMeaningfulFromDevice(context.control);
+        }
+
+        /// <summary>Latches digital gameplay actions actuated at a UI→Gameplay transition (ADR-0005).</summary>
+        private void LatchActuatedGameplayActions()
+        {
+            double now = UnityEngine.InputSystem.LowLevel.InputState.currentTime;
+            LatchIfActuated(_asset.Gameplay.Pause, now);
+            LatchIfActuated(_asset.Gameplay.CameraToggle, now);
+            // Accelerate/Brake/Steer are exempt (analog, AC-41): they apply immediately on resume.
+        }
+
+        /// <summary>Latches UI digital actions + Navigate actuated at a Gameplay→UI transition (ADR-0005).</summary>
+        private void LatchActuatedUiActions()
+        {
+            double now = UnityEngine.InputSystem.LowLevel.InputState.currentTime;
+            LatchIfActuated(_asset.UI.Confirm, now);
+            LatchIfActuated(_asset.UI.Cancel, now);
+            LatchIfActuated(_asset.UI.Navigate, now);
+            LatchIfActuated(_asset.UI.Pause, now);
+            // Point/Click are PassThrough handled by the UI module (pointer tracking is desired on
+            // activation) — not latched.
+        }
+
+        private void LatchIfActuated(InputAction action, double latchTime)
+        {
+            if (IsAnyControlActuated(action))
+            {
+                _latchedActions.Add(action);
+                _latchTime = latchTime;
+            }
+        }
+
+        private static bool IsAnyControlActuated(InputAction action)
+        {
+            foreach (InputControl control in action.controls)
+            {
+                if (!control.CheckStateIsAtDefault())
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Returns true when a latched action's performed must be suppressed. A press that began
+        /// BEFORE the transition (startTime older than the latch time) is the carried-over press
+        /// — suppressed once, then the latch clears. A press that began after the transition
+        /// (a legitimate release+repress in the new context) has a newer startTime and is allowed
+        /// through. Note: a held Button does not fire performed on enable (initial-state check is
+        /// off for Button actions), so a performed arriving here with a pre-latch startTime is the
+        /// engine edge the latch guards against.
+        /// </summary>
+        private bool ShouldSuppressPerformed(InputAction action, InputAction.CallbackContext context)
+        {
+            if (!_latchedActions.Contains(action))
+            {
+                return false;
+            }
+
+            if (context.startTime < _latchTime)
+            {
+                return true;
+            }
+
+            _latchedActions.Remove(action);
+            return false;
         }
 
         private void EnforceGlobalSoleOwnership()
