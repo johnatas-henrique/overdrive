@@ -92,9 +92,11 @@ separate module installation step.
 Every task follows: **Question -> Options -> Decision -> Draft -> Approval**
 
 - Agents MUST ask "May I write this to [filepath]?" before using Write/Edit tools
+- **Whenever you need to ask the user anything — approvals, decisions, clarifications — use the appropriate question tool for the runtime** (the name varies: `question` in OpenCode, `ask` in Claude Code, etc.), not inline text, even when a skill says "ask 'May I write...'" literally
 - Agents MUST show drafts or summaries before requesting approval
 - Multi-file changes require explicit approval for the full changeset
 - No commits without user instruction
+- **Skill next-step recommendations are GENERIC boilerplate** — validate them against the actual project context before repeating (e.g. team-qa's "run /gate-check" only applies to phase transitions, not sprint-to-sprint within the same phase)
 
 ## Coding Standards
 
