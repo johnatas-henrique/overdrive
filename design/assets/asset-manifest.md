@@ -13,22 +13,22 @@
 ### System: Car Definition Data
 | Asset ID | Name | Category | Status | Spec File |
 |----------|------|----------|--------|-----------|
-| ASSET-001 | Car — Madonna (team_tier1_a) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier1_a-car-assets.md |
-| ASSET-002 | Car — Zeroforce (team_tier1_b) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier1_b-car-assets.md |
-| ASSET-003 | Car — Millions (team_tier1_c) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier1_c-car-assets.md |
-| ASSET-004 | Car — Dragon (team_tier1_d) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier1_d-car-assets.md |
-| ASSET-005 | Car — May (team_tier2_a) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier2_a-car-assets.md |
-| ASSET-006 | Car — Losel (team_tier2_b) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier2_b-car-assets.md |
-| ASSET-007 | Car — Tyrant (team_tier2_c) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier2_c-car-assets.md |
-| ASSET-008 | Car — Blanche (team_tier2_d) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier2_d-car-assets.md |
-| ASSET-009 | Car — Fox (team_tier3_a) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier3_a-car-assets.md |
-| ASSET-010 | Car — Seimec (team_tier3_b) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier3_b-car-assets.md |
-| ASSET-011 | Car — Linden (team_tier3_c) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier3_c-car-assets.md |
-| ASSET-012 | Car — Dardan (team_tier3_d) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier3_d-car-assets.md |
-| ASSET-013 | Car — Bullets (team_tier4_a) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier4_a-car-assets.md |
-| ASSET-014 | Car — Rose (team_tier4_b) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier4_b-car-assets.md |
-| ASSET-015 | Car — Ruby (team_tier4_c) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier4_c-car-assets.md |
-| ASSET-016 | Car — Storm (team_tier4_d) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier4_d-car-assets.md |
+| ASSET-001 | Car — team_tier1_a (McLaren-Honda MP4/5) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier1_a-car-assets.md |
+| ASSET-002 | Car — team_tier1_b (Ferrari F1-89/640) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier1_b-car-assets.md |
+| ASSET-003 | Car — team_tier1_c (Williams-Renault FW12C/FW13) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier1_c-car-assets.md |
+| ASSET-004 | Car — team_tier1_d (Benetton-Ford B188/B189) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier1_d-car-assets.md |
+| ASSET-005 | Car — team_tier2_a (March-Leyton House-Judd CG891) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier2_a-car-assets.md |
+| ASSET-006 | Car — team_tier2_b (Lotus-Judd 101) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier2_b-car-assets.md |
+| ASSET-007 | Car — team_tier2_c (Tyrrell-Ford 017B/018) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier2_c-car-assets.md |
+| ASSET-008 | Car — team_tier2_d (Brabham-Judd BT58) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier2_d-car-assets.md |
+| ASSET-009 | Car — team_tier3_a (Minardi-Ford M188B/M189) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier3_a-car-assets.md |
+| ASSET-010 | Car — team_tier3_b (Ligier-Ford JS33) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier3_b-car-assets.md |
+| ASSET-011 | Car — team_tier3_c (Dallara-BMS-Ford F189) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier3_c-car-assets.md |
+| ASSET-012 | Car — team_tier3_d (Arrows-Ford A11) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier3_d-car-assets.md |
+| ASSET-013 | Car — team_tier4_a (Rial-Ford ARC2) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier4_a-car-assets.md |
+| ASSET-014 | Car — team_tier4_b (Coloni-Ford FC188B/C3) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier4_b-car-assets.md |
+| ASSET-015 | Car — team_tier4_c (Onyx-Ford ORE-1) | 3D Asset (Reference) | Needed | design/assets/specs/team_tier4_c-car-assets.md |
+| ASSET-016 | Car — team_tier4_d (Zakspeed-Yamaha ZR891) ★ | 3D Asset (Reference) | Needed | design/assets/specs/team_tier4_d-car-assets.md |
 
 ### System: Track System — Shared Assets
 | Asset ID | Name | Category | Status | Spec File |
