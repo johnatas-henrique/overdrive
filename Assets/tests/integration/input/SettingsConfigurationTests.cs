@@ -211,25 +211,29 @@ namespace Overdrive.Input.Tests
         }
 
         [Test]
-        public void AC11_PreviewMatchesFirstResumedTick()
+        public void AC11_PreviewDemonstratesWorkingProfileFromPrevZero()
         {
             ControlProfile working = new ControlProfile(0.2f, 0.9f, 0.05f, 0.4f, 0.35f, 0.55f);
             RawInputSample sample = MakeSample(accelerateRaw: 0.7f, brakeRaw: 0f, steerRaw: 0.6f);
+            ControlProfile sanitized = ControlProfile.Sanitize(working, out _);
 
-            // Preview: the Settings evaluator applies the working profile.
+            // AC-C11: the preview demonstrates the EMA from previous output 0.0, so the displayed value
+            // is alpha × post-dead-zone — the player sees the working response curve.
             SimulationInput preview = SettingsInputPreviewEvaluator.Evaluate(sample, working, false);
+            float expectedAccel = EmaBrakePriority.Sanitize(DeadZoneNormalizer.NormalizeTrigger(0.7f, sanitized.TriggerInner));
+            Assert.AreEqual(sanitized.AccelerateAlpha * expectedAccel, preview.AccelerateOut, 0.001f,
+                "AC-C11: preview (prev=0) demonstrates alpha × post-dead-zone.");
 
-            // First resumed tick: the runtime constructs a TickProcessor with the same working values
-            // (the identical pattern the Simulation Kernel uses), then processes the sample.
-            TickProcessor runtimeProcessor = new TickProcessor(
-                DeadZoneNormalizer.TriggerInnerThreshold,
-                working.StickInner, working.StickOuter,
-                working.AccelerateAlpha, working.BrakeAlpha, working.SteerAlpha);
+            // AC-50: the runtime resume path applies the same working profile but re-seeds the EMA from the
+            // sample (Story 006 AC-41) — a held analog delivers the post-dead-zone value directly on the
+            // first tick, intentionally differing from the preview's cold-start curve.
+            TickProcessor runtimeProcessor = new TickProcessor(sanitized);
+            runtimeProcessor.InitializeFromPostDeadZone(sample);
             SimulationInput firstTick = runtimeProcessor.ProcessTick(sample, false);
-
-            Assert.AreEqual(preview.AccelerateOut, firstTick.AccelerateOut, 0.001f);
-            Assert.AreEqual(preview.BrakeOut, firstTick.BrakeOut, 0.001f);
-            Assert.AreEqual(preview.SteerOut, firstTick.SteerOut, 0.001f);
+            Assert.AreEqual(expectedAccel, firstTick.AccelerateOut, 0.001f,
+                "Resume re-seed delivers post-dead-zone on the first tick.");
+            Assert.AreNotEqual(preview.AccelerateOut, firstTick.AccelerateOut,
+                "Preview (prev=0) and first resumed tick (re-seeded) intentionally differ for a held analog.");
         }
 
         // ---- AC-10 / AC-29 / AC-46: Listening classification ----
@@ -465,7 +469,7 @@ namespace Overdrive.Input.Tests
 
         private static RawInputSample MakeSample(float accelerateRaw = 0f, float brakeRaw = 0f, float steerRaw = 0f)
         {
-            return new RawInputSample(1, ControlScheme.Gamepad, accelerateRaw, brakeRaw, steerRaw, false, InputAvailability.Available, RawInputValidityFlags.None);
+            return new RawInputSample(1, ControlScheme.Gamepad, accelerateRaw, brakeRaw, steerRaw, InputAvailability.Available, RawInputValidityFlags.None);
         }
 
         private BindingSlot Slot(string actionName)
