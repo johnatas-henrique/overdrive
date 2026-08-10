@@ -1,6 +1,6 @@
 ## Technical Debt Register
 Last updated: 2026-08-09
-Total items: 8 | Estimated total effort: S×8
+Total items: 10 | Estimated total effort: S×10
 
 | ID | Category | Description | Files | Effort | Impact | Priority | Added | Sprint |
 |----|----------|-------------|-------|--------|--------|----------|-------|--------|
@@ -13,6 +13,7 @@ Total items: 8 | Estimated total effort: S×8
 | TD-007 | Integration | `SchemeChangeEmaReinitializer` + `TickProcessor.InitializeFromPostDeadZone(sample)` are produced by Story 005 (EMA re-seed on scheme change + device recovery) but no Simulation driver instantiates them yet. The Simulation Kernel driver must own one reinitializer per race (Enable on driver start, Disable on teardown) to close the AC-23/AC-39/AC-62 handoff. Accepted: seam ownership — the driver does not exist in the Input epic. | SchemeChangeEmaReinitializer.cs + Simulation Kernel epic | S | Medium | 3 | 2026-08-09 | Backlog |
 | TD-008 | Coverage | QL-TEST-COVERAGE GAPS for Story 006: the downstream consumers are mocked self-sufficiently because they do not exist in this epic — AC-14/16 grid-lock pose + pit-entry (Vehicle Physics + Pit Stop), AC-15/18/37 Countdown ticks, Pause/Resume, GO, RaceMode (Simulation Kernel + RSM), AC-56/70 RaceLoadReady transition coordination. When those epics are implemented, the ContextTransitionsTests mocks (GridLockMock, SettingsContextObserver, LifecycleDriverMock) must be replaced by real test doubles that record pose/pit-entry/ticks/race-mode and are exercised through the production transition coordinator. Accepted: consumer ownership — the Input epic verifies the controller, not the downstream systems. | ContextTransitionsTests.cs + Vehicle Physics / Pit Stop / Simulation Kernel / RSM epics | S | Low | 3 | 2026-08-09 | Backlog |
 | TD-009 | Coverage | Story 007 downstream deferrals: AC-54 QualifyingResults destination identifier is carried by the UI Presentation consumer (controller event is destination-agnostic); AC-36/48 pointer focus assignment belongs to the UI/EventSystem integration suite; AC-58 CameraToggle exclusion from SimulationInput/Ghost Recording is verified in the downstream Simulation/Replay pipeline gate. The controller routing itself is 121/121 covered in SpecialRoutingTests. Accepted: consumer ownership — the Input epic verifies the controller, not the downstream systems. | SpecialRoutingTests.cs + UI Presentation / UI-EventSystem integration / Simulation-Replay pipeline | S | Low | 3 | 2026-08-09 | Backlog |
+| TD-010 | Integration | ControlProfile warning rate-limiting boundary (Story 008, AC-68): `ControlProfile.Sanitize` emits one named warning per invalid field per invocation, and the story proves repeated loads emit one warning each with no accumulation. The actual "at most once per settings load" boundary (edit-session load frequency, warning fan-out to the Settings UI) is owned by the Core Settings epic edit-session layer; re-evaluate the rate-limit contract when that layer supplies the real load boundary. Accepted: per-invocation semantics is the Input-side contract; the load-frequency boundary is the Settings epic's. | ControlProfile.cs + Core Settings epic | S | Low | 3 | 2026-08-09 | Backlog |
 
 ### Notes
 - Every entry records WHY it was accepted (Story 002 scope boundary or redundant requirement) — none is a behavioral defect.
@@ -22,3 +23,4 @@ Total items: 8 | Estimated total effort: S×8
 - TD-007 has a defined destination (Simulation Kernel driver) and should be closed when the driver owns the reinitializer.
 - TD-008 has defined destinations (Vehicle Physics / Pit Stop / Simulation Kernel / RSM epics) and should be closed when those consumers replace the Story 006 mocks with real test doubles.
 - TD-009 has defined destinations (UI Presentation / UI-EventSystem integration / Simulation-Replay pipeline) and should be closed when those consumers verify the Story 007 routing contracts.
+- TD-010 has a defined destination (Core Settings epic edit-session layer) and should be closed when that layer supplies the real per-load warning boundary.
