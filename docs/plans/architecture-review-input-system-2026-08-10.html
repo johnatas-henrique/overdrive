@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Architecture review — Overdrive</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+    </script>
+    <style>
+      .seam { stroke-dasharray: 4 4; }
+      .leak { stroke: #dc2626; }
+      .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+      .module-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans">
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-12">
+
+      <header class="border-b border-slate-200 pb-8">
+        <h1 class="text-3xl font-serif font-semibold text-slate-900">Architecture review — Overdrive input system</h1>
+        <p class="text-sm text-slate-500 mt-2">2026-08-10 · <span class="font-mono">Assets/source/</span> (11 modules, sprint 1)</p>
+        <div class="flex flex-wrap gap-4 mt-4 text-xs text-slate-600">
+          <span><span class="inline-block w-3 h-3 border border-slate-400 align-middle mr-1"></span>module</span>
+          <span><span class="inline-block w-8 border-t border-dashed border-slate-400 align-middle mr-1"></span>seam</span>
+          <span><span class="inline-block w-3 h-0.5 bg-red-600 align-middle mr-1"></span>leakage</span>
+          <span><span class="inline-block w-3 h-3 rounded bg-slate-900 align-middle mr-1"></span>deep module</span>
+        </div>
+      </header>
+
+      <section id="candidates" class="space-y-10">
+
+        <!-- CANDIDATE 1 -->
+        <article class="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="text-xl font-serif font-semibold">1. Encapsulate the per-frame input protocol</h2>
+            <div class="flex gap-2">
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">Strong</span>
+              <span class="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600">in-process</span>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-slate-500">InputContextController.cs · TickProcessor.cs · both reinitializers</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="module-label text-slate-400 mb-2">Before — protocol lives in doc comments + per-test mock drivers</p>
+              <pre class="mermaid">
+flowchart TD
+  A[Simulation driver<br/>does not exist yet] -.calls in docs.-> B[ResolveActiveScheme]
+  A -.calls in docs.-> C[CaptureLatestRawSample]
+  A -.calls in docs.-> D[ProcessTick]
+  A -.calls in docs.-> E[ConsumePendingPauseEdge]
+  B -.stale if skipped.-> D
+  E --> D
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class A leak
+  style B,C,D,E fill:#fff,stroke:#94a3b8
+              </pre>
+              <p class="text-xs text-slate-500 mt-2">Ordering is documented, never enforced. Every test re-writes the 4-call sequence by hand.</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="module-label text-slate-400 mb-2">After — one deep module owns the sequence</p>
+              <pre class="mermaid">
+flowchart TD
+  D[InputFrameDriver] --> R[ResolveActiveScheme]
+  D --> C[CaptureLatestRawSample]
+  D --> T[TickProcessor]
+  D --> E[ConsumePendingPauseEdge]
+  D -->|exposes one entry| STEP[Step]
+  style D fill:#0f172a,color:#fff
+  style R,C,T,E fill:#e2e8f0,stroke:#94a3b8
+              </pre>
+              <p class="text-xs text-slate-500 mt-2">One <span class="font-mono">Step()</span> entry point; ordering becomes structural, not documentary.</p>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> The system's real behavior — a 4-call ordered sequence plus a 3-step pause-edge handshake — exists only in doc comments and re-implemented per test, because the production caller (Simulation driver) is not built yet.</p>
+          <p><span class="font-semibold">Solution.</span> One per-frame module that owns resolve → capture → tick → edge consumption behind a single entry point; the controller provides raw samples and scheme decisions, the processor stays pure.</p>
+          <ul class="text-sm space-y-1 list-disc list-inside">
+            <li>locality: the protocol concentrates in one module</li>
+            <li>leverage: one interface, N future call sites</li>
+            <li>ADR-0001 ordering becomes structural, not a comment</li>
+            <li>tests hit one seam instead of re-building the driver</li>
+          </ul>
+        </article>
+
+        <!-- CANDIDATE 2 -->
+        <article class="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="text-xl font-serif font-semibold">2. Single owner for the six tuning values</h2>
+            <div class="flex gap-2">
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">Strong</span>
+              <span class="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600">in-process</span>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-slate-500">ControlProfile.cs · DeadZoneNormalizer.cs · EmaBrakePriority.cs · TickProcessor.cs · InputContextController.cs</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="module-label text-slate-400 mb-2">Before — four modules claim the defaults</p>
+              <pre class="mermaid">
+flowchart TD
+  DZN[DeadZoneNormalizer<br/>consts 0.15/0.95/0.05]
+  EMA[EmaBrakePriority<br/>consts 0.3/0.3/0.5]
+  TKP[TickProcessor<br/>aliases]
+  CP[ControlProfile.Default<br/>assembles all six]
+  ARB[Arbitration threshold<br/>reads consts, not profile]
+  DZN -.kept equal by convention.-> TKP
+  EMA -.kept equal by convention.-> TKP
+  TKP -.kept equal by convention.-> CP
+  ARB -.reads consts.-> DZN
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class ARB leak
+              </pre>
+              <p class="text-xs text-slate-500 mt-2">Nothing structurally ties the copies together; drift is held at bay only by convention and one test.</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="module-label text-slate-400 mb-2">After — one owner, one knob</p>
+              <pre class="mermaid">
+flowchart TD
+  CP[ControlProfile.Default<br/>single owner of all six]
+  TKP[TickProcessor<br/>takes ControlProfile]
+  ARB[Arbitration threshold<br/>reads active profile]
+  DZN[DeadZoneNormalizer<br/>consts become internals]
+  EMA[EmaBrakePriority<br/>alphas from profile]
+  CP --> TKP
+  CP --> ARB
+  CP -.internals only.-> DZN
+  CP -.internals only.-> EMA
+  style CP fill:#0f172a,color:#fff
+              </pre>
+              <p class="text-xs text-slate-500 mt-2">One place for defaults; a tuning change cannot silently desync arbitration from the pipeline.</p>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> Four modules claim ownership of the six tuning values, kept equal only by convention; the arbitration "meaningful" threshold reads consts structurally disconnected from the profile the pipeline uses.</p>
+          <p><span class="font-semibold">Solution.</span> Make <span class="font-mono">ControlProfile.Default</span> the single owner; the processor takes a profile instead of six positional floats; arbitration reads the active profile.</p>
+          <ul class="text-sm space-y-1 list-disc list-inside">
+            <li>one knob for tuning, one home for defaults</li>
+            <li>Settings-vs-runtime drift risk disappears</li>
+            <li>preview and future driver stop re-spelling the mapping</li>
+          </ul>
+        </article>
+
+        <!-- CANDIDATE 3 -->
+        <article class="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="text-xl font-serif font-semibold">3. Collapse the pause-edge lifecycle</h2>
+            <div class="flex gap-2">
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Worth exploring</span>
+              <span class="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600">in-process</span>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-slate-500">InputContextController.cs · RawInputSample.cs · TickProcessor.cs</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="module-label text-slate-400 mb-2">Before — one edge, six clear sites, two channels</p>
+              <pre class="mermaid">
+flowchart LR
+  OP[OnGameplayPause<br/>sets _pendingPauseEdge]
+  OP --> S1[SetUIContext]
+  OP --> S2[SetBlockedContext]
+  OP --> S3[SetFinishedPresentation]
+  OP --> S4[SetPitService]
+  OP --> S5[SetPitTransit]
+  OP --> S6[SetActiveScheme]
+  OP -.parallel channel.-> PR[RawInputSample.PauseRise<br/>read only by tests]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class S1,S2,S3,S4,S5,S6,PR leak
+              </pre>
+              <p class="text-xs text-slate-500 mt-2">One forgotten clear site silently swallows or duplicates a Pause.</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="module-label text-slate-400 mb-2">After — one owner, one channel</p>
+              <pre class="mermaid">
+flowchart LR
+  OP[OnGameplayPause] --> T[Transition<br/>single path]
+  T -->|consumes edge once| E[edge drained by driver]
+  classDef deep fill:#0f172a,color:#fff
+  class T deep
+              </pre>
+              <p class="text-xs text-slate-500 mt-2">Six clear sites collapse into one <span class="font-mono">Transition()</span>; the redundant <span class="font-mono">PauseRise</span> channel disappears.</p>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> One pause edge is set in one place, cleared in six, and travels on two parallel channels — a silent-swallow/duplicate failure mode.</p>
+          <p><span class="font-semibold">Solution.</span> One transition path that consumes the edge once, and a single authoritative channel for it.</p>
+          <ul class="text-sm space-y-1 list-disc list-inside">
+            <li>removes the silent-swallow failure mode</li>
+            <li>shrinks surface: six sites, one <span class="font-mono">Transition()</span></li>
+            <li><span class="font-mono">PauseRise</span> redundancy deleted</li>
+          </ul>
+        </article>
+
+        <!-- CANDIDATE 4 -->
+        <article class="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="text-xl font-serif font-semibold">4. Consolidate the EMA re-seed policy</h2>
+            <div class="flex gap-2">
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Worth exploring</span>
+              <span class="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600">local-substitutable</span>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-slate-500">SchemeChangeEmaReinitializer.cs · ContextResumeEmaReinitializer.cs · TickProcessor.cs</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="module-label text-slate-400 mb-2">Before — two identical wrappers</p>
+              <pre class="mermaid">
+flowchart LR
+  A[SchemeChangeEmaReinitializer<br/>~50 lines boilerplate<br/>+ ~10 lines policy]
+  B[ContextResumeEmaReinitializer<br/>~50 lines boilerplate<br/>+ ~10 lines policy]
+  A --> I[InitializeFromPostDeadZone]
+  B --> I
+  P[re-seed policy documented in 4 files] -.leak.-> A
+  P -.leak.-> B
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class P leak
+              </pre>
+              <p class="text-xs text-slate-500 mt-2">Boilerplate duplicated; "when does EMA reset" has four homes.</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="module-label text-slate-400 mb-2">After — one policy owner</p>
+              <pre class="mermaid">
+flowchart TD
+  S[one re-seed policy object<br/>or TickProcessor's own lifecycle]
+  S --> I[InitializeFromPostDeadZone]
+  S -.filters.-> E[input-state-changed event]
+  style S fill:#0f172a,color:#fff
+              </pre>
+              <p class="text-xs text-slate-500 mt-2">One answer to "when does EMA reset"; duplicated Enable/Disable boilerplate disappears.</p>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> Two structurally identical wrappers duplicate ~100 lines of subscription boilerplate, and the re-seed policy is documented across four files with a synthetic-first-event footgun.</p>
+          <p><span class="font-semibold">Solution.</span> One subscriber (or the processor's own lifecycle) filters a single "input state changed" event; the policy lives in one place.</p>
+          <ul class="text-sm space-y-1 list-disc list-inside">
+            <li>one answer to "when does EMA reset"</li>
+            <li>deletes ~100 lines of duplicated boilerplate</li>
+            <li>synthetic-transition trap handled in one place</li>
+          </ul>
+        </article>
+
+        <!-- CANDIDATE 5 -->
+        <article class="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="text-xl font-serif font-semibold">5. Make the Settings preview faithful to resume</h2>
+            <div class="flex gap-2">
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Worth exploring</span>
+              <span class="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600">in-process</span>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-slate-500">SettingsInputPreviewEvaluator.cs · ContextResumeEmaReinitializer.cs · TickProcessor.cs</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="module-label text-slate-400 mb-2">Before — preview from rest, resume re-seeded</p>
+              <pre class="mermaid">
+flowchart LR
+  P[Preview<br/>fresh TickProcessor, prev=0] -->|0.3 x 0.579 = 0.174| OUT
+  R[Resume path<br/>prev re-seeded to post-DZ] -->|first tick = 0.579| OUT
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class P,R leak
+              </pre>
+              <p class="text-xs text-slate-500 mt-2">For held analog, the preview under-reports the first resumed tick; <span class="font-mono">AC11</span> cements it by testing fresh-vs-fresh.</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="module-label text-slate-400 mb-2">After — preview through the same re-seed</p>
+              <pre class="mermaid">
+flowchart LR
+  P[Preview] --> I[InitializeFromPostDeadZone]
+  I --> T[TickProcessor]
+  T --> OUT
+  style T fill:#0f172a,color:#fff
+              </pre>
+              <p class="text-xs text-slate-500 mt-2">Preview and first resumed tick share profile and state; <span class="font-mono">AC11</span> compares against the real resume path.</p>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> The preview (prev = 0) and the first resumed tick (prev re-seeded to current post-dead-zone) diverge for held analog, and the test cements the divergence by duplicating the evaluator's own construction.</p>
+          <p><span class="font-semibold">Solution.</span> Run the preview through the same re-seed step the resume path uses, and point the test at the actual runtime path.</p>
+          <ul class="text-sm space-y-1 list-disc list-inside">
+            <li>honest player-facing preview</li>
+            <li>"identical profile" becomes "identical profile and state"</li>
+            <li>test stops duplicating the evaluator's construction</li>
+          </ul>
+        </article>
+
+        <!-- CANDIDATE 6 -->
+        <article class="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="text-xl font-serif font-semibold">6. Replace the test counters with an observation seam</h2>
+            <div class="flex gap-2">
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-200 text-slate-700">Speculative</span>
+              <span class="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600">in-process</span>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-slate-500">InputContextController.cs · tests</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="module-label text-slate-400 mb-2">Before — 11 counters on the public interface</p>
+              <pre class="mermaid">
+flowchart TD
+  C[InputContextController]
+  C -->|SubmitCount| A
+  C -->|CancelCount| B
+  C -->|PauseEdgeCount| D
+  C -->|CameraToggleCount| E
+  C -->|x7 more| F
+  A[test asserts]
+  B[test asserts]
+  D[test asserts]
+  E[test asserts]
+  F[test asserts]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class A,B,D,E,F leak
+              </pre>
+              <p class="text-xs text-slate-500 mt-2">40% of the public surface exists for test assertions; one test reaches into private state via reflection.</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="module-label text-slate-400 mb-2">After — one injected log, production ignores it</p>
+              <pre class="mermaid">
+flowchart TD
+  C[InputContextController] --> L[InputEventLog<br/>injected observer]
+  L --> T[test binds]
+  style L fill:#0f172a,color:#fff
+              </pre>
+              <p class="text-xs text-slate-500 mt-2">Counters collapse into a derivation of the log; the reflection smell disappears.</p>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> 40% of the public interface is test-only counters, and a reflection probe asserts private latch state — the observable interface is the wrong shape.</p>
+          <p><span class="font-semibold">Solution.</span> A lightweight injected observation seam the tests bind to; production ignores it; counters become derivations.</p>
+          <ul class="text-sm space-y-1 list-disc list-inside">
+            <li>public interface shrinks dramatically</li>
+            <li>removes the reflection smell</li>
+            <li>handlers report to one place</li>
+          </ul>
+        </article>
+
+      </section>
+
+      <section id="top-recommendation">
+        <article class="rounded-lg border-2 border-slate-900 p-6 bg-slate-900 text-stone-100">
+          <h2 class="text-2xl font-serif font-semibold">Top recommendation</h2>
+          <p class="mt-3">
+            Start with <a href="#" class="underline">1. Encapsulate the per-frame input protocol</a> — it is the largest
+            friction source. The pure pipeline modules are already deep and well-tested; the system's real behavior
+            (the 4-call ordered sequence + pause-edge handshake) exists only in comments and per-test mocks, and the
+            production caller is built in the next epic. Wrapping it now turns ADR-0001's ordering constraint from
+            documentary into structural, and gives the Simulation Kernel a contract to consume instead of a sequence to
+            re-implement by hand.
+          </p>
+          <p class="mt-3 text-sm text-stone-300">
+            Execute in order: <span class="font-semibold">2</span> (single tuning owner) and
+            <span class="font-semibold">3</span> (collapse pause-edge) first — they clear the base the driver would
+            otherwise inherit. Then <span class="font-semibold">1</span>.
+          </p>
+        </article>
+      </section>
+
+    </main>
+  </body>
+</html>
