@@ -32,14 +32,14 @@
 
 *From GDD `design/gdd/input-system.md`, scoped to this story:*
 
-- [ ] AC-10: GIVEN Settings enters Listening, WHEN a remappable race-action candidate arrives, THEN Settings receives Captured, Conflict, or Rejected and no gameplay edge is queued.
-- [ ] AC-11: GIVEN Settings changes a control profile while simulation is paused, WHEN SettingsInputPreviewEvaluator renders its response, THEN it uses the working profile; the first 60 Hz tick after resume uses that same profile.
-- [ ] AC-29: GIVEN a remap candidate conflicts with a reserved Confirm, Cancel, or Pause binding, WHEN capture validation runs, THEN the candidate is rejected immediately.
-- [ ] AC-46: GIVEN Settings displays Confirm, Cancel, or Pause, WHEN the player attempts to select one as a rebinding target or remove its binding, THEN Listening does not begin and the fixed reserved binding remains.
-- [ ] AC-50: GIVEN Settings applies a stick dead-zone or EMA alpha change, WHEN the next 60 Hz tick builds SimulationInput, THEN that tick uses the working values previewed by SettingsInputPreviewEvaluator while the trigger threshold remains the Input-owned tuning value.
-- [ ] AC-66: GIVEN Settings selects KeyboardMouse Steer Left Secondary for rebinding, WHEN a valid candidate completes, THEN only that composite-part binding ID is overridden and Steer Right plus all other slots remain unchanged.
-- [ ] AC-67: GIVEN a saved override references an unknown stable binding ID, WHEN overrides load, THEN only that slot returns to its default and all other valid overrides remain active.
-- [ ] AC-68: GIVEN a loaded control profile has `stick_inner >= stick_outer`, non-finite thresholds, or alpha outside `[0,1]`, WHEN validation runs, THEN each invalid field returns to its approved default before any tick processing and one rate-limited warning is emitted.
+- [x] AC-10: GIVEN Settings enters Listening, WHEN a remappable race-action candidate arrives, THEN Settings receives Captured, Conflict, or Rejected and no gameplay edge is queued.
+- [x] AC-11: GIVEN Settings changes a control profile while simulation is paused, WHEN SettingsInputPreviewEvaluator renders its response, THEN it uses the working profile; the first 60 Hz tick after resume uses that same profile.
+- [x] AC-29: GIVEN a remap candidate conflicts with a reserved Confirm, Cancel, or Pause binding, WHEN capture validation runs, THEN the candidate is rejected immediately.
+- [x] AC-46: GIVEN Settings displays Confirm, Cancel, or Pause, WHEN the player attempts to select one as a rebinding target or remove its binding, THEN Listening does not begin and the fixed reserved binding remains.
+- [x] AC-50: GIVEN Settings applies a stick dead-zone or EMA alpha change, WHEN the next 60 Hz tick builds SimulationInput, THEN that tick uses the working values previewed by SettingsInputPreviewEvaluator while the trigger threshold remains the Input-owned tuning value.
+- [x] AC-66: GIVEN Settings selects KeyboardMouse Steer Left Secondary for rebinding, WHEN a valid candidate completes, THEN only that composite-part binding ID is overridden and Steer Right plus all other slots remain unchanged.
+- [x] AC-67: GIVEN a saved override references an unknown stable binding ID, WHEN overrides load, THEN only that slot returns to its default and all other valid overrides remain active.
+- [x] AC-68: GIVEN a loaded control profile has `stick_inner >= stick_outer`, non-finite thresholds, or alpha outside `[0,1]`, WHEN validation runs, THEN each invalid field returns to its approved default before any tick processing and one rate-limited warning is emitted.
 
 ---
 

@@ -30,17 +30,17 @@
 
 *From GDD `design/gdd/input-system.md`, scoped to this story:*
 
-- [ ] AC-14: GIVEN Countdown is active, WHEN the player provides Accelerate, Brake, or Steer input, THEN SimulationInput processes those values and Vehicle Physics keeps the car stationary under grid lock.
-- [ ] AC-15: GIVEN Countdown is active, WHEN Pause rises, THEN Simulation transitions to Paused while Input enters UI context; Settings may open through that pause menu with Difficulty disabled and all other MVP categories available; resuming returns both to Countdown from the frozen remaining countdown tick value.
-- [ ] AC-16: GIVEN Countdown is active, WHEN the player provides any driving input, THEN grid lock keeps the car at its grid pose and no pit-lane entry can occur before GO.
-- [ ] AC-17: GIVEN Countdown is running and not paused, WHEN Settings is requested, THEN Settings does not open; it becomes available only after Pause transitions Countdown into UI context.
-- [ ] AC-18: GIVEN Countdown is active and Accelerate, Brake, or Steer is held, WHEN GO releases grid lock, THEN the first Racing tick consumes the existing EMA state without reset; Brake priority remains active.
-- [ ] AC-37: GIVEN RaceMode is Qualifying and the player presses Pause, WHEN Simulation enters Paused, THEN resuming restores GameplayQualifying.
-- [ ] AC-41: GIVEN Racing, Qualifying, or Countdown resumes from UI without an active-scheme change while Accelerate, Brake, or Steer is held, WHEN the first gameplay tick executes, THEN EMA previous values equal the current post-dead-zone analog values, those controls apply immediately, newly enabled digital actions remain neutral-release latched, and the pending `pauseEdge` flag is false.
-- [ ] AC-44: GIVEN Escape opens the pause menu from GameplayRacing, WHEN UI context becomes active while Escape remains held, THEN no UI Cancel fires until Escape is released and pressed again.
-- [ ] AC-53: GIVEN a digital action or UI Navigate control is held during a Gameplay ↔ UI context transition, WHEN the new context is active, THEN that control is ignored until neutral/released and any gameplay edge from the old context is false; continuous Accelerate, Brake, and Steer follow AC-41 on Resume.
-- [ ] AC-56: GIVEN Qualifying Results confirms Start Race, WHEN `StartRaceRequested` is accepted, THEN Input remains in UI throughout Loading and transitions to GameplayCountdown only after Simulation accepts `RaceLoadReady(RaceMode.Race, gridAssignment)`.
-- [ ] AC-70: GIVEN the player starts Qualifying, WHEN Content loading is active, THEN Input remains in blocked UI routing until Simulation accepts `RaceLoadReady(RaceMode.Qualifying)`, after which GameplayQualifying becomes the sole active gameplay context without a Countdown transition.
+- [x] AC-14: GIVEN Countdown is active, WHEN the player provides Accelerate, Brake, or Steer input, THEN SimulationInput processes those values and Vehicle Physics keeps the car stationary under grid lock.
+- [x] AC-15: GIVEN Countdown is active, WHEN Pause rises, THEN Simulation transitions to Paused while Input enters UI context; Settings may open through that pause menu with Difficulty disabled and all other MVP categories available; resuming returns both to Countdown from the frozen remaining countdown tick value.
+- [x] AC-16: GIVEN Countdown is active, WHEN the player provides any driving input, THEN grid lock keeps the car at its grid pose and no pit-lane entry can occur before GO.
+- [x] AC-17: GIVEN Countdown is running and not paused, WHEN Settings is requested, THEN Settings does not open; it becomes available only after Pause transitions Countdown into UI context.
+- [x] AC-18: GIVEN Countdown is active and Accelerate, Brake, or Steer is held, WHEN GO releases grid lock, THEN the first Racing tick consumes the existing EMA state without reset; Brake priority remains active.
+- [x] AC-37: GIVEN RaceMode is Qualifying and the player presses Pause, WHEN Simulation enters Paused, THEN resuming restores GameplayQualifying.
+- [x] AC-41: GIVEN Racing, Qualifying, or Countdown resumes from UI without an active-scheme change while Accelerate, Brake, or Steer is held, WHEN the first gameplay tick executes, THEN EMA previous values equal the current post-dead-zone analog values, those controls apply immediately, newly enabled digital actions remain neutral-release latched, and the pending `pauseEdge` flag is false.
+- [x] AC-44: GIVEN Escape opens the pause menu from GameplayRacing, WHEN UI context becomes active while Escape remains held, THEN no UI Cancel fires until Escape is released and pressed again.
+- [x] AC-53: GIVEN a digital action or UI Navigate control is held during a Gameplay ↔ UI context transition, WHEN the new context is active, THEN that control is ignored until neutral/released and any gameplay edge from the old context is false; continuous Accelerate, Brake, and Steer follow AC-41 on Resume.
+- [x] AC-56: GIVEN Qualifying Results confirms Start Race, WHEN `StartRaceRequested` is accepted, THEN Input remains in UI throughout Loading and transitions to GameplayCountdown only after Simulation accepts `RaceLoadReady(RaceMode.Race, gridAssignment)`.
+- [x] AC-70: GIVEN the player starts Qualifying, WHEN Content loading is active, THEN Input remains in blocked UI routing until Simulation accepts `RaceLoadReady(RaceMode.Qualifying)`, after which GameplayQualifying becomes the sole active gameplay context without a Countdown transition.
 
 ---
 

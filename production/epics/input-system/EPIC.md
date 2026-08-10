@@ -3,8 +3,7 @@
 > **Layer**: Foundation
 > **GDD**: design/gdd/input-system.md
 > **Architecture Module**: Input System (Foundation Layer — module ownership per docs/architecture/architecture.md:118-125)
-> **Status**: Ready
-> **Stories**: 8 created — see table below
+> **Status**: Done (Sprint 1 closed 2026-08-08 — QA sign-off APPROVED)
 
 ## Overview
 
@@ -53,17 +52,17 @@ This epic is complete when:
 
 | # | Story | Type | Status | ADR |
 |---|-------|------|--------|-----|
-| 001 | Input Action Asset & Context Controller | Integration | Ready | ADR-0005, ADR-0001 |
-| 002 | Raw Capture & Dead-Zone Normalization | Integration | Ready | ADR-0001, ADR-0005 |
-| 003 | EMA & Brake Priority | Logic | Ready | ADR-0005 |
-| 004 | SimulationInput Tick Processor | Integration | Ready | ADR-0001, ADR-0005 |
-| 005 | Scheme Arbitration & No-Device | Logic | Ready | ADR-0005 |
-| 006 | Context Handoff & Transitions | Integration | Ready | ADR-0001, ADR-0005 |
-| 007 | Special Input Routing | Integration | Ready | ADR-0010, ADR-0005, ADR-0019 |
-| 008 | Settings Configuration | Integration | Ready | ADR-0004, ADR-0005 |
+| 001 | Input Action Asset & Context Controller | Integration | Done | ADR-0005, ADR-0001 |
+| 002 | Raw Capture & Dead-Zone Normalization | Integration | Done | ADR-0001, ADR-0005 |
+| 003 | EMA & Brake Priority | Logic | Done | ADR-0005 |
+| 004 | SimulationInput Tick Processor | Integration | Done | ADR-0001, ADR-0005 |
+| 005 | Scheme Arbitration & No-Device | Logic | Done | ADR-0005 |
+| 006 | Context Handoff & Transitions | Integration | Done | ADR-0001, ADR-0005 |
+| 007 | Special Input Routing | Integration | Done | ADR-0010, ADR-0005, ADR-0019 |
+| 008 | Settings Configuration | Integration | Done | ADR-0004, ADR-0005 |
 
 **Coverage**: 14/14 TR-input requirements traced; 0 untraced. 66 ACs (all MVP scope) + 14 TRs across 8 stories; QL-STORY-READY passed (2 gate rounds → all 8 ADEQUATE; 66 test specs final). DEFERRED: AC-19 (cross-epic Grid & Start), AC-20 (Replay — Alpha), AC-21/55 (WebGL — Alpha platform). No MVP AC is excluded.
 
 ## Next Step
 
-Run `/story-readiness production/epics/input-system/story-001-input-action-asset-context-controller.md` then `/dev-story` to begin implementation. Work through stories in order — each story's `Depends on:` field tells you what must be DONE before you can start it.
+All 8 stories are Done (Sprint 1 closed 2026-08-08). The Input contract is consumed by the Simulation Kernel (next epic) and downstream consumers. Any input-system change now routes through the epic's completed stories — see `sprint-status.yaml` for the authoritative status.

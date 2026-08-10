@@ -32,16 +32,16 @@
 
 *From GDD `design/gdd/input-system.md`, scoped to this story:*
 
-- [ ] AC-26: GIVEN mouse movement or mouse click occurs during Racing, WHEN a tick processes input, THEN Accelerate, Brake, Steer, and Pause are unchanged by mouse input.
-- [ ] AC-36: GIVEN UI is active and pointer movement assigns pointer focus, WHEN Navigate, Confirm, or Cancel arrives from keyboard or gamepad, THEN the pointer hides and that device family becomes the active UI scheme.
-- [ ] AC-48: GIVEN UI is active and the pointer is hidden, WHEN pointer delta is at least 2 pixels or the player clicks, THEN the pointer becomes visible and KeyboardMouse becomes the active UI scheme; subsequent keyboard/gamepad Navigate, Confirm, or Cancel hides it and selects that device family.
-- [ ] AC-58: GIVEN GameplayRacing, GameplayQualifying, or GameplayCountdown is active, WHEN C or gamepad North/Y/Triangle produces a CameraToggle rising edge, THEN Camera begins one mode transition in the same Dynamic Update; holding the control produces no additional transition until release, and no CameraToggle value enters SimulationInput or Ghost Recording.
-- [ ] AC-52: GIVEN PitService is active before tire swap completes, WHEN Enter or South is pressed, THEN no exit occurs; GIVEN tire swap has completed, WHEN Enter or South is pressed, THEN Vehicle Physics begins pit exit with the current fuel level.
-- [ ] AC-54: GIVEN Qualifying Finished Presentation is active, WHEN Enter or South is pressed, THEN UI Presentation dismisses it and opens Qualifying Results; Escape or East is ignored and all driving input remains disabled.
-- [ ] AC-57: GIVEN SimulationState is Finished, WHEN P or gamepad Start is pressed, THEN UI Presentation toggles terminal presentation pause while SimulationState remains Finished; Escape/East remains suppressed and no generic UI Cancel is dispatched.
-- [ ] AC-63: GIVEN Finished Presentation is active, WHEN Escape/East is pressed, THEN InputSystemUIInputModule is disabled for that routing mode, no Cancel handler executes, and the presentation remains active.
-- [ ] AC-64: GIVEN PitService is active after tire swap completion, WHEN Enter/South is pressed, THEN Confirm routes directly to Pit Stop exactly once and no generic UI Submit handler executes.
-- [ ] AC-65: GIVEN PitTransit or Loading-blocked input is active, WHEN any UI action occurs, THEN InputSystemUIInputModule is disabled and no navigation, Submit, Cancel, or gameplay event is emitted.
+- [x] AC-26: GIVEN mouse movement or mouse click occurs during Racing, WHEN a tick processes input, THEN Accelerate, Brake, Steer, and Pause are unchanged by mouse input.
+- [x] AC-36: GIVEN UI is active and pointer movement assigns pointer focus, WHEN Navigate, Confirm, or Cancel arrives from keyboard or gamepad, THEN the pointer hides and that device family becomes the active UI scheme.
+- [x] AC-48: GIVEN UI is active and the pointer is hidden, WHEN pointer delta is at least 2 pixels or the player clicks, THEN the pointer becomes visible and KeyboardMouse becomes the active UI scheme; subsequent keyboard/gamepad Navigate, Confirm, or Cancel hides it and selects that device family.
+- [x] AC-58: GIVEN GameplayRacing, GameplayQualifying, or GameplayCountdown is active, WHEN C or gamepad North/Y/Triangle produces a CameraToggle rising edge, THEN Camera begins one mode transition in the same Dynamic Update; holding the control produces no additional transition until release, and no CameraToggle value enters SimulationInput or Ghost Recording.
+- [x] AC-52: GIVEN PitService is active before tire swap completes, WHEN Enter or South is pressed, THEN no exit occurs; GIVEN tire swap has completed, WHEN Enter or South is pressed, THEN Vehicle Physics begins pit exit with the current fuel level.
+- [x] AC-54: GIVEN Qualifying Finished Presentation is active, WHEN Enter or South is pressed, THEN UI Presentation dismisses it and opens Qualifying Results; Escape or East is ignored and all driving input remains disabled.
+- [x] AC-57: GIVEN SimulationState is Finished, WHEN P or gamepad Start is pressed, THEN UI Presentation toggles terminal presentation pause while SimulationState remains Finished; Escape/East remains suppressed and no generic UI Cancel is dispatched.
+- [x] AC-63: GIVEN Finished Presentation is active, WHEN Escape/East is pressed, THEN InputSystemUIInputModule is disabled for that routing mode, no Cancel handler executes, and the presentation remains active.
+- [x] AC-64: GIVEN PitService is active after tire swap completion, WHEN Enter/South is pressed, THEN Confirm routes directly to Pit Stop exactly once and no generic UI Submit handler executes.
+- [x] AC-65: GIVEN PitTransit or Loading-blocked input is active, WHEN any UI action occurs, THEN InputSystemUIInputModule is disabled and no navigation, Submit, Cancel, or gameplay event is emitted.
 
 ---
 
