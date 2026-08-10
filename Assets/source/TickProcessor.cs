@@ -24,21 +24,10 @@ namespace Overdrive.Input
     /// </summary>
     public sealed class TickProcessor
     {
-        /// <summary>Default radial stick inner threshold (GDD/Story 002).</summary>
-        public const float DefaultStickInner = DeadZoneNormalizer.StickInnerThreshold;
-
-        /// <summary>Default radial stick outer threshold (GDD/Story 002).</summary>
-        public const float DefaultStickOuter = DeadZoneNormalizer.StickOuterThreshold;
-
-        /// <summary>Default axial trigger inner threshold (GDD/Story 002).</summary>
-        public const float DefaultTriggerInner = DeadZoneNormalizer.TriggerInnerThreshold;
-
         /// <summary>Warning rate-limit window: one warning per channel per this many consecutive ticks.</summary>
         public const int WarningWindowTicks = 60;
 
-        private readonly float _triggerInner;
-        private readonly float _stickInner;
-        private readonly float _stickOuter;
+        private readonly ControlProfile _profile;
         private readonly EmaBrakePriority _ema;
         private int _accelerateInvalidTicks;
         private int _brakeInvalidTicks;
@@ -48,21 +37,15 @@ namespace Overdrive.Input
         public event Action<InputChannel, float> InvalidInputWarning;
 
         /// <summary>
-        /// Creates the processor with the given dead-zone thresholds and EMA alphas. Thresholds and
-        /// alphas default to the GDD values; Story 008 (Settings) passes control-profile values instead.
+        /// Creates the processor with a control profile (dead-zone thresholds and EMA alphas).
+        /// A <c>null</c> profile uses <see cref="ControlProfile.Default"/>. The trigger threshold is
+        /// Input-owned tuning (ADR-0004) — a profile passed here must have been sanitized so its
+        /// trigger value is the approved Input default.
         /// </summary>
-        public TickProcessor(
-            float triggerInner = DefaultTriggerInner,
-            float stickInner = DefaultStickInner,
-            float stickOuter = DefaultStickOuter,
-            float accelerateAlpha = EmaBrakePriority.DefaultAccelerateAlpha,
-            float brakeAlpha = EmaBrakePriority.DefaultBrakeAlpha,
-            float steerAlpha = EmaBrakePriority.DefaultSteerAlpha)
+        public TickProcessor(ControlProfile? profile = null)
         {
-            _triggerInner = triggerInner;
-            _stickInner = stickInner;
-            _stickOuter = stickOuter;
-            _ema = new EmaBrakePriority(accelerateAlpha, brakeAlpha, steerAlpha);
+            _profile = profile ?? ControlProfile.Default;
+            _ema = new EmaBrakePriority(_profile.AccelerateAlpha, _profile.BrakeAlpha, _profile.SteerAlpha);
         }
 
         /// <summary>
@@ -118,9 +101,9 @@ namespace Overdrive.Input
                 return;
             }
 
-            accelerate = DeadZoneNormalizer.NormalizeTrigger(sample.AccelerateRaw, _triggerInner);
-            brake = DeadZoneNormalizer.NormalizeTrigger(sample.BrakeRaw, _triggerInner);
-            steer = DeadZoneNormalizer.NormalizeStick(new Vector2(sample.SteerRaw, 0f), _stickInner, _stickOuter).x;
+            accelerate = DeadZoneNormalizer.NormalizeTrigger(sample.AccelerateRaw, _profile.TriggerInner);
+            brake = DeadZoneNormalizer.NormalizeTrigger(sample.BrakeRaw, _profile.TriggerInner);
+            steer = DeadZoneNormalizer.NormalizeStick(new Vector2(sample.SteerRaw, 0f), _profile.StickInner, _profile.StickOuter).x;
         }
 
         private void EmitInvalidInputWarnings(RawInputSample sample)

@@ -43,9 +43,9 @@ namespace Overdrive.Input
     /// <summary>
     /// The data-driven input tuning values that Settings may configure (AC-50/AC-11). Stick dead-zone and
     /// EMA alphas are player-configurable; <see cref="TriggerInner"/> is Input-owned tuning (control manifest
-    /// line 44) that is validated against a loaded value but never exposed to the player. Every field is
-    /// validated per-field on load with fallback to the approved default and one named warning per invalid
-    /// field (AC-68).
+    /// line 44) that is always overwritten from the approved Input default on load (ADR-0004:138) and never
+    /// exposed to the player. Every field is validated per-field on load with fallback to the approved default
+    /// and one named warning per invalid field (AC-68).
     /// Example: <c>ControlProfile sanitized = ControlProfile.Sanitize(loaded, out var warnings);</c>
     /// </summary>
     public readonly struct ControlProfile
@@ -102,8 +102,9 @@ namespace Overdrive.Input
 
         /// <summary>
         /// Validates a loaded profile per-field (AC-68): invalid fields fall back to their approved default
-        /// and produce one named warning each. A loaded profile may carry a trigger value even though the
-        /// player never edits it (control manifest line 44) — the field is still validated per GDD:109.
+        /// and produce one named warning each. The trigger threshold is always overwritten from the approved
+        /// Input default (ADR-0004:138, Input-owned tuning) — never the loaded value; a warning is emitted
+        /// only when the loaded trigger value was invalid.
         /// </summary>
         /// <param name="input">The loaded profile to validate.</param>
         /// <param name="warnings">The named warnings for each invalid field (at most one per field per load).</param>
@@ -121,10 +122,12 @@ namespace Overdrive.Input
                 list.Add(new ProfileWarning(ProfileWarningKind.StickDeadZoneInvalid, string.Empty, input.StickInner));
             }
 
-            float triggerInner = input.TriggerInner;
-            if (IsNonFinite(triggerInner) || triggerInner < 0f || triggerInner >= 1f)
+            // TriggerDeadZoneInner is Input-owned tuning (ADR-0004:138) — always overwritten from the
+            // approved Input default on load, never the loaded value. A warning is emitted only when the
+            // loaded value was invalid (non-finite or out of range).
+            float triggerInner = Default.TriggerInner;
+            if (IsNonFinite(input.TriggerInner) || input.TriggerInner < 0f || input.TriggerInner >= 1f)
             {
-                triggerInner = Default.TriggerInner;
                 list.Add(new ProfileWarning(ProfileWarningKind.TriggerThresholdInvalid, string.Empty, input.TriggerInner));
             }
 
