@@ -2,10 +2,10 @@
 
 ## Overview
 
-- **Target Date**: TBD
+- **Target Date**: Sprint-driven — no fixed calendar date. MVP completes when the Feature List is delivered (target ~Sprint 20; refined each `/sprint-plan` from actual velocity).
 - **Type**: MVP
-- **Duration**: TBD
-- **Number of Sprints**: TBD
+- **Duration**: Projected ~20 sprints total (Sprint 1 complete; ~19 remaining across 5 Foundation + 15 Core epics). Refined per `/sprint-plan`.
+- **Number of Sprints**: ~20 total (projected initial target — reviewed every `/sprint-plan`)
 
 ## Milestone Goal
 
@@ -23,7 +23,7 @@ Deliver the complete single-player offline race loop: the player drives a 1991 F
 - [ ] AI rival (16 personalities) races competitively and consistently
 - [ ] Grid & start: standing start, grid lock, Perfect Start
 - [ ] All S1 and S2 bugs resolved
-- [ ] Build stable for [X] consecutive days
+- [ ] Build stable for 5 consecutive days
 
 ## Feature List
 
@@ -31,7 +31,7 @@ Deliver the complete single-player offline race loop: the player drives a 1991 F
 
 | Feature | Design Doc | Owner | Sprint Target | Status |
 |---------|-----------|-------|--------------|--------|
-| Input System | design/gdd/input-system.md | input-system epic | TBD | Not started |
+| Input System | design/gdd/input-system.md | input-system epic | Sprint 1 (done) | Not started |
 | Simulation Kernel | design/gdd/simulation-architecture.md | simulation-kernel epic | TBD | Not started |
 | Settings | design/gdd/settings.md | settings epic | TBD | Not started |
 | Content Pipeline | design/gdd/content-pipeline.md | content-pipeline epic | TBD | Not started |
@@ -53,6 +53,8 @@ Deliver the complete single-player offline race loop: the player drives a 1991 F
 | VFX | design/gdd/vfx.md | vfx epic | TBD | Not started |
 | UI Menu | design/gdd/ui-menu.md | ui-menu epic | TBD | Not started |
 
+> **Sprint Target method**: assigned when each epic's stories are created (per `/sprint-plan`). Remaining features show "TBD — assigned at sprint-plan". Status column updates as each epic's stories close.
+
 ### Should Ship (Planned but Cuttable)
 
 | Feature | Design Doc | Owner | Sprint Target | Cut Impact | Status |
@@ -71,9 +73,9 @@ Deliver the complete single-player offline race loop: the player drives a 1991 F
 |------|-----------|-------------------|
 | Frame rate | ≥ 60 FPS on min spec | Performance profiling (p95 ≤ 6 ms / max ≤ 8 ms per simulation tick — ADR-0010/ADR-0016 baseline) |
 | Critical bugs | 0 open S1 | Bug tracker |
-| Major bugs | < [X] open S2 | Bug tracker |
+| Major bugs | < 5 open S2 | Bug tracker |
 | Test coverage | all Logic/Integration stories have passing tests | Test framework report (per story evidence) |
-| Build stability | stable for [X] consecutive days | Build verification |
+| Build stability | stable for 5 consecutive days | Build verification |
 
 ## Risk Register
 
