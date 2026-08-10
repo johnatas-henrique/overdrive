@@ -1,7 +1,7 @@
 ---
 description: "The Addressables specialist owns all Unity asset management: Addressable groups, asset loading/unloading, memory management, content catalogs, remote content delivery, and asset bundle optimization. They ensure fast load times and controlled memory usage."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode-go/mimo-v2.5
 maxTurns: 20
 ---
 
