@@ -1,7 +1,7 @@
 # Story 008: Settings Configuration
 
 > **Epic**: Input System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Integration
 > **Manifest Version**: 2026-08-05
@@ -18,6 +18,8 @@
 
 **Engine**: Unity 6000.3.19f1 + Input System 1.19.0 | **Risk**: LOW
 **Engine Notes**: Settings integration — the Input side exposes binding slots and display strings, receives per-slot overrides + profile fields. Persistence is via ADR-0004's transactional preview (working copy → Apply/Cancel).
+
+**Performance Budget**: O(1) per tick — the working control profile is read once when the first tick after Resume/Apply builds SimulationInput (stick inner/outer + EMA alphas are already parameterized in the modules). No per-tick allocation or device iteration; profile validation runs once per settings load, not per tick. Fits the simulation gate (p95 ≤ 6 ms / max ≤ 8 ms); profile lookup adds no measurable per-tick cost.
 
 **Control Manifest Rules (Foundation)**:
 - Required: `TriggerDeadZoneInner` is NOT player-owned — always overwritten from Input-owned tuning on load (ADR-0004).
@@ -57,10 +59,11 @@
 
 *Testability refinements from QL-STORY-READY gate (AC-10 mapping corrected to match AC-29).*
 
-- **AC-10/AC-29 mapping**: valid non-conflicting candidate → `Captured`; candidate conflicting with an existing NON-reserved binding → `Conflict`; candidate that is reserved (Confirm/Cancel/Pause), malformed, or exceeded → `Rejected` (satisfies AC-29's "rejected immediately" for reserved bindings).
+- **AC-10/AC-29 mapping**: valid non-conflicting candidate → `Captured`; candidate conflicting with an existing NON-reserved binding → `Conflict`; candidate that is reserved (Confirm/Cancel/Pause), malformed, or exceeded → `Rejected` (satisfies AC-29's "rejected immediately" for reserved bindings). **"exceeded"** (GDD: undefined, defined here): a candidate that would exceed the slot's maximum binding count — a single-binding action (Accelerate, Brake, CameraToggle) already holding its one binding, or a composite part (Steer Left/Right) already holding its maximum. **"malformed"** = a path that does not resolve to an InputControl (e.g. `<Keyboard>/nonexistent`).
 - **AC-11**: `SettingsInputPreviewEvaluator` receives the raw sample, applies the working profile; output compared against the first resumed tick (same profile).
 - **AC-50**: working profile injected via a `SettingsEditSession` mock; assert the tick uses the working values; trigger threshold remains Input-owned tuning.
 - **AC-68**: per-field named warning (`StickDeadZoneInvalid`, `TriggerThresholdInvalid`, `EmaAlphaInvalid`); EACH invalid field emits its named warning at most once per settings load.
+- **AC-68 trigger**: `TriggerDeadZoneInner` is NOT exposed to the player (control manifest:44 — never a player-config field, AC-50 pins it), but a loaded profile may still carry a persisted trigger value. Per GDD:109 it IS validated (`0 ≤ trigger_inner < 1`) — an invalid persisted value falls back to the Input-owned default (0.05) with a `TriggerThresholdInvalid` warning (once per load). Player profile changes never reach it.
 
 ---
 
@@ -132,7 +135,11 @@
 **Story Type**: Integration
 **Required evidence**: `Assets/tests/integration/input/SettingsConfigurationTests.cs` — must exist and pass (asmdef `InputIntegrationTests`).
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 34 tests / 155 suite PASS (AC10/11/29/46/50/66/67/68).
+
+> **AC-10 “no gameplay edge queued”** is structural: `InputBindingCatalog.ClassifyCandidate`/`TryRebind` are pure and hold no reference to the input controller, so no gameplay edge can be queued during Listening by construction. Runtime suppression of the OverdriveGameplay map while Listening is active belongs to the Core Settings epic (Listening owns map enable/disable).
+
+> **QL-TEST-COVERAGE out-of-scope items (documented, not blocking)**: (1) AC-11 `Cancel`/`Apply` lifecycle edge cases belong to the Core Settings epic (transactional preview session); this story proves preview == first-resumed-tick with the same working profile. (2) AC-46 “Listening does not begin” for a reserved target belongs to the Core Settings epic (Listening runtime); the catalog returns `Rejected` on any reserved slot with no override created. (3) AC-67 “unknown action id” does not apply — overrides are keyed by stable *binding* id per GDD AC-67 wording, not action id; the catalog has no action-id model.
 
 ---
 
@@ -140,3 +147,16 @@
 
 - Depends on: Story 002 (dead-zone), Story 003 (EMA), Story 001 (asset/controller).
 - Unlocks: Settings epic (Core layer) consumes the exposed slots + override/profile API.
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-08-09
+**Criteria**: 8/8 passing (AC-10/11/29/46/50/66/67/68 — 34 tests, 155/155 suite PASS)
+**Deviations**: None
+**Test Evidence**: `Assets/tests/integration/input/SettingsConfigurationTests.cs` (Integration, 155/155 PASS)
+**Code Review**: Complete — unity-specialist APPROVED (r1+r2), qa-tester APPROVED WITH SUGGESTIONS (r2, all applied)
+**Gates**: LP-CODE-REVIEW APPROVE; QL-TEST-COVERAGE ADEQUATE (3 rounds, 10 gaps resolved)
+**Scope**: `ControlProfile.cs`, `InputBindingCatalog.cs`, `SettingsInputPreviewEvaluator.cs`, `SettingsConfigurationTests.cs` + story docs
+**Downstream (Core Settings epic)**: AC-10 Listening runtime suppression (map enable/disable), AC-11 Cancel/Apply lifecycle, AC-46 Listening-not-started for a reserved target — documented ownership boundaries (story Test Evidence).

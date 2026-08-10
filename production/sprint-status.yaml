@@ -78,8 +78,8 @@ stories:
     name: "Settings Configuration"
     file: "production/epics/input-system/story-008-settings-configuration.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.875
     blocker: ""
-    completed: ""
+    completed: "2026-08-09"
