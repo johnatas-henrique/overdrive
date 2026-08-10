@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "unity-coplay": {
+      "disabled": false
+    },
+    "ai-game-developer": {
+      "disabled": false
+    }
+  }
+}

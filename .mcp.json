@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "ai-game-developer": {
+      "url": "http://localhost:8081/p/55a3e7c2",
+      "lifecycle": "lazy",
+      "disabled": true
+    },
+    "unity-coplay": {
+      "url": "http://127.0.0.1:8080/mcp",
+      "lifecycle": "lazy",
+      "disabled": true
+    },
+    "blender-mcp": {
+      "command": "uvx",
+      "args": ["blender-mcp"],
+      "env": {
+        "BLENDER_HOST": "localhost",
+        "BLENDER_PORT": "9876"
+      },
+      "lifecycle": "lazy",
+      "disabled": true
+    },
+    "aseprite": {
+      "command": "uv",
+      "args": ["--directory", "tools/aseprite-mcp", "run", "-m", "aseprite_mcp"],
+      "env": {
+        "ASEPRITE_PATH": "${env:ASEPRITE_PATH}"
+      },
+      "lifecycle": "lazy",
+      "disabled": true
+    },
+    "unity-cli": {
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-Command", "& 'C:\\Users\\Johnatas\\AppData\\Local\\Unity\\bin\\unity.exe' mcp --project-path D:/projects/overdrive"],
+      "lifecycle": "lazy",
+      "disabled": true
+    }
+  }
+}
