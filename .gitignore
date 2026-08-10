@@ -109,3 +109,13 @@ desktop.ini
 
 # Submodule dependencies
 tools/aseprite-mcp/.venv/
+
+# OCGS framework mirror — .opencode/{agents,commands,rules,skills} are local junctions
+# pointing at .agents/ (pi reads .agents/ on Windows; opencode reads .opencode/ via the
+# junction on WSL). Content is tracked once, under .agents/. The junction paths are
+# environment-local and must not be tracked — git on WSL reads reparse points incorrectly
+# and sees the junction as a symlink, so the patterns must NOT end in a trailing slash.
+/.opencode/agents
+/.opencode/commands
+/.opencode/rules
+/.opencode/skills
