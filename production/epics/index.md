@@ -1,11 +1,11 @@
 # Epics Index
 
-Last Updated: 2026-08-06
+Last Updated: 2026-08-09
 Engine: Unity 6000.3.19f1 (Unity 6.3 LTS)
 
 | Epic | Layer | System | GDD | Stories | Status |
 |------|-------|--------|-----|---------|--------|
-| Input System | Foundation | Input | design/gdd/input-system.md | Not yet created | Ready |
+| Input System | Foundation | Input | design/gdd/input-system.md | 8 (8 done) | Done |
 | Simulation Kernel | Foundation | Simulation Architecture | design/gdd/simulation-architecture.md | Not yet created | Ready |
 | Settings | Foundation | Settings | design/gdd/settings.md | Not yet created | Ready |
 | Content Pipeline | Foundation | Content Pipeline | design/gdd/content-pipeline.md | Not yet created | Ready |
@@ -20,5 +20,5 @@ Input contracts → Kernel contract spine → Content Pipeline (lifecycle contra
 
 **Next steps:**
 - Run `/create-stories [epic-slug]` per epic, in processing order
-- Run `/gate-check pre-production` after Foundation + Core epics complete (Foundation + Core are required for the Pre-Production → Production gate)
+- Pre-Production → Production gate passed 2026-08-09 (user override; report at `production/gate-checks/pre-production-to-production-2026-08-09.md`). Core epics deferred per #1816 until Foundation matures.
 - Known pre-story sign-off resolved 2026-08-06: systems-index.md Progress Tracker updated to Approved for Input / Simulation Architecture / Content Pipeline (evidence: ADR-0003:240 ratification 2026-08-05, ADR-0005:136-140 sanitization, architecture-review v6 2026-08-06 0 conflicts). Tracker now matches GDD headers.
