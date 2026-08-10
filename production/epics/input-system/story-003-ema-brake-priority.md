@@ -29,16 +29,16 @@
 
 *From GDD `design/gdd/input-system.md`, scoped to this story:*
 
-- [ ] AC-1: GIVEN raw Accelerate is 1.0 from rest (previous output 0.0, α=0.3), WHEN the first simulation tick processes it, THEN Accelerate output is 0.3 and no keyboard-only ramp is applied (keyboard mapping is Story 001's scope).
-- [ ] AC-2: GIVEN raw Steer is -1.0 from rest (previous output 0.0, α=0.5), WHEN the first simulation tick processes it, THEN Steer output is -0.5 and no keyboard-only ramp is applied (keyboard mapping is Story 001's scope).
-- [ ] AC-3: GIVEN Steer raw input is -1.0 and α=0.5, WHEN one simulation tick processes it from rest, THEN Steer output is -0.5.
-- [ ] AC-5: GIVEN raw Accelerate and raw Brake are both 1.0 from rest with Brake α = 0.3, WHEN the tick processes them, THEN Accelerate output is exactly 0.0 and Brake output equals its EMA-filtered value of 0.3.
-- [ ] AC-6: GIVEN Accelerate alpha is 0.3 and raw Accelerate is 1.0 for nine consecutive simulation ticks, WHEN tick nine completes, THEN Accelerate output is ≥0.95.
-- [ ] AC-27: GIVEN EMA alpha is 0.0, WHEN raw input changes, THEN output retains its previous value; GIVEN alpha is 1.0, output equals raw input exactly.
-- [ ] AC-31: GIVEN raw Brake after dead-zone equals 0.0 and filtered Accelerate is the EMA result for the current tick (e.g. prev=0.0, raw=1.0, α=0.3 → 0.3), WHEN Accelerate is processed, THEN Accelerate output equals that filtered value.
-- [ ] AC-38: GIVEN Accelerate has reached steady-state output (e.g. 9 ticks at raw=1.0, α=0.3 → 0.95+), WHEN raw Brake rises above its dead-zone threshold (e.g. raw=1.0, Brake prev=0.0, α=0.3), THEN on the next tick Accelerate output immediately becomes 0.0 while Brake output equals its EMA-filtered value for that tick (0.3).
-- [ ] AC-42: GIVEN Accelerate EMA is frozen at its pre-brake value (e.g. 0.657 after 3 ticks at raw=1.0, α=0.3) while brake priority is active for 2 ticks with raw Accelerate still 1.0, WHEN raw Brake returns to 0 and the next tick executes, THEN Accelerate EMA resumes from exactly 0.657 (not 0, not a value accumulated during braking).
-- [ ] AC-71: GIVEN raw Accelerate/Brake/Steer is NaN, +Infinity, -Infinity, above 1.0, or below -1.0 after dead-zone, WHEN the EMA processor sanitizes it before the recurrence, THEN NaN/Infinity become 0.0 and out-of-range values are clamped to ±1.0 (TR-input-012, Core Rule :152).
+- [x] AC-1: GIVEN raw Accelerate is 1.0 from rest (previous output 0.0, α=0.3), WHEN the first simulation tick processes it, THEN Accelerate output is 0.3 and no keyboard-only ramp is applied (keyboard mapping is Story 001's scope).
+- [x] AC-2: GIVEN raw Steer is -1.0 from rest (previous output 0.0, α=0.5), WHEN the first simulation tick processes it, THEN Steer output is -0.5 and no keyboard-only ramp is applied (keyboard mapping is Story 001's scope).
+- [x] AC-3: GIVEN Steer raw input is -1.0 and α=0.5, WHEN one simulation tick processes it from rest, THEN Steer output is -0.5.
+- [x] AC-5: GIVEN raw Accelerate and raw Brake are both 1.0 from rest with Brake α = 0.3, WHEN the tick processes them, THEN Accelerate output is exactly 0.0 and Brake output equals its EMA-filtered value of 0.3.
+- [x] AC-6: GIVEN Accelerate alpha is 0.3 and raw Accelerate is 1.0 for nine consecutive simulation ticks, WHEN tick nine completes, THEN Accelerate output is ≥0.95.
+- [x] AC-27: GIVEN EMA alpha is 0.0, WHEN raw input changes, THEN output retains its previous value; GIVEN alpha is 1.0, output equals raw input exactly.
+- [x] AC-31: GIVEN raw Brake after dead-zone equals 0.0 and filtered Accelerate is the EMA result for the current tick (e.g. prev=0.0, raw=1.0, α=0.3 → 0.3), WHEN Accelerate is processed, THEN Accelerate output equals that filtered value.
+- [x] AC-38: GIVEN Accelerate has reached steady-state output (e.g. 9 ticks at raw=1.0, α=0.3 → 0.95+), WHEN raw Brake rises above its dead-zone threshold (e.g. raw=1.0, Brake prev=0.0, α=0.3), THEN on the next tick Accelerate output immediately becomes 0.0 while Brake output equals its EMA-filtered value for that tick (0.3).
+- [x] AC-42: GIVEN Accelerate EMA is frozen at its pre-brake value (e.g. 0.657 after 3 ticks at raw=1.0, α=0.3) while brake priority is active for 2 ticks with raw Accelerate still 1.0, WHEN raw Brake returns to 0 and the next tick executes, THEN Accelerate EMA resumes from exactly 0.657 (not 0, not a value accumulated during braking).
+- [x] AC-71: GIVEN raw Accelerate/Brake/Steer is NaN, +Infinity, -Infinity, above 1.0, or below -1.0 after dead-zone, WHEN the EMA processor sanitizes it before the recurrence, THEN NaN/Infinity become 0.0 and out-of-range values are clamped to ±1.0 (TR-input-012, Core Rule :152).
 
 ---
 

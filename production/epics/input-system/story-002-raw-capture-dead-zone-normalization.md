@@ -29,13 +29,13 @@
 
 *From GDD `design/gdd/input-system.md`, scoped to this story:*
 
-- [ ] AC-4: GIVEN a gamepad stick remains inside its radial inner threshold, WHEN a simulation tick processes it, THEN Steer output is exactly 0.0.
-- [ ] AC-24: GIVEN trigger raw input is 0.05 or below, WHEN a tick processes it, THEN its normalized output is exactly 0.0.
-- [ ] AC-25: GIVEN stick raw magnitude is 0.95 or above, WHEN a tick processes it, THEN its normalized magnitude is exactly 1.0.
-- [ ] AC-32: GIVEN stick magnitude is 0.55 with inner threshold 0.15 and outer threshold 0.95, WHEN a tick processes it, THEN its normalized magnitude is exactly 0.5.
-- [ ] AC-33: GIVEN trigger raw input is 0.525 with inner threshold 0.05, WHEN a tick processes it, THEN its normalized output is exactly 0.5.
-- [ ] AC-51: GIVEN keyboard gameplay input is processed, WHEN the dead-zone stage runs, THEN it leaves the channel's raw value unchanged (keyboard maps directly to -1/0/1).
-- [ ] AC-59: GIVEN a render Update begins after Input System Dynamic Update, WHEN Simulation evaluates its accumulator, THEN it first calls Input-owned `CaptureLatestRawSample()` and receives exactly one immutable RawInputSample with a monotonic captureSequence.
+- [x] AC-4: GIVEN a gamepad stick remains inside its radial inner threshold, WHEN a simulation tick processes it, THEN Steer output is exactly 0.0.
+- [x] AC-24: GIVEN trigger raw input is 0.05 or below, WHEN a tick processes it, THEN its normalized output is exactly 0.0.
+- [x] AC-25: GIVEN stick raw magnitude is 0.95 or above, WHEN a tick processes it, THEN its normalized magnitude is exactly 1.0.
+- [x] AC-32: GIVEN stick magnitude is 0.55 with inner threshold 0.15 and outer threshold 0.95, WHEN a tick processes it, THEN its normalized magnitude is exactly 0.5.
+- [x] AC-33: GIVEN trigger raw input is 0.525 with inner threshold 0.05, WHEN a tick processes it, THEN its normalized output is exactly 0.5.
+- [x] AC-51: GIVEN keyboard gameplay input is processed, WHEN the dead-zone stage runs, THEN it leaves the channel's raw value unchanged (keyboard maps directly to -1/0/1).
+- [x] AC-59: GIVEN a render Update begins after Input System Dynamic Update, WHEN Simulation evaluates its accumulator, THEN it first calls Input-owned `CaptureLatestRawSample()` and receives exactly one immutable RawInputSample with a monotonic captureSequence.
 
 ---
 
@@ -133,7 +133,7 @@
 **Story Type**: Integration
 **Required evidence**: `Assets/tests/integration/input/RawCaptureDeadZoneTests.cs` — must exist and pass (asmdef `InputIntegrationTests`).
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 25 tests / 156 suite PASS (AC-4/24/25/32/33/51/59).
 
 ---
 

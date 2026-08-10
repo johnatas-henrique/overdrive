@@ -29,15 +29,15 @@
 
 *From GDD `design/gdd/input-system.md`, scoped to this story:*
 
-- [ ] AC-8: GIVEN InputSystem reports a gamepad disconnect while KeyboardMouse is available, WHEN the next SimulationInput is generated, THEN it uses KeyboardMouse and race telemetry remains active.
-- [ ] AC-9: GIVEN no input scheme is available, WHEN the next SimulationInput is generated, THEN Accelerate, Brake, and Steer are all 0.0 and `inputAvailability` equals `NoInputDevice` until a scheme becomes eligible again (a device present in `InputSystem.devices`).
-- [ ] AC-23: GIVEN a gamepad reconnects while KeyboardMouse is active, WHEN South, East, West, North, Start, or any D-pad direction is pressed, trigger input exceeds its threshold, or stick magnitude exceeds its inner threshold, THEN the active scheme changes to Gamepad and EMA initializes from the new post-dead-zone sample.
-- [ ] AC-39: GIVEN GameplayQualifying is active and the active gamepad disconnects while KeyboardMouse is available, WHEN the next SimulationInput is generated, THEN KeyboardMouse becomes active and EMA initializes from its post-dead-zone sample (KeyboardMouse has no dead zone, so raw == post-dead-zone).
-- [ ] AC-40: GIVEN a Pause edge is pending when the active scheme changes, WHEN the next SimulationInput is generated, THEN the pending edge flag is false.
-- [ ] AC-43: GIVEN desktop starts with KeyboardMouse and a connected gamepad, WHEN no meaningful gamepad input has occurred, THEN KeyboardMouse is the active scheme.
-- [ ] AC-60: GIVEN Gamepad is active, WHEN a bound keyboard gameplay or UI action is pressed, Click occurs, or pointer delta is at least 2 pixels, THEN ActiveControlScheme changes to KeyboardMouse before the RawInputSample for that Dynamic Update is captured.
-- [ ] AC-61: GIVEN KeyboardMouse is active, WHEN any D-pad direction is pressed, THEN ActiveControlScheme changes to Gamepad and prompt glyphs update.
-- [ ] AC-62: GIVEN both schemes produce meaningful events in the same Dynamic Update, WHEN arbitration runs, THEN the current ActiveControlScheme remains unchanged for that update.
+- [x] AC-8: GIVEN InputSystem reports a gamepad disconnect while KeyboardMouse is available, WHEN the next SimulationInput is generated, THEN it uses KeyboardMouse and race telemetry remains active.
+- [x] AC-9: GIVEN no input scheme is available, WHEN the next SimulationInput is generated, THEN Accelerate, Brake, and Steer are all 0.0 and `inputAvailability` equals `NoInputDevice` until a scheme becomes eligible again (a device present in `InputSystem.devices`).
+- [x] AC-23: GIVEN a gamepad reconnects while KeyboardMouse is active, WHEN South, East, West, North, Start, or any D-pad direction is pressed, trigger input exceeds its threshold, or stick magnitude exceeds its inner threshold, THEN the active scheme changes to Gamepad and EMA initializes from the new post-dead-zone sample.
+- [x] AC-39: GIVEN GameplayQualifying is active and the active gamepad disconnects while KeyboardMouse is available, WHEN the next SimulationInput is generated, THEN KeyboardMouse becomes active and EMA initializes from its post-dead-zone sample (KeyboardMouse has no dead zone, so raw == post-dead-zone).
+- [x] AC-40: GIVEN a Pause edge is pending when the active scheme changes, WHEN the next SimulationInput is generated, THEN the pending edge flag is false.
+- [x] AC-43: GIVEN desktop starts with KeyboardMouse and a connected gamepad, WHEN no meaningful gamepad input has occurred, THEN KeyboardMouse is the active scheme.
+- [x] AC-60: GIVEN Gamepad is active, WHEN a bound keyboard gameplay or UI action is pressed, Click occurs, or pointer delta is at least 2 pixels, THEN ActiveControlScheme changes to KeyboardMouse before the RawInputSample for that Dynamic Update is captured.
+- [x] AC-61: GIVEN KeyboardMouse is active, WHEN any D-pad direction is pressed, THEN ActiveControlScheme changes to Gamepad and prompt glyphs update.
+- [x] AC-62: GIVEN both schemes produce meaningful events in the same Dynamic Update, WHEN arbitration runs, THEN the current ActiveControlScheme remains unchanged for that update.
 
 ---
 

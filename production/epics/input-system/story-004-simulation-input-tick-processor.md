@@ -30,10 +30,10 @@
 
 *From GDD `design/gdd/input-system.md`, scoped to this story:*
 
-- [ ] AC-7: GIVEN identical raw input sequences at 30 FPS and 144 FPS, WHEN each sequence advances through the same 60 simulation ticks, THEN both runs produce identical SimulationInput values per tick.
-- [ ] AC-22: GIVEN raw input is NaN or infinity after dead-zone, WHEN the tick processor executes, THEN the channel is sanitized to 0.0f before EMA (the EMA advances from the sanitized value — e.g. prev 0.3, α=0.3, sanitized 0.0 → 0.21), a rate-limited warning is logged (1 per channel per 60-tick window), and last-valid-output retention applies only to EMA-internal NaN (Story 003/006, not raw).
-- [ ] AC-28: GIVEN Pause rises during Racing, WHEN the next tick begins, THEN its edge is consumed exactly once.
-- [ ] AC-34: GIVEN one render update produces two simulation ticks from the same raw Accelerate value of 1.0 at rest, WHEN both ticks execute, THEN their outputs are 0.3 then 0.51 and any pending Pause edge is consumed only by the first tick.
+- [x] AC-7: GIVEN identical raw input sequences at 30 FPS and 144 FPS, WHEN each sequence advances through the same 60 simulation ticks, THEN both runs produce identical SimulationInput values per tick.
+- [x] AC-22: GIVEN raw input is NaN or infinity after dead-zone, WHEN the tick processor executes, THEN the channel is sanitized to 0.0f before EMA (the EMA advances from the sanitized value — e.g. prev 0.3, α=0.3, sanitized 0.0 → 0.21), a rate-limited warning is logged (1 per channel per 60-tick window), and last-valid-output retention applies only to EMA-internal NaN (Story 003/006, not raw).
+- [x] AC-28: GIVEN Pause rises during Racing, WHEN the next tick begins, THEN its edge is consumed exactly once.
+- [x] AC-34: GIVEN one render update produces two simulation ticks from the same raw Accelerate value of 1.0 at rest, WHEN both ticks execute, THEN their outputs are 0.3 then 0.51 and any pending Pause edge is consumed only by the first tick.
 
 ---
 
