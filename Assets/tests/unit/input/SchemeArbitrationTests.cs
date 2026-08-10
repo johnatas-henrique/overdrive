@@ -20,7 +20,7 @@ namespace Overdrive.Input.Tests
         private InputContextController _controller;
 
         [SetUp]
-        public void SetUpStory005()
+        public void SetUp()
         {
             _eventSystemObject = new GameObject("EventSystem");
             _eventSystemObject.AddComponent<EventSystem>();
@@ -31,7 +31,7 @@ namespace Overdrive.Input.Tests
         }
 
         [TearDown]
-        public void TearDownStory005()
+        public void TearDown()
         {
             _controller?.Unbind();
             _actions?.Dispose();
@@ -94,7 +94,7 @@ namespace Overdrive.Input.Tests
             Assert.AreEqual(0f, sample.BrakeRaw);
             Assert.AreEqual(0f, sample.SteerRaw);
             Assert.AreEqual(RawInputValidityFlags.None, sample.ValidityFlags);
-            Assert.IsFalse(sample.PauseRise);
+            Assert.IsFalse(_controller.HasPendingPauseEdge);
 
             var processor = new TickProcessor();
             SimulationInput input = processor.ProcessTick(sample, false);
@@ -120,7 +120,7 @@ namespace Overdrive.Input.Tests
             Assert.AreEqual(0f, zeroed.BrakeRaw, 1e-4f);
             Assert.AreEqual(0f, zeroed.SteerRaw, 1e-4f);
             Assert.AreEqual(RawInputValidityFlags.None, zeroed.ValidityFlags);
-            Assert.IsFalse(zeroed.PauseRise);
+            Assert.IsFalse(_controller.HasPendingPauseEdge);
 
             // Persistence: several consecutive no-device ticks stay zeroed through SimulationInput
             // (the car coasts; the simulation never freezes).
@@ -167,10 +167,34 @@ namespace Overdrive.Input.Tests
             // First tick after the switch carries no filtered value from the prior scheme:
             // prev was reinitialized to post-dead-zone(0.8), so output equals it exactly.
             SimulationInput input = processor.ProcessTick(_controller.CaptureLatestRawSample(), false);
-            float postDz = DeadZoneNormalizer.NormalizeTrigger(0.8f, TickProcessor.DefaultTriggerInner);
+            float postDz = DeadZoneNormalizer.NormalizeTrigger(0.8f, ControlProfile.Default.TriggerInner);
             Assert.AreEqual(postDz, input.AccelerateOut, 0.0001f);
 
             reinitializer.Disable();
+        }
+
+        [UnityTest]
+        public IEnumerator SetControlProfile_RaisesArbitrationTriggerThreshold()
+        {
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+            Gamepad gamepad = InputSystem.AddDevice<Gamepad>();
+            _controller.SetGameplayContext();
+            yield return null;
+
+            // A working profile raising the trigger threshold (0.3) makes a 0.1 trigger NOT
+            // meaningful, so gamepad does not activate — arbitration reads the active profile,
+            // not the module constant (candidate C2: single tuning owner).
+            _controller.SetControlProfile(new ControlProfile(0.15f, 0.95f, 0.3f, 0.3f, 0.3f, 0.5f));
+            Set(gamepad.rightTrigger, 0.1f);
+            yield return null;
+            Assert.AreEqual(ControlScheme.KeyboardMouse, _controller.ResolveActiveScheme());
+
+            // Restoring the default profile (trigger inner 0.05) makes the same 0.1 trigger
+            // meaningful → gamepad activates.
+            _controller.SetControlProfile(ControlProfile.Default);
+            Set(gamepad.rightTrigger, 0.1f);
+            yield return null;
+            Assert.AreEqual(ControlScheme.Gamepad, _controller.ResolveActiveScheme());
         }
 
         [UnityTest]
@@ -280,10 +304,7 @@ namespace Overdrive.Input.Tests
             // The driver consumes the start-button meaningful flag each update (still Gamepad,
             // so the pending Pause edge survives — SetActiveScheme clears it only on a change).
             _controller.ResolveActiveScheme();
-
-            // Capture with a pending pause BEFORE the scheme change → the sample carries the edge.
-            RawInputSample beforeChange = _controller.CaptureLatestRawSample();
-            Assert.IsTrue(beforeChange.PauseRise);
+            Assert.IsTrue(_controller.HasPendingPauseEdge);
 
             // Release the trigger, then keyboard meaningful input (W) flips the scheme.
             Set(gamepad.rightTrigger, 0f);
@@ -291,10 +312,6 @@ namespace Overdrive.Input.Tests
             yield return null;
             Assert.AreEqual(ControlScheme.KeyboardMouse, _controller.ResolveActiveScheme());
             Assert.IsFalse(_controller.HasPendingPauseEdge);
-
-            // The next capture (after the scheme change cleared the latch) carries no edge.
-            RawInputSample afterChange = _controller.CaptureLatestRawSample();
-            Assert.IsFalse(afterChange.PauseRise);
         }
 
         [UnityTest]
@@ -321,13 +338,12 @@ namespace Overdrive.Input.Tests
             yield return null;
             Assert.AreEqual(ControlScheme.Gamepad, _controller.ResolveActiveScheme());
 
-            // A fake driver plays the role of the Simulation driver: it resolves the scheme
-            // BEFORE capture inside its own Update loop (AC-60) and records the explicit order.
-            var recorder = new ArbitrationOrderRecorder();
+            // A fake driver plays the role of the Simulation driver. The InputFrameDriver makes the
+            // AC-60 ordering structural: BeginFrame resolves arbitration, then captures — one call.
+            var processor = new TickProcessor();
             var driverObject = new GameObject("FakeArbitrationDriver");
             FakeArbitrationDriver driver = driverObject.AddComponent<FakeArbitrationDriver>();
-            driver.Controller = _controller;
-            driver.Recorder = recorder;
+            driver.FrameDriver = new InputFrameDriver(_controller, processor);
 
             // Keyboard meaningful (W) after the trigger is released.
             Set(gamepad.rightTrigger, 0f);
@@ -335,8 +351,8 @@ namespace Overdrive.Input.Tests
             yield return null;
             yield return null; // let the fake driver run one full update
 
-            recorder.AssertArbitrationPrecedesCapture();
-            Assert.AreEqual(ControlScheme.KeyboardMouse, driver.LastSample.ActiveScheme);
+            Assert.AreEqual(ControlScheme.KeyboardMouse, driver.LastSample.ActiveScheme,
+                "BeginFrame resolves before capture → the sample reflects the current scheme.");
 
             Object.Destroy(driverObject);
         }
@@ -600,7 +616,7 @@ namespace Overdrive.Input.Tests
             yield return null;
             Assert.AreEqual(ControlScheme.Gamepad, _controller.ResolveActiveScheme());
             SimulationInput input = processor.ProcessTick(_controller.CaptureLatestRawSample(), false);
-            float postDz = DeadZoneNormalizer.NormalizeTrigger(0.8f, TickProcessor.DefaultTriggerInner);
+            float postDz = DeadZoneNormalizer.NormalizeTrigger(0.8f, ControlProfile.Default.TriggerInner);
             Assert.AreEqual(postDz, input.AccelerateOut, 0.0001f);
 
             reinitializer.Disable();
@@ -763,42 +779,21 @@ namespace Overdrive.Input.Tests
             Set(replacement.rightTrigger, 0.8f);
             yield return null;
             SimulationInput input = processor.ProcessTick(_controller.CaptureLatestRawSample(), false);
-            float postDz = DeadZoneNormalizer.NormalizeTrigger(0.8f, TickProcessor.DefaultTriggerInner);
+            float postDz = DeadZoneNormalizer.NormalizeTrigger(0.8f, ControlProfile.Default.TriggerInner);
             Assert.That(input.AccelerateOut, Is.Not.EqualTo(postDz).Within(0.001f));
         }
 
-        /// <summary>Records the driver's explicit call order: arbitration must precede capture (AC-60).</summary>
-        private sealed class ArbitrationOrderRecorder
-        {
-            private readonly List<string> _steps = new List<string>();
-
-            public void Record(string step)
-            {
-                _steps.Add(step);
-            }
-
-            public void AssertArbitrationPrecedesCapture()
-            {
-                Assert.AreEqual("arbitration", _steps[0]);
-                Assert.AreEqual("capture", _steps[1]);
-            }
-        }
-
-        /// <summary>Simulates the Simulation driver's per-frame update: resolve arbitration, then capture.</summary>
+        /// <summary>Simulates the Simulation driver's per-frame update via the InputFrameDriver seam:
+        /// BeginFrame resolves arbitration, then captures — ordering is structural (AC-60).</summary>
         private sealed class FakeArbitrationDriver : MonoBehaviour
         {
-            public InputContextController Controller;
-
-            public ArbitrationOrderRecorder Recorder;
+            public InputFrameDriver FrameDriver;
 
             public RawInputSample LastSample { get; private set; }
 
             private void Update()
             {
-                Recorder.Record("arbitration");
-                Controller.ResolveActiveScheme(); // arbitration BEFORE capture (AC-60)
-                Recorder.Record("capture");
-                LastSample = Controller.CaptureLatestRawSample();
+                LastSample = FrameDriver.BeginFrame(); // arbitration BEFORE capture (AC-60) — structural
             }
         }
 

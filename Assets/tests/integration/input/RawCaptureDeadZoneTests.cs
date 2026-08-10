@@ -24,7 +24,7 @@ namespace Overdrive.Input.Tests
         private InputContextController _controller;
 
         [SetUp]
-        public void SetUpStory002()
+        public void SetUp()
         {
             _keyboard = InputSystem.AddDevice<Keyboard>();
             _gamepad = InputSystem.AddDevice<Gamepad>();
@@ -37,7 +37,7 @@ namespace Overdrive.Input.Tests
         }
 
         [TearDown]
-        public void TearDownStory002()
+        public void TearDown()
         {
             _controller?.Unbind();
             _actions?.Dispose();
@@ -171,7 +171,8 @@ namespace Overdrive.Input.Tests
 
             var driverObject = new GameObject("FakeSimulationDriver");
             FakeSimulationDriver driver = driverObject.AddComponent<FakeSimulationDriver>();
-            driver.Controller = _controller;
+            var processor = new TickProcessor();
+            driver.FrameDriver = new InputFrameDriver(_controller, processor);
 
             // Let three render updates run; the driver captures exactly once per Update.
             yield return null;
@@ -195,24 +196,21 @@ namespace Overdrive.Input.Tests
         }
 
         [UnityTest]
-        public IEnumerator PauseRiseIsLatchedUntilConsumed()
+        public IEnumerator PendingPauseEdgeIsLatchedUntilConsumed()
         {
             _controller.SetGameplayContext();
             yield return null;
 
             Press(_gamepad.startButton);
             yield return null;
+            Assert.IsTrue(_controller.HasPendingPauseEdge);
 
-            RawInputSample first = _controller.CaptureLatestRawSample();
-            Assert.IsTrue(first.PauseRise);
-
-            // Reading does not clear the latched edge.
-            RawInputSample second = _controller.CaptureLatestRawSample();
-            Assert.IsTrue(second.PauseRise);
+            // Reading (capture) does not clear the latched edge.
+            _controller.CaptureLatestRawSample();
+            Assert.IsTrue(_controller.HasPendingPauseEdge);
 
             _controller.ConsumePendingPauseEdge();
-            RawInputSample third = _controller.CaptureLatestRawSample();
-            Assert.IsFalse(third.PauseRise);
+            Assert.IsFalse(_controller.HasPendingPauseEdge);
         }
 
         [UnityTest]
@@ -331,10 +329,11 @@ namespace Overdrive.Input.Tests
             Assert.AreEqual(expected.y, actual.y, 1e-4f, "Y component differs");
         }
 
-        /// <summary>Acts as the Simulation driver for AC-59: captures once per Update, then feeds the accumulator.</summary>
+        /// <summary>Acts as the Simulation driver for AC-59: resolves + captures once per Update via the
+        /// <see cref="InputFrameDriver"/> seam, then feeds the accumulator.</summary>
         private sealed class FakeSimulationDriver : MonoBehaviour
         {
-            public InputContextController Controller;
+            public InputFrameDriver FrameDriver;
             public int Frames;
             public readonly List<ulong> CapturedSequences = new List<ulong>();
             public readonly List<ulong> AccumulatedSequences = new List<ulong>();
@@ -342,8 +341,9 @@ namespace Overdrive.Input.Tests
             private void Update()
             {
                 Frames++;
-                // Capture occurs first, at the start of the render update (ADR-0001).
-                RawInputSample sample = Controller.CaptureLatestRawSample();
+                // Capture occurs first, at the start of the render update (ADR-0001); the frame driver
+                // resolves the scheme and captures exactly once per frame.
+                RawInputSample sample = FrameDriver.BeginFrame();
                 CapturedSequences.Add(sample.CaptureSequence);
                 // The accumulator (Story 004 tick processor) consumes the frame-captured sample.
                 AccumulatedSequences.Add(sample.CaptureSequence);
