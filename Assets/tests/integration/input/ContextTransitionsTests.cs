@@ -559,6 +559,40 @@ namespace Overdrive.Input.Tests
             }
         }
 
+        [UnityTest]
+        public IEnumerator ContextResume_DoubleEnableSingleDisableRemovesAllCallbacks()
+        {
+            _controller.SetGameplayContext();
+            yield return null;
+
+            // Prime the EMA with a held gamepad analog (prev > 0).
+            Set(_gamepad.rightTrigger, 0.6f);
+            yield return null;
+            _processor.ProcessTick(_controller.CaptureLatestRawSample(), false);
+
+            _controller.SetUIContext();
+            yield return null;
+
+            // Without the base idempotent guard, double-Enable would subscribe the callback twice; a
+            // single Disable removes the ONLY subscription, leaving the EMA untouched by the resume.
+            var reinitializer = new ContextResumeEmaReinitializer(_controller, _processor);
+            reinitializer.Enable();
+            reinitializer.Enable();
+            reinitializer.Disable();
+
+            // Release the analog so a live callback would re-seed to 0 on the resume below.
+            Set(_gamepad.rightTrigger, 0f);
+            yield return null;
+
+            _controller.SetGameplayContext();
+            yield return null;
+
+            // Callback removed → the UI→Gameplay transition did not re-seed; the EMA decayed from its
+            // primed value (≈0.12) instead of dropping to 0.
+            SimulationInput input = _processor.ProcessTick(_controller.CaptureLatestRawSample(), false);
+            Assert.Greater(input.AccelerateOut, 0.01f, "Disable removed the callback → EMA preserved across resume.");
+        }
+
         private sealed class GridLockMock
         {
             public int ObservedTicks;
