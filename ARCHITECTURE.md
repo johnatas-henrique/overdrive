@@ -6,7 +6,7 @@
 
 **Key Characteristics:**
 - 51 specialized agents organized in a 3-tier hierarchy (Directors → Leads → Specialists)
-- 80 skills (slash commands) routed through themed modules
+- 157 skills (slash commands) routed through themed modules
 - 3 OpenCode TypeScript plugins for lifecycle hooks, drift detection, and changelog generation
 - User-driven collaboration model — agents draft and propose, user decides
 
@@ -15,7 +15,7 @@
 **OCGS Framework Layer:**
 - Purpose: Game development process orchestration — design, architecture, stories, QA, release
 - Location: `.opencode/`
-- Contains: Agent definitions (`.opencode/agents/`), skill workflows (`.opencode/skills/`), slash commands (`.opencode/commands/`), coding rules (`.opencode/rules/`)
+- Contains: Agent definitions (`.opencode/agents/`), skill workflows (`.opencode/skills/`), slash commands (`.opencode/commands/`), coding rules (`.opencode/rules/`), agent learning system (`learning/`); mirrored at `.agents/` for CortexKit runtime
 - Depends on: OpenCode runtime, Node.js
 - Used by: All game development sessions via `/command` invocations
 
@@ -29,30 +29,37 @@
 **Game Source Layer:**
 - Purpose: Actual game code, scenes, assets, and Unity project configuration
 - Location: `Assets/`, `ProjectSettings/`, `Packages/`
-- Contains: Unity C# scripts, scenes, materials, sprites, input actions, render pipeline assets
+- Contains: Unity C# scripts, scenes, materials, sprites, input actions, render pipeline assets, `Overdrive.Input` assembly (`InputContextController`, `RawInputSample`, `DeadZoneNormalizer`, `EmaBrakePriority`, `ControlProfile`, `SimulationInput`, `TickProcessor`, `InputFrameDriver`, `InputBindingCatalog`, `EmaReinitializerBase`, `ContextResumeEmaReinitializer`, `SchemeChangeEmaReinitializer`, `SettingsInputPreviewEvaluator`)
 - Depends on: Unity 6 (6000.3.19f1), URP 17.3.0, Input System 1.19.0, AI Navigation 2.0.14, Addressables 3.1.0, Unity CLI pipeline 0.4.0-exp.1
 - Used by: Unity Editor, build pipeline, Unity CLI commands
 
 **Design Layer:**
-- Purpose: Game design documentation, art bible, asset specs, UX design, entity/formula registry, design standards
+- Purpose: Game design documentation, art bible, asset specs, UX design, quick specs, cross-GDD consistency analysis, entity/formula registry, design standards
 - Location: `design/`
-- Contains: GDDs (`design/gdd/`), art bible and palettes (`design/art/`), asset specifications (`design/assets/`), UX design (`design/ux/`), entity/formula registry (`design/registry/entities.yaml`), design standards (`design/AGENTS.md`)
+- Contains: GDDs (`design/gdd/`), art bible and palettes (`design/art/`), asset specifications (`design/assets/`), UX design (`design/ux/`), quick specs (`design/quick-specs/`), entity/formula registry (`design/registry/entities.yaml`), cross-GDD consistency reports (`design/reviews/`), design standards (`design/AGENTS.md`)
 - Depends on: OCGS design skills (`/design-system`, `/quick-design`, `/ux-design`)
 - Used by: Architecture skills, story creation, implementation validation
 
 **Testing Layer:**
 - Purpose: Plugin tests and Unity/C# gameplay tests
-- Location: `tests/`
-- Contains: EditMode and PlayMode test directories, unit tests, integration tests, smoke tests; plugin tests in `.opencode/plugins/tests/`
+- Location: `Assets/tests/`, `tests/`
+- Contains: EditMode and PlayMode test directories, unit tests (`Assets/tests/unit/input/`), integration tests (`Assets/tests/integration/input/`), smoke tests (`tests/smoke/`); plugin tests in `.opencode/plugins/tests/`
 - Depends on: Node.js for plugin tests; Unity Test Framework for gameplay tests
 - Used by: Plugin CI and game development validation
 
 **Tooling Layer:**
 - Purpose: Build utilities, MCP integrations, model assignment
 - Location: `tools/`
-- Contains: Aseprite MCP server (`tools/aseprite-mcp/`, git submodule), Blender MCP server (`blender-mcp` in `opencode.json`), Unity MCP server (`unityMCP` in `opencode.json`), Unity CLI pipeline MCP server (`unity-cli-pipeline` in `opencode.json`), model assignment utility (`tools/assign-models.js`), ksan animation parser (`tools/ksanim/`)
+- Contains: Aseprite MCP server (`tools/aseprite-mcp/`, git submodule), Blender MCP server (`blender-mcp` in `opencode.json`), Unity MCP server (`unityMCP` in `opencode.json`), Unity CLI pipeline MCP server (`unity-cli-pipeline` in `opencode.json`), model assignment utility (`tools/assign-models.js`), ksan animation parser (`tools/ksanim/`); MCP server definitions at root `.mcp.json`
 - Depends on: Node.js, Python/uv (for Aseprite MCP), Blender (for Blender MCP), Unity Editor (for Unity MCP), Unity CLI pipeline package (for Unity CLI pipeline MCP)
 - Used by: Asset pipeline, 3D asset workflow, Unity scene inspection, animation pipeline, Unity CLI commands, project tooling
+
+**CortexKit Runtime Layer:**
+- Purpose: Context management, PI extensions, and MCP connection configuration for CortexKit sessions
+- Location: `.cortexkit/`, `.pi/`
+- Contains: CortexKit runtime config (`.cortexkit/`), PI extensions (`.pi/extensions/` — 8 OCGS extension modules: audit, changelog, core, delegation, drift-detector, path-guard, question, validate), MCP server config (`.pi/mcp.json`), settings (`.pi/settings.json`)
+- Depends: CortexKit runtime, `.agents/` mirror of `.opencode/`
+- Used by: CortexKit sessions for agent orchestration, context management, and MCP tool routing
 
 ## Data Flow
 

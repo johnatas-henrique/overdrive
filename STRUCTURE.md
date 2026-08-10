@@ -12,8 +12,11 @@
 ├── Assembly-CSharp-Editor.csproj# Unity Editor C# project (auto-generated)
 ├── README.md                    # Project overview and quick start guide
 ├── LICENSE                      # MIT license
+├── .agents/                     # CortexKit agent mirror (copies of .opencode agents, commands, skills, rules)
 ├── .cortexkit/                  # CortexKit runtime configuration
+├── .mcp.json                   # MCP server connection config (CortexKit)
 ├── .opencode/                   # OpenCode-specific configuration and runtime
+├── .pi/                         # CortexKit PI runtime — extensions, MCP config, settings
 │   ├── plugins/                 # TypeScript plugins
 │   │   ├── ccgs-hooks.ts        # Branch protection, design validation, source checks
 │   │   ├── drift-detector.ts    # Agent/skill template drift detection
@@ -25,8 +28,27 @@
 │   ├── commands/                # OpenCode slash commands
 │   └── rules/                    # OpenCode path-scoped rules
 ├── Assets/                      # Unity project assets
-│   ├── Scenes/                  # Unity scenes (SampleScene.unity)
-│   ├── source/                  # Game C# source code and local rules
+│   ├── Scenes/                  # Unity scenes
+│   ├── source/                  # Game C# source code — Overdrive.Input assembly and bootstrap
+│   │   ├── Overdrive.Input.asmdef # Input assembly definition
+│   │   ├── InputContextController.cs # Action-map context controller
+│   │   ├── RawInputSample.cs     # Immutable raw input capture struct
+│   │   ├── DeadZoneNormalizer.cs # Pure dead-zone normalization
+│   │   ├── EmaBrakePriority.cs   # EMA brake-priority processor
+│   │   ├── ControlProfile.cs      # Control profile definition
+│   │   ├── SimulationInput.cs     # Simulation input struct
+│   │   ├── TickProcessor.cs       # Tick-based input processor
+│   │   ├── InputBindingCatalog.cs  # Input binding catalog
+│   │   ├── ContextResumeEmaReinitializer.cs # Context-resume EMA reinitializer
+│   │   ├── SchemeChangeEmaReinitializer.cs # Scheme-change EMA reinitializer
+│   │   ├── SettingsInputPreviewEvaluator.cs # Settings input preview evaluator
+│   │   ├── InputSystem_Actions.cs # Generated input action wrapper
+│   │   ├── InputSystem_Actions.Extensions.cs # Generated action extensions
+│   │   ├── InputSystem_Actions.inputactions # Unity Input System action maps
+│   │   ├── InputSystemSettings.asset # Input system settings ScriptableObject
+│   │   └── Editor/               # Input asset bootstrap editor script
+│   │       ├── InputAssetBootstrap.cs # Input asset bootstrap
+│   │       └── Overdrive.Input.Editor.asmdef # Editor assembly definition
 │   ├── Prototype/               # In-editor prototype scripts and test assets
 │   │   └── RaceFeel/            # RaceFeel prototype (car feel, camera, HUD, track)
 │   │       ├── Materials/       # 3D materials (car, road, props)
@@ -35,18 +57,28 @@
 │   │       ├── Scenes/          # Unity scenes (RaceFeelPrototype.unity)
 │   │       ├── Scripts/         # C# scripts (ArcadeCar, PrototypeCamera, etc.)
 │   │       └── Textures/        # Textures (car livery, road, grass, etc.)
-│   ├── Materials/               # Unity materials (CoplayTestRed, CoplayTestSphere)
+│   ├── Materials/               # Unity materials
 │   ├── Plugins/                 # Unity native plugins
+│   │   ├── NuGet/               # NuGet package cache
 │   │   └── Roslyn/              # Roslyn C# compiler assemblies
 │   ├── sprites/                 # Game sprites (currently empty — .gitkeep)
 │   ├── Settings/                # URP render pipeline assets (Mobile, PC profiles)
-│   ├── Screenshots/             # Test screenshots
-│   ├── TutorialInfo/            # Unity template readme + editor scripts
-│   │   ├── Readme.cs            # Readme ScriptableObject
-│   │   └── Editor/ReadmeEditor.cs # Custom inspector for Readme
-│   └── InputSystem_Actions.inputactions # Unity Input System action maps
+│   ├── Screenshots/             # Test screenshots (currently empty)
+│   ├── tests/                    # Unity test assemblies (EditMode, PlayMode)
+│   │   ├── unit/                # Unit tests
+│   │   │   └── input/           # Input system unit tests
+│   │   └── integration/         # Integration tests
+│   │       └── input/           # Input system integration tests
 ├── ProjectSettings/             # Unity project settings (physics, audio, graphics, input, etc.)
 ├── Packages/                    # Unity package manifest (URP, Input System, AI Nav, Timeline, etc.)
+├── learning/                    # Agent learning system
+│   ├── MISSION.md               # Learning system mission
+│   ├── NOTES.md                 # Learning notes
+│   ├── RESOURCES.md             # Learning resources
+│   ├── assets/                  # Learning system assets (stylesheets)
+│   ├── learning-records/        # Style conformance records
+│   ├── lessons/                 # Generated lesson HTML files
+│   └── reference/               # Reference images and palette analysis
 ├── design/                      # Game design documents
 │   ├── AGENTS.md                # Design directory standards
 │   ├── accessibility-requirements.md # Accessibility requirements (Standard tier)
@@ -64,6 +96,7 @@
 │   │   │   ├── krea2-prompt-book.md
 │   │   │   └── test-kit-01.md
 │   │   ├── reference-catalog.md # Reference image catalog
+│   │   ├── reference/           # Reference images and generated assets
 │   │   ├── style-anchor-prompt.md # Style anchor prompt
 │   │   └── typography.json      # Typography specs
 │   ├── gdd/                     # Game Design Documents (one per system)
@@ -101,6 +134,7 @@
 │   │   ├── gdd-cross-review-2026-07-26.md
 │   │   ├── gdd-cross-review-2026-07-26-v2.md
 │   │   ├── gdd-cross-review-2026-07-26-v3.md
+│   │   ├── gdd-cross-review-2026-08-01.md
 │   │   ├── ghost-recording.md
 │   │   ├── grid-start.md
 │   │   ├── hud.md
@@ -179,25 +213,43 @@
 │   │   ├── adr-0013-qualifying-session-format.md
 │   │   ├── adr-0014-hud-data-contract-and-layout.md
 │   │   ├── adr-0015-car-definition-data-validation.md
+│   │   ├── adr-0016-multiplayer-sdk-deferral-and-boundary.md
+│   │   ├── adr-0017-network-simulation-driver-interface-and-beta-canonical-state-model.md
+│   │   ├── adr-0018-race-session-manager-authority.md
+│   │   ├── adr-0019-ui-presentation-screen-flow-and-navigation.md
 │   │   ├── architecture-review-2026-07-27.md
 │   │   ├── architecture-review-2026-07-28-v5.md
 │   │   ├── architecture-review-2026-07-28-v6.md
 │   │   ├── architecture-review-2026-07-28.md
 │   │   ├── architecture-review-2026-08-01.md
+│   │   ├── architecture-review-2026-08-05-v2.md
+│   │   ├── architecture-review-2026-08-05-v3.md
+│   │   ├── architecture-review-2026-08-05-v4.md
+│   │   ├── architecture-review-2026-08-05.md
+│   │   ├── architecture-review-2026-08-06.md
 │   │   ├── architecture-traceability.md
 │   │   ├── architecture.md          # Master architecture doc
+│   │   ├── change-impact-2026-08-01-adr-sync.md
+│   │   ├── change-impact-2026-08-05-vehicle-physics.md
 │   │   ├── complete-traceability-matrix.md
 │   │   ├── control-manifest.md
 │   │   ├── tr-registry.yaml         # Technical requirement ID persistence
 │   │   ├── traceability-index.md
 │   │   └── traceability-matrix.md
+│   ├── agents/                   # Agent documentation
+│   │   ├── domain.md             # Domain context for agents
+│   │   ├── issue-tracker.md      # Issue tracking conventions
+│   │   └── triage-labels.md     # Triage label definitions
 │   ├── engine-reference/        # Curated engine API snapshots (version-pinned)
 │   │   ├── super-monaco-gp-teams.md
+│   │   ├── godot/                # Godot engine reference
+│   │   ├── unity/                # Unity engine reference
+│   │   └── unreal/               # Unreal engine reference
 │   ├── framework/               # OCGS framework reference
 │   │   ├── director-gates.md    # Shared review gate prompts
 │   │   ├── agent-roster.md      # Full agent inventory with model tiers
 │   │   ├── agent-coordination-map.md # Agent delegation relationships
-│   │   ├── skills-reference.md  # All 80 skills cataloged by phase
+│   │   ├── skills-reference.md  # All 157 skills cataloged by phase
 │   │   ├── coordination-rules.md # Agent delegation and conflict resolution
 │   │   ├── coding-standards.md  # Code review and testing standards
 │   │   ├── directory-structure.md # Canonical directory layout
@@ -221,11 +273,13 @@
 │   │   ├── benetton-b189-driver-animation-mapping.md
 │   │   └── overdrive-handoff-2026-07-24.md
 │   ├── research/                # Research documents
+│   │   ├── coherence-architecture-verification-2026-08-05.md
 │   │   ├── multiplayer-networking-comparison-2026.md
 │   │   ├── mvp-performance-baseline-2026-07.md
 │   │   ├── unity-mcp-landscape-2026-07-16.md
 │   │   └── unity-packages-evaluation-2026-08.html
 │   ├── AGENTS.md                # Docs directory standards
+│   ├── tech-debt-register.md    # Technical debt tracking
 │   ├── COLLABORATIVE-DESIGN-PRINCIPLE.md # User-driven collaboration model
 │   ├── COPLAY.md                # Coplay integration notes
 │   ├── WORKFLOW-GUIDE.md        # Workflow selection guide
@@ -235,18 +289,16 @@
 │   ├── authoring-agents.md      # Agent creation guide
 │   ├── authoring-skills.md      # Skill creation guide
 │   └── CONTRIBUTING.md          # Framework contribution guide
-├── tests/                       # Unity/C# gameplay test suites
-│   ├── README.md                # Test suite overview and conventions
-│   ├── EditMode/                # Edit-mode tests (run in Unity Editor)
+├── tests/                       # Root test scaffolding (see Assets/tests/ for actual tests)
+│   ├── EditMode/                # Edit-mode test scaffold
 │   │   └── README.md
-│   ├── PlayMode/                # Play-mode tests (run in play mode)
+│   ├── PlayMode/                # Play-mode test scaffold
 │   │   └── README.md
-│   ├── unit/                    # Unit tests
-│   │   └── FuelConsumptionExampleTests.cs
-│   ├── integration/             # Integration tests
+│   ├── unit/                    # Unit test scaffold (currently empty)
+│   ├── integration/             # Integration test scaffold (currently empty)
 │   ├── smoke/                   # Smoke tests
 │   │   └── critical-paths.md
-│   └── evidence/                # Test evidence and artifacts
+│   └── evidence/                # Test evidence and artifacts (currently empty)
 ├── tools/                       # Build and pipeline tools
 │   ├── aseprite-mcp/            # Aseprite MCP server (Python/uv)
 │   ├── assign-models.js         # Model assignment utility
@@ -256,12 +308,35 @@
 ├── production/                  # Production management
 │   ├── gate-checks/             # Quality gate check results
 │   │   ├── concept-to-systems-design.md
+│   │   ├── pre-production-to-production-2026-08-09.md
 │   │   └── technical-setup-to-pre-production-2026-07-28.md
 │   ├── session-logs/            # Session audit trail
 │   │   ├── agent-audit.log      # Plugin audit log
 │   │   └── session-log.md       # Human-readable session log
 │   ├── session-state/           # Active session checkpoint
 │   │   └── active.md            # Living state file
+│   ├── epics/                    # Feature epics and stories
+│   │   ├── index.md             # Epic index
+│   │   ├── content-pipeline/    # Content pipeline epic
+│   │   ├── ghost-recording/     # Ghost recording epic
+│   │   ├── input-system/        # Input system epic (8 fused stories)
+│   │   ├── multiplayer-architecture/ # Multiplayer architecture epic
+│   │   ├── settings/            # Settings epic
+│   │   └── simulation-kernel/   # Simulation kernel epic
+│   ├── milestones/             # MVP/alpha/beta milestone definitions
+│   │   ├── alpha.md
+│   │   ├── beta.md
+│   │   └── mvp.md
+│   ├── qa/                     # QA playtest reports
+│   │   ├── qa-plan-sprint-1-2026-08-08.md
+│   │   ├── qa-signoff-sprint-1-2026-08-09.md
+│   │   ├── smoke-2026-08-09.md
+│   │   └── playtests/           # Playtest session reports
+│   │       └── playtest-2026-08-05-thawane.md
+│   ├── sprints/                # Sprint plans and status
+│   │   ├── sprint-1.md
+│   │   └── sprint-1-retrospective.md
+│   ├── sprint-status.yaml      # Current sprint status
 │   ├── stage.txt                # Current production stage
 │   └── review-mode.txt          # Review mode state flag
 ├── dotnet-tools.json            # .NET tool manifest (csharpier)
@@ -287,9 +362,17 @@
 
 ## Directory Purposes
 
+**`.agents/`:**
+- Purpose: CortexKit agent mirror — copies of `.opencode/` agents, commands, skills, and rules for CortexKit runtime consumption
+- Contains: `agents/`, `commands/`, `skills/`, `rules/` (mirrors `.opencode/` structure)
+
 **`.cortexkit/`:**
 - Purpose: CortexKit runtime configuration
-- Contains: `.gitignore`, `magic-context/`
+- Contains: `.gitignore`, `magic-context/historian/`
+
+**`.pi/`:**
+- Purpose: CortexKit PI runtime — extensions, MCP server config, and settings
+- Contains: `extensions/` (8 OCGS extension modules), `mcp.json` (MCP server connections), `settings.json` (runtime settings)
 
 **`.opencode/`:**
 - Purpose: OpenCode runtime configuration, agents, skills, commands, rules, and plugins
@@ -299,7 +382,12 @@
 **`Assets/`:**
 - Purpose: Unity project assets — the actual game
 - Contains: Scenes, C# scripts, materials, sprites, input actions, render pipeline settings
-- Key files: `InputSystem_Actions.inputactions`, `Settings/PC_RPAsset.asset`, `TutorialInfo/Readme.cs`
+- Key files: `InputSystem_Actions.inputactions`, `Settings/PC_RPAsset.asset`, `source/Overdrive.Input.asmdef`
+
+**`learning/`:**
+- Purpose: Agent learning system — style conformance records, generated lessons, and reference analysis
+- Contains: Mission statement, learning notes, resources, generated lesson HTML files, style conformance records, reference images and palette analysis
+- Key files: `MISSION.md`, `NOTES.md`, `RESOURCES.md`, `learning-records/0001-style-and-conformance.md`, `lessons/0001-style-conformance-and-verification.html`, `reference/check-image-palette.py`
 
 **`design/`:**
 - Purpose: Game design documentation, art bible, asset specs, UX design, cross-system registries, and cross-GDD consistency analysis
@@ -307,9 +395,9 @@
 - Key files: `gdd/game-concept.md`, `art/art-bible.md`, `assets/asset-manifest.md`, `ux/race-hud.md`, `quick-specs/camera-chase-velocity-direction-2026-08-05.md`, `registry/entities.yaml`, `AGENTS.md`, `reviews/cross-gdd-consistency-report.md`
 
 **`docs/`:**
-- Purpose: Technical documentation — architecture decisions, framework reference, workflow guides, research
-- Contains: ADRs (15 total), architecture reviews, traceability matrices, engine API snapshots, OCGS framework docs, examples, plans, research
-- Key files: `architecture/architecture.md`, `architecture/control-manifest.md`, `architecture/tr-registry.yaml`, `framework/director-gates.md`, `framework/agent-roster.md`, `framework/skills-reference.md`, `framework/workflow-catalog.yaml`, `plans/asr-car-import-pipeline.md`, `research/multiplayer-networking-comparison-2026.md`
+- Purpose: Technical documentation — architecture decisions, agent documentation, framework reference, workflow guides, research
+- Contains: ADRs (19 total), architecture reviews, traceability matrices, agent documentation, engine API snapshots, OCGS framework docs, examples, plans, research
+- Key files: `architecture/architecture.md`, `architecture/control-manifest.md`, `architecture/tr-registry.yaml`, `agents/domain.md`, `agents/issue-tracker.md`, `agents/triage-labels.md`, `framework/director-gates.md`, `framework/agent-roster.md`, `framework/skills-reference.md`, `framework/workflow-catalog.yaml`, `plans/asr-car-import-pipeline.md`, `research/multiplayer-networking-comparison-2026.md`, `research/coherence-architecture-verification-2026-08-05.md`
 
 **`tests/`:**
 - Purpose: Unity/C# gameplay and integration tests
@@ -321,9 +409,9 @@
 - Key files: `aseprite-mcp/`, `assign-models.js`, `ksanim/parse_ksanim.py`
 
 **`production/`:**
-- Purpose: Production management — session logs, audit trails, active state, quality gate checks, QA playtest reports
-- Contains: Session logs, agent audit log, session state checkpoint, gate checks, QA playtest reports, review mode state
-- Key files: `session-logs/agent-audit.log`, `session-logs/session-log.md`, `session-state/active.md`, `gate-checks/concept-to-systems-design.md`, `gate-checks/technical-setup-to-pre-production-2026-07-28.md`, `qa/playtests/playtest-2026-08-05-thawane.md`, `stage.txt`, `review-mode.txt`
+- Purpose: Production management — session logs, audit trails, active state, quality gate checks, feature epics and stories, QA playtest reports, sprint plans, milestone definitions
+- Contains: Session logs, agent audit log, session state checkpoint, gate checks, feature epics with stories, QA playtest reports, review mode state, sprint plans, milestone definitions
+- Key files: `session-logs/agent-audit.log`, `session-logs/session-log.md`, `session-state/active.md`, `gate-checks/concept-to-systems-design.md`, `gate-checks/pre-production-to-production-2026-08-09.md`, `gate-checks/technical-setup-to-pre-production-2026-07-28.md`, `epics/index.md`, `epics/input-system/story-001-input-action-asset-context-controller.md`, `stage.txt`, `review-mode.txt`, `sprint-status.yaml`, `sprints/sprint-1.md`, `milestones/mvp.md`
 
 **`prototypes/`:**
 - Purpose: Throwaway prototypes isolated from main source
@@ -339,15 +427,19 @@
 **Configuration:**
 - `AGENTS.md`: Master framework configuration — technology stack, project structure, agent hierarchy, available commands
 - `opencode.json`: Plugin loading, MCP server config, bash/read permissions
+- `.mcp.json`: MCP server connections for CortexKit runtime
+- `.pi/settings.json`: CortexKit PI runtime settings
+- `.pi/mcp.json`: CortexKit MCP server overrides
 - `Packages/manifest.json`: Unity package dependencies (URP, Input System, AI Nav, etc.)
 - `ProjectSettings/ProjectVersion.txt`: Unity version (6000.3.19f1)
 - `dotnet-tools.json`: .NET tool manifest (csharpier)
 - `.editorconfig`: Editor formatting rules
 
 **Core Logic:**
-- `.opencode/agents/[name].md`: Agent definitions (51 agents)
-- `.opencode/skills/[name]/SKILL.md`: Skill workflows (80 skills)
+- `.opencode/agents/[name].md`: Agent definitions (51 agents, mirrored at `.agents/`)
+- `.opencode/skills/[name]/SKILL.md`: Skill workflows (157 skills)
 - `.opencode/commands/[name].md`: Slash command routing (53 commands)
+- `.opencode/rules/[name].md`: Path-scoped coding rules (11 rules, mirrored at `.agents/rules/`)
 - `.opencode/plugins/ccgs-hooks.ts`: Primary lifecycle hooks plugin
 - `.opencode/plugins/drift-detector.ts`: Template drift detection
 - `.opencode/plugins/changelog-generator.ts`: Changelog generation
@@ -363,27 +455,35 @@
 - `design/assets/asset-manifest.md` — Master asset manifest
 - `design/ux/race-hud.md` — Race HUD UX specification
 - `design/ux/ui-menu.md` — UI menu system design
-- `design/quick-specs/` — Quick specifications for validated findings (camera chase velocity, track validation)
+- `design/quick-specs/` — Quick specifications for validated findings (camera chase velocity, track Suzuka validation)
 - `design/registry/entities.yaml`: Cross-GDD entity/formula/constant registry
 - `design/reviews/cross-gdd-consistency-report.md`: Cross-GDD consistency analysis
 - `docs/architecture/architecture.md`: Master architecture document
 - `docs/architecture/control-manifest.md`: Control manifest
 - `docs/architecture/adr-0001-manual-simulation-authority-and-determinism-boundary.md`: ADR on manual simulation authority
-- `docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md` through `adr-0015-car-definition-data-validation.md`: 14 additional ADRs
+- `docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md` through `adr-0015-car-definition-data-validation.md`: 14 ADRs (0002-0015)
+- `docs/architecture/adr-0016-multiplayer-sdk-deferral-and-boundary.md`: ADR on online services deferral
+- `docs/architecture/adr-0017-network-simulation-driver-interface-and-beta-canonical-state-model.md`: ADR on network simulation driver
+- `docs/architecture/adr-0018-race-session-manager-authority.md`: ADR on race session manager authority
+- `docs/architecture/adr-0019-ui-presentation-screen-flow-and-navigation.md`: ADR on UI presentation screen flow
 - `docs/architecture/tr-registry.yaml`: Technical requirement ID persistence
 - `docs/architecture/complete-traceability-matrix.md`: Full traceability matrix
 - `docs/architecture/architecture-traceability.md`: Architecture traceability
-- `docs/architecture/change-impact-2026-08-05-vehicle-physics.md`: Change impact report for vehicle physics grip model update
+- `docs/architecture/architecture-review-2026-08-05.md` through `architecture-review-2026-08-06.md`: Architecture review reports
 - `docs/registry/architecture.yaml`: Architecture registry data
 - `docs/framework/workflow-catalog.yaml`: Phase definitions and artifact checks
 - `docs/framework/director-gates.md`: Shared review gate prompts
 - `docs/plans/asr-car-import-pipeline.md`: ASR car import pipeline plan
 - `docs/plans/benetton-b189-animation-inventory.md`: Benetton B189 animation inventory
+- `docs/plans/benetton-b189-asset-pipeline-pilot.html`: Benetton B189 asset pipeline pilot (HTML)
 - `docs/plans/benetton-b189-driver-animation-mapping.md`: Benetton B189 driver animation mapping
 - `docs/plans/overdrive-handoff-2026-07-24.md`: Project handoff plan
+- `docs/tech-debt-register.md`: Technical debt tracking register
 
 **Tests:**
 - `.opencode/plugins/tests/`: Plugin unit tests (11 test suites)
+- `Assets/tests/unit/input/`: Input system unit tests (EmaBrakePriorityTests.cs, SchemeArbitrationTests.cs)
+- `Assets/tests/integration/input/`: Input system integration tests (InputContextControllerTests.cs, RawCaptureDeadZoneTests.cs, ContextTransitionsTests.cs, SettingsConfigurationTests.cs, SpecialRoutingTests.cs, TickProcessorTests.cs)
 
 ## Naming Conventions
 
@@ -411,7 +511,7 @@
 
 **New OpenCode plugin:** `.opencode/plugins/[plugin-name].ts` — implement `Plugin` interface from `@opencode-ai/plugin`, register in `opencode.json` plugin array
 
-**New game C# script:** `Assets/source/[ScriptName].cs` — currently empty; follow Unity naming conventions, use PascalCase
+**New game C# script:** `Assets/source/[ScriptName].cs` — follow Unity naming conventions, use PascalCase; group under `Overdrive.Input` assembly for input-system code
 
 **New Unity scene:** `Assets/Scenes/[SceneName].unity` — follow existing scene patterns
 
