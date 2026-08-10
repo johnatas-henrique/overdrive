@@ -181,6 +181,12 @@ to the story header to enable test evidence gate enforcement in future stories."
 
 Any BLOCKING test evidence gap prevents the COMPLETE verdict in Phase 6.
 
+**Verify the story's `## Test Evidence` section is CURRENT** — if it still reads
+"Not yet created" or shows a stale test count/status, update it to reflect the
+actual test file and test count before proceeding. Stale Test Evidence causes
+rework (the QA coverage gate re-verifies against the section). The convention is
+to refresh it at the end of `/code-review`, before `/story-done`.
+
 ---
 
 ## Phase 4: Check for Deviations

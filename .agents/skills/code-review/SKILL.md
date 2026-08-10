@@ -81,9 +81,27 @@ Identify the system category (engine, gameplay, AI, networking, UI, tools) and e
 
 ---
 
+## Phase 6b: Pre-Review Mechanical Verification (A1)
+
+**Before spawning ANY reviewer (Phase 7), verify mechanically that the code is ready for a review round.** This prevents reviewers from consuming rounds on mechanical issues instead of real defects.
+
+For EVERY review round (first and subsequent), confirm ALL of:
+- [ ] Full test suite is green
+- [ ] Every story AC is covered by a traceable test (grep test name → AC)
+- [ ] No `StoryXXX` prefixes on files or methods (names must say what they do)
+- [ ] Clean compilation (no console errors)
+- [ ] Prior-round fixes verified against the reviewer's original instruction (rounds 2+)
+- [ ] Assert order verified — each assert observes state before the next mutation
+
+**Only spawn reviewers when all pass.** Do NOT restrict later rounds to fix-verification only — reviewers must keep hunting new defects (they are the last line before the gate). If a mechanical check fails, fix it before spawning reviewers.
+
+---
+
 ## Phase 7: Specialist Reviews (Parallel)
 
 Spawn all applicable specialists simultaneously via Task — do not wait for one before starting the next.
+
+**Use PERSISTENT reviewers** — the same specialist and qa-tester across ALL rounds of a story. Fresh reviewers per round re-learn the domain and re-detect already-fixed issues. Persistence lets reviewers accumulate context and hunt progressive defects across rounds.
 
 ### Engine Specialists
 
@@ -109,10 +127,15 @@ Ask the qa-tester to evaluate:
 - [ ] Are any acceptance criteria untestable as implemented (e.g., hardcoded values, no seam for injection)?
 - [ ] Does the implementation introduce any new edge cases not covered by the existing QA test cases?
 - [ ] Are there any observable side effects that should have a test but don't?
+- [ ] Mutation adequacy — reject any test that passes when the code it protects breaks (verify by inspection that the test would FAIL under the relevant mutation; a test that cannot fail when the behavior it guards breaks is a false-positive and must be rewritten or removed)
+- [ ] Tests describe behavior, not mechanism — rename tests that assert internal mechanics (e.g. "latch-prevents") to describe the observable behavior (e.g. "held-entry-does-not-route") when the real protection is an external system behavior
+- [ ] Assert completeness — each assertion block verifies the observable state after every transition/edge, not just the final state
 
 For Visual/Feel and UI stories: qa-tester reviews whether the manual verification steps in `## QA Test Cases` are achievable with the implementation as written — e.g., "is the state the manual checker needs to reach actually reachable?"
 
 Collect all specialist findings before producing output.
+
+When the reviewer reports a fix as done, verify it in the code (grep/locate) before accepting it — never trust the implementer's report. Do NOT re-invoke reviewers until every prior-round finding is confirmed applied.
 
 ---
 

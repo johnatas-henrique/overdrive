@@ -167,6 +167,8 @@ Use `question`:
 
 For each story, write `production/epics/[epic-slug]/story-[NNN]-[slug].md`:
 
+**Every story must include a size estimate** (hours, points, or t-shirt size) in its header. This is required for sprint planning — the sprint capacity and buffer are computed from per-story estimates. Do not leave the estimate TBD at creation.
+
 ```markdown
 # Story [NNN]: [title]
 
@@ -175,6 +177,7 @@ For each story, write `production/epics/[epic-slug]/story-[NNN]-[slug].md`:
 > **Layer**: [Foundation / Core / Feature / Presentation]
 > **Type**: [Logic | Integration | Visual/Feel | UI | Config/Data]
 > **Manifest Version**: [date from control-manifest.md header]
+> **Estimate**: [size estimate — hours, points, or t-shirt size. MANDATORY: a story with no estimate cannot be planned or assigned to a sprint. Estimate at creation — do not defer to readiness.]
 
 ## Context
 
