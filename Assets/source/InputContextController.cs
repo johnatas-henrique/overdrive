@@ -63,6 +63,7 @@ namespace Overdrive.Input
         private InputAvailability _lastAvailability = InputAvailability.NoInputDevice;
         private RoutingMode _routingMode = RoutingMode.Normal;
         private bool _pointerVisible = true;
+        private ControlProfile _profile = ControlProfile.Default;
 
         /// <summary>Pointer movement (px) in one update that counts as meaningful keyboard/mouse input.</summary>
         private const float PointerMeaningfulDeltaPixels = 2f;
@@ -223,8 +224,8 @@ namespace Overdrive.Input
         public void SetUIContext()
         {
             _routingMode = RoutingMode.Normal;
-            // ADR-0005:119 — the pending Pause edge is consumed by the transition that triggered it.
-            _pendingPauseEdge = false;
+            // ADR-0005: the transition out of Gameplay consumes the pending Pause edge.
+            ConsumePendingPauseEdgeOnTransition();
             _asset.Gameplay.Disable();
             if (CurrentContext != InputContextKind.UI)
             {
@@ -246,8 +247,8 @@ namespace Overdrive.Input
         /// </summary>
         public void SetBlockedContext()
         {
-            // ADR-0005: any pending Pause edge is consumed by the transition that triggered it.
-            _pendingPauseEdge = false;
+            // ADR-0005: the transition out of Gameplay consumes the pending Pause edge.
+            ConsumePendingPauseEdgeOnTransition();
             _routingMode = RoutingMode.Normal;
             _asset.Gameplay.Disable();
             _asset.UI.Disable();
@@ -263,7 +264,7 @@ namespace Overdrive.Input
         /// </summary>
         public void SetFinishedPresentationContext()
         {
-            _pendingPauseEdge = false;
+            ConsumePendingPauseEdgeOnTransition();
             _routingMode = RoutingMode.FinishedPresentation;
             _asset.Gameplay.Disable();
             if (CurrentContext != InputContextKind.UI)
@@ -291,7 +292,7 @@ namespace Overdrive.Input
         /// </summary>
         public void SetPitServiceContext()
         {
-            _pendingPauseEdge = false;
+            ConsumePendingPauseEdgeOnTransition();
             _routingMode = RoutingMode.PitService;
             _asset.Gameplay.Disable();
             if (CurrentContext != InputContextKind.UI)
@@ -315,7 +316,7 @@ namespace Overdrive.Input
         /// </summary>
         public void SetPitTransitContext()
         {
-            _pendingPauseEdge = false;
+            ConsumePendingPauseEdgeOnTransition();
             _routingMode = RoutingMode.PitTransit;
             _asset.Gameplay.Disable();
             if (CurrentContext != InputContextKind.UI)
@@ -429,7 +430,6 @@ namespace Overdrive.Input
                 accelerate,
                 brake,
                 steer,
-                _pendingPauseEdge,
                 availability,
                 validity);
         }
@@ -474,6 +474,28 @@ namespace Overdrive.Input
         public void ConsumePendingPauseEdge()
         {
             _pendingPauseEdge = false;
+        }
+
+        /// <summary>
+        /// Consumes the pending Pause edge on a transition out of Gameplay (ADR-0005: the edge is
+        /// consumed by the transition that triggered it). Called by the context setters that leave
+        /// Gameplay and by a scheme change (AC-40). Not called on UI→Gameplay, where the edge was
+        /// already consumed by the Gameplay→UI transition.
+        /// </summary>
+        private void ConsumePendingPauseEdgeOnTransition()
+        {
+            _pendingPauseEdge = false;
+        }
+
+        /// <summary>
+        /// Updates the active control profile used by scheme arbitration (the trigger/stick "meaningful"
+        /// thresholds). The Settings epic passes the sanitized active profile here; until then the default
+        /// profile (Input-owned trigger, ADR-0004) applies. This only affects the controller's arbitration
+        /// thresholds — the tick pipeline receives its own profile via <see cref="TickProcessor"/>.
+        /// </summary>
+        public void SetControlProfile(ControlProfile profile)
+        {
+            _profile = profile;
         }
 
         /// <summary>
@@ -551,7 +573,7 @@ namespace Overdrive.Input
 
             _activeScheme = scheme;
             // AC-40: a pending Pause edge is consumed by the scheme change that triggered it.
-            _pendingPauseEdge = false;
+            ConsumePendingPauseEdgeOnTransition();
             OnActiveSchemeChanged?.Invoke(scheme);
             return scheme;
         }
@@ -575,8 +597,8 @@ namespace Overdrive.Input
 
             float accelerate = ReadGamepadAxis(_asset.Gameplay.Accelerate);
             float brake = ReadGamepadAxis(_asset.Gameplay.Brake);
-            if (accelerate > DeadZoneNormalizer.TriggerInnerThreshold ||
-                brake > DeadZoneNormalizer.TriggerInnerThreshold)
+            if (accelerate > _profile.TriggerInner ||
+                brake > _profile.TriggerInner)
             {
                 return true;
             }
@@ -594,7 +616,7 @@ namespace Overdrive.Input
                 if (control.parent is StickControl stick && stick.device is Gamepad)
                 {
                     Vector2 raw = stick.ReadUnprocessedValue();
-                    return raw.magnitude > DeadZoneNormalizer.StickInnerThreshold;
+                    return raw.magnitude > _profile.StickInner;
                 }
             }
 

@@ -372,10 +372,9 @@ namespace Overdrive.Input.Tests
             ControlScheme scheme = ControlScheme.Gamepad,
             RawInputValidityFlags validity = RawInputValidityFlags.None,
             InputAvailability availability = InputAvailability.Available,
-            bool pauseRise = false,
             ulong seq = 0)
         {
-            return new RawInputSample(seq, scheme, accelerate, brake, steer, pauseRise, availability, validity);
+            return new RawInputSample(seq, scheme, accelerate, brake, steer, availability, validity);
         }
 
         private static void AssertBitwiseIdentical(SimulationInput expected, SimulationInput actual, int tick)
