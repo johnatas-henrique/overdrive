@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/simulation-architecture.md
 > **Architecture Module**: Simulation Architecture (Foundation Layer — module ownership per docs/architecture/architecture.md:127-134)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories simulation-kernel`
+> **Stories**: 8 stories created (2 Integration, 6 Logic) — 85/85 MVP ACs covered
 
 ## Overview
 
@@ -73,3 +73,16 @@ This epic is complete when:
 ## Next Step
 
 Run `/create-stories simulation-kernel` to break this epic into implementable stories.
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | Contract Spine — Pipeline Skeleton, Seams & Snapshot Schemas | Integration | Ready | ADR-0001, ADR-0011 |
+| 002 | Simulation Driver & Tick Clock | Logic | Ready | ADR-0001 |
+| 003 | Session Start — Content Lifecycle, Countdown & GO | Logic | Ready | ADR-0001, ADR-0003 |
+| 004 | Interruption — Pause, Resume & Focus-Loss | Logic | Ready | ADR-0001 |
+| 005 | Session End — Finish, Results, Forfeit & Unload | Integration | Ready | ADR-0001, ADR-0003 |
+| 006 | Presentation — Render Interpolation | Logic | Ready | ADR-0001, ADR-0002 |
+| 007 | Performance Monitor | Logic | Ready | ADR-0001, ADR-0010 |
+| 008 | Determinism & MVP Recordable Buffer | Logic | Ready | ADR-0001, ADR-0008 |
