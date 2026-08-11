@@ -171,14 +171,49 @@ namespace Overdrive.Simulation
     {
         public PostFinishSnapshot Terminal { get; }
 
+        /// <summary>Authoritative count of completed physics ticks, including Countdown ticks.</summary>
+        public int SimulationStepCount { get; }
+
+        /// <summary>Authoritative count of completed ticks that started in Racing.</summary>
+        public int ActiveRaceStepCount { get; }
+
+        /// <summary>Race time in seconds. This is derived from ActiveRaceStepCount, not wall time.</summary>
+        public float SimTime { get; }
+
+        // GDD/ADR domain names (snake_case) exposed for schema-level consumers that read the
+        // published snapshot fields verbatim. PascalCase is the public C# surface.
+        public int simulationStepCount => SimulationStepCount;
+        public int activeRaceStepCount => ActiveRaceStepCount;
+        public float sim_time => SimTime;
+
         public IReadOnlyList<CarState> CarState => Terminal.CarState;
         public IReadOnlyList<FuelState> FuelState => Terminal.FuelState;
         public IReadOnlyList<TireState> TireState => Terminal.TireState;
         public SimulationState SimulationState => Terminal.SimulationState;
 
+        /// <summary>
+        /// Story 001 compatibility constructor. Counter fields default to zero so existing
+        /// consumers continue to compile while the driver adds authoritative values.
+        /// </summary>
         public PublishedSimulationSnapshot(PostFinishSnapshot terminal)
+            : this(terminal, 0, 0, 0f)
+        {
+        }
+
+        /// <summary>
+        /// Constructs an immutable published snapshot with the driver's counters.
+        /// Example: <c>new PublishedSimulationSnapshot(terminal, 12, 8, 8f / 60f)</c>.
+        /// </summary>
+        public PublishedSimulationSnapshot(
+            PostFinishSnapshot terminal,
+            int simulationStepCount = 0,
+            int activeRaceStepCount = 0,
+            float simTime = 0f)
         {
             Terminal = terminal ?? throw new ArgumentNullException(nameof(terminal));
+            SimulationStepCount = simulationStepCount;
+            ActiveRaceStepCount = activeRaceStepCount;
+            SimTime = simTime;
         }
     }
 
@@ -204,6 +239,18 @@ namespace Overdrive.Simulation
         public SimulationInput SimulationInput { get; internal set; }
         public TickStartSnapshot TickStartSnapshot { get; internal set; }
         public ResolvedCarInput[] ResolvedCarInputs { get; internal set; }
+
+        /// <summary>
+        /// Step 12 supplies the domain snapshot that the driver decorates with its
+        /// authoritative counters. No terminal arrays are synthesized by the driver.
+        /// </summary>
+        public PublishedSimulationSnapshot PublishedSnapshot { get; private set; }
+
+        /// <summary>Publishes the immutable Step 12 snapshot for the owning kernel.</summary>
+        public void PublishSnapshot(PublishedSimulationSnapshot snapshot)
+        {
+            PublishedSnapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
+        }
     }
 
     /// <summary>
@@ -246,6 +293,15 @@ namespace Overdrive.Simulation
         public event Action<SimulationStateChanged> StateChanged;
         public PublishedSimulationSnapshot PublishedSnapshot { get; private set; }
 
+        /// <summary>
+        /// Replaces the latest published snapshot after the driver decorates the Step 12
+        /// domain snapshot with its authoritative counters. No terminal data is synthesized.
+        /// </summary>
+        internal void PublishSnapshot(PublishedSimulationSnapshot snapshot)
+        {
+            PublishedSnapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
+        }
+
         public SimulationKernel(ISimulationInputProcessor inputProcessor, params ISimulationPipelineStep[] steps)
         {
             _inputProcessor = inputProcessor ?? throw new ArgumentNullException(nameof(inputProcessor));
@@ -273,6 +329,7 @@ namespace Overdrive.Simulation
             };
             for (int i = 0; i < _steps.Length; i++)
                 _steps[i].Execute(context);
+
             return context;
         }
 
