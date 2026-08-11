@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Overdrive.Simulation;
 
 namespace Overdrive.Input
 {
@@ -22,7 +23,7 @@ namespace Overdrive.Input
     /// → SimulationInput assembly. Holds the EMA state across ticks.
     /// Example: <c>SimulationInput input = processor.ProcessTick(sample, controller.HasPendingPauseEdge());</c>
     /// </summary>
-    public sealed class TickProcessor
+    public sealed class TickProcessor : ISimulationInputProcessor
     {
         /// <summary>Warning rate-limit window: one warning per channel per this many consecutive ticks.</summary>
         public const int WarningWindowTicks = 60;
@@ -64,6 +65,12 @@ namespace Overdrive.Input
                 EmaBrakePriority.Sanitize(steerPostDz));
         }
 
+        /// <summary>Kernel seam: processes one tick. Delegates to <see cref="ProcessTick"/>.</summary>
+        public SimulationInput Process(RawInputSample sample, bool pausePending)
+        {
+            return ProcessTick(sample, pausePending);
+        }
+
         /// <summary>
         /// Processes one simulation tick and assembles the authoritative SimulationInput.
         /// </summary>
@@ -82,6 +89,17 @@ namespace Overdrive.Input
 
             // EMA + brake priority (Story 003); re-sanitizes idempotently.
             EmaOutput ema = _ema.Process(accelerateSanitized, brakeSanitized, steerSanitized);
+
+            // NoInputDevice (GDD input-system.md AC-42-9): no eligible scheme can provide
+            // gameplay input, so Accelerate, Brake, and Steer are forced to 0.0 — the car
+            // coasts. Availability propagates unchanged; PauseEdge still flows.
+            if (sample.Availability == InputAvailability.NoInputDevice)
+            {
+                accelerateSanitized = 0f;
+                brakeSanitized = 0f;
+                steerSanitized = 0f;
+                ema = new EmaOutput(0f, 0f, 0f);
+            }
 
             return new SimulationInput(
                 ema.Accelerate, ema.Brake, ema.Steer,
