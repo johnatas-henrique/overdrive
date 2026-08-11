@@ -1,6 +1,6 @@
 ## Technical Debt Register
-Last updated: 2026-08-10
-Total items: 13 | Estimated total effort: S×13
+Last updated: 2026-08-11
+Total items: 14 | Estimated total effort: S×14
 
 | ID | Category | Description | Files | Effort | Impact | Priority | Added | Sprint |
 |----|----------|-------------|-------|--------|--------|----------|-------|--------|
@@ -17,6 +17,7 @@ Total items: 13 | Estimated total effort: S×13
 | TD-011 | ADR-drift | Story 001 (Contract Spine) `PitServiceCommand` carries 2 fields (CarId, Requested) vs ADR-0011's 4-field contract (`active`, `targetFuel`, `tireSwapRequired`, `requestExit`). Accepted: the 2-field stub is a valid minimal spine; the expansion is additive and belongs to Story 009 (Pit Stop), where the real consumers (FuelSystem/TireSystem) read the full contract. | SimulationContracts.cs + Story 009 | S | Medium | 3 | 2026-08-10 | Sprint 2 |
 | TD-012 | ADR-drift | Story 001 (Contract Spine) `PostFinishSnapshot` carries a subset of ADR-0001's terminal fields (only CarState/FuelState/TireState/RsmState/SimulationState). Missing: `simulationStepCount`, `activeRaceStepCount`, `resultClassification`, `resultKind`, `raceTime`, `lapTimes`, `raceMode`. Accepted: additive expansion in Story 008 (Determinism & Replay), which also consumes RSM `ResolvedFinishOrder`; existing callers unaffected (constructor stays additive). | SimulationKernel.cs + Story 008 | S | Low | 3 | 2026-08-10 | Sprint 2 |
 | TD-013 | Coverage | Story 001 QL-TEST-COVERAGE GAPS (qa-lead, ADVISORY): (1) duplicate car-ID rejection — the guard `carIds[i] <= carIds[i-1]` exists (`SimulationKernel.cs:316`) but no explicit duplicate test; (2) AI/CarId mismatch — the guard `ai[i].CarId != carIds[i]` exists (`:318`) but no test; (3) capture-after-tick deferred to next tick (kernel behavior) untested. Accepted: all three are mutation-adequate guards in code, missing only explicit negative tests; add in a follow-up story. | ContractSpineTests.cs | S | Low | 3 | 2026-08-10 | Backlog |
+| TD-014 | Engine-gate | Story 002 AC-1.4 auto-physics/`SimulationMode.Script` verification is deferred to the assembly gate (engine config check — the mock tests cannot verify Unity's automatic physics absence). Accepted: the adapter (`UnityPhysicsSimulator`) sets Script defensively at construction and before each `Simulate`; the engine-gate assertion (physics.simulationMode == Script at scene load, no automatic steps) must run in the assembly gate suite. | SimulationDriverAdapters.cs + assembly gate | S | Medium | 3 | 2026-08-11 | Sprint 2 |
 
 ### Notes
 - Every entry records WHY it was accepted (Story 002 scope boundary or redundant requirement) — none is a behavioral defect.
@@ -30,3 +31,4 @@ Total items: 13 | Estimated total effort: S×13
 - TD-011 has a defined destination (Story 009 Pit Stop) and should be closed when PitServiceCommand expands to the ADR-0011 4-field contract.
 - TD-012 has a defined destination (Story 008 Determinism & Replay) and should be closed when PostFinishSnapshot expands to the full ADR-0001 terminal schema.
 - TD-013 (coverage gaps) is Backlog and should be closed when a follow-up story adds the duplicate-ID, AI-mismatch, and capture-after-tick negative tests.
+- TD-014 has a defined destination (Simulation Kernel assembly gate) and should be closed when the engine-gate suite asserts `Physics.simulationMode == SimulationMode.Script` and absence of automatic physics steps.
