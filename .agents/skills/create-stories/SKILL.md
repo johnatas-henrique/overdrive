@@ -98,6 +98,16 @@ For each story, determine:
 - **Story Type**: from Step 3 classification
 - **Engine risk**: from the ADR's Knowledge Risk field
 
+**Cross-epic verifiability check** — before any story is presented to the gate (Step 4b), validate every acceptance criterion:
+
+For each AC, answer: *"Is this verifiable with the contracts, events, and interfaces that THIS story's own work will expose — the types, signals, and injectable seams it produces itself?"*
+
+- An AC that asserts the **behaviour of a system outside this story's scope** — a subsystem owned by another epic, an external service, or a third-party integration not yet mounted as an interface here — must be **re-scoped or deferred**, never embedded as-is:
+  - **Re-scope**: verify at the boundary this work exposes (its own state transitions, published events, output types, injectable seams) — do NOT assert the full external behaviour.
+  - **Defer**: mark the AC `DEFERRED` in the story with its destination epic/story, and record it in the tech-debt register.
+- Testable in isolation is not enough — the criterion must be testable *here*, with this story's own seams. A criterion that only passes a test against a system this story does not own is a defect, not a valid AC.
+- If an AC fails the check and cannot be re-scoped or deferred cleanly, split it out into its own story owned by the epic that owns the system.
+
 ---
 
 ## 4b. QA Lead Story Readiness Gate
@@ -110,6 +120,8 @@ For each story, determine:
 After decomposing all stories (Step 4 complete) but before presenting them for write approval, spawn `qa-lead` via Task using gate **QL-STORY-READY** (`docs/framework/director-gates.md`).
 
 Pass: the full story list with acceptance criteria, story types, and TR-IDs; the epic's GDD acceptance criteria for reference.
+
+Instruct the qa-lead to validate **cross-epic verifiability** in addition to plain testability: each AC must be verifiable with the contracts, events, and interfaces this story's own work exposes — an AC that asserts an external or unmounted system's behaviour is a GAP even when the criterion is testable in isolation. The Step 4 cross-epic check is the first pass; the gate is the second, independent pass.
 
 Present the QA lead's assessment. For each story flagged as GAPS or INADEQUATE, revise the acceptance criteria before proceeding — stories with untestable criteria cannot be implemented correctly. Once all stories reach ADEQUATE, proceed.
 

@@ -92,6 +92,17 @@ items pass or are explicitly marked N/A with a stated reason.
   observable condition — not "implement X" or "the system works correctly".
   Bad example: "Implement the jump mechanic." Good example: "Jump reaches
   max height of 5 units within 0.3 seconds when jump is held."
+- [ ] **Criteria are verifiable with this story's own seams**: For each criterion,
+  answer: *"Can the assertion be verified with the contracts, events, and
+  interfaces this story's own work will expose — the types, signals, and
+  injectable seams it produces itself?"* A criterion that asserts the
+  behaviour of a system outside this story's scope (owned by another epic, an
+  external service, or a third-party integration not yet mounted here) is a
+  GAP — even when the criterion is testable in isolation. It must be
+  re-scoped to the boundary this work exposes (its own state transitions,
+  published events, output types) or marked DEFERRED with its destination
+  epic/story (and recorded in the tech-debt register). Testable in general
+  does not mean testable *here*.
 - [ ] **No acceptance criteria require judgment calls**: Criteria like
   "feels responsive" or "looks good" are not testable without a defined
   benchmark. These must be replaced with specific observable conditions or
@@ -338,6 +349,8 @@ Pass the following context:
 - Acceptance criteria list (all items from the story's acceptance criteria section)
 - Dependency status (all dependencies listed and their current state: exist / DRAFT / missing)
 - Overall verdict (READY / NEEDS WORK / BLOCKED) from Phase 4
+
+Instruct the qa-lead to validate **cross-epic verifiability** in addition to plain testability: each AC must be verifiable with the contracts, events, and interfaces this story's own work exposes — an AC that asserts an external or unmounted system's behaviour is a GAP even when the criterion is testable in isolation — the checklist check in Phase 3 is the first pass; the gate is the second, independent pass.
 
 Handle the verdict per standard rules in `director-gates.md`:
 - **ADEQUATE** → story is cleared. Proceed to close.
