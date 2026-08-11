@@ -141,6 +141,12 @@ namespace Overdrive.Simulation
             _lifecycleHook?.BeforeAccumulator(stateBeforeHook);
             SimulationState stateAfterHook = _stateGate.State;
 
+            // Content readiness starts a fresh timing boundary. Any remainder from the
+            // Loading frame is discarded before the first Countdown/Racing tick.
+            if (stateBeforeHook == SimulationState.Loading &&
+                (stateAfterHook == SimulationState.Countdown || stateAfterHook == SimulationState.Racing))
+                _accumulator = 0d;
+
             // A focus/pause boundary is not allowed to contribute the boundary frame's elapsed
             // time. The sub-tick remainder and counters remain untouched.
             bool enteredPaused =
@@ -187,7 +193,24 @@ namespace Overdrive.Simulation
         /// </summary>
         private void ExecuteSingleTick(bool startedInRacing, bool pauseEdge, out bool pauseEdgeDelivered)
         {
-            SimulationTickContext context = _kernel.ExecuteTick(pauseEdge);
+            SimulationTickContext context;
+            try
+            {
+                context = _kernel.ExecuteTick(pauseEdge);
+            }
+            catch (Exception exception)
+            {
+                // Physics failures are converted into a machine-owned retry hold. The
+                // failed tick has not reached the accumulator/counter commit below.
+                if (_stateGate is ISimulationPhysicsFailureHandler failureHandler)
+                {
+                    failureHandler.HandlePhysicsFailure(exception);
+                    pauseEdgeDelivered = false;
+                    return;
+                }
+                throw;
+            }
+
             pauseEdgeDelivered = pauseEdge;
             if (pauseEdge)
                 _pauseEdgeConsumer?.Invoke();

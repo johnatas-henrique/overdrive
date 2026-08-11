@@ -4,6 +4,82 @@ using Overdrive.Input;
 
 namespace Overdrive.Simulation
 {
+    /// <summary>Session mode selected by the Race Session Manager.</summary>
+    public enum RaceMode : byte
+    {
+        Race,
+        Qualifying
+    }
+
+    /// <summary>
+    /// Immutable content-to-simulation grid handoff. Race sessions use GridSlots;
+    /// qualifying uses PitBoxSlot. The simulation intentionally performs no further
+    /// assignment validation; content and Grid &amp; Start own that responsibility.
+    /// </summary>
+    public sealed class GridAssignment
+    {
+        private readonly int[] _gridSlots;
+
+        /// <summary>Race grid slots, copied at construction and never exposed mutably.</summary>
+        public IReadOnlyList<int> GridSlots => SnapshotCopies.Copy(_gridSlots);
+
+        /// <summary>Qualifying pit-box slot, or -1 when this is a race assignment.</summary>
+        public int PitBoxSlot { get; }
+
+        /// <summary>Creates a race assignment from the supplied slot sequence.</summary>
+        public GridAssignment(IReadOnlyList<int> gridSlots)
+        {
+            if (gridSlots == null) throw new ArgumentNullException(nameof(gridSlots));
+            _gridSlots = SnapshotCopies.Copy(gridSlots);
+            PitBoxSlot = -1;
+        }
+
+        /// <summary>Creates a qualifying assignment for one pit-box slot.</summary>
+        public GridAssignment(int pitBoxSlot)
+        {
+            _gridSlots = Array.Empty<int>();
+            PitBoxSlot = pitBoxSlot;
+        }
+
+        /// <summary>
+        /// Creates an assignment carrying both representations. This overload is useful
+        /// to content adapters that deserialize one shared contract for both modes.
+        /// </summary>
+        public GridAssignment(IReadOnlyList<int> gridSlots, int pitBoxSlot)
+        {
+            if (gridSlots == null) throw new ArgumentNullException(nameof(gridSlots));
+            _gridSlots = SnapshotCopies.Copy(gridSlots);
+            PitBoxSlot = pitBoxSlot;
+        }
+
+        /// <summary>Creates a race grid assignment from the supplied slot sequence.</summary>
+        public static GridAssignment ForRace(IReadOnlyList<int> gridSlots) => new GridAssignment(gridSlots);
+
+        /// <summary>Creates a qualifying assignment with the given pit-box slot.</summary>
+        public static GridAssignment ForQualifying(int pitBoxSlot) => new GridAssignment(pitBoxSlot);
+    }
+
+    /// <summary>Abortive content failure categories defined by ADR-0003.</summary>
+    public enum ContentErrorType : byte
+    {
+        Track,
+        Shared,
+        Catalog
+    }
+
+    /// <summary>Kernel-owned lifecycle error metadata forwarded to UI and diagnostics.</summary>
+    public readonly struct LifecycleErrorRaised
+    {
+        public readonly string Reason;
+        public readonly ContentErrorType ContentErrorType;
+
+        public LifecycleErrorRaised(string reason, ContentErrorType contentErrorType)
+        {
+            Reason = reason;
+            ContentErrorType = contentErrorType;
+        }
+    }
+
     /// <summary>Per-car authoritative state produced by Vehicle Physics readout (Step 9).</summary>
     public readonly struct CarState
     {

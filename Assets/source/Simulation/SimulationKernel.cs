@@ -32,26 +32,17 @@ namespace Overdrive.Simulation
     }
 
     /// <summary>
-    /// Minimal deterministic state gate used by the driver and integration tests.
-    /// Production transition rules live in the SimulationStateMachine (Story 003+);
-    /// this stub exists so Story 002 driver tests can drive lifecycle without the full machine.
+    /// Story 002 compatibility name for callers that still construct a permissive gate.
+    /// Production code should compose <see cref="SimulationStateMachine"/> directly;
+    /// this adapter keeps the existing driver evidence source-compatible while all
+    /// lifecycle behavior is implemented by the real machine.
     /// </summary>
-    public sealed class SimulationStateGate : ISimulationStateGate
+    [Obsolete("Use SimulationStateMachine in production composition.")]
+    public sealed class SimulationStateGate : SimulationStateMachine
     {
-        public SimulationState State { get; private set; }
-
-        public bool CanTick =>
-            State == SimulationState.Countdown || State == SimulationState.Racing;
-
         public SimulationStateGate(SimulationState initial = SimulationState.Idle)
+            : base(initial, null, true)
         {
-            State = initial;
-        }
-
-        public bool TryTransition(SimulationState state)
-        {
-            State = state;
-            return true;
         }
     }
 
@@ -239,6 +230,12 @@ namespace Overdrive.Simulation
         public SimulationInput SimulationInput { get; internal set; }
         public TickStartSnapshot TickStartSnapshot { get; internal set; }
         public ResolvedCarInput[] ResolvedCarInputs { get; internal set; }
+
+        /// <summary>
+        /// Set by the post-physics session-start step on the tick that reaches GO.
+        /// Downstream continuous-input recording must skip this boundary tick.
+        /// </summary>
+        public bool IsGoTick { get; internal set; }
 
         /// <summary>
         /// Step 12 supplies the domain snapshot that the driver decorates with its
