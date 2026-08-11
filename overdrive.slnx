@@ -1,7 +1,9 @@
 ﻿<Solution>
+  <Project Path="Overdrive.Simulation.csproj" />
   <Project Path="Overdrive.Input.Editor.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="InputIntegrationTests.csproj" />
   <Project Path="Overdrive.Input.csproj" />
   <Project Path="InputUnitTests.csproj" />
+  <Project Path="SimulationIntegrationTests.csproj" />
 </Solution>
