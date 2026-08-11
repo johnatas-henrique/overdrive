@@ -6,7 +6,7 @@
 
 **Key Characteristics:**
 - 51 specialized agents organized in a 3-tier hierarchy (Directors → Leads → Specialists)
-- 157 skills (slash commands) routed through themed modules
+- 158 skills (slash commands) routed through themed modules
 - 3 OpenCode TypeScript plugins for lifecycle hooks, drift detection, and changelog generation
 - User-driven collaboration model — agents draft and propose, user decides
 
@@ -14,8 +14,8 @@
 
 **OCGS Framework Layer:**
 - Purpose: Game development process orchestration — design, architecture, stories, QA, release
-- Location: `.opencode/`
-- Contains: Agent definitions (`.opencode/agents/`), skill workflows (`.opencode/skills/`), slash commands (`.opencode/commands/`), coding rules (`.opencode/rules/`), agent learning system (`learning/`); mirrored at `.agents/` for CortexKit runtime
+- Location: `.agents/` (primary), `.opencode/` (plugins only — agents/skills/commands/rules live in `.agents/` with local NTFS junctions into `.opencode/` for OpenCode runtime compatibility)
+- Contains: Agent definitions (`.agents/agents/`), skill workflows (`.agents/skills/`), slash commands (`.agents/commands/`), coding rules (`.agents/rules/`), agent learning system (`learning/`)
 - Depends on: OpenCode runtime, Node.js
 - Used by: All game development sessions via `/command` invocations
 
@@ -58,15 +58,15 @@
 - Purpose: Context management, PI extensions, and MCP connection configuration for CortexKit sessions
 - Location: `.cortexkit/`, `.pi/`
 - Contains: CortexKit runtime config (`.cortexkit/`), PI extensions (`.pi/extensions/` — 8 OCGS extension modules: audit, changelog, core, delegation, drift-detector, path-guard, question, validate), MCP server config (`.pi/mcp.json`), settings (`.pi/settings.json`)
-- Depends: CortexKit runtime, `.agents/` mirror of `.opencode/`
+- Depends: CortexKit runtime, `.agents/` (primary agent definitions), `.opencode/plugins/` (OpenCode lifecycle hooks)
 - Used by: CortexKit sessions for agent orchestration, context management, and MCP tool routing
 
 ## Data Flow
 
 **Skill Invocation Flow:**
 1. User types `/command-name [args]` — OpenCode runtime
-2. Command file resolved from `.opencode/commands/` — command registry
-3. Skill markdown loaded from `.opencode/skills/` — skill loader
+2. Command file resolved from `.agents/commands/` — command registry
+3. Skill markdown loaded from `.agents/skills/` — skill loader
 4. Agent spawned via Task tool (if skill requires delegation) — agent runtime
 5. Agent reads relevant design docs, code, and context — file system
 6. Agent produces draft output for user approval — collaboration protocol
@@ -87,12 +87,12 @@
 
 **Agent:**
 - Purpose: A specialized role with defined responsibilities, delegation maps, and domain boundaries
-- Location: `.opencode/agents/[agent-name].md`
+- Location: `.agents/agents/[agent-name].md`
 - Pattern: Markdown file with YAML frontmatter (description, mode, model, maxTurns) + structured sections (Key Responsibilities, Delegation Map, What This Agent Must NOT Do)
 
 **Skill:**
 - Purpose: A callable workflow triggered by a slash command, orchestrating one or more agents
-- Location: `.opencode/skills/[skill-name]/SKILL.md`
+- Location: `.agents/skills/[skill-name]/SKILL.md`
 - Pattern: Markdown file with YAML frontmatter (description, user-invocable, allowed-tools) + phased steps with agent delegation
 
 **Plugin:**
@@ -133,7 +133,7 @@
 
 **Caching:** No explicit caching layer. OpenCode runtime manages session context. `production/session-state/active.md` serves as a manual checkpoint.
 
-**Storage:** File-based. All state persists as Markdown, YAML, or JSON files. No database. Unity assets are stored in `Assets/`; framework configuration is stored in `.opencode/`.
+**Storage:** File-based. All state persists as Markdown, YAML, or JSON files. No database. Unity assets are stored in `Assets/`; framework configuration (agents, skills, commands, rules) is stored in `.agents/`; plugins live in `.opencode/plugins/`.
 
 **Coordination:** Vertical delegation (Directors → Leads → Specialists) with horizontal consultation allowed but non-binding. Conflict resolution escalates to shared parent or domain director.
 

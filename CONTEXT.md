@@ -88,6 +88,30 @@ _Avoid_: race manager, session manager
 The assigned starting position of a car. Distinct from live position (ranked by lap + spline position).
 _Avoid_: grid position, starting position (ambiguous)
 
+**Grid Assignment**:
+The immutable handoff of where every car starts. A Race carries the full grid-slot sequence; Qualifying carries only the pit-box slot — Qualifying has no starting grid because the car leaves from the pit box on its out-lap.
+_Avoid_: grid, lineup, starting grid
+
+**Pit Box**:
+The designated pit stall a car occupies during pit work and where a Qualifying car spawns for its out-lap. Distinct from a Grid Slot: the pit box is not a starting position.
+_Avoid_: pit, box, pit lane (pit lane is the road)
+
+**Countdown**:
+The pre-race phase of exactly 300 simulation ticks before GO. Each unpaused tick decrements once; it is the only authority that schedules GO. Fuel and Tire are not consumed during Countdown.
+_Avoid_: lights sequence, countdown timer (the display)
+
+**GO**:
+The tick that decrements the countdown from 1 to 0. It restores the car to its grid pose, clears velocity, releases grid lock only after that tick's physics, and starts Racing with a fresh accumulator.
+_Avoid_: start, launch (launch is the Perfect Start mechanic)
+
+**Grid Lock**:
+The state where a car during Countdown is held at its grid pose with zero velocity while wheel/engine visuals still animate. Released at GO, after physics.
+_Avoid_: launch hold, grid hold
+
+**Retry**:
+The recovery from a failed physics tick. A Race retries by restarting the countdown (Countdown failure) or reloading the race (Racing failure); Qualifying has exactly one attempt and no retry.
+_Avoid_: restart, redo
+
 **Qualifying**:
 The classification session producing the starting grid, one attempt per car.
 _Avoid_: classification, time trial

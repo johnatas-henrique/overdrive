@@ -12,21 +12,29 @@
 ├── Assembly-CSharp-Editor.csproj# Unity Editor C# project (auto-generated)
 ├── README.md                    # Project overview and quick start guide
 ├── LICENSE                      # MIT license
-├── .agents/                     # CortexKit agent mirror (copies of .opencode agents, commands, skills, rules)
+├── CONTEXT.md                   # Domain glossary — ubiquitous language for simulation, input, vehicle, race, content
+├── .agents/                     # Primary agent/skill/command/rule definitions (tracked source of truth)
+│   ├── agents/                  # Agent definitions (51 agents)
+│   ├── commands/                # Slash command routing (54 commands)
+│   ├── rules/                   # Path-scoped coding rules (11 rules)
+│   └── skills/                  # Skill workflows (158 skills)
 ├── .cortexkit/                  # CortexKit runtime configuration
 ├── .mcp.json                   # MCP server connection config (CortexKit)
 ├── .opencode/                   # OpenCode-specific configuration and runtime
-├── .pi/                         # CortexKit PI runtime — extensions, MCP config, settings
-│   ├── plugins/                 # TypeScript plugins
+│   ├── plugins/                 # TypeScript plugins (ccgs-hooks, drift-detector, changelog-generator)
 │   │   ├── ccgs-hooks.ts        # Branch protection, design validation, source checks
 │   │   ├── drift-detector.ts    # Agent/skill template drift detection
 │   │   ├── changelog-generator.ts # Conventional commit → CHANGELOG.md
 │   │   ├── README.md            # Plugin architecture guide
 │   │   └── tests/               # Plugin unit tests (11 test suites)
-│   ├── agents/                   # OpenCode agent definitions
-│   ├── skills/                   # OpenCode skill workflows
-│   ├── commands/                # OpenCode slash commands
-│   └── rules/                    # OpenCode path-scoped rules
+│   ├── agents/                  # Junction → .agents/agents/ (not tracked)
+│   ├── commands/                # Junction → .agents/commands/ (not tracked)
+│   ├── rules/                   # Junction → .agents/rules/ (not tracked)
+│   └── skills/                  # Junction → .agents/skills/ (not tracked)
+├── .pi/                         # CortexKit PI runtime — extensions, MCP config, settings
+│   ├── extensions/              # 8 OCGS extension modules (audit, changelog, core, delegation, drift-detector, path-guard, question, validate)
+│   ├── mcp.json                 # MCP server connections
+│   └── settings.json            # Runtime settings
 ├── Assets/                      # Unity project assets
 │   ├── Scenes/                  # Unity scenes
 │   ├── source/                  # Game C# source code — Overdrive.Input assembly and bootstrap
@@ -249,7 +257,7 @@
 │   │   ├── director-gates.md    # Shared review gate prompts
 │   │   ├── agent-roster.md      # Full agent inventory with model tiers
 │   │   ├── agent-coordination-map.md # Agent delegation relationships
-│   │   ├── skills-reference.md  # All 157 skills cataloged by phase
+│   │   ├── skills-reference.md  # All 158 skills cataloged by phase
 │   │   ├── coordination-rules.md # Agent delegation and conflict resolution
 │   │   ├── coding-standards.md  # Code review and testing standards
 │   │   ├── directory-structure.md # Canonical directory layout
@@ -363,8 +371,9 @@
 ## Directory Purposes
 
 **`.agents/`:**
-- Purpose: CortexKit agent mirror — copies of `.opencode/` agents, commands, skills, and rules for CortexKit runtime consumption
-- Contains: `agents/`, `commands/`, `skills/`, `rules/` (mirrors `.opencode/` structure)
+- Purpose: Primary agent/skill/command/rule definitions — single source of truth for OCGS framework content
+- Contains: `agents/` (51 agents), `commands/` (54 commands), `skills/` (158 skills), `rules/` (11 rules)
+- Note: `.opencode/` has NTFS junctions into `.agents/` subdirectories for OpenCode runtime compatibility; content is tracked once here
 
 **`.cortexkit/`:**
 - Purpose: CortexKit runtime configuration
@@ -375,9 +384,8 @@
 - Contains: `extensions/` (8 OCGS extension modules), `mcp.json` (MCP server connections), `settings.json` (runtime settings)
 
 **`.opencode/`:**
-- Purpose: OpenCode runtime configuration, agents, skills, commands, rules, and plugins
- - Contains: TypeScript plugins and OpenCode definitions
- - Key files: `plugins/ccgs-hooks.ts`, `plugins/drift-detector.ts`, `plugins/changelog-generator.ts`
+- Purpose: OpenCode-specific configuration — plugins and junction stubs for runtime compatibility
+- Contains: TypeScript plugins (`plugins/ccgs-hooks.ts`, `plugins/drift-detector.ts`, `plugins/changelog-generator.ts`), plugin tests (`plugins/tests/`); local junction dirs (`agents/`, `commands/`, `rules/`, `skills/`) pointing to `.agents/` (not tracked)
 
 **`Assets/`:**
 - Purpose: Unity project assets — the actual game
@@ -436,10 +444,10 @@
 - `.editorconfig`: Editor formatting rules
 
 **Core Logic:**
-- `.opencode/agents/[name].md`: Agent definitions (51 agents, mirrored at `.agents/`)
-- `.opencode/skills/[name]/SKILL.md`: Skill workflows (157 skills)
-- `.opencode/commands/[name].md`: Slash command routing (53 commands)
-- `.opencode/rules/[name].md`: Path-scoped coding rules (11 rules, mirrored at `.agents/rules/`)
+- `.agents/agents/[name].md`: Agent definitions (51 agents)
+- `.agents/skills/[name]/SKILL.md`: Skill workflows (158 skills)
+- `.agents/commands/[name].md`: Slash command routing (54 commands)
+- `.agents/rules/[name].md`: Path-scoped coding rules (11 rules)
 - `.opencode/plugins/ccgs-hooks.ts`: Primary lifecycle hooks plugin
 - `.opencode/plugins/drift-detector.ts`: Template drift detection
 - `.opencode/plugins/changelog-generator.ts`: Changelog generation
@@ -483,7 +491,7 @@
 **Tests:**
 - `.opencode/plugins/tests/`: Plugin unit tests (11 test suites)
 - `Assets/tests/unit/input/`: Input system unit tests (EmaBrakePriorityTests.cs, SchemeArbitrationTests.cs)
-- `Assets/tests/integration/input/`: Input system integration tests (InputContextControllerTests.cs, RawCaptureDeadZoneTests.cs, ContextTransitionsTests.cs, SettingsConfigurationTests.cs, SpecialRoutingTests.cs, TickProcessorTests.cs)
+- `Assets/tests/integration/input/`: Input system integration tests (InputContextControllerTests.cs, InputFrameDriverTests.cs, RawCaptureDeadZoneTests.cs, ContextTransitionsTests.cs, SettingsConfigurationTests.cs, SpecialRoutingTests.cs, TickProcessorTests.cs)
 
 ## Naming Conventions
 
@@ -505,9 +513,9 @@
 
 ## Where to Add New Code
 
-**New agent:** `.opencode/agents/[agent-name].md` — follow frontmatter template in `docs/authoring-agents.md`
+**New agent:** `.agents/agents/[agent-name].md` — follow frontmatter template in `docs/authoring-agents.md`
 
-**New skill:** `.opencode/skills/[skill-name]/SKILL.md` — follow workflow template in `docs/authoring-skills.md`, add command file in `.opencode/commands/[skill-name].md`
+**New skill:** `.agents/skills/[skill-name]/SKILL.md` — follow workflow template in `docs/authoring-skills.md`, add command file in `.agents/commands/[skill-name].md`
 
 **New OpenCode plugin:** `.opencode/plugins/[plugin-name].ts` — implement `Plugin` interface from `@opencode-ai/plugin`, register in `opencode.json` plugin array
 
