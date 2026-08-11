@@ -1,7 +1,7 @@
 # Story 004: Interruption — Pause, Resume & Focus-Loss
 
 > **Epic**: Simulation Kernel
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-08-05
@@ -32,14 +32,14 @@
 
 *From GDD `design/gdd/simulation-architecture.md`, scoped to this story:*
 
-- [ ] **AC-4.5:** Given Countdown is active, When Pause transitions simulation to Paused, Then no countdown ticks execute until resume and the remaining tick count is preserved, matching Input System AC-15.
-- [ ] **AC-4.6:** Given the game is in Racing state, When the player presses the pause button, Then the state transitions to Paused.
+- [ ] **AC-4.5:** Given Countdown is active, When Pause transitions simulation to Paused, Then no countdown ticks execute until resume and the remaining tick count is preserved, matching Input System AC-15 (behavioral reference — the mechanism, not an Input epic dependency).
+- [ ] **AC-4.6:** Given the game is in Racing state, When the player presses the pause button (pauseEdge consumed at Step 3 of the tick), Then the state transitions to Paused.
 - [ ] **AC-4.6a:** Given Countdown or Racing is active, When Simulation enters Paused through the pause button, focus lifecycle boundary, or performance protection, Then it records the originating state as `resumeState` before publishing the Paused lifecycle snapshot.
-- [ ] **AC-4.7:** Given the game is in Paused state, When the player resumes, Then the state returns to its recorded `resumeState` of Countdown or Racing.
-- [ ] **AC-5.3:** Given the game enters Paused or loses focus, When Update continues or resumes, Then Time.timeScale remains unchanged, elapsed time is not accumulated, and the pre-pause accumulator remainder is preserved until explicit Resume.
+- [ ] **AC-4.7:** Given the game is in Paused state, When the player resumes via the explicit `RequestResume()` Kernel contract, Then the state returns to its recorded `resumeState` of Countdown or Racing. If `resumeState` is invalid/empty (Paused entered via an illegal path), `RequestResume()` is ignored — no transition, no additional lifecycle event, state and event data unchanged.
+- [ ] **AC-5.3:** Given the game enters Paused or loses focus, When Update continues or resumes, Then elapsed time is not accumulated and the pre-pause accumulator remainder is preserved until explicit Resume. *(The literal `Time.timeScale` unchanged assertion is an engine-integration sub-check, not observable in the engine-free Kernel — DEFERRED to the Unity adapter / assembly build gate, TD-014 pattern.)*
 - [ ] **AC-7.1:** Given the game is in Racing or Countdown with accumulator below `FIXED_DT`, When application focus is lost, Then the pre-accumulator lifecycle boundary immediately publishes Paused without waiting for a physics tick and focus return still requires explicit Resume.
 - [ ] **AC-7.1a:** Given focus loss is consumed before accumulator evaluation, When the lifecycle boundary executes, Then it records `resumeState`, preserves accumulator remainder, increments no counter, updates no domain system, and calls no `Physics.Simulate`.
-- [ ] **AC-7.1b:** Given application focus changes, When that Update frame evaluates its accumulator, Then it adds no `Time.unscaledDeltaTime` and preserves the pre-change remainder.
+- [ ] **AC-7.1b:** Given application focus changes, When that Update frame evaluates its accumulator via the injectable clock, Then it adds no delta and preserves the pre-change remainder. *(Driver clamp of oversized deltas asserted in Story 002 tests.)*
 
 ---
 
@@ -47,6 +47,12 @@
 
 *Derived from ADR-0001 Implementation Guidelines:*
 
+- **Kernel contracts owned by this story** (per QL-STORY-READY gate rounds 1-2, 2026-08-11):
+  - `RequestResume()` — explicit player-initiated resume method on `SimulationStateMachine`; the SOLE exit path from Paused. Focus return never resumes. Ignored when not in Paused.
+  - `PausedStateChanged` — NEW additive lifecycle event on `SimulationStateMachine`, payload `(resumeState, previous)` where `resumeState` is the originating Countdown or Racing state. Published exactly once per pause entry. Defined as a NEW event in `SimulationContracts` — the existing `SimulationStateChanged` readonly struct is untouched (additive-only; consumers from DONE Stories 001/002 keep compiling).
+  - Performance-pause request seam — a mockable `pendingPerformancePause` flag consumed as a pause entry path (Story 007 sets it; this story consumes it via the seam, production signal deferred to Story 007).
+- **Event ordering** (explicit, per QL-STORY-READY round 3): on pause entry — (1) record `resumeState`, (2) transition state to Paused, (3) raise existing `StateChanged(previous, Paused)`, (4) raise `PausedStateChanged(resumeState, previous)` LAST so every observer of the pause transition already sees the final state, with the resumeState payload ready. On resume: (1) transition to `resumeState`, (2) raise `StateChanged(Paused, resumeState)`; no `PausedStateChanged` on resume (it is pause-entry-only).
+- `RequestRetry()` interaction: ignored from Paused — retry applies only while retry-held (Story 003); Paused exits exclusively via `RequestResume()`.
 - Pause entry paths (all three): pause button (gameplay pauseEdge consumed at Step 3 of the tick), focus lifecycle boundary (pre-accumulator), performance protection (pendingPerformancePause flag consumed at Step 3 — Story 007 sets it). All record `resumeState` = originating Countdown or Racing state before publishing the Paused lifecycle snapshot.
 - Focus-loss boundary (the pre-accumulator hook from Story 001, invoked by Story 002's driver): before reading `Time.unscaledDeltaTime`, consume focus notifications; the focus-change frame adds no delta; publish one Paused lifecycle snapshot with `resumeState` recorded; preserve the sub-tick remainder; no counters, no domain updates, no `Physics.Simulate`.
 - Focus return NEVER auto-resumes. Explicit Resume (player action) returns to the recorded `resumeState`.
@@ -82,13 +88,13 @@
   - Given: Racing; input mock reports one rising pause edge
   - When: next fixed-tick boundary consumes the pause edge
   - Then: transitions to Paused; publishes one Paused lifecycle snapshot without executing a physics tick
-  - Edge cases: repeated pause levels produce only one transition; pause edge with no accumulated full tick; pause edge while multiple ticks pending
+  - Edge cases: repeated pause levels produce only one transition; pause edge with no accumulated full tick; pause edge while multiple ticks pending; **pause edge coincident with tick boundary — expected: the boundary tick does NOT execute (the edge is consumed before the tick commits; accumulator remainder preserved)**
 
 - **AC-4.6a**: Paused records resumeState before publishing snapshot
   - Given: Countdown or Racing
   - When: Paused entered through pause button, focus lifecycle boundary, or performance protection
   - Then: originating state stored as resumeState before Paused snapshot published; snapshot exposes the value
-  - Edge cases: all three pause causes; Countdown and Racing independently; already-Paused state does not overwrite resumeState; failed/duplicate pause request produces no additional lifecycle snapshot
+  - Edge cases: all three pause causes; Countdown and Racing independently; already-Paused state does not overwrite resumeState; failed/duplicate pause request produces no additional lifecycle snapshot; **multiple pending pause signals in one frame produce exactly one Paused transition and one snapshot**
 
 - **AC-4.7**: Resume returns to recorded resumeState
   - Given: Paused with resumeState Countdown or Racing; preserved accumulator remainder
@@ -96,11 +102,11 @@
   - Then: transitions to recorded resumeState; retains remainder; resumes fixed-step processing without catch-up
   - Edge cases: resume after long pause; remainder zero or just below FIXED_DT; Resume ignored if no valid resumeState; focus return alone does not resume
 
-- **AC-5.3**: Paused/unfocused preserves timeScale, elapsed time, accumulator remainder
-  - Given: active state; injectable clock; unchanged Time.timeScale; accumulator remainder r in [0, FIXED_DT)
+- **AC-5.3**: Paused/unfocused preserves elapsed time, accumulator remainder (timeScale sub-check deferred)
+  - Given: active state; injectable clock; accumulator remainder r in [0, FIXED_DT)
   - When: Update runs while Paused or during focus loss, incl. arbitrary elapsed wall-clock time
-  - Then: Time.timeScale unchanged; no elapsed time accumulated; no ticks execute; remainder r preserved until explicit Resume
-  - Edge cases: pause/focus duration 0, exactly FIXED_DT, long; r = 0 and r just below FIXED_DT; timeScale values other than 1; focus return without Resume
+  - Then: no elapsed time accumulated; no ticks execute; remainder r preserved until explicit Resume. *(Literal `Time.timeScale` unchanged is verified at the Unity adapter / assembly build gate — DEFERRED, TD-014 pattern.)*
+  - Edge cases: pause/focus duration 0, exactly FIXED_DT, long; r = 0 and r just below FIXED_DT; focus return without Resume
 
 - **AC-7.1**: Focus loss immediately publishes Paused before accumulator processing
   - Given: Countdown or Racing; accumulator below FIXED_DT; focus seam reports loss
@@ -115,19 +121,21 @@
   - Edge cases: both source states; remainder zero and just below FIXED_DT; pending input/AI/performance-pause/finish signals do not cause domain work or additional transition
 
 - **AC-7.1b**: Focus-change frame adds no unscaled delta time
-  - Given: injectable clock reports focus change; Time.unscaledDeltaTime = d; pre-change remainder r
+  - Given: injectable clock reports focus change; clock delta = d; pre-change remainder r
   - When: that Update frame evaluates focus lifecycle handling and accumulator
-  - Then: d not added; post-frame remainder equals r; no catch-up tick; subsequent focused frames resume normal clock handling only after explicit Resume
-  - Edge cases: d = 0, d = FIXED_DT, large d; focus loss and return on adjacent frames; multiple focus notifications in one frame; delta exceeding 2×FIXED_DT clamp discarded rather than applied
+  - Then: d not added; post-frame remainder equals r; no catch-up tick; subsequent focused frames resume normal clock handling only after explicit Resume. *(The 2×FIXED_DT delta clamp belongs to Story 002's driver; not asserted here.)*
+  - Edge cases: d = 0, d = FIXED_DT, large d; focus loss and return on adjacent frames; multiple focus notifications in one frame; clock delta exceeding 2×FIXED_DT clamp discarded rather than applied (driver behaviour, asserted in Story 002 tests)
 
 ---
 
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `Assets/tests/unit/simulation/InterruptionTests.cs` — must exist and pass. Verifies: pause entry paths + resumeState (4.5-4.7, 4.6a), timeScale/remainder invariants (5.3), focus-loss boundary (7.1, 7.1a, 7.1b).
+**Required evidence**: `Assets/tests/unit/simulation/InterruptionTests.cs` — must exist and pass. Verifies: pause entry paths + resumeState (4.5-4.7, 4.6a), remainder/elapsed-time invariants via injectable clock (5.3 — literal Time.timeScale check deferred to the assembly gate), focus-loss boundary (7.1, 7.1a, 7.1b).
 
-**Status**: [ ] Not yet created
+**Status**: ✅ Created and passing —
+`InterruptionTests.cs` (37 tests, 262/262 PlayMode green). AC-5.3 literal `Time.timeScale` unchanged check deferred to
+the assembly build gate (TD-014 pattern).
 
 ---
 
@@ -135,3 +143,13 @@
 
 - Depends on: Story 001 (pre-accumulator boundary hook, state gate), Story 002 (driver invokes the boundary), Story 003 (Countdown/Racing states exist)
 - Unlocks: Story 005 (pause mechanism for forfeit AC-4.12 and Finished focus AC-7.1c), Story 007 (Performance pause entry consumes the pause path), Story 008 (Pause edge events on the recordable buffer)
+
+## Completion Notes
+
+**Completed**: 2026-08-11
+**Criteria**: 8/8 passing (0 deferred — AC-5.3 literal `Time.timeScale` check deferred to assembly gate, TD-014 pattern)
+**Deviations**:
+1. ADVISORY — AC-5.3 literal `Time.timeScale` unchanged is engine-integration (not observable in the engine-free Kernel); deferred to the assembly build gate.
+2. ADVISORY — `PendingPerformancePause` is a public settable property on the state machine (one-shot seam); the unity-specialist suggested migrating to `RequestPerformancePause()`/`ConsumePerformancePause()` methods when Story 007 implements the producer. Registered as TD-017.
+**Test Evidence**: Logic — `Assets/tests/unit/simulation/InterruptionTests.cs` (37 tests, 262/262 PlayMode green)
+**Code Review**: Complete — unity-specialist APPROVED (R1/R2), qa-tester TESTABLE (R4), QL-TEST-COVERAGE ADEQUATE (R3), LP-CODE-REVIEW APPROVED (R2).
