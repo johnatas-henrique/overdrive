@@ -158,6 +158,11 @@ namespace Overdrive.Simulation
             RawInputSample sample = _inputCapture.CaptureLatest();
             _kernel.CaptureLatestRawSample(sample);
 
+            // The focus-loss lifecycle boundary publishes one immutable non-ticking snapshot
+            // carrying the Simulation-owned resumeState (ADR-0001, AC-7.1/7.1a).
+            if (enteredPaused)
+                PublishPausedSnapshot();
+
             float frameDelta = enteredPaused ? 0f : _deltaSource.GetUnscaledDeltaTime();
             if (enteredPaused || !_stateGate.CanTick)
                 return;
@@ -215,6 +220,17 @@ namespace Overdrive.Simulation
             if (pauseEdge)
                 _pauseEdgeConsumer?.Invoke();
 
+            // A pause boundary interrupts the tick at step 4: the edge is consumed and the
+            // Paused transition is published, but no fixed duration is subtracted, no counter
+            // advances, and no physics tick ran (ADR-0001: steps 4-14 do not execute). The
+            // accumulator remainder is preserved for resume. One immutable non-ticking
+            // snapshot carrying resumeState is published (AC-4.6a).
+            if (context.PauseBoundaryReached)
+            {
+                PublishPausedSnapshot();
+                return;
+            }
+
             _accumulator -= FIXED_DT;
             if (_accumulator < 0d)
                 _accumulator = 0d;
@@ -241,6 +257,26 @@ namespace Overdrive.Simulation
                 _activeRaceStepCount,
                 publishedSimTime);
             context.PublishSnapshot(published);
+            _kernel.PublishSnapshot(published);
+            SnapshotPublished?.Invoke(published);
+        }
+
+        /// <summary>
+        /// Publishes the single immutable non-ticking lifecycle snapshot on Paused entry
+        /// (manual, focus, or performance pause). No terminal state is fabricated —
+        /// <see cref="PublishedSimulationSnapshot.HasTerminal"/> is false and the snapshot
+        /// carries the Simulation-owned <c>resumeState</c> plus current counters (AC-4.6a,
+        /// ADR-0001 non-ticking lifecycle output).
+        /// </summary>
+        private void PublishPausedSnapshot()
+        {
+            SimulationState? resumeState = _stateGate.ResumeState;
+            PublishedSimulationSnapshot published = new PublishedSimulationSnapshot(
+                null,
+                _simulationStepCount,
+                _activeRaceStepCount,
+                SimTime,
+                resumeState);
             _kernel.PublishSnapshot(published);
             SnapshotPublished?.Invoke(published);
         }

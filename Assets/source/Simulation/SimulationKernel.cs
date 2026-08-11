@@ -29,6 +29,14 @@ namespace Overdrive.Simulation
         SimulationState State { get; }
         bool CanTick { get; }
         bool TryTransition(SimulationState state);
+
+        /// <summary>
+        /// The Countdown or Racing state active immediately before the current pause,
+        /// or null when not Paused / no valid pause entry was recorded (Story 004).
+        /// Exposed on the gate so the driver can publish the Paused lifecycle snapshot
+        /// with its Simulation-owned resumeState without reaching into a concrete type.
+        /// </summary>
+        SimulationState? ResumeState { get; }
     }
 
     /// <summary>
@@ -79,6 +87,27 @@ namespace Overdrive.Simulation
         {
             Previous = previous;
             Current = current;
+        }
+    }
+
+    /// <summary>
+    /// Raised exactly once per pause entry, AFTER the existing
+    /// <see cref="SimulationStateChanged"/> event, carrying the originating
+    /// Countdown or Racing state as <see cref="ResumeState"/> (Story 004,
+    /// ADR-0001). Never raised on resume — resume is a plain state transition.
+    /// </summary>
+    public readonly struct PausedStateChanged
+    {
+        /// <summary>The Countdown or Racing state active immediately before the pause.</summary>
+        public readonly SimulationState ResumeState;
+
+        /// <summary>The state Paused was entered from (identical to ResumeState for valid entries).</summary>
+        public readonly SimulationState Previous;
+
+        public PausedStateChanged(SimulationState resumeState, SimulationState previous)
+        {
+            ResumeState = resumeState;
+            Previous = previous;
         }
     }
 
@@ -160,7 +189,21 @@ namespace Overdrive.Simulation
     /// </summary>
     public sealed class PublishedSimulationSnapshot
     {
+        /// <summary>
+        /// Terminal-state snapshot captured at Finished, or null for non-ticking
+        /// lifecycle snapshots (Idle, Loading, Paused, Finished, Results without a
+        /// captured terminal). Check <see cref="HasTerminal"/> before dereferencing.
+        /// </summary>
         public PostFinishSnapshot Terminal { get; }
+
+        /// <summary>True when this snapshot carries a captured terminal state.</summary>
+        public bool HasTerminal => Terminal != null;
+
+        /// <summary>
+        /// Simulation-owned originating state recorded when this snapshot is the
+        /// Paused lifecycle publication; null otherwise (Story 004, GDD schema).
+        /// </summary>
+        public SimulationState? ResumeState { get; }
 
         /// <summary>Authoritative count of completed physics ticks, including Countdown ticks.</summary>
         public int SimulationStepCount { get; }
@@ -177,17 +220,24 @@ namespace Overdrive.Simulation
         public int activeRaceStepCount => ActiveRaceStepCount;
         public float sim_time => SimTime;
 
-        public IReadOnlyList<CarState> CarState => Terminal.CarState;
-        public IReadOnlyList<FuelState> FuelState => Terminal.FuelState;
-        public IReadOnlyList<TireState> TireState => Terminal.TireState;
-        public SimulationState SimulationState => Terminal.SimulationState;
+        public IReadOnlyList<CarState> CarState => Terminal?.CarState ?? System.Array.Empty<CarState>();
+        public IReadOnlyList<FuelState> FuelState => Terminal?.FuelState ?? System.Array.Empty<FuelState>();
+        public IReadOnlyList<TireState> TireState => Terminal?.TireState ?? System.Array.Empty<TireState>();
+
+        /// <summary>
+        /// The lifecycle state of this snapshot. Defaults to <see cref="SimulationState.Idle"/>
+        /// when no terminal was captured — non-ticking lifecycle snapshots (Idle, Loading,
+        /// Paused) carry their state via their dedicated event or <see cref="ResumeState"/>,
+        /// not this property.
+        /// </summary>
+        public SimulationState SimulationState => Terminal?.SimulationState ?? SimulationState.Idle;
 
         /// <summary>
         /// Story 001 compatibility constructor. Counter fields default to zero so existing
         /// consumers continue to compile while the driver adds authoritative values.
         /// </summary>
         public PublishedSimulationSnapshot(PostFinishSnapshot terminal)
-            : this(terminal, 0, 0, 0f)
+            : this(terminal, 0, 0, 0f, null)
         {
         }
 
@@ -199,12 +249,14 @@ namespace Overdrive.Simulation
             PostFinishSnapshot terminal,
             int simulationStepCount = 0,
             int activeRaceStepCount = 0,
-            float simTime = 0f)
+            float simTime = 0f,
+            SimulationState? resumeState = null)
         {
-            Terminal = terminal ?? throw new ArgumentNullException(nameof(terminal));
+            Terminal = terminal; // null allowed for non-ticking lifecycle snapshots
             SimulationStepCount = simulationStepCount;
             ActiveRaceStepCount = activeRaceStepCount;
             SimTime = simTime;
+            ResumeState = resumeState;
         }
     }
 
@@ -230,6 +282,20 @@ namespace Overdrive.Simulation
         public SimulationInput SimulationInput { get; internal set; }
         public TickStartSnapshot TickStartSnapshot { get; internal set; }
         public ResolvedCarInput[] ResolvedCarInputs { get; internal set; }
+
+        /// <summary>
+        /// Set by the kernel from the <c>pauseEdge</c> argument of
+        /// <see cref="SimulationKernel.ExecuteTick"/>; consumed exactly once by the
+        /// pause boundary step (GDD step 4, Story 004).
+        /// </summary>
+        public bool PauseEdge { get; internal set; }
+
+        /// <summary>
+        /// Set by the pause boundary step when a pause edge or pending performance
+        /// pause is consumed. The kernel halts the spine immediately after that step;
+        /// steps 4-14 do not execute on the interrupting tick (ADR-0001).
+        /// </summary>
+        public bool PauseBoundaryReached { get; internal set; }
 
         /// <summary>
         /// Set by the post-physics session-start step on the tick that reaches GO.
@@ -322,10 +388,15 @@ namespace Overdrive.Simulation
             var context = new SimulationTickContext
             {
                 RawInputSample = _latest,
-                SimulationInput = _inputProcessor.Process(_latest, pauseEdge)
+                SimulationInput = _inputProcessor.Process(_latest, pauseEdge),
+                PauseEdge = pauseEdge
             };
             for (int i = 0; i < _steps.Length; i++)
+            {
                 _steps[i].Execute(context);
+                if (context.PauseBoundaryReached)
+                    break;
+            }
 
             return context;
         }

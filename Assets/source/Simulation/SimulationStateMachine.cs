@@ -67,9 +67,16 @@ namespace Overdrive.Simulation
         private bool _isGridLocked;
         private bool _goPending;
         private bool _retryHold;
+        private SimulationState? _resumeState;
 
         /// <summary>Raised after an accepted lifecycle transition.</summary>
         public event Action<SimulationStateChanged> StateChanged;
+
+        /// <summary>
+        /// Raised exactly once per pause entry, AFTER <see cref="StateChanged"/>, carrying the
+        /// originating Countdown or Racing state (Story 004, ADR-0001). Never raised on resume.
+        /// </summary>
+        public event Action<PausedStateChanged> PausedStateChanged;
 
         /// <summary>Raised once for each accepted start or racing retry reload.</summary>
         public event Action<ContentLoadRequest> ContentLoadRequested;
@@ -101,6 +108,18 @@ namespace Overdrive.Simulation
 
         /// <summary>True while a physics failure has frozen the session awaiting explicit retry.</summary>
         public bool IsRetryHeld => _retryHold;
+
+        /// <summary>
+        /// The Countdown or Racing state active immediately before the current pause, or null
+        /// when not Paused / no valid pause entry was recorded (Story 004, ADR-0001).
+        /// </summary>
+        public SimulationState? ResumeState => _resumeState;
+
+        /// <summary>
+        /// Set by Story 007's performance monitor when the below-15-FPS threshold is reached.
+        /// Consumed exactly once at the pause boundary step (GDD step 4, Story 004).
+        /// </summary>
+        public bool PendingPerformancePause { get; set; }
 
         /// <summary>
         /// Creates a machine in Idle. The logger callback is invoked once per handled
@@ -237,11 +256,51 @@ namespace Overdrive.Simulation
         }
 
         /// <summary>
+        /// Enters Paused from Countdown or Racing, recording the originating state as
+        /// <see cref="ResumeState"/> before publishing the Paused lifecycle events.
+        /// Event order (Story 004): record resumeState, transition, raise StateChanged,
+        /// then raise PausedStateChanged LAST. No-op when not in Countdown/Racing or
+        /// already Paused (duplicate signals produce exactly one transition).
+        /// </summary>
+        public void EnterPaused(SimulationState? source)
+        {
+            if (_state != SimulationState.Countdown && _state != SimulationState.Racing)
+                return;
+            if (_state == SimulationState.Paused)
+                return;
+
+            SimulationState previous = _state;
+            _resumeState = source ?? _state;
+            TransitionTo(SimulationState.Paused);
+            PausedStateChanged?.Invoke(new PausedStateChanged(_resumeState.Value, previous));
+        }
+
+        /// <summary>
+        /// Explicit player-initiated resume — the SOLE exit path from Paused. Returns to the
+        /// recorded <see cref="ResumeState"/> (Countdown or Racing). No-op when not Paused or
+        /// when no valid resumeState was recorded; focus return never auto-resumes (ADR-0001).
+        /// </summary>
+        public void RequestResume()
+        {
+            if (_state != SimulationState.Paused)
+                return;
+            if (!_resumeState.HasValue)
+                return;
+
+            TransitionTo(_resumeState.Value);
+            _resumeState = null;
+        }
+
+        /// <summary>
         /// Exits the internal retry hold. Countdown failures restart only the 300-tick
         /// countdown. Racing failures reload the current race and await fresh readiness.
+        /// Ignored from Paused — Paused exits exclusively via <see cref="RequestResume"/>.
         /// </summary>
         public void RequestRetry()
         {
+            if (_state == SimulationState.Paused)
+                return;
+
             if (!_retryHold)
                 return;
 
@@ -356,13 +415,20 @@ namespace Overdrive.Simulation
         }
     }
 
-    /// <summary>Pre-physics countdown trigger; keep this step thin.</summary>
+    /// <summary>
+    /// Pre-physics boundary step: consumes the gameplay pause edge and the pending
+    /// performance-pause flag exactly once, then decrements the countdown when in
+    /// Countdown (GDD step 4 "Pause consumption and Countdown decrement", Story 004).
+    /// When a pause is consumed the context halts the spine immediately (steps 4-14
+    /// do not execute on the interrupting tick, ADR-0001).
+    /// </summary>
     public sealed class CountdownStep : ISimulationPipelineStep
     {
         /// <summary>
-        /// Canonical position of the countdown decrement in the 14-step spine (ADR-0001:
-        /// "Pause consumption and Countdown decrement" is step 4, 0-based index 3 — after
-        /// TickStartSnapshot at index 2, before Tire/Fuel pre-step at index 4).
+        /// Canonical position of the pause consumption and countdown decrement in the
+        /// 14-step spine (ADR-0001: "Pause consumption and Countdown decrement" is step 4,
+        /// 0-based index 3 — after TickStartSnapshot at index 2, before Tire/Fuel pre-step
+        /// at index 4).
         /// </summary>
         public const int SpineIndex = 3;
 
@@ -373,9 +439,23 @@ namespace Overdrive.Simulation
             _machine = machine ?? throw new ArgumentNullException(nameof(machine));
         }
 
-        /// <summary>Decrements the countdown once per pre-physics tick (SpineIndex 3).</summary>
+        /// <summary>
+        /// Consumes a pause edge / performance flag first (transitions to Paused and halts
+        /// the spine), otherwise decrements the countdown once per pre-physics tick.
+        /// </summary>
         public void Execute(SimulationTickContext context)
         {
+            bool pauseEdge = context.PauseEdge;
+            bool performancePause = _machine.PendingPerformancePause;
+            if (pauseEdge || performancePause)
+            {
+                _machine.PendingPerformancePause = false; // consumed exactly once
+                SimulationState source = _machine.State;
+                _machine.EnterPaused(source);
+                context.PauseBoundaryReached = true;
+                return;
+            }
+
             _machine.ProcessCountdownTick();
         }
     }
