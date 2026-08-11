@@ -707,7 +707,19 @@ as part of `/code-review`
 > an automated test? For Integration stories: is each criterion observable in a
 > controlled test environment? Flag criteria that are too vague to implement
 > against, and flag criteria that require a full game build to test (mark these
-> DEFERRED, not BLOCKED). Return ADEQUATE (criteria are implementable as written),
+> DEFERRED, not BLOCKED).
+>
+> **Cross-epic verifiability**: additionally, for each criterion ask: *"Can this
+> assertion be verified with the contracts, events, and interfaces the story's
+> OWN work exposes — the types, signals, and injectable seams it produces
+> itself?"* A criterion that asserts the behaviour of a system outside the
+> story's scope (owned by another epic, an external service, or a third-party
+> integration not yet mounted as an interface here) is a GAP **even when the
+> criterion is testable in isolation** — testable in general does not mean
+> testable with this story's own seams. Require it to be re-scoped to the
+> boundary this work exposes (its own state transitions, published events,
+> output types) or marked DEFERRED with its destination epic/story. Return
+> ADEQUATE (criteria are implementable as written),
 > GAPS [specific criteria needing refinement], or INADEQUATE [criteria are too
 > vague — story must be revised before sprint inclusion]."
 
