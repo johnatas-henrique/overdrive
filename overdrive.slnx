@@ -6,4 +6,5 @@
   <Project Path="Overdrive.Input.csproj" />
   <Project Path="InputUnitTests.csproj" />
   <Project Path="SimulationIntegrationTests.csproj" />
+  <Project Path="SimulationUnitTests.csproj" />
 </Solution>
