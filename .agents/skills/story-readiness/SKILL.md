@@ -189,6 +189,12 @@ items pass or are explicitly marked N/A with a stated reason.
   includes a `## Test Evidence` section stating where evidence will be stored
   (test file path for Logic/Integration, or evidence doc path for Visual/Feel/UI).
   Fix: Add `## Test Evidence` with the expected evidence location for the story's type.
+- [ ] **Test file names describe the system, not the story**: For Logic/Integration
+  stories, the `## Test Evidence` path must NOT use a `StoryXXX`/`story-NNN` prefix —
+  the file and class name must say what they test (e.g. `ContractSpineTests.cs`,
+  not `story-001-contract-spine_test.cs`). This matches the code-review Phase 6b
+  mechanical check.
+  Fix: Rename the evidence path to `[SystemName]Tests.[ext]`.
 
 ---
 

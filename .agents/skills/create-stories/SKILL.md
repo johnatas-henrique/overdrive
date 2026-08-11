@@ -144,11 +144,11 @@ Before writing any files, present the full story list:
 
 Story 001: [title] — Logic — ADR-NNNN
   Covers: TR-[system]-001 ([1-line summary of requirement])
-  Test required: tests/unit/[system]/[slug]_test.[ext]
+  Test required: tests/unit/[system]/[SystemName]Tests.[ext]
 
 Story 002: [title] — Integration — ADR-MMMM
   Covers: TR-[system]-002, TR-[system]-003
-  Test required: tests/integration/[system]/[slug]_test.[ext]
+  Test required: tests/integration/[system]/[SystemName]Tests.[ext]
 
 Story 003: [title] — Visual/Feel — ADR-NNNN
   Covers: TR-[system]-004
@@ -249,9 +249,9 @@ change meaning. This is what the programmer reads instead of the ADR.]
 ## Test Evidence
 
 **Story Type**: [type]
-**Required evidence**:
-- Logic: `tests/unit/[system]/[story-slug]_test.[ext]` — must exist and pass
-- Integration: `tests/integration/[system]/[story-slug]_test.[ext]` OR playtest doc
+**Required evidence** (file names describe the system, NOT the story — no `StoryXXX`/`story-NNN` prefixes; matches `[SystemName]Tests.cs` class):
+- Logic: `tests/unit/[system]/[SystemName]Tests.[ext]` — must exist and pass
+- Integration: `tests/integration/[system]/[SystemName]Tests.[ext]` OR playtest doc
 - Visual/Feel: `production/qa/evidence/[story-slug]-evidence.md` + sign-off
 - UI: `production/qa/evidence/[story-slug]-evidence.md` or interaction test
 - Config/Data: smoke check pass (`production/qa/smoke-*.md`)
