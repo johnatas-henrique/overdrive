@@ -46,7 +46,7 @@ Identify the system category (engine, gameplay, AI, networking, UI, tools) and e
 
 - [ ] Public methods and classes have doc comments
 - [ ] Cyclomatic complexity under 10 per method
-- [ ] No method exceeds 40 lines (excluding data declarations)
+- [ ] No method exceeds 40 lines (counting executable code lines only — blank lines, comments, and XML doc comments do not count; extract helper methods when exceeded; the canonical pattern is a small public entry point delegating to private helpers)
 - [ ] Dependencies are injected (no static singletons for game state)
 - [ ] Configuration values loaded from data files
 - [ ] Systems expose interfaces (not concrete class dependencies)
