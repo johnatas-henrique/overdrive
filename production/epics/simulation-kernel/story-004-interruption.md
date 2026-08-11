@@ -125,7 +125,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/simulation/InterruptionTests.cs` — must exist and pass. Verifies: pause entry paths + resumeState (4.5-4.7, 4.6a), timeScale/remainder invariants (5.3), focus-loss boundary (7.1, 7.1a, 7.1b).
+**Required evidence**: `Assets/tests/unit/simulation/InterruptionTests.cs` — must exist and pass. Verifies: pause entry paths + resumeState (4.5-4.7, 4.6a), timeScale/remainder invariants (5.3), focus-loss boundary (7.1, 7.1a, 7.1b).
 
 **Status**: [ ] Not yet created
 

@@ -129,7 +129,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/simulation/PerformanceMonitorTests.cs` — must exist and pass. Verifies: threshold emission (7.6), state eligibility (7.6a), pause request (7.7), timer reset/persist/re-arm semantics (7.7a-f), restore signal (7.7d).
+**Required evidence**: `Assets/tests/unit/simulation/PerformanceMonitorTests.cs` — must exist and pass. Verifies: threshold emission (7.6), state eligibility (7.6a), pause request (7.7), timer reset/persist/re-arm semantics (7.7a-f), restore signal (7.7d).
 
 **Status**: [ ] Not yet created
 

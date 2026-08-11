@@ -108,7 +108,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/simulation/InterpolationTests.cs` — must exist and pass. Pure math: α computation, Lerp/Slerp correctness, monotonicity at 30/60/144 Hz, non-leading invariant.
+**Required evidence**: `Assets/tests/unit/simulation/InterpolationTests.cs` — must exist and pass. Pure math: α computation, Lerp/Slerp correctness, monotonicity at 30/60/144 Hz, non-leading invariant.
 
 **Deferred integration constraints (NOT unit-testable here — verified at the MVP-assembly engine/integration gate):** execution in `LateUpdate`, `Rigidbody.interpolation = None` on all participating bodies, interpolation applied only to the separate visual hierarchy, and no writes to authoritative Rigidbody transforms. These are engine-level wiring checks (per ADR-0001: LateUpdate stage, ADR-0001 Forbidden: no Unity interpolation, ADR-0002: separate visual hierarchy); the unit test covers the math, the assembly gate covers the wiring.
 

@@ -183,7 +183,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/simulation/SessionStartTests.cs` — must exist and pass. Verifies: content handshake transitions (4.0-4.1d, 4.11, 4.13), countdown timer + grid lock + GO (4.2-4.4b, 1.7), retry semantics (7.10).
+**Required evidence**: `Assets/tests/unit/simulation/SessionStartTests.cs` — must exist and pass. Verifies: content handshake transitions (4.0-4.1d, 4.11, 4.13), countdown timer + grid lock + GO (4.2-4.4b, 1.7), retry semantics (7.10).
 
 **Status**: [ ] Not yet created
 

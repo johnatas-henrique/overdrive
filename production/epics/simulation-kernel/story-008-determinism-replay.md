@@ -112,7 +112,7 @@
 ## Test Evidence
 
 **Story Type**: Logic
-**Required evidence**: `tests/unit/simulation/DeterminismReplayTests.cs` — must exist and pass. Verifies: PCG32 golden vectors (5.2), Unity.Mathematics scan (5.4), buffer append/discard/EdgeEvent (6.1, 3.10), ReplayInitialState capture (3.9 with profile stub — field presence + immutable capture ARE Kernel-tested; only schema validity and end-to-end DifficultyProfile use are deferred). AC-5.1/5.5 recorded as DECLARED (deferred to MVP-assembly gate, TR-sim-005 precedent).
+**Required evidence**: `Assets/tests/unit/simulation/DeterminismReplayTests.cs` — must exist and pass. Verifies: PCG32 golden vectors (5.2), Unity.Mathematics scan (5.4), buffer append/discard/EdgeEvent (6.1, 3.10), ReplayInitialState capture (3.9 with profile stub — field presence + immutable capture ARE Kernel-tested; only schema validity and end-to-end DifficultyProfile use are deferred). AC-5.1/5.5 recorded as DECLARED (deferred to MVP-assembly gate, TR-sim-005 precedent).
 
 **Status**: [ ] Not yet created
 

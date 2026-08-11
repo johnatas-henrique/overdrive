@@ -192,7 +192,7 @@
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/simulation/SessionEndTests.cs` — must exist and pass. Verifies: finish detection/resolution (4.8, 4.8dnf, 4.8e, 4.8f), terminal presentation + dismissal (4.8a, 4.8b, 4.8c, 4.8i, 4.8g), snapshot immutability (4.8d), AI skip (4.8j), results/forfeit/unload (4.8h, 4.10, 4.10a, 4.10b, 4.12), finished focus retention (7.1c).
+**Required evidence**: `Assets/tests/integration/simulation/SessionEndTests.cs` — must exist and pass. Verifies: finish detection/resolution (4.8, 4.8dnf, 4.8e, 4.8f), terminal presentation + dismissal (4.8a, 4.8b, 4.8c, 4.8i, 4.8g), snapshot immutability (4.8d), AI skip (4.8j), results/forfeit/unload (4.8h, 4.10, 4.10a, 4.10b, 4.12), finished focus retention (7.1c).
 
 **Status**: [ ] Not yet created
 

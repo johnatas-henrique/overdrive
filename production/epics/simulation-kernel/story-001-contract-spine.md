@@ -141,7 +141,7 @@
 ## Test Evidence
 
 **Story Type**: Integration
-**Required evidence**: `tests/integration/simulation/ContractSpineTests.cs` — must exist and pass. Verifies: step ordering with mock steps, snapshot immutability, ascending-carId resolution, input consumption contracts (latest sample, EMA-once, pause edge, NoInputDevice, scheme change).
+**Required evidence**: `Assets/tests/integration/simulation/ContractSpineTests.cs` — must exist and pass. Verifies: step ordering with mock steps, snapshot immutability, ascending-carId resolution, input consumption contracts (latest sample, EMA-once, pause edge, NoInputDevice, scheme change).
 
 **Status**: ✅ Created and passing — `ContractSpineTests.cs` (12 tests, 173/173 PlayMode green)
 
