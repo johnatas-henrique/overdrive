@@ -4,6 +4,7 @@
     "Unity.InputSystem",
     "Unity.InputSystem.TestFramework",
     "Overdrive.Input",
+    "Overdrive.Simulation",
     "UnityEngine.UI"
   ],
   "includePlatforms": [],

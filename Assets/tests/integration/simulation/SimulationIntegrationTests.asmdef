@@ -1,11 +1,8 @@
 {
-  "name": "InputUnitTests",
+  "name": "SimulationIntegrationTests",
   "references": [
-    "Unity.InputSystem",
-    "Unity.InputSystem.TestFramework",
-    "Overdrive.Input",
     "Overdrive.Simulation",
-    "UnityEngine.UI"
+    "Overdrive.Input"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
@@ -19,5 +16,5 @@
     "TestAssemblies"
   ],
   "noEngineReferences": false,
-  "rootNamespace": "Overdrive.Input.Tests"
+  "rootNamespace": "Overdrive.Simulation.Tests"
 }
