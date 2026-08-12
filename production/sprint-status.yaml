@@ -49,11 +49,11 @@ stories:
     name: "Session End — Finish, Results, Forfeit & Unload"
     file: "production/epics/simulation-kernel/story-005-session-end.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.125
     blocker: ""
-    completed: ""
+    completed: "2026-08-11"
   - id: "2-6"
     name: "Presentation — Render Interpolation"
     file: "production/epics/simulation-kernel/story-006-presentation-interpolation.md"
