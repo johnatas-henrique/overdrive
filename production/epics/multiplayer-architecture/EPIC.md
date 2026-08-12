@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/multiplayer-architecture.md
 > **Architecture Module**: Multiplayer Architecture (ADR-only module in MVP — systems-index.md Foundation design layer; architecture.md implementation layer "Feature, ADR-only in MVP")
 > **Status**: Ready (constraint epic — no runtime network implementation in MVP)
-> **Stories**: Not yet created — run `/create-stories multiplayer-architecture`
+> **Stories**: 1 created — Story 001 (Multiplayer Isolation Boundary) Ready
 
 ## Overview
 
@@ -45,3 +45,9 @@ This epic is complete when:
 ## Next Step
 
 Run `/create-stories multiplayer-architecture` to break this epic into implementable stories (MVP: constraint + isolation verification; Alpha/Beta stories deferred to their phases).
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | Multiplayer Isolation Boundary | Logic | Ready | ADR-0016, ADR-0017, ADR-0001 |
