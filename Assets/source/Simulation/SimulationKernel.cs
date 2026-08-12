@@ -49,21 +49,6 @@ namespace Overdrive.Simulation
     }
 
     /// <summary>
-    /// Story 002 compatibility name for callers that still construct a permissive gate.
-    /// Production code should compose <see cref="SimulationStateMachine"/> directly;
-    /// this adapter keeps the existing driver evidence source-compatible while all
-    /// lifecycle behavior is implemented by the real machine.
-    /// </summary>
-    [Obsolete("Use SimulationStateMachine in production composition.")]
-    public sealed class SimulationStateGate : SimulationStateMachine
-    {
-        public SimulationStateGate(SimulationState initial = SimulationState.Idle)
-            : base(initial, null, true)
-        {
-        }
-    }
-
-    /// <summary>
     /// Invoked by the driver before accumulator evaluation (beginning of Update).
     /// Focus-loss and pause lifecycle boundaries hook here — no elapsed time is
     /// accumulated on the frame the hook fires (ADR-0001).
@@ -287,7 +272,13 @@ namespace Overdrive.Simulation
         // ---- RSM-originated terminal copies (ADR-0001: immutable copies in Finished/Results) ----
 
         /// <summary>True when RSM terminal data is present (Finished/Results after a normal completion).</summary>
-        public bool HasRsmTerminalData { get; }
+        /// <remarks>Computed from <see cref="Terminal"/> — the kernel and driver share this
+        /// single predicate (fix of a duplicated expression with drift: kernel checked
+        /// <c>Terminal?.Rsm != null</c>, driver checked <c>Terminal != null</c>).</remarks>
+        public bool HasRsmTerminalData =>
+            Terminal?.Rsm != null &&
+            (Terminal.SimulationState == SimulationState.Finished ||
+             Terminal.SimulationState == SimulationState.Results);
 
         /// <summary>Race or Qualifying — selects destination screen (RSM-originated copy).</summary>
         public ResultKind ResultKind { get; }
@@ -332,9 +323,6 @@ namespace Overdrive.Simulation
             IsForfeit = false;
             ForfeitLapCount = -1;
             RaceTimeAtForfeit = 0f;
-            HasRsmTerminalData = terminal?.Rsm != null &&
-                                 (terminal.SimulationState == SimulationState.Finished ||
-                                  terminal.SimulationState == SimulationState.Results);
             ResultKind = terminal?.Rsm.ResultKind ?? ResultKind.Race;
             ResolutionComplete = terminal?.Rsm.ResolutionComplete ?? false;
             PlayerFinishTime = terminal?.Rsm.PlayerFinishTime ?? 0f;
@@ -344,7 +332,8 @@ namespace Overdrive.Simulation
 
         /// <summary>
         /// Full constructor for the driver's decorated publications — carries counters,
-        /// an optional forfeit payload, and optional RSM terminal data.
+        /// an optional forfeit payload, and optional RSM terminal data. HasRsmTerminalData
+        /// is derived from <paramref name="terminal"/> (single predicate on the type).
         /// </summary>
         public PublishedSimulationSnapshot(
             PostFinishSnapshot terminal,
@@ -355,7 +344,6 @@ namespace Overdrive.Simulation
             bool isForfeit,
             int forfeitLapCount,
             float raceTimeAtForfeit,
-            bool hasRsmTerminalData,
             ResultKind resultKind,
             bool resolutionComplete,
             float playerFinishTime,
@@ -370,7 +358,6 @@ namespace Overdrive.Simulation
             IsForfeit = isForfeit;
             ForfeitLapCount = forfeitLapCount;
             RaceTimeAtForfeit = raceTimeAtForfeit;
-            HasRsmTerminalData = hasRsmTerminalData;
             ResultKind = resultKind;
             ResolutionComplete = resolutionComplete;
             PlayerFinishTime = playerFinishTime;
@@ -397,9 +384,23 @@ namespace Overdrive.Simulation
     {
         public const float FIXED_DT = 1f / 60f;
 
+        /// <summary>Single latest raw sample captured once per render frame (Step 2, ADR-0005).</summary>
         public RawInputSample RawInputSample { get; internal set; }
+
+        /// <summary>The player's resolved per-tick SimulationInput (Step 2, ADR-0005).</summary>
         public SimulationInput SimulationInput { get; internal set; }
+
+        /// <summary>
+        /// Read-only prior-state boundary (Step 1) consumed by Fuel, Tire, Pit Stop, and AI
+        /// (GDD step 5a/5b) — the Simulation Kernel assembles it; the owning Core epics read it.
+        /// </summary>
         public TickStartSnapshot TickStartSnapshot { get; internal set; }
+
+        /// <summary>
+        /// Per-car resolved inputs (Step 14) consumed identically by Fuel, Tire, and Vehicle
+        /// Physics in strict ascending-carId order (AC-3.7) — the AI epic fills the per-car
+        /// AIInput at Step 13; the Simulation Kernel dispatches.
+        /// </summary>
         public ResolvedCarInput[] ResolvedCarInputs { get; internal set; }
 
         /// <summary>
@@ -424,13 +425,25 @@ namespace Overdrive.Simulation
 
         // ---- Post-physics readout (GDD steps 9/10/11, Story 005) ----
 
-        /// <summary>Final CarState[] after the physics readout step (index 8), frozen for the finish boundary.</summary>
+        /// <summary>
+        /// Final CarState[] after the physics readout step (index 8), frozen for the finish
+        /// boundary. Written by the Vehicle Physics epic's readout step (GDD step 9) — the
+        /// Simulation Kernel declares the seam; the owning Core epic fills it in production.
+        /// </summary>
         public IReadOnlyList<CarState> PostTickCarState { get; set; }
 
-        /// <summary>Final FuelState[] after the resource readout steps, frozen for the finish boundary.</summary>
+        /// <summary>
+        /// Final FuelState[] after the resource readout steps, frozen for the finish boundary.
+        /// Written by the Fuel epic's step (GDD step 5a) — the Simulation Kernel declares the
+        /// seam; the owning Core epic fills it in production.
+        /// </summary>
         public IReadOnlyList<FuelState> PostTickFuelState { get; set; }
 
-        /// <summary>Final TireState[] after the resource readout steps, frozen for the finish boundary.</summary>
+        /// <summary>
+        /// Final TireState[] after the resource readout steps, frozen for the finish boundary.
+        /// Written by the Tire epic's step (GDD step 5b) — the Simulation Kernel declares the
+        /// seam; the owning Core epic fills it in production.
+        /// </summary>
         public IReadOnlyList<TireState> PostTickTireState { get; set; }
 
         /// <summary>

@@ -58,7 +58,6 @@ namespace Overdrive.Simulation
 
         private readonly Action<string> _errorLogger;
         private readonly ISimulationLogger _logger;
-        private readonly bool _allowUnrestrictedTransitions;
 
         private SimulationState _state;
         private RaceMode _raceMode;
@@ -175,20 +174,10 @@ namespace Overdrive.Simulation
         public SimulationStateMachine(
             SimulationState initial = SimulationState.Idle,
             Action<string> errorLogger = null)
-            : this(initial, errorLogger, false)
-        {
-        }
-
-        // Compatibility adapter constructor used only by SimulationStateGate.
-        protected SimulationStateMachine(
-            SimulationState initial,
-            Action<string> errorLogger,
-            bool allowUnrestrictedTransitions)
         {
             _state = initial;
             _errorLogger = errorLogger;
             _logger = null;
-            _allowUnrestrictedTransitions = allowUnrestrictedTransitions;
         }
 
         /// <summary>
@@ -550,7 +539,7 @@ namespace Overdrive.Simulation
         {
             if (state == _state)
                 return true;
-            if (!_allowUnrestrictedTransitions && !IsLegalTransition(_state, state))
+            if (!IsLegalTransition(_state, state))
                 return false;
 
             TransitionTo(state);

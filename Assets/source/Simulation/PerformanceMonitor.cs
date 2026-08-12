@@ -64,6 +64,7 @@ namespace Overdrive.Simulation
         private float _recoveryTimer;
         private bool _reduced;
         private bool _pauseRequested;
+        private bool _resumePending;
         private SimulationState _lastState;
 
         /// <summary>Raised exactly once per performance transition (Reduced, Restored).</summary>
@@ -117,6 +118,19 @@ namespace Overdrive.Simulation
             if (state != SimulationState.Countdown && state != SimulationState.Racing)
                 return;
 
+            // Resume consumption: the resume frame reports its FPS for the clear/persist decision
+            // (AC-7.7a at/above 30 clears; AC-7.7c below 30 persists so protection can re-trigger).
+            // Detected internally via <see cref="OnStateChanged"/> — the resume delta IS this frame's
+            // delta (the driver evaluates the monitor once per Update with the accumulator delta).
+            if (_resumePending)
+            {
+                _resumePending = false;
+                // The pause request was delivered; it is always cleared so protection re-arms.
+                _pauseRequested = false;
+                if (frameDelta <= Below30DeltaSeconds)
+                    ResetAll();
+            }
+
             float fps = 1f / frameDelta;
 
             // Threshold comparison uses the frame delta against the delta limit, not the
@@ -166,18 +180,32 @@ namespace Overdrive.Simulation
         /// State-change hook. The driver calls this when the lifecycle state changes. Resets all
         /// timers, the reduced state, and the pause request when entering Idle, Loading, Finished,
         /// or Results (AC-7.7b/7.7f). Paused entry PRESERVES timers when this monitor requested the
-        /// pause (AC-7.7c); otherwise resets (manual/focus pause, AC-7.6a).
+        /// pause (AC-7.7c); otherwise resets (manual/focus pause, AC-7.6a). A resume
+        /// (Paused → Countdown/Racing) arms the internal resume latch consumed by the next
+        /// <see cref="Evaluate"/> for the clear/persist decision (AC-7.7a/7.7c).
         /// </summary>
-        /// <param name="state">The new lifecycle state.</param>
-        public void OnStateChanged(SimulationState state)
+        /// <param name="previous">The lifecycle state before the transition.</param>
+        /// <param name="current">The new lifecycle state.</param>
+        public void OnStateChanged(SimulationState previous, SimulationState current)
         {
-            bool transitioned = state != _lastState;
-            _lastState = state;
+            // Resume from Paused to Countdown/Racing — detected here so the monitor owns the
+            // resume lifecycle (producer-only, ADR-0001). The resume-frame FPS is consumed by
+            // the next Evaluate, which runs on the same frame with the accumulator delta.
+            // Guarded BEFORE the transitioned filter: a boundary hook may resume inside
+            // BeforeAccumulator on the same frame the driver first sees the transition, where
+            // current == the state the monitor last saw (e.g. Countdown -> Paused -> Countdown
+            // in one frame), so transitioned would be false while the resume still happened.
+            if (previous == SimulationState.Paused &&
+                (current == SimulationState.Countdown || current == SimulationState.Racing))
+                _resumePending = true;
+
+            bool transitioned = current != _lastState;
+            _lastState = current;
 
             if (!transitioned)
                 return;
 
-            switch (state)
+            switch (current)
             {
                 case SimulationState.Idle:
                 case SimulationState.Loading:
@@ -196,12 +224,13 @@ namespace Overdrive.Simulation
         }
 
         /// <summary>
-        /// Resume hook. The driver calls this when the session resumes from Paused to
-        /// Countdown/Racing. At/above 30 FPS clears all timers and the reduced state immediately
-        /// (AC-7.7a); below 30 persists so protection can re-trigger (AC-7.7c).
+        /// Resume processing. Invoked internally by <see cref="Evaluate"/> when a resume was
+        /// detected in <see cref="OnStateChanged"/> (Paused → Countdown/Racing). At/above 30 FPS
+        /// clears all timers and the reduced state immediately (AC-7.7a); below 30 persists so
+        /// protection can re-trigger (AC-7.7c).
         /// </summary>
-        /// <param name="fpsAtResume">Display FPS measured on the resume frame.</param>
-        public void OnResume(float frameDeltaAtResume)
+        /// <param name="frameDeltaAtResume">Display FPS measured on the resume frame.</param>
+        private void OnResume(float frameDeltaAtResume)
         {
             // Invalid resume deltas (zero, negative, NaN, infinity) cannot decide the
             // clear/persist path — no-op (mirrors the Evaluate guard; the driver also guards,

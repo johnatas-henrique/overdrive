@@ -185,28 +185,32 @@ namespace Overdrive.Simulation
             _overflowed = false;
         }
 
-        /// <summary>Reads the recorded continuous inputs (test/diagnostic access; MVP never serializes).</summary>
+        // ---- Test-only accessors (NOT part of IGhostRecorder — ADR-0008 keeps the interface
+        // ---- narrow: RecordTick/RecordEdgeEvent/GetStats/Discard/IsSerializable). These read the
+        // ---- recorded streams so DeterminismReplayTests can verify append/discard/edge behavior.
+
+        /// <summary>Test-only accessor: number of recorded continuous inputs (MVP never serializes).</summary>
         public int ContinuousCount => _continuous.Count;
 
-        /// <summary>Reads the recorded edge event count.</summary>
+        /// <summary>Test-only accessor: number of recorded edge events.</summary>
         public int EdgeCount => _edges.Count;
 
-        /// <summary>Returns the continuous record's tick index at the given position (test access).</summary>
+        /// <summary>Test-only accessor: continuous record's tick index at the given position.</summary>
         public uint GetContinuousTickIndex(int index) => _continuous[index].TickIndex;
 
-        /// <summary>Returns the continuous record's accelerate value at the given position (test access).</summary>
+        /// <summary>Test-only accessor: continuous record's accelerate value at the given position.</summary>
         public float GetContinuousAccelerate(int index) => _continuous[index].AccelerateOut;
 
-        /// <summary>Returns the continuous record's brake value at the given position (test access).</summary>
+        /// <summary>Test-only accessor: continuous record's brake value at the given position.</summary>
         public float GetContinuousBrake(int index) => _continuous[index].BrakeOut;
 
-        /// <summary>Returns the continuous record's steer value at the given position (test access).</summary>
+        /// <summary>Test-only accessor: continuous record's steer value at the given position.</summary>
         public float GetContinuousSteer(int index) => _continuous[index].SteerOut;
 
-        /// <summary>Returns the edge event's tick index at the given position (test access).</summary>
+        /// <summary>Test-only accessor: edge event's tick index at the given position.</summary>
         public uint GetEdgeTickIndex(int index) => _edges[index].TickIndex;
 
-        /// <summary>Returns the edge event's flags at the given position (test access).</summary>
+        /// <summary>Test-only accessor: edge event's flags at the given position.</summary>
         public EdgeEventFlags GetEdgeFlags(int index) => _edges[index].Flags;
     }
 }
