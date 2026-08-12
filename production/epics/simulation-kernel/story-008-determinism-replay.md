@@ -1,7 +1,7 @@
 # Story 008: Determinism & MVP Recordable Buffer
 
 > **Epic**: Simulation Kernel
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-08-05
@@ -33,10 +33,10 @@
 
 *From GDD `design/gdd/simulation-architecture.md`, scoped to this story:*
 
-- [ ] **AC-5.1 (DECLARED — deferred):** Given two fresh runs on the same executable and physical machine/environment with identical PCG32 seed, inputs and track, When both run for 300 ticks, Then vehicle positions at tick 300 differ by ≤ 0.001 units. *(Verification deferred to the MVP-assembly determinism gate once Core content exists — TR-sim-005 precedent, EPIC.md:71. The Kernel declares, does not claim to pass.)*
+- [ ] **AC-5.1 (DECLARED — deferred):** Given two fresh runs on the same executable and physical machine/environment with identical PCG32 seed, inputs and track, When both run for 300 ticks, Then vehicle positions at tick 300 differ by ≤ 0.001 units. *(Verification deferred to the MVP-assembly determinism harness gate — the ADR-0001 same-environment determinism harness artifact, TR-sim-005 precedent, EPIC.md:71. The Kernel declares, does not claim to pass. The harness scaffold — seed injection seam + pair-run comparator + evidence output — IS delivered by this story per AC-5.1's QA case.)*
 - [ ] **AC-5.2:** Given PCG32 initializes with seed = 12345, When its named methods are sampled in a standalone test, Then the documented sequence of `NextUInt` values matches exactly; UnityEngine.Random is not called.
 - [ ] **AC-5.4:** Given scalar or vector math executes on the simulation path, When it clamps, normalizes or otherwise mutates authoritative state, Then it uses Unity.Mathematics types (`math`, `float3`, `quaternion`) rather than UnityEngine.Vector3/Mathf. Visual-only interpolation remains outside this simulation-path rule.
-- [ ] **AC-5.5 (DECLARED — deferred):** Given five fresh-process runs on the same executable and physical machine/environment with the same seed and inputs, When each completes a 5-lap race, Then final CarStates of all 16 cars differ by ≤ 0.001 units; no cross-machine claim is made. *(Deferred to the MVP-assembly determinism gate — TR-sim-005 precedent.)*
+- [ ] **AC-5.5 (DECLARED — deferred):** Given five fresh-process runs on the same executable and physical machine/environment with the same seed and inputs, When each completes a 5-lap race, Then final CarStates of all 16 cars differ by ≤ 0.001 units; no cross-machine claim is made. *(Deferred to the MVP-assembly determinism harness gate — ADR-0001 same-environment determinism harness, TR-sim-005 precedent. The harness scaffold delivered here supports this run family.)*
 - [ ] **AC-6.1 (MVP architecture constraint):** Given Racing is active, When a tick completes, Then the authoritative continuous SimulationInput and tick index are appended once to an in-memory recordable buffer; consumed Pause edges use the parallel event stream, and the complete buffer is discarded without serialization or UI when Results, Forfeit, load failure, or Idle is reached.
 - [ ] **AC-3.9:** Given GO releases grid lock, When the first Racing tick is about to begin, Then ReplayInitialState contains the locked race configuration, content hash, seed, GridAssignment, car IDs, initial resources, and `perfectStartRemainingTicks` before any continuous record is appended. The `DifficultyProfile` field is captured with a stub now — the Kernel verifies its presence and immutable capture; schema validity (Settings epic) and end-to-end use are DEFERRED to the MVP-assembly gate.
 - [ ] **AC-3.10:** Given a Racing Pause edge is consumed at a tick boundary, When the lifecycle boundary is recorded, Then one standalone EdgeEvent is appended for that tick index and no continuous input sample is appended for that same simulationStepCount. *(Semantics per ADR-0008:180 — `RecordEdgeEvent(tickIndex, Pause)` fires at edge consumption in Step 3; the tickIndex is the current simulationStepCount; continuous and edge streams are parallel, no continuous sample for the same step.)*
@@ -47,12 +47,14 @@
 
 *Derived from ADR-0001 and ADR-0008 Implementation Guidelines:*
 
-- **PCG32** (O'Neill reference implementation): `Pcg32(initState: uint64, initSeq: uint64)`; `inc = (initSeq << 1) | 1`. Named methods: `NextUInt()`, `NextFloat01()` (standard `pcg32_random_f`: `(NextUInt >> 8) * (1.0f / 16777216.0f)`), range helpers. Golden vectors (computed and verified against the O'Neill reference and pcg-random.org):
-  - `Pcg32(12345, 0)` NextUInt (8): `304133009, 2564000426, 1539170214, 2267019874, 321857903, 29877282, 4241239986, 528810775`
-  - `Pcg32(12345, 0)` NextFloat01 (8): `0.0708114505, 0.5969778299, 0.3583659530, 0.5278316736, 0.0749383569, 0.0069563389, 0.9874905944, 0.1231233478`
+- **PCG32** (O'Neill reference implementation): `Pcg32(initState: uint64, initSeq: uint64)`; `inc = (initSeq << 1) | 1`. Named methods: `NextUInt()`, `NextFloat01()` (standard `pcg32_random_f`: `(NextUInt >> 8) * (1.0f / 16777216.0f)`), range helpers. Golden vectors (computed and verified against the O'Neill reference and pcg-random.org; each sequence is sampled from a FRESH `Pcg32(12345, 0)` instance — the float sequence is NOT a continuation of the uint sequence):
+  - `Pcg32(12345, 0)` NextUInt (8), fresh instance: `304133009, 2564000426, 1539170214, 2267019874, 321857903, 29877282, 4241239986, 528810775`
+  - `Pcg32(12345, 0)` NextFloat01 (8), FRESH instance (not a continuation): `0.0708114505, 0.5969778299, 0.3583659530, 0.5278316736, 0.0749383569, 0.0069563389, 0.9874905944, 0.1231233478`
   - Cross-check `Pcg32(42, 54)` NextUInt (5): `2707161783, 2068313097, 3122475824, 2211639955, 3215226955` (official pcg-random.org vector)
-- **MVP recordable buffer** (ADR-0008): continuous stream = authoritative `accelerateOut`, `brakeOut`, `steerOut` consumed by Vehicle Physics (3 × float32 = 12 bytes/tick) + tick index recorded separately; exactly one record per completed Racing tick (Step 12). Pause edges go to a parallel standalone `EdgeEvent` stream (5 bytes/event, `simulationStepCount` + type). Cap 22,500 ticks — never discard oldest, never replay without `ReplayInitialState`. Pure C# — no Unity engine types. MVP always discards on Results, Forfeit, load failure, or Idle; never serialized, never compared, never shown in UI, never uploaded.
+- **Determinism harness scaffold** (delivers AC-5.1/5.5's seed-injection seam + comparison methodology; the full 16-car gate runs at the MVP-assembly gate): `IDeterminismHarness` interface — `RunPairComparison(seed, trackId, tickCount)` returns a `DeterminismComparisonReport` (per-tick max position delta + PASS/FAIL vs the ≤0.001 tolerance); `SeedInjection` seam that forces the race's PCG32 seed and the sim pipeline's RNG consumption order; runner API usable from an assembly-gate test. The harness is a Kernel-owned scaffold — it wires seeds and compares outputs, it does NOT produce vehicle positions (Vehicle Physics epic supplies those at the gate).
+- **MVP recordable buffer** (ADR-0008): continuous stream = authoritative `accelerateOut`, `brakeOut`, `steerOut` consumed by Vehicle Physics (3 × float32 = 12 bytes/tick) + a SEPARATE `uint tickIndex` per record (GDD ghost requirement — the index is the simulationStepCount of the completed Racing tick, captured POST-increment so the record carries the index of the tick that just completed); exactly one record per completed Racing tick (Step 12). Record shape: `GhostBuffer.RecordTick(SimulationInput input, uint tickIndex)` (ADR-0008's `RecordTick` omits the index; the GDD requires it — the index lives in the record, not the header). Pause edges go to a parallel standalone `EdgeEvent` stream (5 bytes/event, `simulationStepCount` + type). Cap 22,500 ticks — never discard oldest, never replay without `ReplayInitialState`. Pure C# — no Unity engine types. MVP always discards on Results, Forfeit, load failure, or Idle; never serialized, never compared, never shown in UI, never uploaded.
 - **ReplayInitialState** (GO boundary, before first Racing tick): version, race configuration ID, content version hash, race seed, DifficultyProfile ID (Settings epic schema — declared), immutable GridAssignment, ascending car IDs, initial Fuel/Tire state, `perfectStartRemainingTicks` (Grid & Start). Captured once; source mutation after capture never mutates the snapshot.
+- **ReplayInitialState capture seam** (AC-3.9): a capture hook fires at the GO boundary (first Racing tick about to begin), receiving a `ReplayInitialStateCaptureInput` (race config ID, content hash, seed, GridAssignment, car IDs, initial Fuel/Tire state, perfectStartRemainingTicks, DifficultyProfile stub). The snapshot is built by deep-copying every field — no reference to mutable source state survives capture. The hook is a new seam on the state machine (or driver) exposed via `ISimulationStateGate`; the Settings epic owns DifficultyProfile schema validity (deferred), the Kernel verifies field presence + immutable capture.
 - **Sim-path math rule** (AC-5.4): authoritative state math uses `Unity.Mathematics` (`math`, `float3`, `quaternion`); no `UnityEngine.Vector3`/`Mathf`/`System.MathF` on the sim path. Visual-only interpolation is outside this rule (Story 006).
 
 ---
@@ -114,7 +116,21 @@
 **Story Type**: Logic
 **Required evidence**: `Assets/tests/unit/simulation/DeterminismReplayTests.cs` — must exist and pass. Verifies: PCG32 golden vectors (5.2), Unity.Mathematics scan (5.4), buffer append/discard/EdgeEvent (6.1, 3.10), ReplayInitialState capture (3.9 with profile stub — field presence + immutable capture ARE Kernel-tested; only schema validity and end-to-end DifficultyProfile use are deferred). AC-5.1/5.5 recorded as DECLARED (deferred to MVP-assembly gate, TR-sim-005 precedent).
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 44 tests, 418/418 PlayMode green (2026-08-12)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-08-12
+**Criteria**: 5/5 testable passing + 2 DECLARED (AC-5.1/5.5 — MVP-assembly determinism harness gate, harness scaffold delivered and tested here)
+**Deviations**:
+- ADVISORY: `Update()` ~40-45 effective lines (borderline vs 40-line limit; ghost-lifecycle and forfeit blocks extracted to helpers; next extraction when new logic is added).
+- ADVISORY: AC-5.4 scan does not catch explicit namespace aliases (`using UE = UnityEngine;`) — documented limitation; the scan catches the forbidden import.
+- ADVISORY: the same-frame Racing→Countdown without an observed terminal state is undetectable by the driver (forfeit + re-race are inputs from different screens; transitions between frames are observed).
+**Test Evidence**: `Assets/tests/unit/simulation/DeterminismReplayTests.cs` — 44 tests, 418/418 PlayMode green
+**Code Review**: Complete — unity-specialist APPROVED (R2), qa-tester TESTABLE (R3), LP-CODE-REVIEW APPROVED (R2)
+**QA Coverage Gate**: ADEQUATE (R3)
 
 ---
 
