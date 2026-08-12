@@ -3,8 +3,8 @@
 > **Layer**: Foundation
 > **GDD**: design/gdd/content-pipeline.md
 > **Architecture Module**: Content Pipeline (Foundation Layer — module ownership per docs/architecture/architecture.md:145-152)
-> **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories content-pipeline`
+> **Status**: Ready (stories created)
+> **Stories**: 7 created — 001 Content Groups & Address Mirror, 002 CP_ State Machine & Kernel Handshake, 003 Race Load Orchestration, 004 Race Unload, 005 Startup/Catalog/Fatal Errors, 006 Loading Screen, 007 Quality Profiles (WebGL)
 
 ## Overview
 
@@ -44,4 +44,16 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories content-pipeline` to break this epic into implementable stories.
+Run `/story-readiness [story-path]` then `/dev-story [story-path]` for each story, in dependency order: 001 → 002 → 003 → 004/005/006 → 007.
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | Content Groups & Address Mirror | Config/Data + Editor | Ready | ADR-0003 |
+| 002 | CP_ State Machine & Kernel Handshake | Logic | Ready | ADR-0003, ADR-0001 |
+| 003 | Race Load Orchestration | Integration | Ready | ADR-0003 |
+| 004 | Race Unload | Logic | Ready | ADR-0003 |
+| 005 | Startup, Catalog & Fatal Errors | Logic | Ready | ADR-0003 |
+| 006 | Loading Screen | UI | Ready | ADR-0003 |
+| 007 | Quality Profiles (WebGL) | Integration | Ready | ADR-0003, ADR-0010 |
