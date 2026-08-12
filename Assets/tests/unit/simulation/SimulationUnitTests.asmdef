@@ -2,7 +2,8 @@
   "name": "SimulationUnitTests",
   "references": [
     "Overdrive.Simulation",
-    "Overdrive.Input"
+    "Overdrive.Input",
+    "Unity.Mathematics"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

@@ -1,6 +1,8 @@
 {
   "name": "Overdrive.Simulation",
-  "references": [],
+  "references": [
+    "Unity.Mathematics"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
