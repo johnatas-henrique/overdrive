@@ -1,16 +1,16 @@
 # Epics Index
 
-Last Updated: 2026-08-09
+Last Updated: 2026-08-12
 Engine: Unity 6000.3.19f1 (Unity 6.3 LTS)
 
 | Epic | Layer | System | GDD | Stories | Status |
 |------|-------|--------|-----|---------|--------|
 | Input System | Foundation | Input | design/gdd/input-system.md | 8 (8 done) | Done |
-| Simulation Kernel | Foundation | Simulation Architecture | design/gdd/simulation-architecture.md | Not yet created | Ready |
+| Simulation Kernel | Foundation | Simulation Architecture | design/gdd/simulation-architecture.md | 8 (8 done) | Done |
 | Settings | Foundation | Settings | design/gdd/settings.md | Not yet created | Ready |
 | Content Pipeline | Foundation | Content Pipeline | design/gdd/content-pipeline.md | Not yet created | Ready |
-| Ghost Recording | Foundation | Ghost Recording | design/gdd/ghost-recording.md | Not yet created | Ready (enabling/traceability — MVP buffer owned by Simulation Kernel) |
-| Multiplayer Architecture | Foundation | Multiplayer Architecture | design/gdd/multiplayer-architecture.md | Not yet created | Ready (constraint — no runtime network in MVP) |
+| Ghost Recording | Foundation | Ghost Recording | design/gdd/ghost-recording.md | Not yet created | Ready (MVP buffer delivered by Simulation Kernel story 2-8 — Pcg32, GhostBuffer, DeterminismHarness) |
+| Multiplayer Architecture | Foundation | Multiplayer Architecture | design/gdd/multiplayer-architecture.md | Not yet created | Ready (constraint — no runtime network in MVP; ADR-0016/0017 ratified) |
 
 **Processing order (per systems-index.md Dependency Layers — Foundation):**
 1. Input System → 2. Simulation Kernel → 3. Settings → 4. Content Pipeline → 5. Ghost Recording → 6. Multiplayer Architecture
