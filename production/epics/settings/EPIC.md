@@ -3,8 +3,8 @@
 > **Layer**: Foundation
 > **GDD**: design/gdd/settings.md
 > **Architecture Module**: Settings (Foundation Layer — module ownership per docs/architecture/architecture.md:136-143)
-> **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories settings`
+> **Status**: Ready (stories created)
+> **Stories**: 6 created — 001 Persistence & Migration, 002 EditSession & Lifecycle, 003 DifficultyProfile, 004 Control Bindings, 005 Display & Quality, 006 Values Contract
 
 ## Overview
 
@@ -46,4 +46,15 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories settings` to break this epic into implementable stories.
+Run `/story-readiness [story-path]` then `/dev-story [story-path]` for each story, in dependency order: 001 → 002 → 003/004/005/006 (003-006 depend on 001; 005 also depends on 002).
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | Settings Persistence & Migration | Logic | Ready | ADR-0004 |
+| 002 | SettingsEditSession & Lifecycle | Logic | Ready | ADR-0004 |
+| 003 | DifficultyProfile Data & Race Snapshot | Integration | Ready | ADR-0004, ADR-0001 |
+| 004 | Control Bindings & Rebinding State Machine | Logic | Ready | ADR-0004, ADR-0005 |
+| 005 | Display Confirm & Quality Presets | Integration | Ready | ADR-0004, ADR-0010 |
+| 006 | Settings Values Contract | Logic | Ready | ADR-0004, ADR-0010, ADR-0014 |
