@@ -37,6 +37,15 @@ namespace Overdrive.Simulation
         /// with its Simulation-owned resumeState without reaching into a concrete type.
         /// </summary>
         SimulationState? ResumeState { get; }
+
+        /// <summary>True when the current Results state was entered by forfeit (Story 005).</summary>
+        bool IsForfeit { get; }
+
+        /// <summary>Forfeit lap count; valid only when <see cref="IsForfeit"/> (Story 005).</summary>
+        int ForfeitLapCount { get; }
+
+        /// <summary>Forfeit race time in seconds; valid only when <see cref="IsForfeit"/> (Story 005).</summary>
+        float RaceTimeAtForfeit { get; }
     }
 
     /// <summary>
@@ -153,32 +162,66 @@ namespace Overdrive.Simulation
     /// <summary>
     /// Immutable terminal-state snapshot captured by Simulation at the lifecycle
     /// transition to Finished. No PhysX, Fuel, Tire, Pit, collision, or tactical AI
-    /// runs after finish (ADR-0001).
+    /// runs after finish (ADR-0001). Schema per ADR-0001 §PostFinishSnapshot.
     /// </summary>
     public sealed class PostFinishSnapshot
     {
         private readonly CarState[] _cars;
         private readonly FuelState[] _fuel;
         private readonly TireState[] _tires;
+        private readonly ResultClassification[] _resultClassification;
 
         public IReadOnlyList<CarState> CarState => SnapshotCopies.Copy(_cars);
         public IReadOnlyList<FuelState> FuelState => SnapshotCopies.Copy(_fuel);
         public IReadOnlyList<TireState> TireState => SnapshotCopies.Copy(_tires);
+        public IReadOnlyList<ResultClassification> ResultClassification => SnapshotCopies.Copy(_resultClassification);
         public RsmState Rsm { get; }
         public SimulationState SimulationState { get; }
+
+        /// <summary>Final simulation tick counter (ADR-0001).</summary>
+        public int SimulationStepCount { get; }
+
+        /// <summary>Final racing tick counter (ADR-0001).</summary>
+        public int ActiveRaceStepCount { get; }
+
+        /// <summary>Race or Qualifying — selects destination screen (ADR-0001).</summary>
+        public ResultKind ResultKind => Rsm.ResultKind;
+
+        /// <summary>Final clock value (Simulation sim_time, ADR-0001).</summary>
+        public float RaceTime { get; }
+
+        /// <summary>Final session mode (ADR-0001).</summary>
+        public RaceMode RaceMode { get; }
+
+        /// <summary>Player classification at the finished transition (GDD schema: "player classification").</summary>
+        public ResultClassification PlayerClassification { get; }
 
         public PostFinishSnapshot(
             IReadOnlyList<CarState> cars,
             IReadOnlyList<FuelState> fuel,
             IReadOnlyList<TireState> tires,
             RsmState rsm,
-            SimulationState state)
+            SimulationState state,
+            IReadOnlyList<ResultClassification> resultClassification = null,
+            int simulationStepCount = 0,
+            int activeRaceStepCount = 0,
+            float raceTime = 0f,
+            RaceMode raceMode = RaceMode.Race,
+            ResultClassification playerClassification = Overdrive.Simulation.ResultClassification.Finished)
         {
             _cars = SnapshotCopies.Copy(cars);
             _fuel = SnapshotCopies.Copy(fuel);
             _tires = SnapshotCopies.Copy(tires);
+            _resultClassification = resultClassification == null
+                ? Array.Empty<ResultClassification>()
+                : SnapshotCopies.Copy(resultClassification);
             Rsm = rsm;
             SimulationState = state;
+            SimulationStepCount = simulationStepCount;
+            ActiveRaceStepCount = activeRaceStepCount;
+            RaceTime = raceTime;
+            RaceMode = raceMode;
+            PlayerClassification = playerClassification;
         }
     }
 
@@ -232,6 +275,35 @@ namespace Overdrive.Simulation
         /// </summary>
         public SimulationState SimulationState => Terminal?.SimulationState ?? SimulationState.Idle;
 
+        /// <summary>True when this snapshot carries a forfeit result (Results after Return to Menu).</summary>
+        public bool IsForfeit { get; }
+
+        /// <summary>Forfeit lap count, or -1 when not a forfeit snapshot (ADR-0001).</summary>
+        public int ForfeitLapCount { get; }
+
+        /// <summary>Forfeit race time, or 0 when not a forfeit snapshot (ADR-0001).</summary>
+        public float RaceTimeAtForfeit { get; }
+
+        // ---- RSM-originated terminal copies (ADR-0001: immutable copies in Finished/Results) ----
+
+        /// <summary>True when RSM terminal data is present (Finished/Results after a normal completion).</summary>
+        public bool HasRsmTerminalData { get; }
+
+        /// <summary>Race or Qualifying — selects destination screen (RSM-originated copy).</summary>
+        public ResultKind ResultKind { get; }
+
+        /// <summary>True once finish resolution completed (RSM-originated copy).</summary>
+        public bool ResolutionComplete { get; }
+
+        /// <summary>Player final race time in seconds (RSM-originated copy).</summary>
+        public float PlayerFinishTime { get; }
+
+        /// <summary>True while UI Presentation shows the terminal presentation (RSM-originated copy).</summary>
+        public bool TerminalPresentationRequest { get; }
+
+        /// <summary>Resolved finish order (RSM-originated immutable copy), or null.</summary>
+        public ResolvedFinishOrder ResolvedFinishOrder { get; }
+
         /// <summary>
         /// Story 001 compatibility constructor. Counter fields default to zero so existing
         /// consumers continue to compile while the driver adds authoritative values.
@@ -257,6 +329,53 @@ namespace Overdrive.Simulation
             ActiveRaceStepCount = activeRaceStepCount;
             SimTime = simTime;
             ResumeState = resumeState;
+            IsForfeit = false;
+            ForfeitLapCount = -1;
+            RaceTimeAtForfeit = 0f;
+            HasRsmTerminalData = terminal?.Rsm != null &&
+                                 (terminal.SimulationState == SimulationState.Finished ||
+                                  terminal.SimulationState == SimulationState.Results);
+            ResultKind = terminal?.Rsm.ResultKind ?? ResultKind.Race;
+            ResolutionComplete = terminal?.Rsm.ResolutionComplete ?? false;
+            PlayerFinishTime = terminal?.Rsm.PlayerFinishTime ?? 0f;
+            TerminalPresentationRequest = terminal?.Rsm.TerminalPresentationRequest ?? false;
+            ResolvedFinishOrder = null; // driver fills from the resolved order when present
+        }
+
+        /// <summary>
+        /// Full constructor for the driver's decorated publications — carries counters,
+        /// an optional forfeit payload, and optional RSM terminal data.
+        /// </summary>
+        public PublishedSimulationSnapshot(
+            PostFinishSnapshot terminal,
+            int simulationStepCount,
+            int activeRaceStepCount,
+            float simTime,
+            SimulationState? resumeState,
+            bool isForfeit,
+            int forfeitLapCount,
+            float raceTimeAtForfeit,
+            bool hasRsmTerminalData,
+            ResultKind resultKind,
+            bool resolutionComplete,
+            float playerFinishTime,
+            bool terminalPresentationRequest,
+            ResolvedFinishOrder resolvedFinishOrder)
+        {
+            Terminal = terminal;
+            SimulationStepCount = simulationStepCount;
+            ActiveRaceStepCount = activeRaceStepCount;
+            SimTime = simTime;
+            ResumeState = resumeState;
+            IsForfeit = isForfeit;
+            ForfeitLapCount = forfeitLapCount;
+            RaceTimeAtForfeit = raceTimeAtForfeit;
+            HasRsmTerminalData = hasRsmTerminalData;
+            ResultKind = resultKind;
+            ResolutionComplete = resolutionComplete;
+            PlayerFinishTime = playerFinishTime;
+            TerminalPresentationRequest = terminalPresentationRequest;
+            ResolvedFinishOrder = resolvedFinishOrder;
         }
     }
 
@@ -302,6 +421,43 @@ namespace Overdrive.Simulation
         /// Downstream continuous-input recording must skip this boundary tick.
         /// </summary>
         public bool IsGoTick { get; internal set; }
+
+        // ---- Post-physics readout (GDD steps 9/10/11, Story 005) ----
+
+        /// <summary>Final CarState[] after the physics readout step (index 8), frozen for the finish boundary.</summary>
+        public IReadOnlyList<CarState> PostTickCarState { get; set; }
+
+        /// <summary>Final FuelState[] after the resource readout steps, frozen for the finish boundary.</summary>
+        public IReadOnlyList<FuelState> PostTickFuelState { get; set; }
+
+        /// <summary>Final TireState[] after the resource readout steps, frozen for the finish boundary.</summary>
+        public IReadOnlyList<TireState> PostTickTireState { get; set; }
+
+        /// <summary>
+        /// Pre-computed by the driver BEFORE ExecuteTick so the RSM consume step (index 10)
+        /// can freeze the post-increment counters into PostFinishSnapshot. The driver owns
+        /// the authoritative counters (ADR-0001) and applies these values after the tick.
+        /// </summary>
+        public int NextSimulationStepCount { get; internal set; }
+
+        /// <summary>Pre-computed next racing tick counter (see <see cref="NextSimulationStepCount"/>).</summary>
+        public int NextActiveRaceStepCount { get; internal set; }
+
+        /// <summary>Set by RsmEvaluationStep (index 9) when RSM reports a finish; consumed once by RsmConsumeStep (index 10).</summary>
+        public FinishDetected? PendingFinish { get; internal set; }
+
+        /// <summary>Set by RsmConsumeStep (index 10) after capturing PostFinishSnapshot and resolving the order.</summary>
+        public ResolvedFinishOrder ResolvedFinishOrder { get; internal set; }
+
+        /// <summary>Captured terminal snapshot produced by RsmConsumeStep (index 10) for Step 12 publication.</summary>
+        public PostFinishSnapshot TerminalSnapshot { get; internal set; }
+
+        /// <summary>
+        /// Cached AI input for the next tick. Produced by Step 13 during active ticks;
+        /// cleared (empty) by <see cref="AiSkipStep"/> when the published state is
+        /// Finished/Results/Idle/Loading/Paused (AC-4.8j).
+        /// </summary>
+        public IReadOnlyList<AIInput> CachedAiInput { get; set; }
 
         /// <summary>
         /// Step 12 supplies the domain snapshot that the driver decorates with its
@@ -381,7 +537,10 @@ namespace Overdrive.Simulation
         }
 
         /// <summary>Executes the spine with one sample and explicit fixed duration.</summary>
-        public SimulationTickContext ExecuteTick(bool pauseEdge = false)
+        public SimulationTickContext ExecuteTick(
+            bool pauseEdge = false,
+            int nextSimulationStepCount = 0,
+            int nextActiveRaceStepCount = 0)
         {
             if (!_hasSample)
                 throw new InvalidOperationException("A raw sample must be captured before the first tick.");
@@ -389,7 +548,9 @@ namespace Overdrive.Simulation
             {
                 RawInputSample = _latest,
                 SimulationInput = _inputProcessor.Process(_latest, pauseEdge),
-                PauseEdge = pauseEdge
+                PauseEdge = pauseEdge,
+                NextSimulationStepCount = nextSimulationStepCount,
+                NextActiveRaceStepCount = nextActiveRaceStepCount
             };
             for (int i = 0; i < _steps.Length; i++)
             {

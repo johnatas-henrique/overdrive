@@ -74,6 +74,7 @@ namespace Overdrive.Simulation
         private double _accumulator;
         private int _simulationStepCount;
         private int _activeRaceStepCount;
+        private bool _forfeitSnapshotPublished;
 
         /// <summary>
         /// Creates a manual simulation driver.
@@ -163,6 +164,19 @@ namespace Overdrive.Simulation
             if (enteredPaused)
                 PublishPausedSnapshot();
 
+            // A forfeit (Return to Menu from Paused, AC-4.12) happens OUTSIDE the Update loop
+            // (the player acts while Paused), so the driver cannot observe Paused -> Results
+            // via the hook. State-based detection publishes the forfeit Results lifecycle
+            // snapshot exactly once per forfeit entry (no resumed physics tick — CanTick is
+            // false in Results). Reset when the session leaves Results-forfeit.
+            if (_stateGate.State != SimulationState.Results || !_stateGate.IsForfeit)
+                _forfeitSnapshotPublished = false;
+            else if (!_forfeitSnapshotPublished)
+            {
+                PublishForfeitSnapshot();
+                _forfeitSnapshotPublished = true;
+            }
+
             float frameDelta = enteredPaused ? 0f : _deltaSource.GetUnscaledDeltaTime();
             if (enteredPaused || !_stateGate.CanTick)
                 return;
@@ -198,10 +212,15 @@ namespace Overdrive.Simulation
         /// </summary>
         private void ExecuteSingleTick(bool startedInRacing, bool pauseEdge, out bool pauseEdgeDelivered)
         {
+            // Pre-compute the post-increment counters so the RSM consume step (index 10) can
+            // freeze the FINAL values into PostFinishSnapshot while the driver keeps counter
+            // ownership (ADR-0001; unity-specialist story-005 review, defect 3).
             SimulationTickContext context;
             try
             {
-                context = _kernel.ExecuteTick(pauseEdge);
+                context = _kernel.ExecuteTick(pauseEdge,
+                    nextSimulationStepCount: _simulationStepCount + 1,
+                    nextActiveRaceStepCount: _activeRaceStepCount + (startedInRacing ? 1 : 0));
             }
             catch (Exception exception)
             {
@@ -251,12 +270,53 @@ namespace Overdrive.Simulation
                 return;
 
             float publishedSimTime = startedInRacing ? SimTime : 0f;
+            PostFinishSnapshot terminal = context.PublishedSnapshot.Terminal;
+            bool hasRsmData = terminal != null &&
+                              (terminal.SimulationState == SimulationState.Finished ||
+                               terminal.SimulationState == SimulationState.Results);
             PublishedSimulationSnapshot published = new PublishedSimulationSnapshot(
-                context.PublishedSnapshot.Terminal,
+                terminal,
                 _simulationStepCount,
                 _activeRaceStepCount,
-                publishedSimTime);
+                publishedSimTime,
+                null,
+                isForfeit: false,
+                forfeitLapCount: -1,
+                raceTimeAtForfeit: 0f,
+                hasRsmTerminalData: hasRsmData,
+                resultKind: terminal?.Rsm.ResultKind ?? ResultKind.Race,
+                resolutionComplete: terminal?.Rsm.ResolutionComplete ?? false,
+                playerFinishTime: terminal?.Rsm.PlayerFinishTime ?? 0f,
+                terminalPresentationRequest: terminal?.Rsm.TerminalPresentationRequest ?? false,
+                resolvedFinishOrder: context.ResolvedFinishOrder);
             context.PublishSnapshot(published);
+            _kernel.PublishSnapshot(published);
+            SnapshotPublished?.Invoke(published);
+        }
+
+        /// <summary>
+        /// Publishes the immutable Results lifecycle snapshot on a forfeit (AC-4.12). No
+        /// terminal state is fabricated — the snapshot carries the RSM-originated forfeit
+        /// metadata (<c>resultClassification = Forfeit</c>, <c>forfeitLapCount</c>,
+        /// <c>raceTimeAtForfeit</c>) and no finish order.
+        /// </summary>
+        private void PublishForfeitSnapshot()
+        {
+            PublishedSimulationSnapshot published = new PublishedSimulationSnapshot(
+                null,
+                _simulationStepCount,
+                _activeRaceStepCount,
+                SimTime,
+                null,
+                isForfeit: true,
+                forfeitLapCount: _stateGate.ForfeitLapCount,
+                raceTimeAtForfeit: _stateGate.RaceTimeAtForfeit,
+                hasRsmTerminalData: false,
+                resultKind: ResultKind.Race,
+                resolutionComplete: false,
+                playerFinishTime: 0f,
+                terminalPresentationRequest: false,
+                resolvedFinishOrder: null);
             _kernel.PublishSnapshot(published);
             SnapshotPublished?.Invoke(published);
         }

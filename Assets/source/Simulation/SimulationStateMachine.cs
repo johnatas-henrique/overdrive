@@ -69,6 +69,18 @@ namespace Overdrive.Simulation
         private bool _retryHold;
         private SimulationState? _resumeState;
 
+        // Story 005 terminal flow state (ADR-0001 / ADR-0018).
+        private PostFinishSnapshot _terminalSnapshot;
+        private ResolvedFinishOrder _resolvedFinishOrder;
+        private ResultKind _resultKind;
+        private bool _resolutionComplete;
+        private float _playerFinishTime;
+        private bool _terminalPresentationRequest;
+        private bool _isForfeit;
+        private int _forfeitLapCount;
+        private float _raceTimeAtForfeit;
+        private bool _unloadRequested;
+
         /// <summary>Raised after an accepted lifecycle transition.</summary>
         public event Action<SimulationStateChanged> StateChanged;
 
@@ -80,6 +92,12 @@ namespace Overdrive.Simulation
 
         /// <summary>Raised once for each accepted start or racing retry reload.</summary>
         public event Action<ContentLoadRequest> ContentLoadRequested;
+
+        /// <summary>Raised once per accepted Continue/Back from Results (ADR-0001 unload handshake).</summary>
+        public event Action<ContentUnloadRequest> ContentUnloadRequested;
+
+        /// <summary>Raised once when a forfeit aborts the session (Story 008 consumes for buffer discard).</summary>
+        public event Action<RaceAborted> RaceAborted;
 
         /// <summary>Raised once for each accepted abortive content error.</summary>
         public event Action<LifecycleErrorRaised> LifecycleErrorRaised;
@@ -114,6 +132,35 @@ namespace Overdrive.Simulation
         /// when not Paused / no valid pause entry was recorded (Story 004, ADR-0001).
         /// </summary>
         public SimulationState? ResumeState => _resumeState;
+
+        // ---- Story 005 terminal-flow properties (RSM-originated metadata) ----
+
+        /// <summary>Captured terminal snapshot at the Finished transition, or null.</summary>
+        public PostFinishSnapshot TerminalSnapshot => _terminalSnapshot;
+
+        /// <summary>Resolved finish order frozen at the Finished transition, or null (no finish order on forfeit).</summary>
+        public ResolvedFinishOrder ResolvedFinishOrder => _resolvedFinishOrder;
+
+        /// <summary>Race or Qualifying — selects destination results screen (RSM-originated).</summary>
+        public ResultKind ResultKind => _resultKind;
+
+        /// <summary>True once finish resolution has completed (immediately true for qualifying).</summary>
+        public bool ResolutionComplete => _resolutionComplete;
+
+        /// <summary>Player final race time in seconds (RSM-originated).</summary>
+        public float PlayerFinishTime => _playerFinishTime;
+
+        /// <summary>True while UI Presentation should show the terminal presentation (RSM-originated).</summary>
+        public bool TerminalPresentationRequest => _terminalPresentationRequest;
+
+        /// <summary>True when the current Results state was entered by forfeit (Return to Menu from Paused).</summary>
+        public bool IsForfeit => _isForfeit;
+
+        /// <summary>Forfeit lap count (0 for Countdown forfeit); valid only when <see cref="IsForfeit"/>.</summary>
+        public int ForfeitLapCount => _forfeitLapCount;
+
+        /// <summary>Forfeit race time in seconds (0.0 for Countdown forfeit); valid only when <see cref="IsForfeit"/>.</summary>
+        public float RaceTimeAtForfeit => _raceTimeAtForfeit;
 
         /// <summary>
         /// Set by Story 007's performance monitor when the below-15-FPS threshold is reached.
@@ -327,6 +374,144 @@ namespace Overdrive.Simulation
         }
 
         /// <summary>
+        /// Continue/Back from Results (AC-4.10a): sends <see cref="ContentUnloadRequest"/>,
+        /// remains Results while unload executes, and executes no simulation tick. The request
+        /// is emitted at most once per Results entry — repeated Continue/Back presses do not
+        /// duplicate it (QA case AC-4.10a).
+        /// </summary>
+        public bool RequestUnload()
+        {
+            if (_state != SimulationState.Results)
+                return false;
+
+            if (!_unloadRequested)
+            {
+                _unloadRequested = true;
+                ContentUnloadRequested?.Invoke(new ContentUnloadRequest());
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Applies the finish boundary (GDD step 11): freezes the captured terminal snapshot
+        /// and resolved order, then transitions Racing → Finished. Consumed exactly once by
+        /// the RSM consume step; duplicate applications are ignored outside Racing.
+        /// </summary>
+        public void ApplyFinish(PostFinishSnapshot snapshot, ResolvedFinishOrder resolvedOrder)
+        {
+            if (_state != SimulationState.Racing)
+                return;
+
+            _terminalSnapshot = snapshot;
+            _resolvedFinishOrder = resolvedOrder;
+            _resultKind = snapshot?.Rsm.ResultKind ?? ResultKind.Race;
+            _resolutionComplete = true;
+            _playerFinishTime = snapshot?.Rsm.PlayerFinishTime ?? 0f;
+            _terminalPresentationRequest = true;
+            TransitionTo(SimulationState.Finished);
+        }
+
+        /// <summary>
+        /// Consumes UI Presentation's dismissal of the terminal presentation (AC-4.8g).
+        /// Finished → Results without a physics tick; ignored from any other state.
+        /// </summary>
+        public void OnDismissTerminalPresentation()
+        {
+            if (_state != SimulationState.Finished)
+                return;
+
+            _terminalPresentationRequest = false;
+            TransitionTo(SimulationState.Results);
+        }
+
+        /// <summary>
+        /// Consumes Content's unload completion (AC-4.10b). Results → Idle with no Kernel-owned
+        /// session references retained; ignored outside Results or when no unload was requested
+        /// (a stale completion from Content must not prematurely end the session).
+        /// </summary>
+        public void OnContentUnloadComplete()
+        {
+            if (_state != SimulationState.Results || !_unloadRequested)
+                return;
+
+            ClearSession();
+            TransitionTo(SimulationState.Idle);
+        }
+
+        /// <summary>
+        /// Starts the next race or the race after Qualifying Results (AC-4.8h / AC-4.10).
+        /// Results → Loading with a fresh grid assignment and one ContentLoadRequest;
+        /// transitions to Countdown only after a matching <see cref="OnRaceLoadReady"/>.
+        /// </summary>
+        public bool StartRaceFromResults(GridAssignment gridAssignment)
+        {
+            if (_state != SimulationState.Results || gridAssignment == null)
+                return false;
+
+            _raceMode = RaceMode.Race;
+            _gridAssignment = gridAssignment;
+            _countdownRemainingTicks = 0;
+            _isGridLocked = false;
+            _goPending = false;
+            _retryHold = false;
+            _unloadRequested = false;
+            // A fresh session must not inherit the previous race's terminal state: the
+            // published snapshot derives SimulationState from Terminal (compat constructor),
+            // so a stale Finished terminal would leak into Loading/Countdown snapshots.
+            _terminalSnapshot = null;
+            _resolvedFinishOrder = null;
+            _resultKind = ResultKind.Race;
+            _resolutionComplete = false;
+            _playerFinishTime = 0f;
+            _terminalPresentationRequest = false;
+            _isForfeit = false;
+            _forfeitLapCount = 0;
+            _raceTimeAtForfeit = 0f;
+            TransitionTo(SimulationState.Loading);
+            ContentLoadRequested?.Invoke(new ContentLoadRequest(RaceMode.Race, gridAssignment));
+            return true;
+        }
+
+        /// <summary>
+        /// Forfeit path (AC-4.12): Return to Menu from a Paused state whose resumeState is
+        /// Countdown or Racing. Transitions directly to Results without a resumed physics
+        /// tick, records the RSM-originated forfeit metadata, and emits
+        /// <see cref="RaceAborted"/> for Ghost Recording's buffer discard (Story 008).
+        /// Never creates a finish order and never invokes the resolver.
+        /// </summary>
+        public bool RequestForfeit(int forfeitLapCount, float raceTimeAtForfeit)
+        {
+            if (_state != SimulationState.Paused)
+                return false;
+            if (!_resumeState.HasValue ||
+                (_resumeState.Value != SimulationState.Countdown &&
+                 _resumeState.Value != SimulationState.Racing))
+                return false;
+
+            _isForfeit = true;
+            _forfeitLapCount = forfeitLapCount;
+            _raceTimeAtForfeit = raceTimeAtForfeit;
+            _resolvedFinishOrder = null;
+            _resumeState = null;
+            TransitionTo(SimulationState.Results);
+            RaceAborted?.Invoke(new RaceAborted(ResultClassification.Forfeit));
+            return true;
+        }
+
+        /// <summary>
+        /// Enters the Results lifecycle from a legal transition (Racing → Results). Clears
+        /// the forfeit marker so a normal completion is not mislabelled.
+        /// </summary>
+        public void EnterResults()
+        {
+            if (_state != SimulationState.Racing && _state != SimulationState.Finished)
+                return;
+
+            _isForfeit = false;
+            TransitionTo(SimulationState.Results);
+        }
+
+        /// <summary>
         /// Handles a failed physics boundary. Race sessions freeze in-place and wait
         /// for explicit retry; qualifying has one attempt and aborts to Idle.
         /// </summary>
@@ -412,6 +597,16 @@ namespace Overdrive.Simulation
             _isGridLocked = false;
             _goPending = false;
             _retryHold = false;
+            _unloadRequested = false;
+            _terminalSnapshot = null;
+            _resolvedFinishOrder = null;
+            _resultKind = ResultKind.Race;
+            _resolutionComplete = false;
+            _playerFinishTime = 0f;
+            _terminalPresentationRequest = false;
+            _isForfeit = false;
+            _forfeitLapCount = 0;
+            _raceTimeAtForfeit = 0f;
         }
     }
 
@@ -477,6 +672,132 @@ namespace Overdrive.Simulation
         public void Execute(SimulationTickContext context)
         {
             _machine.CompletePhysicsTick(context);
+        }
+    }
+
+    /// <summary>
+    /// GDD step 10: invokes the RSM evaluation seam over the post-physics CarStates and
+    /// records <see cref="SimulationTickContext.PendingFinish"/> when a finish or
+    /// retirement is detected. RSM never writes SimulationState directly (ADR-0018).
+    /// </summary>
+    public sealed class RsmEvaluationStep : ISimulationPipelineStep
+    {
+        /// <summary>Canonical position after PitStopSystem (index 9) and before RSM consume (index 10).</summary>
+        public const int SpineIndex = 9;
+
+        private readonly IRaceSessionManagerEvaluate _rsm;
+        private readonly SimulationStateMachine _machine;
+
+        public RsmEvaluationStep(IRaceSessionManagerEvaluate rsm, SimulationStateMachine machine)
+        {
+            _rsm = rsm ?? throw new ArgumentNullException(nameof(rsm));
+            _machine = machine ?? throw new ArgumentNullException(nameof(machine));
+        }
+
+        /// <inheritdoc />
+        public void Execute(SimulationTickContext context)
+        {
+            // The RSM evaluates laps/positions/finish from the post-physics CarStates. A
+            // finish condition can only be detected during Racing (final lap / retirement);
+            // the countdown and post-resolution states never produce a finish signal. The
+            // GO boundary tick (which transitions Countdown -> Racing in GoStep at index 7)
+            // is excluded: "the following tick starts in Racing" (ADR-0001) — the RSM has no
+            // racing distance to evaluate on the boundary tick itself.
+            if (_machine.State != SimulationState.Racing || context.IsGoTick ||
+                context.PostTickCarState == null)
+                return;
+            context.PendingFinish = _rsm.Evaluate(context.PostTickCarState);
+        }
+    }
+
+    /// <summary>
+    /// GDD step 11: consumes RSM outputs before publication. On a pending finish it freezes
+    /// the PostFinishSnapshot from the post-physics readout, passes it once to RSM's
+    /// FinishOrderResolver, applies <c>TransitionRequest(Finished)</c>, and freezes the
+    /// resolved order. No PhysX, Fuel, Tire, Pit, collision, or tactical AI runs after
+    /// finish (ADR-0001). Duplicate finish detections are ignored — resolution runs once.
+    /// </summary>
+    public sealed class RsmConsumeStep : ISimulationPipelineStep
+    {
+        /// <summary>Canonical position immediately after RSM evaluation (GDD step 11).</summary>
+        public const int SpineIndex = 10;
+
+        private readonly SimulationStateMachine _machine;
+        private readonly IFinishOrderResolver _resolver;
+
+        public RsmConsumeStep(SimulationStateMachine machine, IFinishOrderResolver resolver)
+        {
+            _machine = machine ?? throw new ArgumentNullException(nameof(machine));
+            _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+        }
+
+        /// <inheritdoc />
+        public void Execute(SimulationTickContext context)
+        {
+            FinishDetected? pending = context.PendingFinish;
+            if (!pending.HasValue)
+                return;
+
+            // Defensive depth: only a Racing tick can consume a finish (the evaluation step
+            // already gates on Racing; this guard also protects direct-step unit usage).
+            if (_machine.State != SimulationState.Racing)
+                return;
+
+            // Duplicate detection: the machine rejects ApplyFinish outside Racing, so a
+            // second finish signal on a later tick cannot re-resolve (AC-4.8 edge case).
+            FinishDetected detected = pending.Value;
+            PostFinishSnapshot snapshot = new PostFinishSnapshot(
+                context.PostTickCarState,
+                context.PostTickFuelState,
+                context.PostTickTireState,
+                new RsmState(
+                    eventCount: 0,
+                    resultKind: detected.ResultKind,
+                    resolutionComplete: true,
+                    playerFinishTime: detected.PlayerFinishTime,
+                    terminalPresentationRequest: true),
+                SimulationState.Finished,
+                resultClassification: null,
+                simulationStepCount: context.NextSimulationStepCount,
+                activeRaceStepCount: context.NextActiveRaceStepCount,
+                raceTime: context.NextActiveRaceStepCount * SimulationTickContext.FIXED_DT,
+                raceMode: _machine.RaceMode,
+                playerClassification: detected.PlayerClassification);
+
+            ResolvedFinishOrder resolved = _resolver.Resolve(snapshot);
+            context.TerminalSnapshot = snapshot;
+            context.ResolvedFinishOrder = resolved;
+            _machine.ApplyFinish(snapshot, resolved);
+        }
+    }
+
+    /// <summary>
+    /// GDD step 13: AI reads the published snapshot only when the state has a future active
+    /// tick (Countdown, Racing). In Finished/Results (and Idle/Loading/Paused) AI evaluation
+    /// is skipped and stale cached input is cleared — AI never runs after a finish result is
+    /// resolved (AC-4.8j). The cached-AI clearing seam is observable via
+    /// <see cref="SimulationTickContext.CachedAiInput"/>.
+    /// </summary>
+    public sealed class AiSkipStep : ISimulationPipelineStep
+    {
+        /// <summary>Canonical position immediately after snapshot publication (GDD step 13).</summary>
+        public const int SpineIndex = 12;
+
+        private readonly SimulationStateMachine _machine;
+
+        public AiSkipStep(SimulationStateMachine machine)
+        {
+            _machine = machine ?? throw new ArgumentNullException(nameof(machine));
+        }
+
+        /// <inheritdoc />
+        public void Execute(SimulationTickContext context)
+        {
+            // Active states delegate AI evaluation to the AI Rival epic (produces the cache
+            // at this step). Non-ticking states must never carry stale AI input forward.
+            if (_machine.State != SimulationState.Countdown &&
+                _machine.State != SimulationState.Racing)
+                context.CachedAiInput = Array.Empty<AIInput>();
         }
     }
 }

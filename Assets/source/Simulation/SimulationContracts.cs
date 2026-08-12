@@ -151,12 +151,156 @@ namespace Overdrive.Simulation
         public DifficultyProfile(int level = 0) => Level = level;
     }
 
+    /// <summary>How and why a car ended the session. Produced by RSM as part of
+    /// <c>ResolvedFinishOrder</c>; consumed by Simulation for snapshot publishing and
+    /// the forfeit lifecycle (ADR-0001).</summary>
+    public enum ResultClassification : byte
+    {
+        /// <summary>Completed all laps under own power.</summary>
+        Finished,
+
+        /// <summary>Did Not Finish — mid-race abandonment (fuel empty + stopped, retirement).</summary>
+        DNF,
+
+        /// <summary>Return to Menu from Paused during Countdown or Racing.</summary>
+        Forfeit
+    }
+
+    /// <summary>Selects the destination results screen; produced by RSM (ADR-0001).</summary>
+    public enum ResultKind : byte
+    {
+        Race,
+        Qualifying
+    }
+
+    /// <summary>One immutable entry of the resolved finish order (ADR-0018).</summary>
+    public readonly struct FinishOrderEntry
+    {
+        public readonly int CarId;
+
+        /// <summary>Final classification: Finished or DNF (Forfeit never reaches the resolver).</summary>
+        public readonly ResultClassification Classification;
+
+        /// <summary>Final position, or -1 for DNF (no fabricated position).</summary>
+        public readonly int Position;
+
+        /// <summary>Final or projected finish time in seconds.</summary>
+        public readonly float Time;
+
+        public FinishOrderEntry(int carId, ResultClassification classification, int position, float time)
+        {
+            CarId = carId;
+            Classification = classification;
+            Position = position;
+            Time = time;
+        }
+    }
+
+    /// <summary>
+    /// Immutable RSM-owned finish resolution. Simulation consumes it once and publishes
+    /// immutable copies; it never re-resolves (ADR-0001, ADR-0018).
+    /// </summary>
+    public sealed class ResolvedFinishOrder
+    {
+        private readonly FinishOrderEntry[] _entries;
+
+        /// <summary>Entries ordered by finish position (ascending).</summary>
+        public IReadOnlyList<FinishOrderEntry> EntriesByPosition => SnapshotCopies.Copy(_entries);
+
+        public ResolvedFinishOrder(IReadOnlyList<FinishOrderEntry> entries)
+        {
+            _entries = SnapshotCopies.Copy(entries);
+        }
+    }
+
+    /// <summary>
+    /// Produced by RSM when the player crosses the finish line on the final lap or
+    /// retires. Simulation consumes it at the finish boundary (GDD step 10/11).
+    /// </summary>
+    public readonly struct FinishDetected
+    {
+        public readonly ResultKind ResultKind;
+        public readonly ResultClassification PlayerClassification;
+        public readonly float PlayerFinishTime;
+
+        public FinishDetected(ResultKind resultKind, ResultClassification playerClassification, float playerFinishTime)
+        {
+            ResultKind = resultKind;
+            PlayerClassification = playerClassification;
+            PlayerFinishTime = playerFinishTime;
+        }
+    }
+
+    /// <summary>UI Presentation dismissal of the terminal presentation (Story 005).</summary>
+    public readonly struct DismissTerminalPresentation
+    {
+    }
+
+    /// <summary>Simulation → Content unload request (ADR-0001 Continue/Back from Results).</summary>
+    public readonly struct ContentUnloadRequest
+    {
+    }
+
+    /// <summary>
+    /// Emitted by RSM when a forfeit aborts the session (ADR-0008). Story 008 consumes it
+    /// to discard the recordable buffer; never carries a finish order.
+    /// </summary>
+    public readonly struct RaceAborted
+    {
+        public readonly ResultClassification Classification;
+
+        public RaceAborted(ResultClassification classification) => Classification = classification;
+    }
+
+    /// <summary>
+    /// RSM-owned per-tick evaluation seam (GDD step 10). Invoked as a pipeline step at
+    /// SpineIndex 9 over the post-physics CarStates; returns non-null FinishDetected
+    /// exactly when the finish or retirement condition is met.
+    /// </summary>
+    public interface IRaceSessionManagerEvaluate
+    {
+        FinishDetected? Evaluate(IReadOnlyList<CarState> carStates);
+    }
+
+    /// <summary>
+    /// RSM-owned finish resolver (ADR-0018). Consumes ONE immutable PostFinishSnapshot
+    /// (single read) and returns the resolved order; never re-runs physics or resources.
+    /// </summary>
+    public interface IFinishOrderResolver
+    {
+        ResolvedFinishOrder Resolve(PostFinishSnapshot snapshot);
+    }
+
     /// <summary>RSM-owned state carried into snapshots; resolution rules live in the RSM epic.</summary>
     public readonly struct RsmState
     {
         public readonly int EventCount;
 
-        public RsmState(int eventCount = 0) => EventCount = eventCount;
+        /// <summary>Race or Qualifying — selects the destination results screen (ADR-0001).</summary>
+        public readonly ResultKind ResultKind;
+
+        /// <summary>True once finish resolution has completed (immediately true for qualifying).</summary>
+        public readonly bool ResolutionComplete;
+
+        /// <summary>The player's final race time in seconds (RSM-originated).</summary>
+        public readonly float PlayerFinishTime;
+
+        /// <summary>True while UI Presentation should display the terminal presentation.</summary>
+        public readonly bool TerminalPresentationRequest;
+
+        public RsmState(
+            int eventCount = 0,
+            ResultKind resultKind = ResultKind.Race,
+            bool resolutionComplete = false,
+            float playerFinishTime = 0f,
+            bool terminalPresentationRequest = false)
+        {
+            EventCount = eventCount;
+            ResultKind = resultKind;
+            ResolutionComplete = resolutionComplete;
+            PlayerFinishTime = playerFinishTime;
+            TerminalPresentationRequest = terminalPresentationRequest;
+        }
     }
 
     /// <summary>Transition request produced by RSM and consumed by Simulation.</summary>
