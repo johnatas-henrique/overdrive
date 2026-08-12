@@ -45,9 +45,9 @@ namespace Overdrive.Simulation.Tests
             Action<SimulationTickContext> publish = null,
             Func<bool> pauseEdgeSource = null,
             Action pauseEdgeConsumer = null,
-            SimulationStateGate gate = null)
+            TestStateGate gate = null)
         {
-            gate = gate ?? new SimulationStateGate(initialState);
+            gate = gate ?? new TestStateGate(initialState);
             processor = processor ?? new TickProcessor();
             var steps = new ISimulationPipelineStep[SimulationKernel.StepCount];
             for (int i = 0; i < steps.Length; i++)
@@ -221,7 +221,8 @@ namespace Overdrive.Simulation.Tests
         {
             var snapshots = new List<PublishedSimulationSnapshot>();
             var physics = new RecordingPhysicsSimulator();
-            SimulationStateGate gate = new SimulationStateGate(SimulationState.Racing);
+            SimulationState gateState = SimulationState.Racing;
+            TestStateGate gate = new TestStateGate(gateState);
             SimulationDriver driver = CreateDriver(
                 SimulationState.Racing,
                 new SequenceDeltaSource(SimulationDriver.FIXED_DT),
@@ -245,7 +246,7 @@ namespace Overdrive.Simulation.Tests
             // A Racing tick that transitions to Finished still counts as a Racing-started tick.
             var finishPhysics = new RecordingPhysicsSimulator();
             var finishSnapshots = new List<PublishedSimulationSnapshot>();
-            SimulationStateGate finishGate = new SimulationStateGate(SimulationState.Racing);
+            TestStateGate finishGate = new TestStateGate(SimulationState.Racing);
             SimulationDriver finishingDriver = CreateDriver(
                 SimulationState.Racing,
                 new SequenceDeltaSource(SimulationDriver.FIXED_DT),
@@ -267,7 +268,7 @@ namespace Overdrive.Simulation.Tests
         public void AC19_CountdownSnapshotsKeepRaceTimeAtZero()
         {
             var snapshots = new List<PublishedSimulationSnapshot>();
-            SimulationStateGate gate = new SimulationStateGate(SimulationState.Countdown);
+            TestStateGate gate = new TestStateGate(SimulationState.Countdown);
             SimulationDriver driver = CreateDriver(
                 SimulationState.Countdown,
                 new SequenceDeltaSource(SimulationDriver.FIXED_DT),
@@ -390,7 +391,7 @@ namespace Overdrive.Simulation.Tests
         {
             var clock = new SequenceDeltaSource(0.25f * SimulationDriver.FIXED_DT);
             var physics = new RecordingPhysicsSimulator();
-            SimulationStateGate gate = new SimulationStateGate(SimulationState.Racing);
+            TestStateGate gate = new TestStateGate(SimulationState.Racing);
             SimulationDriver driver = CreateDriver(
                 SimulationState.Racing,
                 clock,
@@ -420,7 +421,7 @@ namespace Overdrive.Simulation.Tests
             Assert.AreEqual(remainder, driver.AccumulatorSeconds, 1e-6d);
 
             // Focus boundary hook: the boundary frame adds no delta and does not consume remainder.
-            var focusGate = new SimulationStateGate(SimulationState.Racing);
+            var focusGate = new TestStateGate(SimulationState.Racing);
             var focusClock = new SequenceDeltaSource(1f);
             var focusPhysics = new RecordingPhysicsSimulator();
             var focusHook = new TransitionHook(focusGate, SimulationState.Paused);
@@ -546,7 +547,7 @@ namespace Overdrive.Simulation.Tests
             // tick publishes the first Racing snapshot with activeRaceStepCount = 0").
             var snapshots = new List<PublishedSimulationSnapshot>();
             var physics = new RecordingPhysicsSimulator();
-            var gate = new SimulationStateGate(SimulationState.Countdown);
+            var gate = new TestStateGate(SimulationState.Countdown);
             SimulationDriver driver = CreateDriver(
                 SimulationState.Countdown,
                 new SequenceDeltaSource(SimulationDriver.FIXED_DT),
@@ -580,7 +581,7 @@ namespace Overdrive.Simulation.Tests
             // Paused with no sub-tick remainder: resume must not fabricate a step.
             var clock = new SequenceDeltaSource(SimulationDriver.FIXED_DT);
             var physics = new RecordingPhysicsSimulator();
-            var gate = new SimulationStateGate(SimulationState.Racing);
+            var gate = new TestStateGate(SimulationState.Racing);
             SimulationDriver driver = CreateDriver(
                 SimulationState.Racing,
                 clock,
@@ -629,7 +630,7 @@ namespace Overdrive.Simulation.Tests
             var kernel = new SimulationKernel(new TickProcessor(), steps);
             var driver = new SimulationDriver(
                 kernel,
-                new SimulationStateGate(SimulationState.Racing),
+                new TestStateGate(SimulationState.Racing),
                 new RecordingCapture(Sample()),
                 new SequenceDeltaSource(SimulationDriver.FIXED_DT));
 
@@ -677,7 +678,7 @@ namespace Overdrive.Simulation.Tests
             // must stop the loop; the remainder is not consumed by further ticks.
             var clock = new SequenceDeltaSource(2f * SimulationDriver.FIXED_DT);
             var physics = new RecordingPhysicsSimulator();
-            var gate = new SimulationStateGate(SimulationState.Racing);
+            var gate = new TestStateGate(SimulationState.Racing);
             SimulationDriver driver = CreateDriver(
                 SimulationState.Racing,
                 clock,
@@ -864,10 +865,10 @@ namespace Overdrive.Simulation.Tests
 
         private sealed class TransitionHook : IPreAccumulatorLifecycleHook
         {
-            private readonly SimulationStateGate _gate;
+            private readonly TestStateGate _gate;
             private readonly SimulationState _target;
 
-            public TransitionHook(SimulationStateGate gate, SimulationState target)
+            public TransitionHook(TestStateGate gate, SimulationState target)
             {
                 _gate = gate;
                 _target = target;
@@ -876,6 +877,41 @@ namespace Overdrive.Simulation.Tests
             public void BeforeAccumulator(SimulationState state)
             {
                 _gate.TryTransition(_target);
+            }
+        }
+
+        /// <summary>
+        /// Faithful test stub of <see cref="ISimulationStateGate"/> (story-001: "driver tests
+        /// use a faithful stub"). Permits unrestricted transitions so the driver can be tested
+        /// from any synthetic state (Racing/Countdown/Paused) without walking the real legal
+        /// transition graph — the permissive bypass lives in the TEST, never in production
+        /// (SimulationStateMachine enforces legal transitions only).
+        /// </summary>
+        private sealed class TestStateGate : ISimulationStateGate
+        {
+            private SimulationState _state;
+
+            public TestStateGate(SimulationState initialState)
+            {
+                _state = initialState;
+            }
+
+            public SimulationState State => _state;
+
+            public bool CanTick => _state == SimulationState.Countdown || _state == SimulationState.Racing;
+
+            public SimulationState? ResumeState => null;
+
+            public bool IsForfeit => false;
+
+            public int ForfeitLapCount => 0;
+
+            public float RaceTimeAtForfeit => 0f;
+
+            public bool TryTransition(SimulationState state)
+            {
+                _state = state;
+                return true;
             }
         }
     }

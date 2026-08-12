@@ -638,10 +638,10 @@ namespace Overdrive.Simulation.Tests
             steps[CountdownStep.SpineIndex] = new CountdownStep(machine);
             steps[PhysicsSimulateStep.SpineIndex] = new PhysicsSimulateStep(new NoOpPhysics());
             steps[GoStep.SpineIndex] = new GoStep(machine);
-            steps[ReadoutStep.SpineIndex] = new ReadoutStep();
+            steps[TestSteps.ReadoutSpineIndex] = new TestSteps.ReadoutStep();
             steps[RsmEvaluationStep.SpineIndex] = new RsmEvaluationStep(rsm ?? new NoFinishRsm(), machine);
             steps[RsmConsumeStep.SpineIndex] = new RsmConsumeStep(machine, new NoOpResolver());
-            steps[11] = new PublishStep();
+            steps[TestSteps.PublishSpineIndex] = new TestSteps.PublishStep();
 
             IGhostRecorder recorder = buffer;
             var kernel = new SimulationKernel(processor ?? new NoOpInputProcessor(), steps);
@@ -656,35 +656,8 @@ namespace Overdrive.Simulation.Tests
         }
 
         /// <summary>Writes the post-physics readout arrays so RsmConsumeStep can freeze them.</summary>
-        private sealed class ReadoutStep : ISimulationPipelineStep
-        {
-            public const int SpineIndex = 8;
-
-            public void Execute(SimulationTickContext context)
-            {
-                context.PostTickCarState = new[] { new CarState(1, 1000f) };
-                context.PostTickFuelState = new[] { new FuelState(0.5f) };
-                context.PostTickTireState = new[] { new TireState(0.9f) };
-            }
-        }
-
-        private sealed class PublishStep : ISimulationPipelineStep
-        {
-            public void Execute(SimulationTickContext context)
-            {
-                PostFinishSnapshot terminal = context.TerminalSnapshot;
-                if (terminal == null)
-                {
-                    terminal = new PostFinishSnapshot(
-                        new[] { new CarState(1) }, new[] { new FuelState(1) }, new[] { new TireState(0) },
-                        new RsmState(), SimulationState.Racing);
-                }
-                context.PublishSnapshot(new PublishedSimulationSnapshot(terminal));
-            }
-        }
-
-        [Test]
-        public void AC61_DiscardReArmsOverflowForNextRace()
+          [Test]
+          public void AC61_DiscardReArmsOverflowForNextRace()
         {
             // Per-session overflow contract: an overflowed race leaves the buffer
             // non-serializable; Discard() re-arms it for the next race (the wipe is explicit).
@@ -765,8 +738,8 @@ namespace Overdrive.Simulation.Tests
             steps[CountdownStep.SpineIndex] = new CountdownStep(machine);
             steps[PhysicsSimulateStep.SpineIndex] = new PhysicsSimulateStep(new NoOpPhysics());
             steps[GoStep.SpineIndex] = new GoStep(machine);
-            steps[ReadoutStep.SpineIndex] = new ReadoutStep();
-            steps[11] = new PublishStep();
+            steps[TestSteps.ReadoutSpineIndex] = new TestSteps.ReadoutStep();
+            steps[TestSteps.PublishSpineIndex] = new TestSteps.PublishStep();
             var kernel = new SimulationKernel(new NoOpInputProcessor(), steps);
             var driver = new SimulationDriver(
                 kernel, machine, new FixedCapture(),

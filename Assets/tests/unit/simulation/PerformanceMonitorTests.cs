@@ -90,7 +90,8 @@ namespace Overdrive.Simulation.Tests
             var monitor = new PerformanceMonitor(recorder.Request);
             Feed(monitor, SimulationState.Racing, fps: 20f, frames: 61); // Reduced
             Feed(monitor, SimulationState.Racing, fps: 10f, frames: 31); // pause requested
-            monitor.OnResume(frameDeltaAtResume: 1f / 60f);
+            monitor.OnStateChanged(SimulationState.Paused, SimulationState.Countdown); // resume
+            monitor.Evaluate(1f / 60f, SimulationState.Countdown); // 60 FPS resume -> clear
 
             Assert.AreEqual(fixedDtBefore, SimulationTickContext.FIXED_DT,
                 "FIXED_DT is never changed by the monitor");
@@ -274,7 +275,8 @@ namespace Overdrive.Simulation.Tests
             Feed(monitor, SimulationState.Racing, fps: 20f, frames: 61); // Reduced
             Feed(monitor, SimulationState.Racing, fps: 10f, frames: 31); // pause requested
 
-            monitor.OnResume(frameDeltaAtResume: 1f / 60f); // 60 FPS frame
+            monitor.OnStateChanged(SimulationState.Paused, SimulationState.Countdown); // resume
+            monitor.Evaluate(1f / 60f, SimulationState.Countdown); // 60 FPS resume -> clear
 
             Assert.IsFalse(monitor.IsReduced, "reduced clears");
             Assert.IsFalse(monitor.IsPauseRequested, "pause request clears");
@@ -292,7 +294,8 @@ namespace Overdrive.Simulation.Tests
             Feed(monitor, SimulationState.Racing, fps: 20f, frames: 61);
             Feed(monitor, SimulationState.Racing, fps: 10f, frames: 31);
 
-            monitor.OnResume(frameDeltaAtResume: 1f / ReducedThreshold); // exactly 30 qualifies
+            monitor.OnStateChanged(SimulationState.Paused, SimulationState.Countdown); // resume
+            monitor.Evaluate(1f / ReducedThreshold, SimulationState.Countdown); // exactly 30 qualifies
 
             Assert.IsFalse(monitor.IsReduced);
             Assert.IsFalse(monitor.IsPauseRequested);
@@ -306,12 +309,12 @@ namespace Overdrive.Simulation.Tests
             var recorder = new PauseRecorder();
             var monitor = new PerformanceMonitor(recorder.Request);
 
-            monitor.OnStateChanged(SimulationState.Countdown);
+            monitor.OnStateChanged(SimulationState.Idle, SimulationState.Countdown);
             Feed(monitor, SimulationState.Countdown, fps: 20f, frames: 61); // Reduced
             Feed(monitor, SimulationState.Countdown, fps: 10f, frames: 31); // pause request
             Assert.IsTrue(monitor.IsReduced);
 
-            monitor.OnStateChanged(SimulationState.Finished);
+            monitor.OnStateChanged(SimulationState.Countdown, SimulationState.Finished);
             Assert.IsFalse(monitor.IsReduced);
             Assert.IsFalse(monitor.IsPauseRequested);
             Assert.AreEqual(0f, monitor.Below30TimerSeconds);
@@ -353,7 +356,7 @@ namespace Overdrive.Simulation.Tests
                 Feed(monitor, SimulationState.Racing, fps: 20f, frames: 61); // Reduced + timers
                 Feed(monitor, SimulationState.Racing, fps: 10f, frames: 31); // pause requested
 
-                monitor.OnStateChanged(state);
+                monitor.OnStateChanged(SimulationState.Racing, state);
 
                 Assert.IsFalse(monitor.IsReduced, $"{state} reduced clears");
                 Assert.IsFalse(monitor.IsPauseRequested, $"{state} pause request clears");
@@ -372,13 +375,13 @@ namespace Overdrive.Simulation.Tests
             // Reduced with timers; Paused WITHOUT a pending performance request (manual pause) —
             // the AC-7.6a branch resets on Paused entry. Then Finished also resets (idempotent).
             Feed(monitor, SimulationState.Racing, fps: 20f, frames: 61);
-            monitor.OnStateChanged(SimulationState.Paused); // manual pause -> reset
+            monitor.OnStateChanged(SimulationState.Racing, SimulationState.Paused); // manual pause -> reset
             Assert.IsFalse(monitor.IsReduced);
 
             Feed(monitor, SimulationState.Paused, fps: 10f, frames: 100); // no re-arm in Paused
             Assert.AreEqual(0f, monitor.Below30TimerSeconds, "no re-arm while Paused after reset");
 
-            monitor.OnStateChanged(SimulationState.Finished);
+            monitor.OnStateChanged(SimulationState.Paused, SimulationState.Finished);
             Assert.IsFalse(monitor.IsReduced, "still clean after transition to Finished");
         }
 
@@ -388,9 +391,9 @@ namespace Overdrive.Simulation.Tests
             var recorder = new PauseRecorder();
             var monitor = new PerformanceMonitor(recorder.Request);
 
-            monitor.OnStateChanged(SimulationState.Racing);
+            monitor.OnStateChanged(SimulationState.Idle, SimulationState.Racing);
             Feed(monitor, SimulationState.Racing, fps: 20f, frames: 61); // Reduced
-            monitor.OnStateChanged(SimulationState.Results); // reset
+            monitor.OnStateChanged(SimulationState.Racing, SimulationState.Results); // reset
 
             // Frames below 15/30 in Results must not re-arm the timers.
             Feed(monitor, SimulationState.Results, fps: 10f, frames: 100);
@@ -410,16 +413,20 @@ namespace Overdrive.Simulation.Tests
 
             Feed(monitor, SimulationState.Racing, fps: 20f, frames: 61); // Reduced
             Feed(monitor, SimulationState.Racing, fps: 10f, frames: 31); // pause requested
-            float below15Before = monitor.Below15TimerSeconds;
 
-            // Resume below 30: timers/reduced persist AND the pause request clears so
-            // protection can re-trigger (AC-7.7c).
-            monitor.OnResume(frameDeltaAtResume: 1f / 20f);
+            // Resume below 30: reduced persists AND the pause request clears so protection can
+            // re-trigger (AC-7.7c). Resume frame at 20 FPS (>=15, <30): the frame is evaluated,
+            // so it resets the below-15 timer (GDD "any frame at or above 15 FPS resets that
+            // timer") while the below-30 timer and reduced state persist. The below-15
+            // continuation-on-resume case (a <15 FPS resume frame) is covered by
+            // AC77c_Below15ContinuesNotRestartsOnResume.
+            monitor.OnStateChanged(SimulationState.Paused, SimulationState.Countdown); // resume <30
+            monitor.Evaluate(1f / 20f, SimulationState.Countdown);
 
             Assert.IsTrue(monitor.IsReduced, "reduced persists");
             Assert.IsFalse(monitor.IsPauseRequested, "pause request clears so protection can re-arm");
-            Assert.GreaterOrEqual(monitor.Below15TimerSeconds, below15Before,
-                "below-15 duration continues, not reset");
+            Assert.AreEqual(0f, monitor.Below15TimerSeconds,
+                "resume frame >=15 FPS resets the below-15 timer (GDD rule)");
             Assert.Greater(monitor.Below30TimerSeconds, 0f,
                 "below-30 timer persists on resume <30");
             Assert.AreEqual(0f, monitor.RecoveryTimerSeconds,
@@ -445,8 +452,8 @@ namespace Overdrive.Simulation.Tests
             float below15Before = monitor.Below15TimerSeconds;
             Assert.Greater(below15Before, 1.5f, "pre-resume below-15 duration ~2.0s");
 
-            monitor.OnResume(frameDeltaAtResume: 1f / 10f); // resume <30, persists
-            monitor.Evaluate(1f / 10f, SimulationState.Racing); // one 10 FPS frame
+            monitor.OnStateChanged(SimulationState.Paused, SimulationState.Countdown); // resume <30
+            monitor.Evaluate(1f / 10f, SimulationState.Countdown); // resume decision + one 10 FPS frame
 
             Assert.Greater(monitor.Below15TimerSeconds, below15Before + 0.05f,
                 "below-15 continues across resume (a restart would show ~0.1s, mutant guard)");
@@ -462,7 +469,7 @@ namespace Overdrive.Simulation.Tests
             Feed(monitor, SimulationState.Racing, fps: 10f, frames: 31); // pause requested
 
             // Paused entry with _pauseRequested=true -> timers PRESERVED (AC-7.7c exception).
-            monitor.OnStateChanged(SimulationState.Paused);
+            monitor.OnStateChanged(SimulationState.Racing, SimulationState.Paused);
 
             Assert.IsTrue(monitor.IsReduced, "reduced preserved across performance pause");
             Assert.Greater(monitor.Below30TimerSeconds, 0f, "below-30 preserved");
@@ -479,9 +486,9 @@ namespace Overdrive.Simulation.Tests
             Feed(monitor, SimulationState.Racing, fps: 20f, frames: 61);
             // Simulate a non-performance Paused entry: the monitor did not request it.
             var manualPauseMonitor = new PerformanceMonitor(recorder.Request);
-            manualPauseMonitor.OnStateChanged(SimulationState.Racing);
+            manualPauseMonitor.OnStateChanged(SimulationState.Idle, SimulationState.Racing);
             Feed(manualPauseMonitor, SimulationState.Racing, fps: 20f, frames: 61);
-            manualPauseMonitor.OnStateChanged(SimulationState.Paused); // no _pauseRequested
+            manualPauseMonitor.OnStateChanged(SimulationState.Racing, SimulationState.Paused); // no _pauseRequested
 
             Assert.IsFalse(manualPauseMonitor.IsReduced, "manual pause resets reduced");
             Assert.AreEqual(0f, manualPauseMonitor.Below30TimerSeconds);
@@ -591,13 +598,13 @@ namespace Overdrive.Simulation.Tests
             var recorder = new PauseRecorder();
             var monitor = new PerformanceMonitor(recorder.Request);
 
-            monitor.OnStateChanged(SimulationState.Racing);
+            monitor.OnStateChanged(SimulationState.Idle, SimulationState.Racing);
             Feed(monitor, SimulationState.Racing, fps: 20f, frames: 61); // Reduced
             Feed(monitor, SimulationState.Racing, fps: 60f, frames: 120); // 2s recovery accumulates
             Assert.Greater(monitor.RecoveryTimerSeconds, 0f, "recovery timer seeded independently");
             Assert.AreEqual(0f, monitor.Below30TimerSeconds, "below-30 resets on >=30 frames");
 
-            monitor.OnStateChanged(SimulationState.Idle);
+            monitor.OnStateChanged(SimulationState.Racing, SimulationState.Idle);
             Assert.AreEqual(0f, monitor.RecoveryTimerSeconds, "recovery resets on Idle");
             Assert.IsFalse(monitor.IsReduced);
         }
@@ -611,13 +618,13 @@ namespace Overdrive.Simulation.Tests
             var recorder = new PauseRecorder();
             var monitor = new PerformanceMonitor(recorder.Request);
 
-            monitor.OnStateChanged(SimulationState.Racing);
+            monitor.OnStateChanged(SimulationState.Idle, SimulationState.Racing);
             Feed(monitor, SimulationState.Racing, fps: 10f, frames: 35); // <15 -> both accumulate
 
             Assert.Greater(monitor.Below30TimerSeconds, 0f);
             Assert.Greater(monitor.Below15TimerSeconds, 0f);
 
-            monitor.OnStateChanged(SimulationState.Idle);
+            monitor.OnStateChanged(SimulationState.Racing, SimulationState.Idle);
             Assert.AreEqual(0f, monitor.Below30TimerSeconds);
             Assert.AreEqual(0f, monitor.Below15TimerSeconds);
             Assert.AreEqual(0f, monitor.RecoveryTimerSeconds);
@@ -646,8 +653,8 @@ namespace Overdrive.Simulation.Tests
         [Test]
         public void AC77a_InvalidResumeDeltaIsNoOp()
         {
-            // The public OnResume seam must be safe on invalid deltas (zero, negative, NaN,
-            // infinity) — no clear, no persist, no timer mutation (mirrors Evaluate guard).
+            // The resume path must be safe on invalid deltas (zero, negative, NaN, infinity)
+            // — no clear, no persist, no timer mutation (the resume frame's Evaluate guards).
             var recorder = new PauseRecorder();
             var monitor = new PerformanceMonitor(recorder.Request);
 
@@ -655,10 +662,11 @@ namespace Overdrive.Simulation.Tests
             Feed(monitor, SimulationState.Racing, fps: 10f, frames: 31); // pause requested
             Assert.IsTrue(monitor.IsReduced);
 
-            monitor.OnResume(0f);
-            monitor.OnResume(-1f);
-            monitor.OnResume(float.NaN);
-            monitor.OnResume(float.PositiveInfinity);
+            monitor.OnStateChanged(SimulationState.Paused, SimulationState.Countdown); // resume
+            monitor.Evaluate(0f, SimulationState.Countdown);
+            monitor.Evaluate(-1f, SimulationState.Countdown);
+            monitor.Evaluate(float.NaN, SimulationState.Countdown);
+            monitor.Evaluate(float.PositiveInfinity, SimulationState.Countdown);
 
             Assert.IsTrue(monitor.IsReduced, "invalid resume delta does not clear");
             Assert.IsTrue(monitor.IsPauseRequested, "invalid resume delta does not clear the request");
@@ -673,11 +681,11 @@ namespace Overdrive.Simulation.Tests
             var recorder = new PauseRecorder();
             var monitor = new PerformanceMonitor(recorder.Request);
 
-            monitor.OnStateChanged(SimulationState.Racing); // enter active state (track last state)
+            monitor.OnStateChanged(SimulationState.Idle, SimulationState.Racing); // enter active state (track last state)
             Feed(monitor, SimulationState.Racing, fps: 20f, frames: 61); // Reduced + below-30 timer
             Feed(monitor, SimulationState.Racing, fps: 10f, frames: 31); // pause requested + below-15
 
-            monitor.OnStateChanged(SimulationState.Idle);
+            monitor.OnStateChanged(SimulationState.Racing, SimulationState.Idle);
 
             Assert.IsFalse(monitor.IsReduced);
             Assert.IsFalse(monitor.IsPauseRequested);
@@ -694,8 +702,8 @@ namespace Overdrive.Simulation.Tests
 
             Feed(monitor, SimulationState.Racing, fps: 20f, frames: 61);
             Feed(monitor, SimulationState.Racing, fps: 10f, frames: 31);
-            monitor.OnStateChanged(SimulationState.Results); // reset
-            monitor.OnStateChanged(SimulationState.Racing);  // re-enter
+            monitor.OnStateChanged(SimulationState.Racing, SimulationState.Results); // reset
+            monitor.OnStateChanged(SimulationState.Results, SimulationState.Racing);  // re-enter
 
             Assert.AreEqual(0f, monitor.Below30TimerSeconds, "re-entering Racing starts clean");
             Assert.IsFalse(monitor.IsReduced);
@@ -835,7 +843,7 @@ namespace Overdrive.Simulation.Tests
         {
             // Paused -> Countdown resume through the REAL driver path: a ResumeHook resumes
             // inside the pre-accumulator boundary so the driver observes the transition on the
-            // same frame and calls OnResume(frameDelta). At 60 FPS the monitor clears (AC-7.7a).
+            // same frame and reports it to the monitor, which clears at 60 FPS (AC-7.7a).
             var machine = new SimulationStateMachine();
             machine.StartSingleRace(RaceMode.Race, new GridAssignment(1)); // Idle -> Loading
             machine.OnRaceLoadReady(RaceMode.Race, new GridAssignment(1)); // Loading -> Countdown
@@ -869,7 +877,7 @@ namespace Overdrive.Simulation.Tests
             driver.Update(); // observes Paused; the ResumeHook fires on the NEXT frame
 
             // Next Update: the ResumeHook resumes inside the boundary -> the driver observes
-            // Paused->Countdown, calls OnResume(1/60) -> clears (AC-7.7a).
+            // Paused->Countdown and reports it; the monitor clears at 60 FPS (AC-7.7a).
             driver.Update();
 
             Assert.IsFalse(monitor.IsReduced, "monitor cleared by resume at 60 FPS through the driver");
@@ -907,7 +915,7 @@ namespace Overdrive.Simulation.Tests
 
             machine.EnterPaused(SimulationState.Countdown);
             driver.Update(); // observes Paused
-            driver.Update(); // ResumeHook resumes <30 -> OnResume(1/20) -> persists (AC-7.7c)
+            driver.Update(); // ResumeHook resumes <30 -> monitor persists (AC-7.7c)
 
             Assert.IsTrue(monitor.IsReduced, "reduced persists through driver on resume <30");
             Assert.IsFalse(monitor.IsPauseRequested, "pause request clears so protection re-arms");
@@ -923,10 +931,10 @@ namespace Overdrive.Simulation.Tests
         [Test]
         public void Driver_NormalActiveFramesDoNotCallOnResume()
         {
-            // Mutation guard for the resume latch: OnResume must fire ONLY on a real
-            // Paused->Countdown/Racing transition. If _resumeFramePending were set on every
-            // active frame, a >=30 FPS frame would call OnResume and clear a reduced monitor
-            // that never paused. Assert the reduced state SURVIVES normal active frames.
+            // Mutation guard for the resume latch: the monitor's resume processing must fire
+            // ONLY on a real Paused->Countdown/Racing transition. If the resume latch were armed
+            // on every active frame, a >=30 FPS frame would clear a reduced monitor that never
+            // paused. Assert the reduced state SURVIVES normal active frames.
             var machine = new SimulationStateMachine();
             machine.StartSingleRace(RaceMode.Race, new GridAssignment(1));
             machine.OnRaceLoadReady(RaceMode.Race, new GridAssignment(1)); // -> Countdown
@@ -942,14 +950,14 @@ namespace Overdrive.Simulation.Tests
             Assert.IsTrue(monitor.IsReduced);
             Assert.IsFalse(monitor.IsPauseRequested, "no pause request in this scenario");
 
-            // Normal active frames at 60 FPS: NO resume transition -> OnResume must NOT fire,
-            // so the reduced state must NOT clear via a bogus resume.
+            // Normal active frames at 60 FPS: NO resume transition -> the resume latch must
+            // NOT arm, so the reduced state must NOT clear via a bogus resume.
             deltaSource.Delta = 1f / 60f;
             for (int i = 0; i < 60; i++)
                 driver.Update(); // 1s of >=30 FPS, no transition
 
             Assert.IsTrue(monitor.IsReduced,
-                "reduced survives normal active frames — OnResume fired without a real transition (latch mutant)");
+                "reduced survives normal active frames — resume fired without a real transition (latch mutant)");
         }
 
         [Test]
@@ -995,7 +1003,7 @@ namespace Overdrive.Simulation.Tests
             // Performance-pause from Racing, then resume at 60 FPS through the driver.
             machine.EnterPaused(SimulationState.Racing);
             driver.Update(); // observes Paused
-            driver.Update(); // ResumeHook resumes inside the boundary -> OnResume(1/60) clears
+            driver.Update(); // ResumeHook resumes inside the boundary -> monitor clears at 60 FPS
 
             Assert.IsFalse(monitor.IsReduced,
                 "Racing resume at 60 FPS clears the monitor through the driver (AC-7.7a)");
@@ -1011,14 +1019,14 @@ namespace Overdrive.Simulation.Tests
             var recorder = new PauseRecorder();
             var monitor = new PerformanceMonitor(recorder.Request);
 
-            monitor.OnStateChanged(SimulationState.Racing);
+            monitor.OnStateChanged(SimulationState.Idle, SimulationState.Racing);
             Feed(monitor, SimulationState.Racing, fps: 20f, frames: 61); // Reduced
             Feed(monitor, SimulationState.Racing, fps: 10f, frames: 31); // pause request
-            monitor.OnStateChanged(SimulationState.Paused); // performance-paused: preserved
+            monitor.OnStateChanged(SimulationState.Racing, SimulationState.Paused); // performance-paused: preserved
             Assert.IsTrue(monitor.IsReduced, "timers preserved on performance pause");
             Assert.Greater(monitor.Below15TimerSeconds, 0f);
 
-            monitor.OnStateChanged(SimulationState.Finished);
+            monitor.OnStateChanged(SimulationState.Paused, SimulationState.Finished);
             Assert.IsFalse(monitor.IsReduced, "Finished resets after performance pause");
             Assert.IsFalse(monitor.IsPauseRequested);
             Assert.AreEqual(0f, monitor.Below30TimerSeconds);
@@ -1113,8 +1121,8 @@ namespace Overdrive.Simulation.Tests
 
             Feed(monitor, SimulationState.Racing, fps: 20f, frames: 61);
             Feed(monitor, SimulationState.Racing, fps: 10f, frames: 31);
-            monitor.OnStateChanged(SimulationState.Results); // reset
-            monitor.OnStateChanged(SimulationState.Countdown); // re-enter
+            monitor.OnStateChanged(SimulationState.Racing, SimulationState.Results); // reset
+            monitor.OnStateChanged(SimulationState.Results, SimulationState.Countdown); // re-enter
 
             Assert.AreEqual(0f, monitor.Below30TimerSeconds, "re-entering Countdown starts clean");
             Assert.AreEqual(0f, monitor.Below15TimerSeconds);
@@ -1132,13 +1140,13 @@ namespace Overdrive.Simulation.Tests
             var recorder = new PauseRecorder();
             var monitor = new PerformanceMonitor(recorder.Request);
 
-            monitor.OnStateChanged(SimulationState.Countdown);
+            monitor.OnStateChanged(SimulationState.Idle, SimulationState.Countdown);
             Feed(monitor, SimulationState.Countdown, fps: 20f, frames: 61); // Reduced
             float below30Before = monitor.Below30TimerSeconds;
             Assert.IsTrue(monitor.IsReduced);
 
             // Simulate a transition Countdown -> Racing (active -> active, no reset state).
-            monitor.OnStateChanged(SimulationState.Racing);
+            monitor.OnStateChanged(SimulationState.Countdown, SimulationState.Racing);
             Assert.IsTrue(monitor.IsReduced,
                 "active re-entry does not clear the reduced state (mutant guard)");
             Assert.AreEqual(below30Before, monitor.Below30TimerSeconds,
