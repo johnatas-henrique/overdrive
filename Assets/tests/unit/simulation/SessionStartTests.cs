@@ -601,13 +601,14 @@ namespace Overdrive.Simulation.Tests
             steps[CountdownStep.SpineIndex] = new CountdownStep(machine);
             steps[PhysicsSimulateStep.SpineIndex] = new PhysicsSimulateStep(physics);
             steps[GoStep.SpineIndex] = new GoStep(machine);
-            steps[11] = new PublishStep();
-            return new SimulationDriver(
-                new SimulationKernel(processor, steps),
-                machine,
-                new FixedCapture(),
-                new FixedDeltaSource(delta),
-                lifecycleHook);
+            steps[TestSteps.PublishSpineIndex] = new TestSteps.PublishStep();
+          return new SimulationDriver(
+          new SimulationKernel(processor, steps),
+          machine,
+          new FixedCapture(),
+          new FixedDeltaSource(delta),
+          lifecycleHook,
+          physicsFailureHandler: machine);
         }
 
         private sealed class NoOpStep : ISimulationPipelineStep
@@ -615,20 +616,10 @@ namespace Overdrive.Simulation.Tests
             public void Execute(SimulationTickContext context) { }
         }
 
-        private sealed class PublishStep : ISimulationPipelineStep
-        {
-            public void Execute(SimulationTickContext context)
-            {
-                context.PublishSnapshot(new PublishedSimulationSnapshot(new PostFinishSnapshot(
-                    new[] { new CarState(1) }, new[] { new FuelState(1) }, new[] { new TireState(0) },
-                    new RsmState(), SimulationState.Racing)));
-            }
-        }
-
-        private sealed class RecordingProcessor : ISimulationInputProcessor
-        {
-            private readonly TickProcessor _processor = new TickProcessor();
-            public int Calls { get; private set; }
+  private sealed class RecordingProcessor : ISimulationInputProcessor
+  {
+  private readonly TickProcessor _processor = new TickProcessor();
+  public int Calls { get; private set; }
 
             public SimulationInput Process(RawInputSample sample, bool pausePending)
             {

@@ -217,7 +217,9 @@ namespace Overdrive.Simulation.Tests
         [Test]
         public void AC38_StateGateAndLifecycleEventPreserveBoundary()
         {
-            var gate = new SimulationStateGate(SimulationState.Idle);
+            // The test gate stub is the faithful ISimulationStateGate seam (story-001: "driver
+            // tests use a faithful stub") — permissive transitions for synthetic driver states.
+            var gate = new TestGate(SimulationState.Idle);
             Assert.IsFalse(gate.CanTick);
             Assert.IsTrue(gate.TryTransition(SimulationState.Racing));
             Assert.IsTrue(gate.CanTick);
@@ -364,6 +366,36 @@ namespace Overdrive.Simulation.Tests
             // Exact assertion so a broken dead-zone that passes raw 0.7 fails the test.
             Assert.AreEqual(0.6842f, fromGamepad.RawAcceleratePostDeadZone, 0.001f);
             Assert.IsNotNull(fromGamepad);
+        }
+
+        /// <summary>
+        /// Faithful ISimulationStateGate stub (story-001) with permissive transitions for
+        /// synthetic driver states. The permissive bypass lives in the TEST only — production
+        /// composition uses the real SimulationStateMachine with legal transitions.
+        /// </summary>
+        private sealed class TestGate : ISimulationStateGate
+        {
+            private SimulationState _state;
+
+            public TestGate(SimulationState initialState) => _state = initialState;
+
+            public SimulationState State => _state;
+
+            public bool CanTick => _state == SimulationState.Countdown || _state == SimulationState.Racing;
+
+            public SimulationState? ResumeState => null;
+
+            public bool IsForfeit => false;
+
+            public int ForfeitLapCount => 0;
+
+            public float RaceTimeAtForfeit => 0f;
+
+            public bool TryTransition(SimulationState state)
+            {
+                _state = state;
+                return true;
+            }
         }
     }
 }

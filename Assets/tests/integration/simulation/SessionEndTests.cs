@@ -38,10 +38,10 @@ namespace Overdrive.Simulation.Tests
             steps[PhysicsSimulateStep.SpineIndex] = new PhysicsSimulateStep(physics);
             steps[GoStep.SpineIndex] = new GoStep(machine);
             // Post-physics readout writes the frozen arrays (defect 2 fix).
-            steps[ReadoutStep.SpineIndex] = new ReadoutStep();
+            steps[TestSteps.ReadoutSpineIndex] = new TestSteps.ReadoutStep();
             steps[RsmEvaluationStep.SpineIndex] = new RsmEvaluationStep(rsm ?? new NoFinishRsm(), machine);
             steps[RsmConsumeStep.SpineIndex] = new RsmConsumeStep(machine, resolver ?? new NoOpResolver());
-            steps[11] = new PublishStep();
+            steps[TestSteps.PublishSpineIndex] = new TestSteps.PublishStep();
             steps[AiSkipStep.SpineIndex] = new AiSkipStep(machine);
             return new SimulationDriver(
                 new SimulationKernel(processor, steps),
@@ -71,10 +71,10 @@ namespace Overdrive.Simulation.Tests
             steps[CountdownStep.SpineIndex] = new CountdownStep(machine);
             steps[PhysicsSimulateStep.SpineIndex] = new PhysicsSimulateStep(physics);
             steps[GoStep.SpineIndex] = new GoStep(machine);
-            steps[ReadoutStep.SpineIndex] = new ReadoutStep();
+            steps[TestSteps.ReadoutSpineIndex] = new TestSteps.ReadoutStep();
             steps[RsmEvaluationStep.SpineIndex] = new RsmEvaluationStep(rsm, machine);
             steps[RsmConsumeStep.SpineIndex] = new RsmConsumeStep(machine, resolver);
-            steps[11] = new PublishStep();
+            steps[TestSteps.PublishSpineIndex] = new TestSteps.PublishStep();
             steps[AiSkipStep.SpineIndex] = new AiSkipStep(machine);
             steps[AiSkipStep.SpineIndex + 1] = producer; // index 13 = Step 14 slot
             return new SimulationDriver(
@@ -107,10 +107,10 @@ namespace Overdrive.Simulation.Tests
             steps[CountdownStep.SpineIndex] = new CountdownStep(machine);
             steps[PhysicsSimulateStep.SpineIndex] = new PhysicsSimulateStep(physics);
             steps[GoStep.SpineIndex] = new GoStep(machine);
-            steps[ReadoutStep.SpineIndex] = new ReadoutStep();
+            steps[TestSteps.ReadoutSpineIndex] = new TestSteps.ReadoutStep();
             steps[RsmEvaluationStep.SpineIndex] = new RsmEvaluationStep(rsm, machine);
             steps[RsmConsumeStep.SpineIndex] = new RsmConsumeStep(machine, resolver);
-            steps[11] = new PublishStep();
+            steps[TestSteps.PublishSpineIndex] = new TestSteps.PublishStep();
             steps[AiSkipStep.SpineIndex] = new AiSkipStep(machine);
             return new SimulationDriver(
                 new SimulationKernel(processor, steps),
@@ -1146,36 +1146,9 @@ namespace Overdrive.Simulation.Tests
         }
 
         /// <summary>Writes the post-physics readout arrays so RsmConsumeStep can freeze them (defect 2 fix).</summary>
-        private sealed class ReadoutStep : ISimulationPipelineStep
-        {
-            public const int SpineIndex = 8;
-
-            public void Execute(SimulationTickContext context)
-            {
-                context.PostTickCarState = new[] { new CarState(1, 1000f) };
-                context.PostTickFuelState = new[] { new FuelState(0.5f) };
-                context.PostTickTireState = new[] { new TireState(0.9f) };
-            }
-        }
-
-        private sealed class PublishStep : ISimulationPipelineStep
-        {
-            public void Execute(SimulationTickContext context)
-            {
-                PostFinishSnapshot terminal = context.TerminalSnapshot;
-                if (terminal == null)
-                {
-                    terminal = new PostFinishSnapshot(
-                        new[] { new CarState(1) }, new[] { new FuelState(1) }, new[] { new TireState(0) },
-                        new RsmState(), SimulationState.Racing);
-                }
-                context.PublishSnapshot(new PublishedSimulationSnapshot(terminal));
-            }
-        }
-
-        private sealed class RecordingProcessor : ISimulationInputProcessor
-        {
-            public int Calls { get; private set; }
+          private sealed class RecordingProcessor : ISimulationInputProcessor
+          {
+              public int Calls { get; private set; }
 
             public SimulationInput Process(RawInputSample sample, bool pausePending)
             {
