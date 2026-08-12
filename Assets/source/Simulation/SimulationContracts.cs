@@ -354,18 +354,120 @@ namespace Overdrive.Simulation
     /// <summary>
     /// Immutable replay boundary captured at GO before the first Racing tick
     /// (ADR-0008; expanded by Story 008 with race/content identity, seed, grid,
-    /// cars, resources, and Perfect Start state).
+    /// cars, resources, and Perfect Start state). Every field is deep-copied at
+    /// construction — no reference to mutable source state survives capture
+    /// (AC-3.9). <c>SimSeed</c> is authoritative: a replay is valid only when its
+    /// header seed matches this value (ADR-0008).
     /// </summary>
     public readonly struct ReplayInitialState
     {
-        public readonly SimulationState SimulationState;
-        public readonly TrackData TrackData;
+        /// <summary>Format version of the capture.</summary>
+        public readonly int Version;
 
-        public ReplayInitialState(SimulationState state, TrackData trackData)
+        /// <summary>Identifies the race configuration (content/race identity).</summary>
+        public readonly string RaceConfigurationId;
+
+        /// <summary>Content version hash — changes when any referenced content asset changes.</summary>
+        public readonly string ContentVersionHash;
+
+        /// <summary>Authoritative race seed; the PCG32 seed the simulation consumed.</summary>
+        public readonly ulong SimSeed;
+
+        /// <summary>Immutable grid handoff (grid slots for Race, pit-box slot for Qualifying).</summary>
+        public readonly GridAssignment GridAssignment;
+
+        /// <summary>Ascending car IDs, deep-copied at capture.</summary>
+        public readonly IReadOnlyList<int> CarIds;
+
+        /// <summary>Initial fuel state per car, deep-copied at capture.</summary>
+        public readonly IReadOnlyList<FuelState> InitialFuelState;
+
+        /// <summary>Initial tire state per car, deep-copied at capture.</summary>
+        public readonly IReadOnlyList<TireState> InitialTireState;
+
+        /// <summary>Remaining Perfect Start ticks at GO (Grid &amp; Start system).</summary>
+        public readonly int PerfectStartRemainingTicks;
+
+        /// <summary>
+        /// Difficulty profile snapshot. Present + immutable-capture are Kernel-verified;
+        /// schema validity and end-to-end use are deferred to the Settings epic
+        /// (AC-3.9 — stub today).
+        /// </summary>
+        public readonly DifficultyProfile DifficultyProfile;
+
+        /// <summary>Creates a deep-copied replay boundary snapshot.</summary>
+        public ReplayInitialState(
+            int version,
+            string raceConfigurationId,
+            string contentVersionHash,
+            ulong simSeed,
+            GridAssignment gridAssignment,
+            IReadOnlyList<int> carIds,
+            IReadOnlyList<FuelState> initialFuelState,
+            IReadOnlyList<TireState> initialTireState,
+            int perfectStartRemainingTicks,
+            DifficultyProfile difficultyProfile)
         {
-            SimulationState = state;
-            TrackData = trackData;
+            Version = version;
+            RaceConfigurationId = raceConfigurationId ?? string.Empty;
+            ContentVersionHash = contentVersionHash ?? string.Empty;
+            SimSeed = simSeed;
+            GridAssignment = gridAssignment ?? throw new ArgumentNullException(nameof(gridAssignment));
+            CarIds = SnapshotCopies.Copy(carIds);
+            InitialFuelState = SnapshotCopies.Copy(initialFuelState);
+            InitialTireState = SnapshotCopies.Copy(initialTireState);
+            PerfectStartRemainingTicks = perfectStartRemainingTicks;
+            DifficultyProfile = difficultyProfile;
         }
+    }
+
+    /// <summary>
+    /// Input handed to the capture hook at the GO boundary (AC-3.9). The provider
+    /// (composition root) assembles the current race configuration, content identity,
+    /// seed, grid, cars, resources, and Perfect Start state; the Kernel snapshots it
+    /// immutably exactly once before the first Racing tick.
+    /// </summary>
+    public sealed class ReplayInitialStateCaptureInput
+    {
+        /// <summary>Version of the capture format.</summary>
+        public int Version { get; set; }
+
+        /// <summary>Race configuration identifier.</summary>
+        public string RaceConfigurationId { get; set; }
+
+        /// <summary>Content version hash.</summary>
+        public string ContentVersionHash { get; set; }
+
+        /// <summary>Authoritative race seed.</summary>
+        public ulong SimSeed { get; set; }
+
+        /// <summary>Immutable grid handoff.</summary>
+        public GridAssignment GridAssignment { get; set; }
+
+        /// <summary>Ascending car IDs.</summary>
+        public IReadOnlyList<int> CarIds { get; set; }
+
+        /// <summary>Initial fuel state per car.</summary>
+        public IReadOnlyList<FuelState> InitialFuelState { get; set; }
+
+        /// <summary>Initial tire state per car.</summary>
+        public IReadOnlyList<TireState> InitialTireState { get; set; }
+
+        /// <summary>Perfect Start remaining ticks at GO.</summary>
+        public int PerfectStartRemainingTicks { get; set; }
+
+        /// <summary>Difficulty profile (stub today; Settings epic owns schema).</summary>
+        public DifficultyProfile DifficultyProfile { get; set; }
+    }
+
+    /// <summary>
+    /// Supplies the GO-boundary capture input to the simulation (AC-3.9). The
+    /// composition root implements this; the Kernel consumes the input immutably.
+    /// </summary>
+    public interface IReplayInitialStateProvider
+    {
+        /// <summary>Returns the current race configuration for replay capture.</summary>
+        ReplayInitialStateCaptureInput GetCaptureInput();
     }
 
     /// <summary>

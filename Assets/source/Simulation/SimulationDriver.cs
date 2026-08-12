@@ -71,6 +71,8 @@ namespace Overdrive.Simulation
         private readonly Func<bool> _pauseEdgeSource;
         private readonly Action _pauseEdgeConsumer;
         private readonly PerformanceMonitor _performanceMonitor;
+        private readonly IGhostRecorder _ghostRecorder;
+        private readonly IReplayInitialStateProvider _replayStateProvider;
 
         private double _accumulator;
         private int _simulationStepCount;
@@ -78,6 +80,9 @@ namespace Overdrive.Simulation
         private bool _forfeitSnapshotPublished;
         private SimulationState _lastHookedState;
         private bool _resumeFramePending;
+        private SimulationState _previousState;
+        private bool _replayInitialStateCaptured;
+        private ReplayInitialState _replayInitialState;
 
         /// <summary>
         /// Creates a manual simulation driver.
@@ -90,6 +95,8 @@ namespace Overdrive.Simulation
         /// <param name="pauseEdgeSource">Optional input pause-edge query used by production wiring.</param>
         /// <param name="pauseEdgeConsumer">Optional callback that consumes a delivered pause edge.</param>
         /// <param name="performanceMonitor">Optional performance protection monitor evaluated once per frame.</param>
+        /// <param name="ghostRecorder">Optional MVP ghost recorder (Story 008): one record per completed Racing tick, Pause edges, discard on terminal states.</param>
+        /// <param name="replayStateProvider">Optional GO-boundary replay capture provider (AC-3.9).</param>
         public SimulationDriver(
             SimulationKernel kernel,
             ISimulationStateGate stateGate,
@@ -98,7 +105,9 @@ namespace Overdrive.Simulation
             IPreAccumulatorLifecycleHook lifecycleHook = null,
             Func<bool> pauseEdgeSource = null,
             Action pauseEdgeConsumer = null,
-            PerformanceMonitor performanceMonitor = null)
+            PerformanceMonitor performanceMonitor = null,
+            IGhostRecorder ghostRecorder = null,
+            IReplayInitialStateProvider replayStateProvider = null)
         {
             _kernel = kernel ?? throw new ArgumentNullException(nameof(kernel));
             _stateGate = stateGate ?? throw new ArgumentNullException(nameof(stateGate));
@@ -108,6 +117,8 @@ namespace Overdrive.Simulation
             _pauseEdgeSource = pauseEdgeSource;
             _pauseEdgeConsumer = pauseEdgeConsumer;
             _performanceMonitor = performanceMonitor;
+            _ghostRecorder = ghostRecorder;
+            _replayStateProvider = replayStateProvider;
             if (performanceMonitor != null)
                 performanceMonitor.PerformanceStatusChanged += OnPerformanceStatusChanged;
         }
@@ -136,6 +147,9 @@ namespace Overdrive.Simulation
 
         /// <summary>The kernel's latest immutable published snapshot, or null before Step 12 publishes one.</summary>
         public PublishedSimulationSnapshot PublishedSnapshot => _kernel.PublishedSnapshot;
+
+        /// <summary>The GO-boundary replay capture (AC-3.9), or null before the first Racing tick.</summary>
+        public ReplayInitialState? ReplayInitialState => _replayInitialStateCaptured ? _replayInitialState : (ReplayInitialState?)null;
 
         /// <summary>Raised after the driver decorates and publishes a tick snapshot.</summary>
         public event Action<PublishedSimulationSnapshot> SnapshotPublished;
@@ -205,13 +219,7 @@ namespace Overdrive.Simulation
             // via the hook. State-based detection publishes the forfeit Results lifecycle
             // snapshot exactly once per forfeit entry (no resumed physics tick — CanTick is
             // false in Results). Reset when the session leaves Results-forfeit.
-            if (_stateGate.State != SimulationState.Results || !_stateGate.IsForfeit)
-                _forfeitSnapshotPublished = false;
-            else if (!_forfeitSnapshotPublished)
-            {
-                PublishForfeitSnapshot();
-                _forfeitSnapshotPublished = true;
-            }
+            HandleForfeitSnapshot();
 
             float frameDelta = enteredPaused ? 0f : _deltaSource.GetUnscaledDeltaTime();
 
@@ -219,6 +227,9 @@ namespace Overdrive.Simulation
             // uses (single-capture semantics, ADR-0001) while in Countdown/Racing. A resume frame
             // reports its FPS to the monitor for the clear/persist decision (AC-7.7a/7.7c).
             EvaluatePerformanceMonitor(stateBeforeHook, stateAfterHook, frameDelta);
+
+            // Ghost discard and GO-capture re-arm on lifecycle transitions (see helper).
+            HandleGhostLifecycleTransition(stateAfterHook);
 
             if (enteredPaused || !_stateGate.CanTick)
                 return;
@@ -245,6 +256,64 @@ namespace Overdrive.Simulation
                 ExecuteSingleTick(startedInRacing, pauseEdge, out bool pauseEdgeDelivered);
                 if (pauseEdgeDelivered)
                     pauseEdgeConsumedThisFrame = true;
+            }
+        }
+
+        /// <summary>
+        /// Publishes the forfeit Results lifecycle snapshot exactly once per forfeit entry
+        /// (state-based detection — the forfeit happens outside the Update loop while Paused,
+        /// AC-4.12). Reset when the session leaves Results-forfeit.
+        /// </summary>
+        private void HandleForfeitSnapshot()
+        {
+            if (_stateGate.State != SimulationState.Results || !_stateGate.IsForfeit)
+                _forfeitSnapshotPublished = false;
+            else if (!_forfeitSnapshotPublished)
+            {
+                PublishForfeitSnapshot();
+                _forfeitSnapshotPublished = true;
+            }
+        }
+
+        /// <summary>
+        /// Handles lifecycle transitions for the ghost recorder and the GO-boundary replay
+        /// capture. Runs BEFORE the early-return (Results/Idle have CanTick=false — the tick
+        /// loop is not the right observation point) and never via StateChanged (which fires
+        /// inside the spine at step 10, before the post-increment record append — a discard
+        /// handler there would empty the buffer one record short). Terminal states (Results
+        /// incl. forfeit, load-failure's Idle, or explicit Idle) discard the MVP buffer
+        /// unconditionally (TR-ghost-004); a new-session transition (Results/Idle ->
+        /// Loading/Countdown) discards the previous race's records and re-arms the replay
+        /// capture (AC-3.9 capture is exactly once PER race).
+        /// </summary>
+        private void HandleGhostLifecycleTransition(SimulationState stateAfterHook)
+        {
+            if (stateAfterHook == _previousState)
+                return;
+
+            SimulationState observed = _previousState;
+            _previousState = stateAfterHook;
+
+            bool terminalOrIdle = stateAfterHook == SimulationState.Results ||
+                                  stateAfterHook == SimulationState.Idle;
+            if (_ghostRecorder != null && terminalOrIdle)
+                _ghostRecorder.Discard();
+
+            // A composition root may transit Results/Idle -> Loading/Countdown between frames
+            // without the driver ever observing the terminal state (e.g. forfeit -> immediate
+            // re-race, or load-failure -> Idle -> re-race in one call stack). The previous
+            // race's buffer must not leak into the new session.
+            bool newSession =
+                (stateAfterHook == SimulationState.Loading ||
+                 stateAfterHook == SimulationState.Countdown) &&
+                (observed == SimulationState.Results || observed == SimulationState.Idle);
+            if (_ghostRecorder != null && newSession)
+                _ghostRecorder.Discard();
+
+            if (_replayStateProvider != null && newSession)
+            {
+                _replayInitialStateCaptured = false;
+                _replayInitialState = default;
             }
         }
 
@@ -308,6 +377,11 @@ namespace Overdrive.Simulation
             // snapshot carrying resumeState is published (AC-4.6a).
             if (context.PauseBoundaryReached)
             {
+                // AC-3.10: the consumed Pause edge is recorded in the parallel standalone
+                // stream with the CURRENT (pre-increment) simulationStepCount — the count of
+                // completed ticks. No continuous sample is appended for this step (the boundary
+                // path returns before the append).
+                _ghostRecorder?.RecordEdgeEvent((uint)_simulationStepCount, EdgeEventFlags.Pause);
                 PublishPausedSnapshot();
                 return;
             }
@@ -320,6 +394,35 @@ namespace Overdrive.Simulation
             _simulationStepCount++;
             if (startedInRacing)
                 _activeRaceStepCount++;
+
+            // AC-3.9: capture ReplayInitialState exactly once at GO — on the GO tick (which
+            // transitions Countdown -> Racing), BEFORE any continuous record is appended for
+            // the first Racing tick. The snapshot is immutable; the provider's source state
+            // may mutate after capture without affecting it.
+            if (!_replayInitialStateCaptured && context.IsGoTick)
+            {
+                ReplayInitialStateCaptureInput input = _replayStateProvider?.GetCaptureInput();
+                if (input != null)
+                {
+                    _replayInitialState = new ReplayInitialState(
+                        input.Version,
+                        input.RaceConfigurationId,
+                        input.ContentVersionHash,
+                        input.SimSeed,
+                        input.GridAssignment,
+                        input.CarIds,
+                        input.InitialFuelState,
+                        input.InitialTireState,
+                        input.PerfectStartRemainingTicks,
+                        input.DifficultyProfile);
+                    _replayInitialStateCaptured = true;
+                }
+            }
+
+            // AC-6.1: exactly one continuous record per completed Racing tick, with the
+            // POST-increment tick index (the tick that just completed).
+            if (startedInRacing)
+                _ghostRecorder?.RecordTick(context.SimulationInput, (uint)_simulationStepCount);
 
             PublishDecoratedSnapshot(context, startedInRacing);
         }
