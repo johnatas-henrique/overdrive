@@ -70,11 +70,14 @@ namespace Overdrive.Simulation
         private readonly IFrameDeltaSource _deltaSource;
         private readonly Func<bool> _pauseEdgeSource;
         private readonly Action _pauseEdgeConsumer;
+        private readonly PerformanceMonitor _performanceMonitor;
 
         private double _accumulator;
         private int _simulationStepCount;
         private int _activeRaceStepCount;
         private bool _forfeitSnapshotPublished;
+        private SimulationState _lastHookedState;
+        private bool _resumeFramePending;
 
         /// <summary>
         /// Creates a manual simulation driver.
@@ -86,6 +89,7 @@ namespace Overdrive.Simulation
         /// <param name="lifecycleHook">Optional focus/pause boundary hook invoked before timing.</param>
         /// <param name="pauseEdgeSource">Optional input pause-edge query used by production wiring.</param>
         /// <param name="pauseEdgeConsumer">Optional callback that consumes a delivered pause edge.</param>
+        /// <param name="performanceMonitor">Optional performance protection monitor evaluated once per frame.</param>
         public SimulationDriver(
             SimulationKernel kernel,
             ISimulationStateGate stateGate,
@@ -93,7 +97,8 @@ namespace Overdrive.Simulation
             IFrameDeltaSource deltaSource,
             IPreAccumulatorLifecycleHook lifecycleHook = null,
             Func<bool> pauseEdgeSource = null,
-            Action pauseEdgeConsumer = null)
+            Action pauseEdgeConsumer = null,
+            PerformanceMonitor performanceMonitor = null)
         {
             _kernel = kernel ?? throw new ArgumentNullException(nameof(kernel));
             _stateGate = stateGate ?? throw new ArgumentNullException(nameof(stateGate));
@@ -102,6 +107,9 @@ namespace Overdrive.Simulation
             _lifecycleHook = lifecycleHook;
             _pauseEdgeSource = pauseEdgeSource;
             _pauseEdgeConsumer = pauseEdgeConsumer;
+            _performanceMonitor = performanceMonitor;
+            if (performanceMonitor != null)
+                performanceMonitor.PerformanceStatusChanged += OnPerformanceStatusChanged;
         }
 
         /// <summary>Current sub-tick remainder in seconds; always in [0, FIXED_DT).</summary>
@@ -133,6 +141,12 @@ namespace Overdrive.Simulation
         public event Action<PublishedSimulationSnapshot> SnapshotPublished;
 
         /// <summary>
+        /// Raised when the performance monitor transitions Reduced/Restored. Forwarded from the
+        /// injected <see cref="PerformanceMonitor"/> (producer-only signal, ADR-0001).
+        /// </summary>
+        public event Action<PerformanceSignal> PerformanceStatusChanged;
+
+        /// <summary>
         /// Processes one render frame. Capture occurs once before the clock is read and before
         /// the accumulator is changed. The accumulator is permanently clamped to two ticks.
         /// </summary>
@@ -141,6 +155,28 @@ namespace Overdrive.Simulation
             SimulationState stateBeforeHook = _stateGate.State;
             _lifecycleHook?.BeforeAccumulator(stateBeforeHook);
             SimulationState stateAfterHook = _stateGate.State;
+
+            // Performance monitor state tracking: notify lifecycle transitions. Resets
+            // (Idle/Loading/Finished/Results, non-performance Paused) apply even on
+            // early-return frames (AC-7.7b/7.7f, AC-7.6a).
+            if (_performanceMonitor != null && stateAfterHook != _lastHookedState)
+            {
+                _performanceMonitor.OnStateChanged(stateAfterHook);
+                _lastHookedState = stateAfterHook;
+            }
+
+            // Resume from Paused to Countdown/Racing: the monitor needs the resume-frame FPS to
+            // decide clear (>=30) vs persist (<30) — AC-7.7a/7.7c. Detected via the before/after
+            // hook state pair, independent of _lastHookedState: a boundary hook may resume
+            // (Paused -> Countdown) inside BeforeAccumulator on the SAME frame the driver first
+            // sees the transition, so the state pair is the reliable signal.
+            bool resumedFromPause =
+                _performanceMonitor != null &&
+                stateBeforeHook == SimulationState.Paused &&
+                (stateAfterHook == SimulationState.Countdown ||
+                 stateAfterHook == SimulationState.Racing);
+            if (resumedFromPause)
+                _resumeFramePending = true;
 
             // Content readiness starts a fresh timing boundary. Any remainder from the
             // Loading frame is discarded before the first Countdown/Racing tick.
@@ -178,6 +214,12 @@ namespace Overdrive.Simulation
             }
 
             float frameDelta = enteredPaused ? 0f : _deltaSource.GetUnscaledDeltaTime();
+
+            // Performance monitor evaluates once per frame with the SAME delta the accumulator
+            // uses (single-capture semantics, ADR-0001) while in Countdown/Racing. A resume frame
+            // reports its FPS to the monitor for the clear/persist decision (AC-7.7a/7.7c).
+            EvaluatePerformanceMonitor(stateBeforeHook, stateAfterHook, frameDelta);
+
             if (enteredPaused || !_stateGate.CanTick)
                 return;
 
@@ -204,6 +246,26 @@ namespace Overdrive.Simulation
                 if (pauseEdgeDelivered)
                     pauseEdgeConsumedThisFrame = true;
             }
+        }
+
+        /// <summary>
+        /// Drives the optional performance monitor for the current frame: delivers a pending
+        /// resume-frame FPS decision and evaluates the frame delta. No-op when no monitor is
+        /// injected. Single-capture semantics — uses the same delta the accumulator consumes.
+        /// </summary>
+        private void EvaluatePerformanceMonitor(
+            SimulationState stateBeforeHook, SimulationState stateAfterHook, float frameDelta)
+        {
+            if (_performanceMonitor == null)
+                return;
+
+            if (_resumeFramePending && frameDelta > 0f && float.IsFinite(frameDelta))
+            {
+                _performanceMonitor.OnResume(frameDelta);
+                _resumeFramePending = false;
+            }
+
+            _performanceMonitor.Evaluate(frameDelta, stateAfterHook);
         }
 
         /// <summary>
@@ -339,6 +401,11 @@ namespace Overdrive.Simulation
                 resumeState);
             _kernel.PublishSnapshot(published);
             SnapshotPublished?.Invoke(published);
+        }
+
+        private void OnPerformanceStatusChanged(PerformanceSignal signal)
+        {
+            PerformanceStatusChanged?.Invoke(signal);
         }
     }
 }
