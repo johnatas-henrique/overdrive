@@ -212,6 +212,21 @@ interfaces:
     added: 2026-07-27
     revised: ""
 
+  - contract: content_race_runtime_handoff
+    status: active
+    pattern: interface
+    producer: ContentPipelineSystem
+    consumers:
+      - vehicle-physics
+      - track-system
+      - grid-and-start
+    adr: docs/architecture/adr-0003-content-pipeline-and-addressables.md
+    signature: "IRaceContentRuntime { TrackInstance (loaded+instantiated by Content); CarReferences (loaded prefab assets, NOT instantiated — Vehicle Physics/Grid & Start spawn car GameObjects); Grid (locked GridAssignment); IsValid (from RaceLoadReady emission until ContentUnloadComplete; invalidated after ContentUnloadComplete, consumers must not retain past invalidation) } — supersedes the ambiguous reading of ADR-0003:159 'instantiated before RaceLoadReady': Content instantiates the track instance + loads prefab assets; car GameObject spawning is Vehicle Physics/Grid & Start responsibility."
+    referenced_by:
+      - docs/architecture/adr-0003-content-pipeline-and-addressables.md
+    added: 2026-08-12
+    revised: ""
+
   - contract: settings_input_preview_evaluator
     status: active
     pattern: direct_call
