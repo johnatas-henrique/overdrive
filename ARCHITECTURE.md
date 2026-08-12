@@ -29,8 +29,11 @@
 **Game Source Layer:**
 - Purpose: Actual game code, scenes, assets, and Unity project configuration
 - Location: `Assets/`, `ProjectSettings/`, `Packages/`
-- Contains: Unity C# scripts, scenes, materials, sprites, input actions, render pipeline assets, `Overdrive.Input` assembly (`InputContextController`, `RawInputSample`, `DeadZoneNormalizer`, `EmaBrakePriority`, `ControlProfile`, `SimulationInput`, `TickProcessor`, `InputFrameDriver`, `InputBindingCatalog`, `EmaReinitializerBase`, `ContextResumeEmaReinitializer`, `SchemeChangeEmaReinitializer`, `SettingsInputPreviewEvaluator`)
-- Depends on: Unity 6 (6000.3.19f1), URP 17.3.0, Input System 1.19.0, AI Navigation 2.0.14, Addressables 3.1.0, Unity CLI pipeline 0.4.0-exp.1
+- Contains: Unity C# scripts, scenes, materials, sprites, input actions, render pipeline assets
+- Sub-assemblies:
+  - `Overdrive.Input` (`Assets/source/Overdrive.Input.asmdef`): Unity-side input processing — `InputContextController`, `DeadZoneNormalizer`, `EmaBrakePriority`, `ControlProfile`, `TickProcessor`, `InputFrameDriver`, `InputFrameCapture` (production capture adapter), `InputBindingCatalog`, `EmaReinitializerBase`, `ContextResumeEmaReinitializer`, `SchemeChangeEmaReinitializer`, `SettingsInputPreviewEvaluator`, `SimulationDriverAdapters` (Unity lifecycle adapters bridging engine-free simulation seams to Unity APIs)
+  - `Overdrive.Simulation` (`Assets/source/Simulation/Overdrive.Simulation.asmdef`): Engine-free simulation kernel — `SimulationKernel` (14-step invocation spine), `SimulationStateMachine` (authoritative session lifecycle), `SimulationDriver` (manual fixed-step accumulator), `RenderInterpolator` (render interpolation math), `PerformanceMonitor` (FPS protection), `Pcg32` (deterministic PRNG), `GhostBuffer` (ghost recording), `DeterminismHarness` (determinism replay), contract spine types (`CarState` with 3D pose, `FuelState`, `TireState`, `GridAssignment`, `SimulationTickContext`, `PublishedSimulationSnapshot`, `PostFinishSnapshot`, pipeline steps). Depends on `Unity.Mathematics`; has `noEngineReferences: true`
+- Depends on: Unity 6 (6000.3.19f1), URP 17.3.0, Input System 1.19.0, AI Navigation 2.0.14, Addressables 3.1.0, Unity CLI pipeline 0.4.0-exp.1, Unity.Mathematics
 - Used by: Unity Editor, build pipeline, Unity CLI commands
 
 **Design Layer:**
@@ -43,7 +46,8 @@
 **Testing Layer:**
 - Purpose: Plugin tests and Unity/C# gameplay tests
 - Location: `Assets/tests/`, `tests/`
-- Contains: EditMode and PlayMode test directories, unit tests (`Assets/tests/unit/input/`), integration tests (`Assets/tests/integration/input/`), smoke tests (`tests/smoke/`); plugin tests in `.opencode/plugins/tests/`
+- Contains: EditMode and PlayMode test directories, unit tests (`Assets/tests/unit/input/`, `Assets/tests/unit/simulation/`), integration tests (`Assets/tests/integration/input/`, `Assets/tests/integration/simulation/`), smoke tests (`tests/smoke/`); plugin tests in `.opencode/plugins/tests/`
+- Test assemblies: `InputUnitTests`, `InputIntegrationTests`, `SimulationUnitTests` (references `Overdrive.Simulation`, `Overdrive.Input`, `Unity.Mathematics`), `SimulationIntegrationTests` (references `Overdrive.Simulation`, `Overdrive.Input`)
 - Depends on: Node.js for plugin tests; Unity Test Framework for gameplay tests
 - Used by: Plugin CI and game development validation
 
@@ -109,6 +113,31 @@
 - Purpose: Captures a technical decision, context, and consequences
 - Location: `docs/architecture/`
 - Pattern: Markdown document following standard ADR format
+
+**SimulationKernel:**
+- Purpose: Canonical 14-step invocation spine that executes one fixed-duration tick. Each step is an injectable seam (`ISimulationPipelineStep`); the constructor enforces exactly 14 steps so a misconfigured pipeline fails fast.
+- Location: `Assets/source/Simulation/SimulationKernel.cs`
+- Pattern: Engine-free class in the `Overdrive.Simulation` assembly; captures one raw input sample per render frame and reuses it across ticks; executes steps in array order with early-exit on pause boundary
+
+**SimulationStateMachine:**
+- Purpose: Authoritative session lifecycle managing state transitions (Idle → Loading → Countdown → Racing → Paused → Finished → Results). Content and RSM cannot mutate simulation state directly — all mutations flow through this machine.
+- Location: `Assets/source/Simulation/SimulationStateMachine.cs`
+- Pattern: Implements `ISimulationStateGate` (read-only gate for the driver) and `ISimulationPhysicsFailureHandler`. Enforces legal transition graph, owns countdown, grid lock, retry hold, forfeit path, and terminal snapshot management. Raises events: `StateChanged`, `PausedStateChanged`, `ContentLoadRequested`, `ContentUnloadRequested`, `RaceAborted`, `LifecycleErrorRaised`
+
+**SimulationDriver:**
+- Purpose: Owns the manual fixed-step accumulator, drives the kernel spine once per render frame, and decorates published snapshots with authoritative counters.
+- Location: `Assets/source/Simulation/SimulationDriver.cs`
+- Pattern: Engine-free class; depends on injectable seams (`IFrameDeltaSource`, `IFrameInputCapture`, `IPreAccumulatorLifecycleHook`, `ISimulationStateGate`). Manages accumulator clamping (max 2 ticks), ghost recording, replay-state capture at GO, performance-monitor integration, pause/resume/forfeit snapshot publication
+
+**RenderInterpolator:**
+- Purpose: Pure render interpolation math for the deferred LateUpdate visual pass. Stateless and engine-free.
+- Location: `Assets/source/Simulation/RenderInterpolator.cs`
+- Pattern: Static class; `ComputeAlpha` (remainder/FIXED_DT), `Interpolate` (lerp position via `math.lerp`, slerp rotation via `math.slerp` with valid-input precedence), `AdvanceVisualBuffers` (previous ← current ← completedStep)
+
+**PerformanceMonitor:**
+- Purpose: Manual-simulation FPS protection monitor. Measures display FPS only in Countdown/Racing and emits Reduced/Restored signals; requests a performance pause when FPS stays below 15 for 3 seconds after reduction.
+- Location: `Assets/source/Simulation/PerformanceMonitor.cs`
+- Pattern: Three-timer system (below-30, below-15, recovery) with `ThresholdSeconds = 3s`. Producer-only — never mutates `SimulationState` directly; sets `PendingPerformancePause` on the state machine via an injectable seam. State-change and resume hooks reset or preserve timers per ADR-0001
 
 ## Entry Points
 

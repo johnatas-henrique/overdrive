@@ -37,23 +37,38 @@
 │   └── settings.json            # Runtime settings
 ├── Assets/                      # Unity project assets
 │   ├── Scenes/                  # Unity scenes
-│   ├── source/                  # Game C# source code — Overdrive.Input assembly and bootstrap
+│   ├── source/                  # Game C# source code — Overdrive.Input and Overdrive.Simulation assemblies
 │   │   ├── Overdrive.Input.asmdef # Input assembly definition
 │   │   ├── InputContextController.cs # Action-map context controller
-│   │   ├── RawInputSample.cs     # Immutable raw input capture struct
 │   │   ├── DeadZoneNormalizer.cs # Pure dead-zone normalization
 │   │   ├── EmaBrakePriority.cs   # EMA brake-priority processor
 │   │   ├── ControlProfile.cs      # Control profile definition
-│   │   ├── SimulationInput.cs     # Simulation input struct
 │   │   ├── TickProcessor.cs       # Tick-based input processor
+│   │   ├── InputFrameDriver.cs    # Per-frame input capture driver
+│   │   ├── InputFrameCapture.cs   # Production capture adapter (IFrameInputCapture)
 │   │   ├── InputBindingCatalog.cs  # Input binding catalog
+│   │   ├── EmaReinitializerBase.cs # Base class for EMA reinitializers
 │   │   ├── ContextResumeEmaReinitializer.cs # Context-resume EMA reinitializer
 │   │   ├── SchemeChangeEmaReinitializer.cs # Scheme-change EMA reinitializer
 │   │   ├── SettingsInputPreviewEvaluator.cs # Settings input preview evaluator
+│   │   ├── SimulationDriverAdapters.cs # Unity adapters (UnityFrameDeltaSource, UnityPhysicsSimulator, SimulationDriverBehaviour)
 │   │   ├── InputSystem_Actions.cs # Generated input action wrapper
 │   │   ├── InputSystem_Actions.Extensions.cs # Generated action extensions
 │   │   ├── InputSystem_Actions.inputactions # Unity Input System action maps
 │   │   ├── InputSystemSettings.asset # Input system settings ScriptableObject
+│   │   ├── Simulation/            # Engine-free simulation kernel (Overdrive.Simulation assembly)
+│   │   │   ├── Overdrive.Simulation.asmdef # Simulation assembly (noEngineReferences: true)
+│   │   │   ├── SimulationContracts.cs # Contract spine types (CarState, FuelState, TireState, GridAssignment, pipeline types)
+│   │   │   ├── SimulationKernel.cs # 14-step invocation spine, state gate, pipeline steps
+│   │   │   ├── SimulationStateMachine.cs # Authoritative session lifecycle (Idle→Loading→Countdown→Racing→Paused→Finished→Results)
+│   │   │   ├── SimulationDriver.cs # Manual fixed-step accumulator driver with ghost recording and replay capture
+│   │   │   ├── SimulationInput.cs # Simulation input struct (immutable per-tick input value)
+│   │   │   ├── RawInputSample.cs  # Immutable raw input capture struct
+│   │   │   ├── RenderInterpolator.cs # Pure render interpolation math (lerp position, slerp rotation)
+│   │   │   ├── PerformanceMonitor.cs # FPS protection monitor (3-timer system: below-30, below-15, recovery)
+│   │   │   ├── Pcg32.cs           # Deterministic PRNG (PCG-XSH-RR, 64-bit state)
+│   │   │   ├── GhostBuffer.cs     # Ghost recording buffer and edge event flags
+│   │   │   └── DeterminismHarness.cs # Determinism replay pair runner
 │   │   └── Editor/               # Input asset bootstrap editor script
 │   │       ├── InputAssetBootstrap.cs # Input asset bootstrap
 │   │       └── Overdrive.Input.Editor.asmdef # Editor assembly definition
@@ -71,18 +86,30 @@
 │   │   └── Roslyn/              # Roslyn C# compiler assemblies
 │   ├── sprites/                 # Game sprites (currently empty — .gitkeep)
 │   ├── Settings/                # URP render pipeline assets (Mobile, PC profiles)
-│   ├── Screenshots/             # Test screenshots (currently empty)
 │   ├── tests/                    # Unity test assemblies (EditMode, PlayMode)
 │   │   ├── unit/                # Unit tests
-│   │   │   └── input/           # Input system unit tests
+│   │   │   ├── input/           # Input system unit tests (InputUnitTests.asmdef)
+│   │   │   │   ├── EmaBrakePriorityTests.cs
+│   │   │   │   └── SchemeArbitrationTests.cs
+│   │   │   └── simulation/      # Simulation unit tests (SimulationUnitTests.asmdef)
+│   │   │       ├── SimulationDriverTests.cs
+│   │   │       ├── SessionStartTests.cs
+│   │   │       ├── InterruptionTests.cs
+│   │   │       ├── InterpolationTests.cs
+│   │   │       ├── PerformanceMonitorTests.cs
+│   │   │       └── DeterminismReplayTests.cs
 │   │   └── integration/         # Integration tests
-│   │       └── input/           # Input system integration tests
-├── ProjectSettings/             # Unity project settings (physics, audio, graphics, input, etc.)
-├── Packages/                    # Unity package manifest (URP, Input System, AI Nav, Timeline, etc.)
-├── learning/                    # Agent learning system
-│   ├── MISSION.md               # Learning system mission
-│   ├── NOTES.md                 # Learning notes
-│   ├── RESOURCES.md             # Learning resources
+│   │       ├── input/           # Input system integration tests (InputIntegrationTests.asmdef)
+│   │       │   ├── InputContextControllerTests.cs
+│   │       │   ├── InputFrameDriverTests.cs
+│   │       │   ├── RawCaptureDeadZoneTests.cs
+│   │       │   ├── ContextTransitionsTests.cs
+│   │       │   ├── SettingsConfigurationTests.cs
+│   │       │   ├── SpecialRoutingTests.cs
+│   │       │   └── TickProcessorTests.cs
+│   │       └── simulation/      # Simulation integration tests (SimulationIntegrationTests.asmdef)
+│   │           ├── ContractSpineTests.cs
+│   │           └── SessionEndTests.cs
 │   ├── assets/                  # Learning system assets (stylesheets)
 │   ├── learning-records/        # Style conformance records
 │   ├── lessons/                 # Generated lesson HTML files
@@ -330,7 +357,16 @@
 │   │   ├── input-system/        # Input system epic (8 fused stories)
 │   │   ├── multiplayer-architecture/ # Multiplayer architecture epic
 │   │   ├── settings/            # Settings epic
-│   │   └── simulation-kernel/   # Simulation kernel epic
+│   │   ├── simulation-kernel/   # Simulation kernel epic (8 stories)
+│   │   │   ├── EPIC.md
+│   │   │   ├── story-001-contract-spine.md
+│   │   │   ├── story-002-simulation-driver-tick-clock.md
+│   │   │   ├── story-003-session-start.md
+│   │   │   ├── story-004-interruption.md
+│   │   │   ├── story-005-session-end.md
+│   │   │   ├── story-006-presentation-interpolation.md
+│   │   │   ├── story-007-performance-monitor.md
+│   │   │   └── story-008-determinism-replay.md
 │   ├── milestones/             # MVP/alpha/beta milestone definitions
 │   │   ├── alpha.md
 │   │   ├── beta.md
@@ -343,7 +379,8 @@
 │   │       └── playtest-2026-08-05-thawane.md
 │   ├── sprints/                # Sprint plans and status
 │   │   ├── sprint-1.md
-│   │   └── sprint-1-retrospective.md
+│   │   ├── sprint-1-retrospective.md
+│   │   └── sprint-2.md
 │   ├── sprint-status.yaml      # Current sprint status
 │   ├── stage.txt                # Current production stage
 │   └── review-mode.txt          # Review mode state flag
@@ -390,7 +427,7 @@
 **`Assets/`:**
 - Purpose: Unity project assets — the actual game
 - Contains: Scenes, C# scripts, materials, sprites, input actions, render pipeline settings
-- Key files: `InputSystem_Actions.inputactions`, `Settings/PC_RPAsset.asset`, `source/Overdrive.Input.asmdef`
+- Key files: `InputSystem_Actions.inputactions`, `Settings/PC_RPAsset.asset`, `source/Overdrive.Input.asmdef`, `source/Simulation/Overdrive.Simulation.asmdef`, `source/SimulationDriverAdapters.cs`
 
 **`learning/`:**
 - Purpose: Agent learning system — style conformance records, generated lessons, and reference analysis
@@ -409,7 +446,8 @@
 
 **`tests/`:**
 - Purpose: Unity/C# gameplay and integration tests
-- Contains: EditMode and PlayMode test directories, unit tests, integration tests, smoke tests, and test evidence
+- Contains: EditMode and PlayMode test directories, unit tests (input: 2 files, simulation: 6 files), integration tests (input: 7 files, simulation: 2 files), smoke tests, and test evidence
+- Test assemblies: `InputUnitTests`, `InputIntegrationTests`, `SimulationUnitTests`, `SimulationIntegrationTests`
 
 **`tools/`:**
 - Purpose: Build utilities and MCP integrations
@@ -419,7 +457,7 @@
 **`production/`:**
 - Purpose: Production management — session logs, audit trails, active state, quality gate checks, feature epics and stories, QA playtest reports, sprint plans, milestone definitions
 - Contains: Session logs, agent audit log, session state checkpoint, gate checks, feature epics with stories, QA playtest reports, review mode state, sprint plans, milestone definitions
-- Key files: `session-logs/agent-audit.log`, `session-logs/session-log.md`, `session-state/active.md`, `gate-checks/concept-to-systems-design.md`, `gate-checks/pre-production-to-production-2026-08-09.md`, `gate-checks/technical-setup-to-pre-production-2026-07-28.md`, `epics/index.md`, `epics/input-system/story-001-input-action-asset-context-controller.md`, `stage.txt`, `review-mode.txt`, `sprint-status.yaml`, `sprints/sprint-1.md`, `milestones/mvp.md`
+- Key files: `session-logs/agent-audit.log`, `session-logs/session-log.md`, `session-state/active.md`, `gate-checks/concept-to-systems-design.md`, `gate-checks/pre-production-to-production-2026-08-09.md`, `gate-checks/technical-setup-to-pre-production-2026-07-28.md`, `epics/index.md`, `epics/input-system/story-001-input-action-asset-context-controller.md`, `epics/simulation-kernel/EPIC.md`, `epics/simulation-kernel/story-001-contract-spine.md` through `story-008-determinism-replay.md`, `stage.txt`, `review-mode.txt`, `sprint-status.yaml`, `sprints/sprint-1.md`, `sprints/sprint-2.md`, `milestones/mvp.md`
 
 **`prototypes/`:**
 - Purpose: Throwaway prototypes isolated from main source
@@ -451,6 +489,13 @@
 - `.opencode/plugins/ccgs-hooks.ts`: Primary lifecycle hooks plugin
 - `.opencode/plugins/drift-detector.ts`: Template drift detection
 - `.opencode/plugins/changelog-generator.ts`: Changelog generation
+- `Assets/source/Simulation/SimulationKernel.cs`: 14-step simulation invocation spine
+- `Assets/source/Simulation/SimulationStateMachine.cs`: Authoritative session lifecycle
+- `Assets/source/Simulation/SimulationDriver.cs`: Manual fixed-step accumulator driver
+- `Assets/source/Simulation/RenderInterpolator.cs`: Render interpolation math
+- `Assets/source/Simulation/PerformanceMonitor.cs`: FPS protection monitor
+- `Assets/source/SimulationDriverAdapters.cs`: Unity lifecycle adapters for the simulation driver
+- `Assets/source/InputFrameCapture.cs`: Production capture adapter (IFrameInputCapture)
 
 **Design Documents:**
 - `design/gdd/` — Game Design Documents, one per system
@@ -491,7 +536,9 @@
 **Tests:**
 - `.opencode/plugins/tests/`: Plugin unit tests (11 test suites)
 - `Assets/tests/unit/input/`: Input system unit tests (EmaBrakePriorityTests.cs, SchemeArbitrationTests.cs)
+- `Assets/tests/unit/simulation/`: Simulation unit tests (SimulationDriverTests.cs, SessionStartTests.cs, InterruptionTests.cs, InterpolationTests.cs, PerformanceMonitorTests.cs, DeterminismReplayTests.cs)
 - `Assets/tests/integration/input/`: Input system integration tests (InputContextControllerTests.cs, InputFrameDriverTests.cs, RawCaptureDeadZoneTests.cs, ContextTransitionsTests.cs, SettingsConfigurationTests.cs, SpecialRoutingTests.cs, TickProcessorTests.cs)
+- `Assets/tests/integration/simulation/`: Simulation integration tests (ContractSpineTests.cs, SessionEndTests.cs)
 
 ## Naming Conventions
 
@@ -519,7 +566,13 @@
 
 **New OpenCode plugin:** `.opencode/plugins/[plugin-name].ts` — implement `Plugin` interface from `@opencode-ai/plugin`, register in `opencode.json` plugin array
 
-**New game C# script:** `Assets/source/[ScriptName].cs` — follow Unity naming conventions, use PascalCase; group under `Overdrive.Input` assembly for input-system code
+**New game C# script (Input):** `Assets/source/[ScriptName].cs` — follow Unity naming conventions, use PascalCase; group under `Overdrive.Input` assembly for Unity-dependent input-system code
+
+**New simulation contract or pipeline step:** `Assets/source/Simulation/[Name].cs` — follow engine-free naming conventions; place in `Overdrive.Simulation` assembly (no Unity engine references allowed); depend on `Unity.Mathematics` if needed
+
+**New simulation Unity adapter:** `Assets/source/SimulationDriverAdapters.cs` — add adapter class in `Overdrive.Simulation.UnityAdapters` namespace within the `Overdrive.Input` assembly (engine-allowed); bridge engine-free simulation seams to Unity APIs
+
+**New simulation test:** `Assets/tests/unit/simulation/[TestName].cs` or `Assets/tests/integration/simulation/[TestName].cs` — reference `SimulationUnitTests` or `SimulationIntegrationTests` assembly respectively; test only engine-free simulation contracts or integration seams
 
 **New Unity scene:** `Assets/Scenes/[SceneName].unity` — follow existing scene patterns
 
