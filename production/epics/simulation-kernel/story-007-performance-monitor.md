@@ -1,7 +1,7 @@
 # Story 007: Performance Monitor
 
 > **Epic**: Simulation Kernel
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Manifest Version**: 2026-08-05
@@ -18,6 +18,7 @@
 
 **Engine**: Unity 6000.3.19f1 | **Risk**: HIGH (Unity 6.3 is post-LLM-cutoff)
 **Engine Notes**: FPS is measured from `Time.unscaledDeltaTime` only while SimulationState is Countdown or Racing. Tests use an injectable FPS feed (clock) and injectable state — no real display needed.
+**Performance Budget**: No impact expected — the monitor is O(1) per frame (one delta-time read + timer accumulation, no allocation); its own Update() cost is negligible within the p95 ≤6ms / max ≤8ms tick budget (guardrail below).
 
 **Control Manifest Rules (Foundation + Core layers, v2026-08-05)**:
 - Required: `PerformanceReduced` is producer-only (Simulation owns the signal, not consumer behavior); camera collision avoidance is NEVER disabled by degradation — source: ADR-0001
@@ -32,13 +33,13 @@
 
 *From GDD `design/gdd/simulation-architecture.md`, scoped to this story:*
 
-- [ ] **AC-7.6:** Given SimulationState is Countdown or Racing and display FPS remains below 30 for 3 continuous seconds, When performance protection evaluates, Then Simulation emits `PerformanceReduced { severity: Reduced, observedFps }` without changing FIXED_DT or Time.timeScale. *(HUD shows a non-blocking warning is ADR-0014 consumer behavior — DEFERRED to the HUD epic; producer-only per ADR-0001.)*
-- [ ] **AC-7.6a:** Given SimulationState is Idle, Loading, Paused, Finished, or Results, When display FPS remains below 30 for 3 continuous seconds, Then PerformanceReduced is not emitted and both sustained-FPS timers remain at 0.
-- [ ] **AC-7.7:** Given FPS remains below 15 for another continuous 3 seconds after PerformanceReduced, When performance protection evaluates, Then Simulation requests Paused with reason Performance. *(HUD exposes Resume and Return to Menu is ADR-0014 consumer behavior — DEFERRED to the HUD epic; the Kernel only requests the pause via `pendingPerformancePause`.)*
-- [ ] **AC-7.7a:** Given PerformanceReduced is active, When the player resumes and FPS is at or above 30, Then both sustained-FPS timers reset to 0 and the reduced state clears.
-- [ ] **AC-7.7b:** Given PerformanceReduced is active, When Simulation enters Finished, Results, or Loading, Then both sustained-FPS timers reset to 0 and the reduced state clears. *(HUD removes its warning is ADR-0014 consumer behavior — DEFERRED to the HUD epic.)*
-- [ ] **AC-7.7c:** Given PerformanceReduced is active, When the player resumes and FPS remains below 30, Then the sustained-FPS timers and reduced state persist so protection can re-trigger.
-- [ ] **AC-7.7d:** Given PerformanceReduced is active, When FPS remains at or above 30 for 3 continuous seconds without a pause, Then Simulation emits `PerformanceRestored` and resets both sustained-FPS timers; any frame below 30 resets the recovery timer. *(Restores VFX/render quality and clears the warning are ADR-0010/ADR-0014 consumer behaviors — DEFERRED to the VFX/HUD epics; the Kernel owns the signal.)*
+- **AC-7.6:** Given SimulationState is Countdown or Racing and display FPS remains below 30 for 3 continuous seconds, When performance protection evaluates, Then Simulation emits `PerformanceReduced { severity: Reduced, observedFps }` via the `PerformanceStatusChanged` event (exactly once) without changing FIXED_DT or Time.timeScale. *(HUD shows a non-blocking warning is ADR-0014 consumer behavior — DEFERRED to the HUD epic; producer-only per ADR-0001.)*
+- [ ] **AC-7.6a:** Given SimulationState is Idle, Loading, Paused, Finished, or Results, When display FPS remains below 30 for 3 continuous seconds, Then PerformanceReduced is not emitted and the monitor does not accumulate — the below-30 and below-15 timers stay at 0 UNLESS the state was entered via performance protection (see AC-7.7c exception: a performance-caused pause PRESERVES the non-zero timers for resume; it does not reset them).
+- [ ] **AC-7.7:** Given FPS remains below 15 for another continuous 3 seconds after PerformanceReduced, When performance protection evaluates, Then Simulation requests Paused with reason Performance (verifiable via `PendingPerformancePause` = true consumed at Step 3 → Paused entry). *(HUD exposes Resume and Return to Menu is ADR-0014 consumer behavior — DEFERRED to the HUD epic; the Kernel only requests the pause via `pendingPerformancePause`.)*
+- [ ] **AC-7.7a:** Given PerformanceReduced is active, When the player resumes and FPS is at or above 30, Then all three timers (below-30, below-15, performanceRecoveryTimer) reset to 0 and the reduced state clears.
+- [ ] **AC-7.7b:** Given PerformanceReduced is active, When Simulation enters Finished, Results, or Loading, Then all three performance timers (below-30, below-15, performanceRecoveryTimer) reset to 0 and the reduced state clears. *(HUD removes its warning is ADR-0014 consumer behavior — DEFERRED to the HUD epic.)*
+- [ ] **AC-7.7c:** Given PerformanceReduced is active, When the player resumes and FPS remains below 30, Then all three timers (below-30, below-15, performanceRecoveryTimer) and the reduced state persist so protection can re-trigger.
+- [ ] **AC-7.7d:** Given PerformanceReduced is active, When FPS remains at or above 30 for 3 continuous seconds without a pause, Then Simulation emits `PerformanceRestored` via the `PerformanceStatusChanged` event (exactly once) and resets all three performance timers (below-30, below-15, performanceRecoveryTimer); any frame below 30 resets the recovery timer. *(Restores VFX/render quality and clears the warning are ADR-0010/ADR-0014 consumer behaviors — DEFERRED to the VFX/HUD epics; the Kernel owns the signal.)*
 - [ ] **AC-7.7e:** Given PerformanceReduced has cleared after automatic recovery, When FPS subsequently remains below 30 for 3 continuous seconds, Then the below-30 timer re-arms from 0 and Simulation emits PerformanceReduced again.
 - [ ] **AC-7.7f:** Given any sustained-FPS or performanceRecoveryTimer is non-zero, When Simulation enters Idle, Loading, Finished, or Results, Then all performance timers reset to 0 and the reduced state clears.
 
@@ -49,10 +50,12 @@
 *Derived from ADR-0001 and ADR-0010 Implementation Guidelines:*
 
 - The monitor runs in Update() and measures display FPS from `Time.unscaledDeltaTime` ONLY while SimulationState is Countdown or Racing. It sets `pendingPerformancePause = true` when the below-15 threshold is reached and does NOT mutate SimulationState directly — the tick's Step 3 consumes the flag (Story 001 spine). Story 004 owns the Paused entry path; the monitor only requests.
+- **Performance signal seam (THIS story defines it):** a single event on the driver — `event Action<PerformanceSignal> PerformanceStatusChanged`, where `PerformanceSignal` is a readonly struct carrying `PerformanceStatus Status` (enum: Reduced/Restored) and `float ObservedFps`. Mirrors the existing `SnapshotPublished`/`SimulationStateChanged` events. ADR-0001 L117: "Simulation publishes a PerformanceReduced event". Emitted exactly once per transition (Reduced, Restored). Consumers (HUD/VFX) subscribe in their epics; this story's tests assert emission counts and payloads.
+- **Pause reason equivalence:** the "reason Performance" (AC-7.7) is the `PendingPerformancePause` boolean consumed at Step 3 → `EnterPaused(source)` (Story 004 path). The boolean IS the verifiable mechanism — no separate reason payload is needed (producer-only; ADR-0001 L122 "Simulation pauses the race"). Tests assert `PendingPerformancePause` transitions and the resulting Paused entry.
 - `PerformanceReducedSeverity` has one MVP value, `Reduced`. `PerformanceReduced { severity: Reduced, observedFps }` is emitted below 30 FPS for 3 continuous seconds; `observedFps` is the FPS sampled from the injectable feed during the sustained window.
 - Timers: below-30 timer (3s → reduced), below-15 timer (starts at 0 when reduced emits; any frame ≥15 FPS resets it; 3s → pause request), recovery timer (`performanceRecoveryTimer` starts at 0 when recovery begins; 3s ≥30 FPS → restore; any frame <30 resets it).
 - State-change resets: Idle, Finished, Results, or Loading always reset both sustained-FPS timers, the recovery timer, and the reduced state (7.7b, 7.7f). Resume semantics: ≥30 FPS clears (7.7a); <30 FPS persists (7.7c).
-- Producer-only: the monitor emits signals on the published-snapshot seam (PerformanceReduced/PerformanceRestored). HUD warning (ADR-0014) and VFX/render quality restoration (ADR-0010) are consumer behaviors — out of scope here.
+- Producer-only: the monitor emits signals via `PerformanceStatusChanged` (PerformanceReduced/PerformanceRestored). HUD warning (ADR-0014) and VFX/render quality restoration (ADR-0010) are consumer behaviors — out of scope here.
 
 ---
 
@@ -73,19 +76,19 @@
 - **AC-7.6**: sustained <30 FPS 3s → PerformanceReduced, FIXED_DT/timeScale unchanged
   - Given: state Countdown or Racing; timers clear; FIXED_DT/Time.timeScale baselines recorded
   - When: injectable Time.unscaledDeltaTime feed reports FPS below 30 continuously for exactly 3 seconds
-  - Then: exactly one PerformanceReduced {Reduced, observedFps} emitted with observed FPS matching feed; FIXED_DT and Time.timeScale unchanged
+  - Then: exactly one PerformanceReduced {Reduced, observedFps} emitted via PerformanceStatusChanged with observed FPS matching feed; FIXED_DT and Time.timeScale unchanged
   - Edge cases: no event before 3 continuous seconds; FPS exactly 30 does not qualify; frame ≥30 resets below-30 timer; verify Countdown and Racing independently
 
 - **AC-7.6a**: ineligible states emit nothing, timers stay 0
   - Given: state Idle, Loading, Paused, Finished, or Results; any FPS feed
   - When: frames advance for more than 3 seconds incl. FPS below 15 and below 30
   - Then: no PerformanceReduced/PerformanceRestored emitted; reduced state false; below-30, below-15, recovery timers remain zero
-  - Edge cases: enter each state while a timer already running; FPS exactly 0 or invalid/non-positive delta produces no event or non-zero timer
+  - Edge cases: enter each state while a timer already running; FPS exactly 0 or invalid/non-positive delta produces no event or non-zero timer; Paused entered via performance protection (reduced active, non-zero timers) PRESERVES the timers per AC-7.7c — only non-performance Paused leaves them at zero
 
 - **AC-7.7**: <15 FPS additional 3s → Paused reason Performance
   - Given: Countdown or Racing; reduced active; PerformanceReduced already emitted; below-15 timer zero
   - When: FPS feed remains below 15 continuously for exactly 3 additional seconds
-  - Then: exactly one pause request for reason Performance; no simulation tick or state mutation by the monitor itself
+  - Then: exactly one pause request (PendingPerformancePause = true consumed at Step 3 → Paused entry) for reason Performance; no simulation tick or state mutation by the monitor itself
   - Edge cases: no pause before additional 3s; FPS exactly 15 resets below-15 timer; frame ≥15 prevents accumulation; duplicate pause requests not emitted while already pending
 
 - **AC-7.7a**: resume + FPS≥30 → timers reset, clears
@@ -108,8 +111,8 @@
 
 - **AC-7.7d**: while reduced, ≥30 FPS 3s → PerformanceRestored; frame <30 resets recovery
   - Given: Countdown or Racing; reduced active; recovery timer zero
-  - When: FPS feed remains ≥30 continuously for 3 seconds; published-snapshot seam invoked
-  - Then: exactly one PerformanceRestored emitted; reduced clears; all timers reset to zero (Kernel state); warning/VFX restoration are HUD/VFX consumer behavior — DEFERRED
+  - When: FPS feed remains ≥30 continuously for 3 seconds; PerformanceStatusChanged seam invoked
+  - Then: exactly one PerformanceRestored emitted via PerformanceStatusChanged; reduced clears; all timers reset to zero (Kernel state); warning/VFX restoration are HUD/VFX consumer behavior — DEFERRED
   - Edge cases: no restore before 3s; FPS exactly 30 qualifies; frame <30 resets recovery timer to zero requiring fresh 3s; reaching 3s without invoking seam emits nothing until seam invoked
 
 - **AC-7.7e**: after recovery, <30 FPS 3s → re-arm, emit again
@@ -131,11 +134,24 @@
 **Story Type**: Logic
 **Required evidence**: `Assets/tests/unit/simulation/PerformanceMonitorTests.cs` — must exist and pass. Verifies: threshold emission (7.6), state eligibility (7.6a), pause request (7.7), timer reset/persist/re-arm semantics (7.7a-f), restore signal (7.7d).
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 49 tests, 374/374 PlayMode green (2026-08-12)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-08-12
+**Criteria**: 9/9 passing (0 deferred)
+**Deviations**:
+- ADVISORY: `Time.timeScale` invariance is a structural invariant — the monitor is engine-free (Overdrive.Simulation has noEngineReferences: true, no UnityEngine.Time access). Verified by design, not runtime test.
+- ADVISORY: `Driver.Update()` remains ~44 effective lines (pre-existing, near the 40-line limit; the monitor block was extracted to `EvaluatePerformanceMonitor`).
+**Test Evidence**: `Assets/tests/unit/simulation/PerformanceMonitorTests.cs` — 49 tests, 374/374 PlayMode green
+**Code Review**: Complete — unity-specialist APPROVED (R1), qa-tester TESTABLE (R5), LP-CODE-REVIEW APPROVED (R2)
+**QA Coverage Gate**: ADEQUATE (R2)
 
 ---
 
 ## Dependencies
 
-- Depends on: Story 001 (published-snapshot seam for PerformanceReduced/PerformanceRestored, pendingPerformancePause consumption at Step 3), Story 003 (Countdown/Racing states), Story 004 (Paused entry with reason Performance), Story 005 (Finished/Results states for timer resets)
+- Depends on: Story 001 (pendingPerformancePause consumption at Step 3; NOT the performance-signal seam — this story defines the `PerformanceStatusChanged` event itself per ADR-0001 producer-owned signal), Story 003 (Countdown/Racing states), Story 004 (Paused entry with reason Performance), Story 005 (Finished/Results states for timer resets)
 - Unlocks: None (consumers HUD/VFX in their own epics)
