@@ -195,6 +195,35 @@ If no, stop here. Verdict: **BLOCKED** — user declined write.
 
 ---
 
+## Phase 5b: Reconcile Epics Index
+
+**Only for sprint retrospectives** (not milestone). A sprint that closes fully-completed
+epics must reflect that closure in the master index; the retrospective is the last
+closure gate of the sprint, so it owns this update.
+
+1. Read `production/sprints/sprint-[N]-retrospective.md` (just written in Phase 5) to
+   identify which epics the sprint delivered to completion.
+2. Read `production/epics/index.md` and the story directories under
+   `production/epics/[epic-slug]/` for each completed epic.
+3. For each epic that finished ALL its stories this sprint (status `done` across the
+   sprint plan / story files):
+   - Set the epic's Status to `Done` and update the Stories column to
+     `[total] ([total] done)`.
+   - Update the `Last Updated` line to today's date.
+   - Refresh any parenthetical notes that are now stale (e.g. "MVP buffer owned by
+     Simulation Kernel" once the epic ships).
+4. If the sprint closed NO epics (partial progress only), still update the `Last
+   Updated` line and any notes that changed — the index must never be older than the
+   last sprint closure.
+5. Present the updated index rows to the user for approval before writing (same
+   collaborative protocol as Phase 5).
+
+> Failure mode this step prevents: an epic whose stories are all `done` but whose
+> index row still says `Ready` / `Not yet created` — stale status that misleads
+> planning and gate checks.
+
+---
+
 ## Phase 6: Next Steps
 
 - Run `/sprint-plan` to incorporate the action items and velocity data into the next sprint.
