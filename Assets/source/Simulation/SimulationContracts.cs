@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Overdrive.Input;
+using Unity.Mathematics;
 
 namespace Overdrive.Simulation
 {
@@ -86,10 +87,49 @@ namespace Overdrive.Simulation
         public readonly int CarId;
         public readonly float Position;
 
+        /// <summary>
+        /// World position of the visual/authoritative body, interpolated by the render pass
+        /// (ADR-0001). NOTE: the scalar-to-float3 constructors map track-progress to the x
+        /// axis as a placeholder convention — the track spline mapping (ADR-0007) later
+        /// overrides this when real world positions are read out.
+        /// </summary>
+        public readonly float3 Position3;
+
+        /// <summary>World rotation of the visual/authoritative body, interpolated by the render pass (ADR-0001).</summary>
+        public readonly quaternion Rotation;
+
         public CarState(int carId, float position = 0f)
         {
             CarId = carId;
             Position = position;
+            Position3 = new float3(position, 0f, 0f);
+            Rotation = quaternion.identity;
+        }
+
+        /// <summary>
+        /// Creates a CarState with a full 3D world pose for render interpolation (ADR-0001).
+        /// The scalar <paramref name="position"/> track-progress value maps to the x axis of
+        /// <see cref="Position3"/> as a placeholder convention (ADR-0007 overrides later).
+        /// </summary>
+        public CarState(int carId, float position, quaternion rotation)
+        {
+            CarId = carId;
+            Position = position;
+            Position3 = new float3(position, 0f, 0f);
+            Rotation = rotation;
+        }
+
+        /// <summary>
+        /// Creates a CarState with an explicit 3D world pose (position and rotation) for
+        /// render interpolation (ADR-0001). The x component mirrors the track-progress
+        /// <see cref="Position"/> convention.
+        /// </summary>
+        public CarState(int carId, float3 position3, quaternion rotation)
+        {
+            CarId = carId;
+            Position = position3.x;
+            Position3 = position3;
+            Rotation = rotation;
         }
     }
 
