@@ -40,11 +40,11 @@ stories:
     name: "DifficultyProfile & Race Snapshot"
     file: "production/epics/settings/story-003-difficulty-profile-race-snapshot.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.625
     blocker: ""
-    completed: ""
+    completed: "2026-08-13"
   - id: "3-5"
     name: "Control Bindings & Rebinding State Machine"
     file: "production/epics/settings/story-004-control-bindings-rebinding-state-machine.md"
