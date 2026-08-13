@@ -372,6 +372,16 @@ namespace Overdrive.Simulation.Tests
             Assert.AreEqual(provider.Input.PerfectStartRemainingTicks, state.PerfectStartRemainingTicks);
             Assert.AreEqual(provider.Input.DifficultyProfile.Level, state.DifficultyProfile.Level,
                 "DifficultyProfile stub is captured");
+            Assert.AreEqual(provider.Input.DifficultyProfile.AiPrecision, state.DifficultyProfile.AiPrecision,
+                "DifficultyProfile AiPrecision is captured");
+            Assert.AreEqual(provider.Input.DifficultyProfile.AiErrorMultiplier, state.DifficultyProfile.AiErrorMultiplier,
+                "DifficultyProfile AiErrorMultiplier is captured");
+            Assert.AreEqual(provider.Input.DifficultyProfile.PaceNoise, state.DifficultyProfile.PaceNoise,
+                "DifficultyProfile PaceNoise is captured");
+            Assert.AreEqual(provider.Input.DifficultyProfile.PlayerOffTrackGrip, state.DifficultyProfile.PlayerOffTrackGrip,
+                "DifficultyProfile PlayerOffTrackGrip is captured");
+            Assert.AreEqual(provider.Input.DifficultyProfile.PlayerWallSpeedLoss, state.DifficultyProfile.PlayerWallSpeedLoss,
+                "DifficultyProfile PlayerWallSpeedLoss is captured");
         }
 
         [Test]
@@ -1001,7 +1011,7 @@ namespace Overdrive.Simulation.Tests
                     InitialFuelState = new List<FuelState> { new FuelState(1.0f), new FuelState(0.9f), new FuelState(0.8f) },
                     InitialTireState = new List<TireState> { new TireState(1.0f), new TireState(0.9f), new TireState(0.8f) },
                     PerfectStartRemainingTicks = 30,
-                    DifficultyProfile = new DifficultyProfile(3),
+                    DifficultyProfile = new DifficultyProfile(3, 1.00f, 0.5f, 0.00f, 0.30f, 0.50f),
                 };
             }
 
