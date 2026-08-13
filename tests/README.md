@@ -1,6 +1,6 @@
 # Test Infrastructure
 
-**Engine**: Unity 6000.3.19f1 (Unity 6.3 LTS)
+**Engine**: Unity 6000.3.22f1 (Unity 6.3 LTS)
 **Test Framework**: Unity Test Framework 1.6.0
 **CI**: `.github/workflows/tests.yml`
 **Setup date**: 2026-07-28

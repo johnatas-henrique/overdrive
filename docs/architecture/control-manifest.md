@@ -1,6 +1,6 @@
 # Control Manifest
 
-> **Engine**: Unity 6000.3.19f1 (Unity 6.3 LTS) + URP 17.3.0
+> **Engine**: Unity 6000.3.22f1 (Unity 6.3 LTS) + URP 17.3.0
 > **Last Updated**: 2026-08-05
 > **Manifest Version**: 2026-08-05
 > **ADRs Covered**: 0001–0019 (all Accepted)

@@ -2,10 +2,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Engine Version** | Unity 6000.3.19f1 (Unity 6.3 LTS) |
+| **Engine Version** | Unity 6000.3.22f1 (Unity 6.3 LTS) |
 | **Release Date** | July 1, 2026 |
 | **Project Pinned** | July 19, 2026 |
-| **Last Docs Verified** | July 19, 2026 |
+| **Last Docs Verified** | 2026-08-13 (6000.3.19f1 → 6000.3.22f1) |
 | **LLM Knowledge Cutoff** | May 2025 |
 
 ## Knowledge Gap Warning
@@ -20,7 +20,7 @@ before suggesting Unity API calls.
 | System | Project State |
 |--------|---------------|
 | Universal Render Pipeline | Installed: 17.3.0 |
-| Input System | Installed: 1.19.0 |
+| Input System | Installed: 1.20.0 |
 | AI Navigation | Installed: 2.0.14 |
 | Addressables | Installed: 3.1.0 |
 | Unity Test Framework | Installed: 1.6.0 |
@@ -38,7 +38,7 @@ before suggesting Unity API calls.
 
 ## Verified Sources
 
-- Unity 6000.3.19f1 release notes: https://unity.com/releases/editor/whats-new/6000.3.19f1
+- Unity 6000.3.22f1 release notes: https://unity.com/releases/editor/whats-new/6000.3.22f1
 - Official docs: https://docs.unity3d.com/6000.3/Documentation/Manual/index.html
 - Upgrade guides: https://docs.unity3d.com/6000.3/Documentation/Manual/upgrade-guides.html
 - C# API reference: https://docs.unity3d.com/6000.3/Documentation/ScriptReference/index.html

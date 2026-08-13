@@ -1,7 +1,7 @@
 # Unity 6.3 LTS — Current Best Practices
 
-**Editor version:** 6000.3.19f1
-**Last verified:** 2026-07-19
+**Editor version:** 6000.3.22f1
+**Last verified:** 2026-08-13
 
 These practices apply to packages that are installed in this project.
 
@@ -10,7 +10,7 @@ These practices apply to packages that are installed in this project.
 ## Active Project Stack
 
 - **Rendering:** URP 17.3.0.
-- **Input:** Input System 1.19.0 with keyboard/mouse and gamepad parity.
+- **Input:** Input System 1.20.0 with keyboard/mouse and gamepad parity.
 - **Physics:** Unity Physics 3D. The vehicle model remains a prototype decision.
 - **Asset management:** Addressables 3.1.0, initially for local content groups.
 - **Testing:** Unity Test Framework 1.6.0 with NUnit.

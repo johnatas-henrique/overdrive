@@ -5,7 +5,7 @@
 
 ## Engine & Language
 
-- **Engine**: Unity 6000.3.19f1 (Unity 6.3 LTS)
+- **Engine**: Unity 6000.3.22f1 (Unity 6.3 LTS)
 - **Language**: C#
 - **Rendering**: Universal Render Pipeline 17.3.0
 - **Physics**: Unity Physics 3D. Vehicle simulation remains pending prototype evaluation.
@@ -54,7 +54,7 @@
 
 <!-- Add approved third-party dependencies here -->
 - Universal Render Pipeline 17.3.0
-- Input System 1.19.0
+- Input System 1.20.0
 - AI Navigation 2.0.14
 - Addressables 3.1.0
 - No online-services provider or real-time networking SDK is approved before its Alpha or Beta selection ADR is Accepted.

@@ -1,7 +1,7 @@
 # Unity 6.3 LTS — API Migration Guide
 
-**Editor version:** 6000.3.19f1
-**Last verified:** 2026-07-19
+**Editor version:** 6000.3.22f1
+**Last verified:** 2026-08-13
 
 This is a project-specific lookup. It distinguishes APIs that are actually obsolete in the installed editor from patterns that are merely not the project standard.
 

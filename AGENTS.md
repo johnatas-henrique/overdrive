@@ -5,11 +5,11 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 ## Technology Stack
 
-- **Engine**: Unity 6000.3.19f1 (Unity 6.3 LTS)
+- **Engine**: Unity 6000.3.22f1 (Unity 6.3 LTS)
 - **Language**: C#
 - **Build System**: Unity Build Pipeline
 - **Rendering**: Universal Render Pipeline 17.3.0
-- **Input**: Unity Input System 1.19.0
+- **Input**: Unity Input System 1.20.0
 - **Navigation**: AI Navigation 2.0.14
 - **Asset Pipeline**: Unity Asset Import Pipeline + Addressables + Coplay MCP for
   editor-assisted scene, asset, and visual verification workflows

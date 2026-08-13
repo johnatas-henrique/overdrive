@@ -3,7 +3,7 @@
 ## Document Status
 - **Version:** 7 (regenerated 2026-08-06 by the formal /create-architecture full after the v6 architecture review)
 - **Last Updated:** 2026-08-06
-- **Engine:** Unity 6000.3.19f1 (Unity 6.3 LTS)
+- **Engine:** Unity 6000.3.22f1 (Unity 6.3 LTS)
 - **GDDs Covered:** 21 MVP GDDs (all APPROVED)
 - **ADRs Referenced:** 19 Accepted ADRs (0001-0019); ADR-0016 and ADR-0017 are Accepted selection-boundary documents (network driver interface, Alpha services / Beta real-time); ADR-0018 (RSM Authority) and ADR-0019 (UI Presentation) Accepted 2026-08-05. See `docs/architecture/control-manifest.md` for the Accepted-ADR rules sheet and `docs/architecture/` for individual ADRs.
 - **Technical Director Sign-Off:** 2026-07-27 — APPROVED WITH CONDITIONS. All 5 Foundation ADRs now exist (0001, 0003, 0004, 0005, 0008). Conditions met.
@@ -14,7 +14,7 @@
 
 ## Engine Knowledge Gap Summary
 
-**Engine:** Unity 6000.3.19f1 — LLM training cutoff ~May 2025, release July 2026 (~14 month gap)
+**Engine:** Unity 6000.3.22f1 — LLM training cutoff ~May 2025, release July 2026 (~14 month gap)
 
 ### Verified Against Engine Reference + Runtime Reflection
 

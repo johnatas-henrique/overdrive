@@ -1,7 +1,7 @@
 # Architecture Traceability Index
 
 > **Last Updated:** 2026-08-01
-> **Engine:** Unity 6000.3.19f1
+> **Engine:** Unity 6000.3.22f1
 > **ADRs:** 15 (0001–0015)
 
 > **Superseded for multiplayer and networking decisions on 2026-08-05.** ADR-0016 and ADR-0017 are not represented here. Do not use this artifact for current networking traceability; a formal `/architecture-review full` regeneration is pending.

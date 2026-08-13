@@ -10,7 +10,7 @@ Only the packages in the table below are part of this project today. All other e
 | Installed | Reference-only / not installed |
 |-----------|--------------------------------|
 | URP 17.3.0, Addressables 3.1.0 | Cinemachine, Entities/DOTS, VFX Graph |
-| Input System 1.19.0 | Animation Rigging, ProBuilder, Netcode for GameObjects |
+| Input System 1.20.0 | Animation Rigging, ProBuilder, Netcode for GameObjects |
 | AI Navigation 2.0.14 | ML-Agents, Recorder, Splines, Muse, Sentis |
 | Timeline 1.8.12, UGUI 2.0.0 | |
 
@@ -65,9 +65,9 @@ Only the packages in the table below are part of this project today. All other e
 ### 🟡 Input System (Installed)
 - **Purpose:** Modern input handling (rebindable, cross-platform)
 - **Status:** Installed project standard
-- **Package:** `com.unity.inputsystem` 1.19.0
+- **Package:** `com.unity.inputsystem` 1.20.0
 - **Docs:** See [modules/input.md](../modules/input.md)
-- **Official:** https://docs.unity3d.com/Packages/com.unity.inputsystem@1.19/manual/index.html
+- **Official:** https://docs.unity3d.com/Packages/com.unity.inputsystem@1.20/manual/index.html
 
 ---
 
@@ -244,5 +244,5 @@ For packages NOT listed above, use the following approach when users ask:
 ---
 
 **Last Updated:** 2026-07-19
-**Engine Version:** Unity 6000.3.19f1 (Unity 6.3 LTS)
+**Engine Version:** Unity 6000.3.22f1 (Unity 6.3 LTS)
 **LLM Knowledge Cutoff:** May 2025

@@ -1,7 +1,7 @@
 # Unity 6.3 — Input Module Reference
 
-**Last verified:** 2026-07-19
-**Project Standard:** Input System 1.19.0. The legacy Input Manager remains available but is not used for new project code.
+**Last verified:** 2026-08-13
+**Project Standard:** Input System 1.20.0. The legacy Input Manager remains available but is not used for new project code.
 
 ---
 
@@ -26,7 +26,7 @@ using UnityEngine.InputSystem;
 if (Keyboard.current.spaceKey.wasPressedThisFrame) { }
 ```
 
-**Project state:** `com.unity.inputsystem` 1.19.0 is already installed.
+**Project state:** `com.unity.inputsystem` 1.20.0 is already installed.
 
 ---
 

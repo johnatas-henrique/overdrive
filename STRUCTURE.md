@@ -518,7 +518,7 @@
 - `.pi/settings.json`: CortexKit PI runtime settings
 - `.pi/mcp.json`: CortexKit MCP server overrides
 - `Packages/manifest.json`: Unity package dependencies (URP, Input System, AI Nav, etc.)
-- `ProjectSettings/ProjectVersion.txt`: Unity version (6000.3.19f1)
+- `ProjectSettings/ProjectVersion.txt`: Unity version (6000.3.22f1)
 - `dotnet-tools.json`: .NET tool manifest (csharpier)
 - `.editorconfig`: Editor formatting rules
 

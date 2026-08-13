@@ -16,7 +16,7 @@ OpenCode: Ubuntu on WSL
 WSL networking: mirrored
 Coplay transport: HTTP
 Coplay endpoint: http://127.0.0.1:8080/mcp
-Unity version: 6000.3.19f1
+Unity version: 6000.3.22f1
 ```
 
 The Coplay server runs with the Windows Unity Editor. OpenCode connects from WSL through the mirrored-networking loopback address. Use `127.0.0.1`, not `::1`.

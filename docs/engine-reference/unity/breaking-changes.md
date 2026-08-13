@@ -1,7 +1,7 @@
 # Unity 6.3 LTS — Breaking Changes
 
-**Editor version:** 6000.3.19f1
-**Last verified:** 2026-07-19
+**Editor version:** 6000.3.22f1
+**Last verified:** 2026-08-13
 
 This document covers changes that can affect code written for earlier Unity releases.
 It does not imply that an uninstalled package is part of this project.
@@ -24,7 +24,7 @@ For custom URP passes, use the RenderGraph path through `RecordRenderGraph`. The
 
 ## Project Standards, Not API Deprecations
 
-- The project uses the Input System 1.19.0. The legacy `Input` APIs remain functional; do not label them obsolete solely because the Input System is preferred.
+- The project uses the Input System 1.20.0. The legacy `Input` APIs remain functional; do not label them obsolete solely because the Input System is preferred.
 - The project uses URP 17.3.0. Do not introduce Built-in Render Pipeline-only rendering assumptions.
 - Runtime UI should default to uGUI. UI Toolkit is a valid runtime alternative and the preferred system for editor tooling.
 - `ParticleSystem`, UGUI, `Resources.Load`, and `Physics.RaycastAll` remain available APIs. Apply performance or architectural guidance to them without calling them deprecated.
