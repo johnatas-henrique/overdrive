@@ -1,6 +1,8 @@
 {
   "name": "Overdrive.Settings.Core",
-  "references": [],
+  "references": [
+    "Overdrive.Simulation"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

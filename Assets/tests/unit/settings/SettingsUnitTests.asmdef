@@ -1,7 +1,8 @@
 {
   "name": "SettingsUnitTests",
   "references": [
-    "Overdrive.Settings.Core"
+    "Overdrive.Settings.Core",
+    "Overdrive.Simulation"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

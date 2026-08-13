@@ -4,7 +4,8 @@
     "Overdrive.Settings",
     "Overdrive.Settings.Core",
     "Overdrive.Input",
-    "Overdrive.Simulation"
+    "Overdrive.Simulation",
+    "UnityEditor"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
