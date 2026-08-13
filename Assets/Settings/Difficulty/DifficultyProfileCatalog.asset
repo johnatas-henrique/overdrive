@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ded7a73da0d28e64899c9a27ffe6fe55, type: 3}
+  m_Name: DifficultyProfileCatalog
+  m_EditorClassIdentifier: Overdrive.Settings::Overdrive.Settings.DifficultyProfileCatalog
+  _profiles:
+  - {fileID: 11400000, guid: 010370e7d8fa8be45bcc685dfed9b71e, type: 2}
+  - {fileID: 11400000, guid: 852e4a3b8840bfc489a5cc15fe6170a0, type: 2}
+  - {fileID: 11400000, guid: 2420ad8bb57b8d1459d4b3d9e45baad3, type: 2}
+  - {fileID: 11400000, guid: 2afba483f9872614da921492753a5672, type: 2}
+  - {fileID: 11400000, guid: 9832d3b3c3553854ca236dc4a98c26a3, type: 2}
