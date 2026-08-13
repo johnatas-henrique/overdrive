@@ -22,20 +22,20 @@ stories:
     name: "Settings Persistence & Migration"
     file: "production/epics/settings/story-001-settings-persistence-migration.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-08-12"
   - id: "3-3"
     name: "SettingsEditSession & Lifecycle"
     file: "production/epics/settings/story-002-settings-edit-session-lifecycle.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-08-12"
   - id: "3-4"
     name: "DifficultyProfile & Race Snapshot"
     file: "production/epics/settings/story-003-difficulty-profile-race-snapshot.md"
