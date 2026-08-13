@@ -13,11 +13,11 @@ stories:
     name: "Multiplayer Isolation Boundary"
     file: "production/epics/multiplayer-architecture/story-001-multiplayer-isolation-boundary.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-08-12"
   - id: "3-2"
     name: "Settings Persistence & Migration"
     file: "production/epics/settings/story-001-settings-persistence-migration.md"
