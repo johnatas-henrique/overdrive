@@ -426,10 +426,10 @@ namespace Overdrive.Multiplayer.Tests
         };
 
         [Test]
-        public void AC4_OnlyThreeNonEditorGameplayAssemblies()
+        public void AC4_OnlyKnownNonEditorGameplayAssemblies()
         {
             var asmdefs = FindAsmdefFilesUnder("Assets/source");
-            Assert.That(asmdefs.Count, Is.GreaterThanOrEqualTo(3), "Expected at least the three gameplay asmdefs.");
+            Assert.That(asmdefs.Count, Is.GreaterThanOrEqualTo(5), "Expected at least the five gameplay asmdefs.");
 
             var nonEditor = new List<string>();
             foreach (string path in asmdefs)
@@ -442,8 +442,15 @@ namespace Overdrive.Multiplayer.Tests
                 nonEditor.Add(name);
             }
 
-            Assert.That(nonEditor, Is.EquivalentTo(new[] { "Overdrive.Input", "Overdrive.Simulation", "Overdrive.Multiplayer" }),
-                "The only non-editor gameplay assemblies under Assets/source/ must be Overdrive.Input, Overdrive.Simulation, Overdrive.Multiplayer. Any other non-editor asmdef fails.");
+            // The known gameplay assembly set grows with each Foundation epic. Adding a NEW non-editor
+            // asmdef under Assets/source/ that is not in this list fails closed — an undeclared assembly
+            // must be audited before it can join the boundary.
+            Assert.That(nonEditor, Is.EquivalentTo(new[]
+            {
+                "Overdrive.Input", "Overdrive.Simulation", "Overdrive.Multiplayer",
+                "Overdrive.Settings.Core", "Overdrive.Settings"
+            }),
+                "The only non-editor gameplay assemblies under Assets/source/ must be the known manifest. Any other non-editor asmdef fails.");
         }
 
         [Test]
