@@ -102,11 +102,13 @@
 ### 3-5 Control Bindings & Rebinding State Machine — Logic
 **Test file path**: `Assets/tests/unit/settings/ControlBindingTests.cs` (+ integration)
 **What to test**:
-- `IRebindCapture` port with `BindingTarget { ActionId, BindingId, Scheme/composite-part }` + `CaptureResult`
-- State machine: Listening → BindingConflict → Closed (10 slots KBM + 4 Gamepad + composite parts)
-- BindingOverride persistence (ActionId + BindingId, stable GUIDs)
-- Duplicate key load → typed warning, reject
-- Fallback unknown ID → default binding
+- `IRebindCapture` port with `BindingTarget { ActionId, BindingId, Scheme/composite-part, SlotIndex }` + `CaptureResult` (typed `RejectionReason`: Reserved/UnknownAction/UnknownBinding/MalformedPath/DuplicateCandidate/DeviceLost)
+- State machine: Open → Listening → BindingConflict (10 slots KBM + 4 Gamepad + composite parts), DI via `IRebindCapture` ctor injection + fake capture events
+- Working override-set via `GetWorkingOverrides()` (FULL set; exactly one changed slot vs pre-rebind baseline — AC-C6)
+- `BindingMigrationResult` mapping (unknown BindingId → affected slot default + typed issues, valid overrides preserved — AC-C12/E4)
+- Reserved rejection (Confirm/Cancel/Pause — AC-C8/C9, typed via CaptureStartResult.Reason)
+- `ISchemeProbe.ActiveScheme` never mutated by Settings during capture (AC-E11, fake in unit / InputContextController-backed in integration; arbitration on reconnect stays InputContextController's domain)
+- Duplicate persisted bindings → first preserved, second slot defaulted (AC-E4)
 
 **Edge cases to cover**:
 - Capture with no action (rejected)
