@@ -30,9 +30,11 @@
 - Purpose: Actual game code, scenes, assets, and Unity project configuration
 - Location: `Assets/`, `ProjectSettings/`, `Packages/`
 - Contains: Unity C# scripts, scenes, materials, sprites, input actions, render pipeline assets
-- Sub-assemblies:
   - `Overdrive.Input` (`Assets/source/Overdrive.Input.asmdef`): Unity-side input processing — `InputContextController`, `DeadZoneNormalizer`, `EmaBrakePriority`, `ControlProfile`, `TickProcessor`, `InputFrameDriver`, `InputFrameCapture` (production capture adapter), `InputBindingCatalog`, `EmaReinitializerBase`, `ContextResumeEmaReinitializer`, `SchemeChangeEmaReinitializer`, `SettingsInputPreviewEvaluator`, `SimulationDriverAdapters` (Unity lifecycle adapters bridging engine-free simulation seams to Unity APIs)
-  - `Overdrive.Simulation` (`Assets/source/Simulation/Overdrive.Simulation.asmdef`): Engine-free simulation kernel — `SimulationKernel` (14-step invocation spine), `SimulationStateMachine` (authoritative session lifecycle), `SimulationDriver` (manual fixed-step accumulator), `RenderInterpolator` (render interpolation math), `PerformanceMonitor` (FPS protection), `Pcg32` (deterministic PRNG), `GhostBuffer` (ghost recording), `DeterminismHarness` (determinism replay), contract spine types (`CarState` with 3D pose, `FuelState`, `TireState`, `GridAssignment`, `SimulationTickContext`, `PublishedSimulationSnapshot`, `PostFinishSnapshot`, pipeline steps). Depends on `Unity.Mathematics`; has `noEngineReferences: true`
+  - `Overdrive.Simulation` (`Assets/source/Simulation/Overdrive.Simulation.asmdef`): Engine-free simulation kernel — `SimulationKernel` (14-step invocation spine), `SimulationStateMachine` (authoritative session lifecycle), `SimulationDriver` (manual fixed-step accumulator), `GhostRecorderLifecycle` (ghost-recorder and GO-boundary replay-capture lifecycle), `RenderInterpolator` (render interpolation math), `PerformanceMonitor` (FPS protection), `Pcg32` (deterministic PRNG), `GhostBuffer` (ghost recording), `DeterminismHarness` (determinism replay), contract spine types (`CarState` with 3D pose, `FuelState`, `TireState`, `GridAssignment`, `SimulationTickContext`, `PublishedSimulationSnapshot`, `PostFinishSnapshot`, pipeline steps). Depends on `Unity.Mathematics`; has `noEngineReferences: true`
+  - `Overdrive.Multiplayer` (`Assets/source/Multiplayer/Overdrive.Multiplayer.asmdef`): Engine-free multiplayer seam (ADR-0017 D2) — `INetworkSimulationDriver` (4-method interface: `SubmitInputs`, `SerializeSnapshot`, `Rollback`, `GetPredictedInput`, plus `RemoteInputsReceived` event), `RemoteInputsReceivedHandler` delegate, `NetworkInput` struct (MVP placeholder), `SimulationRollbackState` readonly struct with `Vector3Array16`/`QuaternionArray16` zero-allocation fixed-length wrappers. References only `Overdrive.Simulation` and `Unity.Mathematics`; has `noEngineReferences: true`. No concrete provider implementation in MVP.
+  - `Overdrive.Settings.Core` (`Assets/source/Settings.Core/Overdrive.Settings.Core.asmdef`): Engine-free settings persistence core — `SettingsBlobService` (load cascade: primary → backup → factory defaults; save: backup-first atomic write), `SettingsPersistence` (core read/write over `IPlayerPrefsStore` seam), `SettingsEditSession` (transactional preview with Snapshot/Working copy, display-confirm gate, one-session-at-a-time), `SettingsData` models (`GameSettingsData` with difficulty, controls, audio, display, accessibility, camera), `SettingsMigration` (sequential v1→v2→v3), `SettingsValidator` (per-field validation), `SettingsJsonCodec` (JSON serialize/deserialize), `SettingsBindings` (binding de-duplication). Depends on `Overdrive.Input` and `Overdrive.Simulation`; has `noEngineReferences: true` (note: `autoReferenced: true`)
+  - `Overdrive.Settings` (`Assets/source/Settings/Overdrive.Settings.asmdef`): Unity-facing settings adapters — `SettingsLoader` (wires engine-free core to Unity surfaces: maps `ControlsData` → `ControlProfile` via `ControlProfile.Sanitize`), `SettingsLifecycleContext` (maps `SimulationState` to settings lifecycle queries: `CanOpenSettings`, `IsDifficultyEditable`), `PlayerPrefsStore` (implements `IPlayerPrefsStore` over `UnityEngine.PlayerPrefs`). Depends on `Overdrive.Settings.Core`, `Overdrive.Input`, `Overdrive.Simulation`
 - Depends on: Unity 6 (6000.3.19f1), URP 17.3.0, Input System 1.19.0, AI Navigation 2.0.14, Addressables 3.1.0, Unity CLI pipeline 0.4.0-exp.1, Unity.Mathematics
 - Used by: Unity Editor, build pipeline, Unity CLI commands
 
@@ -46,8 +48,8 @@
 **Testing Layer:**
 - Purpose: Plugin tests and Unity/C# gameplay tests
 - Location: `Assets/tests/`, `tests/`
-- Contains: EditMode and PlayMode test directories, unit tests (`Assets/tests/unit/input/`, `Assets/tests/unit/simulation/`), integration tests (`Assets/tests/integration/input/`, `Assets/tests/integration/simulation/`), smoke tests (`tests/smoke/`); plugin tests in `.opencode/plugins/tests/`
-- Test assemblies: `InputUnitTests`, `InputIntegrationTests`, `SimulationUnitTests` (references `Overdrive.Simulation`, `Overdrive.Input`, `Unity.Mathematics`), `SimulationIntegrationTests` (references `Overdrive.Simulation`, `Overdrive.Input`)
+- Contains: EditMode and PlayMode test directories, unit tests (`Assets/tests/unit/input/`, `Assets/tests/unit/simulation/`, `Assets/tests/unit/multiplayer/`, `Assets/tests/unit/settings/`), integration tests (`Assets/tests/integration/input/`, `Assets/tests/integration/simulation/`, `Assets/tests/integration/settings/`), smoke tests (`tests/smoke/`); plugin tests in `.opencode/plugins/tests/`
+- Test assemblies: `InputUnitTests`, `InputIntegrationTests`, `SimulationUnitTests` (references `Overdrive.Simulation`, `Overdrive.Input`, `Unity.Mathematics`), `SimulationIntegrationTests` (references `Overdrive.Simulation`, `Overdrive.Input`), `MultiplayerUnitTests` (references `Overdrive.Multiplayer`, `Overdrive.Simulation`, `Unity.Mathematics`), `SettingsUnitTests` (references `Overdrive.Settings.Core`), `SettingsIntegrationTests` (references `Overdrive.Settings`, `Overdrive.Settings.Core`, `Overdrive.Input`, `Overdrive.Simulation`)
 - Depends on: Node.js for plugin tests; Unity Test Framework for gameplay tests
 - Used by: Plugin CI and game development validation
 
@@ -124,10 +126,25 @@
 - Location: `Assets/source/Simulation/SimulationStateMachine.cs`
 - Pattern: Implements `ISimulationStateGate` (read-only gate for the driver) and `ISimulationPhysicsFailureHandler`. Enforces legal transition graph, owns countdown, grid lock, retry hold, forfeit path, and terminal snapshot management. Raises events: `StateChanged`, `PausedStateChanged`, `ContentLoadRequested`, `ContentUnloadRequested`, `RaceAborted`, `LifecycleErrorRaised`
 
+**INetworkSimulationDriver:**
+- Purpose: Project-owned seam between the manual simulation accumulator and a future Beta real-time networking driver (ADR-0017 D2). MVP publishes the seam with NO provider implementation.
+- Location: `Assets/source/Multiplayer/INetworkSimulationDriver.cs`
+- Pattern: Interface in the engine-free `Overdrive.Multiplayer` assembly; 4 methods (`SubmitInputs`, `SerializeSnapshot`, `Rollback`, `GetPredictedInput`) plus `RemoteInputsReceived` event; driver is a guest of the manual accumulator — never calls `Physics.Simulate`, owns no `FixedUpdate`, never writes `SimulationState`
+
+**SimulationRollbackState:**
+- Purpose: Corrective kinematic state for all 16 simulated cars (positions, rotations, linear/angular velocities) captured pre-replay and restored by the rollback pipeline (ADR-0017 D4)
+- Location: `Assets/source/Multiplayer/SimulationRollbackState.cs`
+- Pattern: `readonly struct` with zero-allocation `Vector3Array16`/`QuaternionArray16` fixed-length wrappers (16 elements backed by 16 named fields, no heap allocation); elements copied at construction, source mutation does not alias wrapper
+
 **SimulationDriver:**
 - Purpose: Owns the manual fixed-step accumulator, drives the kernel spine once per render frame, and decorates published snapshots with authoritative counters.
 - Location: `Assets/source/Simulation/SimulationDriver.cs`
-- Pattern: Engine-free class; depends on injectable seams (`IFrameDeltaSource`, `IFrameInputCapture`, `IPreAccumulatorLifecycleHook`, `ISimulationStateGate`). Manages accumulator clamping (max 2 ticks), ghost recording, replay-state capture at GO, performance-monitor integration, pause/resume/forfeit snapshot publication
+- Pattern: Engine-free class; depends on injectable seams (`IFrameDeltaSource`, `IFrameInputCapture`, `IPreAccumulatorLifecycleHook`, `ISimulationStateGate`). Manages accumulator clamping (max 2 ticks), ghost recording and replay capture delegated to `GhostRecorderLifecycle`, performance-monitor integration, pause/resume/forfeit snapshot publication
+
+**GhostRecorderLifecycle:**
+- Purpose: Owns the MVP ghost-recorder and GO-boundary replay-capture lifecycle, concentrating the four integration points (lifecycle discard, pause-edge record, GO capture, continuous record) so the driver delegates instead of interleaving ghost bookkeeping with accumulator/counter logic.
+- Location: `Assets/source/Simulation/GhostRecorderLifecycle.cs`
+- Pattern: Engine-free sealed class; lifecycle rules per ADR-0008 — terminal states discard buffer, new-session transitions discard previous race and re-arm replay capture; `CaptureAtGo` fires once at GO before any continuous record; `RecordPauseEdge` records edge events without continuous samples; `RecordCompletedTick` appends one continuous record per Racing tick with post-increment index
 
 **RenderInterpolator:**
 - Purpose: Pure render interpolation math for the deferred LateUpdate visual pass. Stateless and engine-free.
