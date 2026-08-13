@@ -5,6 +5,9 @@
     "Overdrive.Settings.Core",
     "Overdrive.Input",
     "Overdrive.Simulation",
+    "Unity.InputSystem",
+    "Unity.InputSystem.TestFramework",
+    "UnityEngine.UI",
     "UnityEditor"
   ],
   "includePlatforms": [],
