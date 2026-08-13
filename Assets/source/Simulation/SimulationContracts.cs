@@ -186,9 +186,54 @@ namespace Overdrive.Simulation
     /// <summary>Immutable difficulty profile snapshotted at race init (ADR-0004).</summary>
     public readonly struct DifficultyProfile
     {
+        /// <summary>Tier identifier 0-4 (Very Easy..Very Hard), aligned with
+        /// <c>DifficultySelection.MinLevel/MaxLevel</c>.</summary>
         public readonly int Level;
 
-        public DifficultyProfile(int level = 0) => Level = level;
+        /// <summary>AI lap-time precision multiplier (0.90 .. 1.00).</summary>
+        public readonly float AiPrecision;
+
+        /// <summary>AI error multiplier (1.5 .. 0.0).</summary>
+        public readonly float AiErrorMultiplier;
+
+        /// <summary>AI pace noise, +/- fraction (0.08 .. 0.0).</summary>
+        public readonly float PaceNoise;
+
+        /// <summary>Player off-track grip multiplier (0.60 .. 0.25).</summary>
+        public readonly float PlayerOffTrackGrip;
+
+        /// <summary>Player wall-contact speed loss fraction (0.20 .. 0.60).</summary>
+        public readonly float PlayerWallSpeedLoss;
+
+        /// <summary>Creates a Level-only profile (balance fields default to zero).
+        /// Kept for constructor compatibility with existing call sites; the
+        /// Settings catalog fills the full row via the 6-arg constructor.</summary>
+        public DifficultyProfile(int level = 0)
+        {
+            Level = level;
+            AiPrecision = 0f;
+            AiErrorMultiplier = 0f;
+            PaceNoise = 0f;
+            PlayerOffTrackGrip = 0f;
+            PlayerWallSpeedLoss = 0f;
+        }
+
+        /// <summary>Creates a fully populated immutable profile row.</summary>
+        public DifficultyProfile(
+            int level,
+            float aiPrecision,
+            float aiErrorMultiplier,
+            float paceNoise,
+            float playerOffTrackGrip,
+            float playerWallSpeedLoss)
+        {
+            Level = level;
+            AiPrecision = aiPrecision;
+            AiErrorMultiplier = aiErrorMultiplier;
+            PaceNoise = paceNoise;
+            PlayerOffTrackGrip = playerOffTrackGrip;
+            PlayerWallSpeedLoss = playerWallSpeedLoss;
+        }
     }
 
     /// <summary>How and why a car ended the session. Produced by RSM as part of
