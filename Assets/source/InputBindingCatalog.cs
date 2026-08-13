@@ -112,6 +112,24 @@ namespace Overdrive.Input
         public IReadOnlyList<BindingSlot> ReservedSlots => _reservedSlots;
 
         /// <summary>
+        /// Resolves the stable Input action GUID that owns a binding (the story's BindingTarget.ActionId).
+        /// Returns <see cref="Guid.Empty"/> when the binding id matches no known binding.
+        /// </summary>
+        /// <param name="bindingId">The stable InputBinding Guid.</param>
+        /// <returns>The owning Input action's stable id, or <see cref="Guid.Empty"/> if unknown.</returns>
+        public Guid GetActionId(Guid bindingId)
+        {
+            return _bindingMap.TryGetValue(bindingId, out (InputAction action, int bindingIndex) entry) ? entry.action.id : Guid.Empty;
+        }
+
+        /// <summary>Whether a binding id is indexed (known to the current asset).</summary>
+        /// <param name="bindingId">The stable InputBinding Guid.</param>
+        public bool HasBinding(Guid bindingId)
+        {
+            return _bindingMap.ContainsKey(bindingId);
+        }
+
+        /// <summary>
         /// Classifies a remap candidate without applying it (AC-10). Returns <see cref="RemapResult.Captured"/>,
         /// <see cref="RemapResult.Conflict"/>, or <see cref="RemapResult.Rejected"/> (reserved slot, malformed
         /// path, conflict with a reserved binding, or the action at its override cap). No gameplay edge is queued.
@@ -135,7 +153,7 @@ namespace Overdrive.Input
                 return RemapResult.Rejected; // malformed
             }
 
-            if (IsAtOverrideCap(target.action.name))
+            if (IsAtOverrideCap(target.action.name, slotId))
             {
                 return RemapResult.Rejected; // exceeded (AC-10)
             }
@@ -166,8 +184,16 @@ namespace Overdrive.Input
             if (result == RemapResult.Captured)
             {
                 (InputAction action, int bindingIndex) = _bindingMap[slotId];
+                bool hadOverride = !string.IsNullOrEmpty(action.bindings[bindingIndex].overridePath);
                 action.ApplyBindingOverride(bindingIndex, path);
-                _overridesPerAction[action.name] = OverrideCount(action.name) + 1;
+                RefreshSlotPath(slotId);
+
+                // Substitution on an already-overridden slot does not add a NEW override — the count
+                // stays (AC-10 accounting: one override per action, replacement is not an increment).
+                if (!hadOverride)
+                {
+                    _overridesPerAction[action.name] = OverrideCount(action.name) + 1;
+                }
             }
 
             return result;
@@ -229,8 +255,29 @@ namespace Overdrive.Input
             }
 
             target.action.RemoveBindingOverride(target.bindingIndex);
+            RefreshSlotPath(slotId);
             _overridesPerAction[target.action.name] = Math.Max(0, OverrideCount(target.action.name) - 1);
             return true;
+        }
+
+        private void RefreshSlotPath(Guid slotId)
+        {
+            if (!_bindingMap.TryGetValue(slotId, out (InputAction action, int bindingIndex) entry))
+            {
+                return;
+            }
+
+            InputBinding binding = entry.action.bindings[entry.bindingIndex];
+            string effective = binding.overridePath ?? binding.path;
+            for (int i = 0; i < _remappableSlots.Count; i++)
+            {
+                if (_remappableSlots[i].Id == slotId)
+                {
+                    BindingSlot current = _remappableSlots[i];
+                    _remappableSlots[i] = new BindingSlot(current.Id, current.ActionName, current.DisplayName, effective, current.IsReserved);
+                    return;
+                }
+            }
         }
 
         private static bool ResolvesToControl(string path)
@@ -251,7 +298,27 @@ namespace Overdrive.Input
             return false;
         }
 
-        private bool IsAtOverrideCap(string actionName) => OverrideCount(actionName) >= MaxOverridesPerAction;
+        private bool IsAtOverrideCap(string actionName, Guid slotId)
+        {
+            if (OverrideCount(actionName) < MaxOverridesPerAction)
+            {
+                return false;
+            }
+
+            // At the cap already: substituting the override on THIS slot is allowed (a player re-rebinds
+            // an already-customized slot); only a NEW slot of the same action hits the cap.
+            return !HasOverride(slotId);
+        }
+
+        private bool HasOverride(Guid slotId)
+        {
+            if (!_bindingMap.TryGetValue(slotId, out (InputAction action, int bindingIndex) entry))
+            {
+                return false;
+            }
+
+            return !string.IsNullOrEmpty(entry.action.bindings[entry.bindingIndex].overridePath);
+        }
 
         private int OverrideCount(string actionName)
         {
@@ -313,6 +380,13 @@ namespace Overdrive.Input
                 {
                     compositeOrdinal++;
                     continue;
+                }
+
+                // Seed the per-action override count from overrides already present on the asset, so a
+                // catalog built over an already-customized asset respects the cap from construction.
+                if (!string.IsNullOrEmpty(binding.overridePath))
+                {
+                    _overridesPerAction[action.name] = OverrideCount(action.name) + 1;
                 }
 
                 string displayName = BuildDisplayName(action, binding, isReserved, compositeOrdinal);
