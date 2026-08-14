@@ -6,7 +6,7 @@ goal: "Deliver the three remaining Foundation epics (Settings, Content Pipeline,
 start: "2026-08-12"
 end: "2026-08-19"
 generated: "2026-08-12"
-updated: "2026-08-13"
+updated: "2026-08-14"
 
 stories:
   - id: "3-1"
@@ -58,7 +58,11 @@ stories:
     name: "Display Confirm & Quality Presets"
     file: "production/epics/settings/story-005-display-confirm-quality-presets.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
+    owner: ""
+    estimate_days: 0.5
+    blocker: ""
+    completed: "2026-08-14"
     owner: ""
     estimate_days: 0.625
     blocker: ""
