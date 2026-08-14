@@ -213,6 +213,9 @@ namespace Overdrive.Settings.Tests
         {
             public void Confirm(DisplayCandidate candidate, System.Action<DisplayConfirmResult> onResult)
                 => onResult(DisplayConfirmResult.Accepted);
+
+            // Confirms synchronously — never an active confirmation to cancel.
+            public void CancelActiveConfirmation() { }
         }
     }
 }

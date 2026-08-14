@@ -338,6 +338,9 @@ namespace Overdrive.Settings.Tests
             {
                 onResult(DisplayConfirmResult.Accepted);
             }
+
+            // Confirms synchronously — never an active confirmation to cancel.
+            public void CancelActiveConfirmation() { }
         }
 
         /// <summary>Minimal base provider: fills the non-difficulty capture fields.</summary>

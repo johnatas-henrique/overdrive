@@ -51,6 +51,10 @@ namespace Overdrive.Settings.Core.Tests
         {
             public void Confirm(DisplayCandidate candidate, Action<DisplayConfirmResult> onResult)
                 => throw new InvalidOperationException("Gate unavailable.");
+
+            // The gate never becomes active (Confirm always throws) — no-op, mirroring the real
+            // gate's "no active confirmation" path.
+            public void CancelActiveConfirmation() { }
         }
 
         /// <summary>Store whose writes can be toggled to fail — exercises Apply retry after transient failure.</summary>
@@ -73,6 +77,7 @@ namespace Overdrive.Settings.Core.Tests
         {
             private readonly List<Action<DisplayConfirmResult>> _callbacks = new List<Action<DisplayConfirmResult>>();
             private bool _failedOnce;
+            private bool _hasActive;
 
             public void Confirm(DisplayCandidate candidate, Action<DisplayConfirmResult> onResult)
             {
@@ -82,10 +87,26 @@ namespace Overdrive.Settings.Core.Tests
                     throw new InvalidOperationException("Transient gate failure.");
                 }
                 _callbacks.Add(onResult);
+                _hasActive = true;
             }
 
             public void CompleteLatest(DisplayConfirmResult outcome)
-                => _callbacks[_callbacks.Count - 1](outcome);
+            {
+                _hasActive = false;
+                _callbacks[_callbacks.Count - 1](outcome);
+            }
+
+            /// <summary>
+            /// Mirrors the real gate: completes the ACTIVE confirmation as rejected; no-op when
+            /// no confirmation is pending (the real gate's <c>!IsActive</c> guard — QA R15 F2).
+            /// Consuming the active flag makes a repeat call a no-op.
+            /// </summary>
+            public void CancelActiveConfirmation()
+            {
+                if (!_hasActive) return;
+                _hasActive = false;
+                _callbacks[_callbacks.Count - 1](DisplayConfirmResult.RejectedOrTimeout);
+            }
         }
 
         private sealed class FakeLifecycleContext : ISettingsLifecycleContext
@@ -102,11 +123,13 @@ namespace Overdrive.Settings.Core.Tests
         {
             public readonly List<DisplayCandidate> Candidates = new List<DisplayCandidate>();
             private readonly List<Action<DisplayConfirmResult>> _callbacks = new List<Action<DisplayConfirmResult>>();
+            private bool _hasActive;
 
             public void Confirm(DisplayCandidate candidate, Action<DisplayConfirmResult> onResult)
             {
                 Candidates.Add(candidate);
                 _callbacks.Add(onResult);
+                _hasActive = true;
             }
 
             /// <summary>Invokes the callback at <paramref name="index"/> (0-based, in confirmation order).</summary>
@@ -119,7 +142,21 @@ namespace Overdrive.Settings.Core.Tests
             public void CompleteLatest(DisplayConfirmResult outcome)
             {
                 if (_callbacks.Count == 0) throw new InvalidOperationException("No pending confirmation.");
+                _hasActive = false;
                 CompleteAt(_callbacks.Count - 1, outcome);
+            }
+
+            /// <summary>
+            /// Mirrors the real gate: completes the ACTIVE (most recent) confirmation as rejected;
+            /// no-op when none is pending (the real gate's <c>!IsActive</c> guard — QA R15 F2).
+            /// Consuming the active flag makes a repeat call a no-op; the callback stays in the
+            /// list so stale-callback tests (CompleteAt on an old index) still work.
+            /// </summary>
+            public void CancelActiveConfirmation()
+            {
+                if (!_hasActive) return;
+                _hasActive = false;
+                _callbacks[_callbacks.Count - 1](DisplayConfirmResult.RejectedOrTimeout);
             }
         }
 
