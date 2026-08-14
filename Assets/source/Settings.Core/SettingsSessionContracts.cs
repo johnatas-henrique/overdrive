@@ -85,7 +85,7 @@ namespace Overdrive.Settings.Core
         /// <summary>The candidate resolution height.</summary>
         public int Height { get; }
 
-        /// <summary>The candidate fullscreen mode (0 windowed, 1 fullscreen window, 2 exclusive).</summary>
+        /// <summary>The candidate fullscreen mode int (0=Windowed, 1=FullScreen, 2=Borderless — matches <see cref="DisplayData.FullscreenMode"/> semantics; do NOT cast directly to <see cref="UnityEngine.FullScreenMode"/>, use the canonical conversion in Story 005's gate adapter).</summary>
         public int FullscreenMode { get; }
     }
 
@@ -107,6 +107,18 @@ namespace Overdrive.Settings.Core
         /// <param name="candidate">The resolution/fullscreen candidate.</param>
         /// <param name="onResult">The outcome callback (invoked once).</param>
         void Confirm(DisplayCandidate candidate, Action<DisplayConfirmResult> onResult);
+
+        /// <summary>
+        /// Cancels any ACTIVE confirmation without the player's consent: the physical preview (if
+        /// applied) is restored immediately and the pending outcome callback fires with
+        /// <see cref="DisplayConfirmResult.RejectedOrTimeout"/> — the session's generation counter
+        /// makes it a stale no-op. The session calls this when a terminal operation
+        /// (<see cref="SettingsEditSession.Cancel"/>/Dispose) or a superseding non-display change
+        /// invalidates a pending confirmation, so a real display preview is NEVER left orphaned on
+        /// the display until the 15s timer or focus loss (QA code-review R14 F1). No-op when no
+        /// confirmation is active.
+        /// </summary>
+        void CancelActiveConfirmation();
     }
 
     /// <summary>

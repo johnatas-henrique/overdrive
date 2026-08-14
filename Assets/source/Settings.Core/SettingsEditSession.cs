@@ -264,11 +264,18 @@ namespace Overdrive.Settings.Core
             }
         }
 
-        /// <summary>Invalidates any pending display confirmation — a late gate outcome is a no-op.</summary>
+        /// <summary>
+        /// Invalidates any pending display confirmation — a late gate outcome is a no-op. Also
+        /// COMPLETES the real gate (QA R14 F1): a terminal operation (Cancel/Dispose) or a
+        /// superseding non-display change must restore the physical preview immediately, not leave
+        /// it applied until the 15s timer or focus loss. The gate's outcome callback fires with
+        /// RejectedOrTimeout, but the incremented version makes it a stale no-op here.
+        /// </summary>
         private void InvalidatePendingDisplayConfirm()
         {
             _displayConfirmPending = false;
             _pendingVersion++;
+            _displayConfirm.CancelActiveConfirmation();
         }
 
         private static T Require<T>(SettingsCategory category, object value)
