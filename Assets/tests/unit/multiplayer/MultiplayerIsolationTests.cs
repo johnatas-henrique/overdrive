@@ -448,7 +448,7 @@ namespace Overdrive.Multiplayer.Tests
             Assert.That(nonEditor, Is.EquivalentTo(new[]
             {
                 "Overdrive.Input", "Overdrive.Simulation", "Overdrive.Multiplayer",
-                "Overdrive.Settings.Core", "Overdrive.Settings"
+                "Overdrive.Settings.Core", "Overdrive.Settings", "Overdrive.Content"
             }),
                 "The only non-editor gameplay assemblies under Assets/source/ must be the known manifest. Any other non-editor asmdef fails.");
         }
