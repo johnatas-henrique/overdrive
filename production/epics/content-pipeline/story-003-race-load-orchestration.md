@@ -14,7 +14,7 @@
 *(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh at review time)*
 
 **ADR Governing Implementation**: ADR-0003: Content Pipeline and Addressables
-**ADR Decision Summary**: LoadRace(trackId, carIds, grid) initiates 17 async handles in parallel (1 track + 16 cars), tracks completion collectively, derives progress from `GetDownloadStatus()` (DownloadedBytes/TotalBytes), instantiates the track + loads prefab assets before emitting RaceLoadReady, and handles per-car failure via `CarLoadDegraded` (non-fatal — race continues with 15 cars + placeholder).
+**ADR Decision Summary**: LoadRace(trackId, teamIds, grid) initiates 17 async handles in parallel (1 track + 16 cars), tracks completion collectively, derives progress from `GetDownloadStatus()` (DownloadedBytes/TotalBytes), instantiates the track + loads prefab assets before emitting RaceLoadReady, and handles per-car failure via `CarLoadDegraded` (non-fatal — race continues with 15 cars + placeholder).
 
 **Engine**: Unity 6000.3.19f1 (Unity 6.3 LTS) | **Risk**: MEDIUM (Addressables 3.1.0 async API post-cutoff — LoadAssetAsync/ReleaseInstance/Release confirmed)
 
@@ -23,7 +23,7 @@
 **Control Manifest Rules (Foundation layer)**:
 - Required: Per-car address, never a shared constant: `Cars/{teamId}/CarDefinition`; `Tracks/{trackId}/TrackData` — source: ADR-0003
 - Required: Loading progress from byte counts via `AsyncOperationHandle.GetDownloadStatus()` (DownloadedBytes / TotalBytes) — source: ADR-0003
-- Required: `RaceLoadReady(RaceMode, GridAssignment)` emitted only when ALL assets are fully loaded and instantiated — source: ADR-0003
+- Required: `RaceLoadReady(RaceMode, GridAssignment)` emitted only when ALL required slots are completed — loaded OR degraded-placeholder per slot (GDD:144; degraded car counts as completed; source ADR-0003 as interpreted by Story 002/architecture.yaml:224)
 - Required: `ContentErrorType` = {Track, Shared, Catalog}; Car is never abortive — car failure emits `CarLoadDegraded(reason, teamId)` — source: ADR-0003
 - Guardrail: Memory pressure > 95% during loading: abort, release partial handles, emit `ContentLoadError("Memory pressure", ContentErrorType.Track)` — source: ADR-0003
 
@@ -52,12 +52,12 @@
 
 *Derived from ADR-0003 Implementation Guidelines:*
 
-- **Seam: `IRaceContentSelection`** (gate F5) — the Kernel's `ContentLoadRequest` carries only `RaceMode` + `GridAssignment` (SimulationStateMachine.cs:6-24); track/car identity is NOT in the request. Content needs it via:
+- **Seam: `RaceContentSelection`** (gate F5 — the struct is DEFINED by Story 002, the first implemented story; consumed here) — the Kernel's `ContentLoadRequest` carries only `RaceMode` + `GridAssignment` (SimulationStateMachine.cs:6-24); track/car identity is NOT in the request. Content needs it via:
   ```csharp
   public readonly struct RaceContentSelection {
       public readonly string TrackId;
-      public readonly IReadOnlyList<string> CarIds;
-      public static string Identity(RaceContentSelection s) => $"{s.TrackId}|{string.Join(",", s.CarIds.OrderBy(c => c))}";
+      public readonly IReadOnlyList<string> TeamIds;   // canonical car identifier = team id (address: Cars/{teamId}/CarDefinition)
+      public static string Identity(RaceContentSelection s) => $"{s.TrackId}|{string.Join(",", s.TeamIds.OrderBy(t => t))}";
   }
   ```
   Registration: UI race-selection coordinator supplies it via composition root before LoadRace. Immutable snapshot. Stale-selection rejection (a selection different from the current request's is rejected). Reconfigure rule: same identity → RaceReconfigure (zero I/O, Story 002); changed → unload then load.
@@ -67,12 +67,12 @@
       object TrackInstance { get; }               // loaded+instantiated by Content
       IReadOnlyList<object> CarReferences { get; } // loaded prefab assets, NOT instantiated — VP spawns
       GridAssignment Grid { get; }
-      bool IsValid { get; }  // from RaceLoadReady until ContentUnloadComplete; invalidated after
+      bool IsValid { get; }  // valid from RaceLoadReady until the EARLIER of ContentUnloadComplete (unload path) or a next-race transition into CP_LoadingTrack (story-002 dual-path contract); invalidated after either
   }
   ```
   Ownership: Content instantiates TRACK; loads PREFAB assets; Vehicle Physics/Grid & Start INSTANTIATES car GameObjects. Readiness ordering: populated BEFORE RaceLoadReady. Supersedes the ambiguous reading of ADR-0003:159.
 - **Injectable Addressables seams** (gate F7): `IAddressableLoader` (LoadAssetAsync), `IAsyncLoadHandle` (completion/status), `IDownloadStatusSource` (DownloadedBytes/TotalBytes), `IContentInstantiator` (Instantiate/ReleaseInstance), `IMemoryPressureSource` (used/available).
-- **Parallel load** (ADR-0003:48-55): LoadRace initiates 17 handles in parallel, tracks completion collectively. RaceLoadReady only when ALL loaded+instantiated.
+- **Parallel load** (ADR-0003:48-55): LoadRace initiates 17 handles in parallel, tracks completion collectively. RaceLoadReady only when ALL required slots completed (loaded or degraded placeholder).
 - **Progress** (GDD:169-177): `progress = bytes_loaded / total_bytes`, monotonic, clamped 0..1. Cached-load status: total bytes may be 0 — handle gracefully (gate F7). Final forced to 1.0.
 - **Memory policy** (GDD:181-189): threshold = used/available. <0.85 normal; 0.85-0.95 warning + quality reduction request (via quality seam); >0.95 abort + cleanup + `ContentLoadError("Memory pressure", ContentErrorType.Track)`. Tested with fake memory provider + quality seam (gate F12).
 - **Car failure** (ADR-0003:52): `CarLoadDegraded(reason, teamId)` — non-fatal; placeholder fills grid position; race continues with 15. Never emits ContentLoadError for a car.

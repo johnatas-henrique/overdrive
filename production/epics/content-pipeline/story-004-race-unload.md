@@ -49,7 +49,7 @@
 - **Same-track reload** (AC-UL4, GDD:102): even if the next race uses the same track, full unload + reload (NOT retained).
 - **Completion signal** (ADR-0003:50, :266): `ContentUnloadComplete` emitted when ALL handles released + instances destroyed; only after that may Simulation enter Idle (LO8, Story 002).
 - **Partial-handle cleanup** (gate F9): on abortive ContentLoadError (memory, track, shared), release every partially-loaded handle before propagating the error or emitting ContentUnloadComplete — no residual handles from an aborted load.
-- **`IRaceContentRuntime` invalidation**: `IsValid` → false after ContentUnloadComplete; consumers must not retain past invalidation (architecture.yaml content_race_runtime_handoff).
+- **`IRaceContentRuntime` invalidation**: `IsValid` → false at the EARLIER of `ContentUnloadComplete` (this story's path) or a next-race transition into CP_LoadingTrack (Story 002's path — the next LoadRace supersedes the old runtime; no ContentUnloadComplete on that path); consumers must not retain past invalidation (architecture.yaml content_race_runtime_handoff).
 
 ---
 
