@@ -1,6 +1,7 @@
 {
-  "name": "Overdrive.Content",
+  "name": "ContentUnitTests",
   "references": [
+    "Overdrive.Content",
     "Overdrive.Simulation"
   ],
   "includePlatforms": [],
@@ -8,10 +9,12 @@
   "allowUnsafeCode": false,
   "overrideReferences": false,
   "precompiledReferences": [],
-  "autoReferenced": true,
+  "autoReferenced": false,
   "defineConstraints": [],
   "versionDefines": [],
-  "optionalUnityReferences": [],
-  "noEngineReferences": true,
-  "rootNamespace": "Overdrive.Content"
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "noEngineReferences": false,
+  "rootNamespace": "Overdrive.Content.Tests"
 }
