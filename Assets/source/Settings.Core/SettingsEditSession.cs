@@ -19,11 +19,19 @@ namespace Overdrive.Settings.Core
         private readonly SettingsBlobService _blobService;
         private readonly IDisplayConfirmGate _displayConfirm;
         private readonly Action<string> _warningSink;
+        private readonly AudioSettingsPort _audioPort;
+        private readonly AccessibilitySettingsPort _accessibilityPort;
+        private readonly CameraSettingsPort _cameraPort;
+        private readonly VfxSettingsPort _vfxPort;
         private bool _isOpen;
         private bool _disposed;
         private bool _displayConfirmPending;
         private DisplayCandidate _pendingCandidate;
+        private DisplayData _pendingDisplay;
         private int _pendingVersion;
+        private bool _suppressPortPublishing;
+        private bool _isPublishing;
+        private bool _inWorkingChangedDispatch;
 
         /// <summary>
         /// Opens a settings session. Rejected (no session created, no state change) when the lifecycle
@@ -47,6 +55,38 @@ namespace Overdrive.Settings.Core
             SettingsEditSession currentSession,
             out SettingsOpenResult result)
         {
+            return TryOpen(blobService, lifecycle, displayConfirm, warningSink, currentSession, null, null, null, null, out result);
+        }
+
+        /// <summary>
+        /// Opens a settings session with the optional typed value ports (Story 3-7). Same guards as the
+        /// 5-arg overload; a null port is a no-op publisher. The full overload exists because C# forbids
+        /// optional parameters before a required <c>out</c> parameter (gate R5) — nullable reference
+        /// types signal null-safety at the call site.
+        /// </summary>
+        /// <param name="blobService">The persistence facade (Story 001) — Load seeds Snapshot, Save persists Working.</param>
+        /// <param name="lifecycle">The lifecycle context (Countdown gate, Difficulty editability).</param>
+        /// <param name="displayConfirm">The display-confirmation gate (Story 005 supplies the real one).</param>
+        /// <param name="warningSink">Warning sink (duplicate bindings, failed default persist, etc.).</param>
+        /// <param name="currentSession">The caller's held session reference (null when none).</param>
+        /// <param name="audio">Optional audio value port — null means no-op (existing callers unaffected).</param>
+        /// <param name="accessibility">Optional accessibility value port — null means no-op.</param>
+        /// <param name="camera">Optional camera value port — null means no-op.</param>
+        /// <param name="vfx">Optional VFX quality port — null means no-op.</param>
+        /// <param name="result">The open outcome.</param>
+        /// <returns>The opened session, or null when rejected.</returns>
+        public static SettingsEditSession TryOpen(
+            SettingsBlobService blobService,
+            ISettingsLifecycleContext lifecycle,
+            IDisplayConfirmGate displayConfirm,
+            Action<string> warningSink,
+            SettingsEditSession currentSession,
+            AudioSettingsPort audio,
+            AccessibilitySettingsPort accessibility,
+            CameraSettingsPort camera,
+            VfxSettingsPort vfx,
+            out SettingsOpenResult result)
+        {
             if (blobService == null) throw new ArgumentNullException(nameof(blobService));
             if (lifecycle == null) throw new ArgumentNullException(nameof(lifecycle));
             if (displayConfirm == null) throw new ArgumentNullException(nameof(displayConfirm));
@@ -65,22 +105,42 @@ namespace Overdrive.Settings.Core
 
             SettingsBlobService.LoadOutcome outcome = blobService.Load();
             result = SettingsOpenResult.Opened;
-            return new SettingsEditSession(blobService, displayConfirm, warningSink, outcome.Settings);
+            return new SettingsEditSession(blobService, displayConfirm, warningSink, outcome.Settings, audio, accessibility, camera, vfx);
         }
 
         private SettingsEditSession(
             SettingsBlobService blobService,
             IDisplayConfirmGate displayConfirm,
             Action<string> warningSink,
-            GameSettingsData snapshot)
+            GameSettingsData snapshot,
+            AudioSettingsPort audio,
+            AccessibilitySettingsPort accessibility,
+            CameraSettingsPort camera,
+            VfxSettingsPort vfx)
         {
             _blobService = blobService;
             _displayConfirm = displayConfirm;
             _warningSink = warningSink;
             Snapshot = snapshot;
             Working = snapshot;
+            _audioPort = audio;
+            _accessibilityPort = accessibility;
+            _cameraPort = camera;
+            _vfxPort = vfx;
             _isOpen = true;
         }
+
+        /// <summary>Typed audio value port (Story 3-7) — null when the session was opened without ports.</summary>
+        public AudioSettingsPort Audio => _audioPort;
+
+        /// <summary>Typed accessibility value port (Story 3-7) — null when the session was opened without ports.</summary>
+        public AccessibilitySettingsPort Accessibility => _accessibilityPort;
+
+        /// <summary>Typed camera value port (Story 3-7) — null when the session was opened without ports.</summary>
+        public CameraSettingsPort Camera => _cameraPort;
+
+        /// <summary>Typed VFX quality port (Story 3-7) — null when the session was opened without ports.</summary>
+        public VfxSettingsPort Vfx => _vfxPort;
 
         /// <summary>True while the session is open (between open and Apply-success/Cancel/Dispose).</summary>
         public bool IsOpen => _isOpen && !_disposed;
@@ -119,6 +179,11 @@ namespace Overdrive.Settings.Core
         public void SetValue(SettingsCategory category, object value)
         {
             if (!IsOpen) return;
+            if (_isPublishing) throw new InvalidOperationException("SettingsEditSession cannot be mutated from inside a value-port handler (re-entrancy guard, Story 3-7).");
+            // Recursion guard (final review): a WorkingChanged handler calling SetValue would recurse
+            // unboundedly (SetValue → WorkingChanged → SetValue → ...) and stack-overflow. Feedback
+            // mutation from a consumer is rejected — Cancel/Apply remain legal (terminal responses).
+            if (_inWorkingChangedDispatch) throw new InvalidOperationException("SettingsEditSession cannot be mutated from a WorkingChanged handler (recursion guard, Story 3-7).");
 
             GameSettingsData previous = Working;
             switch (category)
@@ -136,15 +201,15 @@ namespace Overdrive.Settings.Core
                     break;
 
                 case SettingsCategory.Display:
-                    HandleDisplayChange(Require<DisplayData>(category, value));
+                    HandleDisplayChange(RequireDisplay(category, value));
                     return; // WorkingChanged raised by the gate callback only when accepted
 
                 case SettingsCategory.Accessibility:
-                    Working = Rebuild(Working, accessibility: Require<AccessibilityData>(category, value));
+                    Working = Rebuild(Working, accessibility: RequireAccessibility(category, value));
                     break;
 
                 case SettingsCategory.Camera:
-                    Working = Rebuild(Working, camera: Require<CameraData>(category, value));
+                    Working = Rebuild(Working, camera: RequireCamera(category, value));
                     break;
 
                 default:
@@ -153,7 +218,11 @@ namespace Overdrive.Settings.Core
 
             // WorkingChanged means "the value changed" — an identical value is a no-op (no raise).
             if (Working.Equals(previous)) return;
-            RaiseEvent(WorkingChanged, category);
+            RaiseWorkingChanged(category);
+            // A WorkingChanged subscriber may CLOSE the session (Cancel/Apply) during dispatch —
+            // never publish after closure (pre-emptive audit, qa-tester R4 pattern).
+            if (!IsOpen) return;
+            PublishPorts();
         }
 
         /// <summary>
@@ -162,21 +231,46 @@ namespace Overdrive.Settings.Core
         /// <see cref="IDisplayConfirmGate"/> and only remains in Working when Accepted. Persistence
         /// always waits for <see cref="Apply"/>. No-op when Closed.
         /// </summary>
+        /// <remarks>
+        /// Batch mode (unity-specialist BLOCKING, Story 3-7): RestoreDefaults calls SetValue five times,
+        /// which would otherwise publish the value ports five times with partially-updated Working.
+        /// Publication is suppressed during the cascade and fired ONCE afterwards (Camera → Accessibility
+        /// → Audio → Vfx), so the accessibility ReducedMotion is always resolved fresh. Legacy per-category
+        /// WorkingChanged events still fire per SetValue (Story 002 behavior untouched).
+        /// </remarks>
         public void RestoreDefaults()
         {
             if (!IsOpen) return;
+            if (_isPublishing) throw new InvalidOperationException("SettingsEditSession cannot be mutated from inside a value-port handler (re-entrancy guard, Story 3-7).");
+            if (_inWorkingChangedDispatch) throw new InvalidOperationException("SettingsEditSession cannot be mutated from a WorkingChanged handler (recursion guard, Story 3-7).");
 
             GameSettingsData defaults = GameSettingsData.Defaults;
 
-            // Apply non-display categories immediately (each raises WorkingChanged).
-            SetValue(SettingsCategory.Difficulty, defaults.Difficulty.Level);
-            SetValue(SettingsCategory.Controls, defaults.Controls);
-            SetValue(SettingsCategory.Audio, defaults.Audio);
-            SetValue(SettingsCategory.Accessibility, defaults.Accessibility);
-            SetValue(SettingsCategory.Camera, defaults.Camera);
+            _suppressPortPublishing = true;
+            try
+            {
+                // Apply non-display categories immediately (each raises WorkingChanged).
+                SetValue(SettingsCategory.Difficulty, defaults.Difficulty.Level);
+                SetValue(SettingsCategory.Controls, defaults.Controls);
+                SetValue(SettingsCategory.Audio, defaults.Audio);
+                SetValue(SettingsCategory.Accessibility, defaults.Accessibility);
+                SetValue(SettingsCategory.Camera, defaults.Camera);
 
-            // Display candidate (defaults may differ from the current display, GDD settings.md:113).
-            HandleDisplayChange(defaults.Display);
+                // Display candidate (defaults may differ from the current display, GDD settings.md:113).
+                HandleDisplayChange(defaults.Display);
+            }
+            finally
+            {
+                _suppressPortPublishing = false;
+            }
+
+            // A WorkingChanged subscriber may CLOSE the session mid-cascade (Cancel/Apply) — the
+            // remaining SetValue calls are no-ops, but HandleDisplayChange and the final publication
+            // must not run on a closed session (qa-tester R4 BLOCKING 2).
+            if (!IsOpen) return;
+
+            // Publish the ports ONCE with the post-cascade Working (batch mode).
+            PublishPorts();
         }
 
         /// <summary>
@@ -189,6 +283,7 @@ namespace Overdrive.Settings.Core
         public ApplyResult Apply()
         {
             if (!IsOpen) return ApplyResult.AlreadyClosed;
+            if (_isPublishing) throw new InvalidOperationException("SettingsEditSession cannot be mutated from inside a value-port handler (re-entrancy guard, Story 3-7).");
             if (_displayConfirmPending) return ApplyResult.DisplayConfirmPending;
 
             SaveResult saveResult;
@@ -198,7 +293,7 @@ namespace Overdrive.Settings.Core
             }
             catch (Exception ex)
             {
-                _warningSink?.Invoke($"Settings Apply failed unexpectedly: {ex}\n{ex.StackTrace}");
+                LogWarning($"Settings Apply failed unexpectedly: {ex}\n{ex.StackTrace}");
                 saveResult = SaveResult.PrimaryFailed;
             }
 
@@ -226,6 +321,7 @@ namespace Overdrive.Settings.Core
         public void Cancel()
         {
             if (!IsOpen) return;
+            if (_isPublishing) throw new InvalidOperationException("SettingsEditSession cannot be mutated from inside a value-port handler (re-entrancy guard, Story 3-7).");
             _isOpen = false;
             Working = Snapshot;
             InvalidatePendingDisplayConfirm();
@@ -240,6 +336,10 @@ namespace Overdrive.Settings.Core
         public void Dispose()
         {
             if (_disposed) return;
+            // Consistent with SetValue/Apply/Cancel/RestoreDefaults: mutating (closing) the session
+            // from inside a value-port handler is rejected (pre-emptive audit — a port handler calling
+            // Dispose during publication must not silently half-close).
+            if (_isPublishing) throw new InvalidOperationException("SettingsEditSession cannot be disposed from inside a value-port handler (re-entrancy guard, Story 3-7).");
             if (IsOpen) Cancel();
             _disposed = true;
         }
@@ -260,7 +360,27 @@ namespace Overdrive.Settings.Core
             }
             catch (Exception ex)
             {
-                _warningSink?.Invoke($"Settings event subscriber threw: {ex}\n{ex.StackTrace}");
+                LogWarning($"Settings event subscriber threw: {ex}\n{ex.StackTrace}");
+            }
+        }
+
+        /// <summary>
+        /// Raises <see cref="WorkingChanged"/> under the recursion guard (final review): the flag is
+        /// armed for the duration of the dispatch so a feedback-mutating subscriber (SetValue/
+        /// RestoreDefaults) is rejected instead of recursing to stack overflow. Reset in finally —
+        /// even a throwing subscriber must release the guard.
+        /// </summary>
+        private void RaiseWorkingChanged(SettingsCategory category)
+        {
+            if (WorkingChanged == null) return;
+            _inWorkingChangedDispatch = true;
+            try
+            {
+                RaiseEvent(WorkingChanged, category);
+            }
+            finally
+            {
+                _inWorkingChangedDispatch = false;
             }
         }
 
@@ -275,6 +395,9 @@ namespace Overdrive.Settings.Core
         {
             _displayConfirmPending = false;
             _pendingVersion++;
+            // The pending payload is consumed/invalidated alongside the latch — no stale DisplayData
+            // may survive an invalidation (qa-tester R3 GAP).
+            _pendingDisplay = default;
             _displayConfirm.CancelActiveConfirmation();
         }
 
@@ -295,6 +418,108 @@ namespace Overdrive.Settings.Core
             if (level < DifficultySelection.MinLevel || level > DifficultySelection.MaxLevel)
                 throw new ArgumentOutOfRangeException(nameof(value), level, $"Difficulty level must be within {DifficultySelection.MinLevel}..{DifficultySelection.MaxLevel} (Very Easy..Very Hard).");
             return level;
+        }
+
+        /// <summary>
+        /// Requires an accessibility value within the approved domains (Story 3-7, AC-E5): TextScale in
+        /// 0.75–2.0 (boundaries accepted) and a valid ColorblindMode int (0..3). Rejection leaves Working
+        /// untouched (gate R3 — explicit rejection, no clamping).
+        /// </summary>
+        private static AccessibilityData RequireAccessibility(SettingsCategory category, object value)
+        {
+            AccessibilityData data = Require<AccessibilityData>(category, value);
+            if (!float.IsFinite(data.TextScale) || data.TextScale < 0.75f || data.TextScale > 2.0f)
+                throw new ArgumentOutOfRangeException(nameof(value), data.TextScale, "TextScale must be within 0.75..2.0 (AC-E5); non-finite values are rejected.");
+            if (data.ColorblindMode < 0 || data.ColorblindMode > 3)
+                throw new ArgumentOutOfRangeException(nameof(value), data.ColorblindMode, "ColorblindMode must be 0..3 (None..Tritanopia).");
+            return data;
+        }
+
+        /// <summary>
+        /// Requires a camera value within the approved domains (Story 3-7): ShakeIntensity in 0.0–2.0
+        /// (GDD settings.md:158). Rejection leaves Working untouched.
+        /// </summary>
+        private static CameraData RequireCamera(SettingsCategory category, object value)
+        {
+            CameraData data = Require<CameraData>(category, value);
+            if (!float.IsFinite(data.ShakeIntensity) || data.ShakeIntensity < 0f || data.ShakeIntensity > 2.0f)
+                throw new ArgumentOutOfRangeException(nameof(value), data.ShakeIntensity, "ShakeIntensity must be within 0..2 (GDD settings.md:158); non-finite values are rejected.");
+            return data;
+        }
+
+        /// <summary>
+        /// Requires a display value with a persisted quality preset (Story 3-7, gate R5): QualityPreset
+        /// must be 0..3 (Low..Ultra). QualityPresetId.Custom (4, the Story 3-6 VSync marker) is never
+        /// persisted and is rejected here. Rejection leaves Working untouched.
+        /// </summary>
+        private static DisplayData RequireDisplay(SettingsCategory category, object value)
+        {
+            DisplayData data = Require<DisplayData>(category, value);
+            if (data.QualityPreset < 0 || data.QualityPreset > 3)
+                throw new ArgumentOutOfRangeException(nameof(value), data.QualityPreset, "QualityPreset must be 0..3 (Low..Ultra); Custom (4) is never persisted.");
+            return data;
+        }
+
+        /// <summary>
+        /// Publishes the typed value ports (Story 3-7) in the fixed order Camera → Accessibility (with
+        /// the resolved camera ReducedMotion) → Audio → Vfx, using the current Working. Suppressed during
+        /// RestoreDefaults batch mode (published once after the cascade). Re-entrant publication is
+        /// guarded by <see cref="_isPublishing"/> — a port handler that mutates the session throws.
+        /// Each port is published in its own try/catch (unity-specialist R1): a throwing subscriber in
+        /// one port must not prevent the remaining ports from emitting (the fixed order is preserved).
+        /// </summary>
+        private void PublishPorts()
+        {
+            if (_suppressPortPublishing || _isPublishing) return;
+
+            _isPublishing = true;
+            try
+            {
+                // Camera first, then Accessibility (resolved ReducedMotion — never stale), then Audio, then Vfx.
+                SafePublish(() => _cameraPort?.Publish(Working.Camera));
+                SafePublish(() => _accessibilityPort?.Publish(Working.Accessibility, Working.Camera.ReducedMotion));
+                SafePublish(() => _audioPort?.Publish(Working.Audio));
+                SafePublish(() => _vfxPort?.Publish(ToQualityPresetId(Working.Display.QualityPreset)));
+            }
+            finally
+            {
+                _isPublishing = false;
+            }
+        }
+
+        /// <summary>Routes a warning to the sink defensively: a throwing diagnostic sink must never
+        /// break the session transition it is reporting (double-fault safety, qa-tester R3/R4).</summary>
+        private void LogWarning(string message)
+        {
+            try { _warningSink?.Invoke(message); }
+            catch { /* a broken diagnostic sink must not propagate */ }
+        }
+
+        /// <summary>Publishes one port defensively: a throwing subscriber routes to the warning sink and
+        /// does not break the remaining ports or the session transition (unity-specialist R1). A throwing
+        /// warning sink itself is contained (double-fault safety, unity-specialist R2 S1).</summary>
+        private void SafePublish(Action publish)
+        {
+            try
+            {
+                publish();
+            }
+            catch (Exception ex)
+            {
+                LogWarning($"Value port subscriber threw: {ex}\n{ex.StackTrace}");
+            }
+        }
+
+        /// <summary>Maps the persisted int (0=Low, 1=Medium, 2=High, 3=Ultra) to <see cref="QualityPresetId"/>.</summary>
+        private static QualityPresetId ToQualityPresetId(int qualityPreset)
+        {
+            switch (qualityPreset)
+            {
+                case 0: return QualityPresetId.Low;
+                case 1: return QualityPresetId.Medium;
+                case 2: return QualityPresetId.High;
+                default: return QualityPresetId.Ultra;
+            }
         }
 
         private static GameSettingsData Rebuild(
@@ -324,6 +549,8 @@ namespace Overdrive.Settings.Core
         /// </summary>
         private void HandleDisplayChange(DisplayData display)
         {
+            if (!IsOpen) return; // defensive: never open a confirmation on a closed session (qa-tester R4)
+
             bool candidateChanged =
                 display.ResolutionWidth != Working.Display.ResolutionWidth ||
                 display.ResolutionHeight != Working.Display.ResolutionHeight ||
@@ -337,7 +564,11 @@ namespace Overdrive.Settings.Core
                 if (_displayConfirmPending) InvalidatePendingDisplayConfirm();
                 if (display.Equals(Working.Display)) return; // identical — no raise
                 Working = Rebuild(Working, display: display);
-                RaiseEvent(WorkingChanged, SettingsCategory.Display);
+                RaiseWorkingChanged(SettingsCategory.Display);
+                // A WorkingChanged subscriber may CLOSE the session (Cancel/Apply) during dispatch —
+                // never publish after closure (pre-emptive audit, qa-tester R4 pattern).
+                if (!IsOpen) return;
+                PublishPorts(); // the display Working changed — republish (Vfx quality may have changed).
                 return;
             }
 
@@ -345,6 +576,11 @@ namespace Overdrive.Settings.Core
             int version = ++_pendingVersion;
             _displayConfirmPending = true;
             _pendingCandidate = new DisplayCandidate(display.ResolutionWidth, display.ResolutionHeight, display.FullscreenMode);
+            // The FULL requested DisplayData is retained for the Accepted reconstruction (qa-tester R1
+            // BLOCKING): a candidate carries only width/height/mode, so without this the Accepted path
+            // would keep Working's vsync/quality — RestoreDefaults through the gate would lose the
+            // default vsync/quality (e.g. default 1/1 preserved as 0/3).
+            _pendingDisplay = display;
 
             try
             {
@@ -354,9 +590,12 @@ namespace Overdrive.Settings.Core
             {
                 // Gate failure must not brick the session: clear the pending latch so Apply is
                 // not blocked forever, and report through the warning sink (REQUIRED, code review R2).
-                _displayConfirmPending = false;
-                _pendingVersion = version - 1;
-                _warningSink?.Invoke($"Display confirm gate failed: {ex}\n{ex.StackTrace}");
+                // InvalidatePendingDisplayConfirm() (NOT a manual reset) keeps the version counter
+                // MONOTONIC — a gate that retained its callback before throwing must not cause a
+                // later candidate to reuse the thrown generation (qa-tester R2 B1: recycling the
+                // version let a late callback from the failed candidate accept a different one).
+                InvalidatePendingDisplayConfirm();
+                LogWarning($"Display confirm gate failed: {ex}\n{ex.StackTrace}");
             }
         }
 
@@ -372,15 +611,23 @@ namespace Overdrive.Settings.Core
 
             _displayConfirmPending = false;
 
+            // Consume the pending display BEFORE raising any event: a reentrant WorkingChanged
+            // subscriber may open a NEW candidate (qa-tester R3 BLOCKING) — clearing the field after
+            // RaiseEvent would wipe the new candidate's pending payload.
+            DisplayData acceptedDisplay = _pendingDisplay;
+            _pendingDisplay = default;
+
             if (outcome == DisplayConfirmResult.Accepted)
             {
-                Working = Rebuild(Working, display: new DisplayData(
-                    _pendingCandidate.Width,
-                    _pendingCandidate.Height,
-                    _pendingCandidate.FullscreenMode,
-                    Working.Display.Vsync,
-                    Working.Display.QualityPreset));
-                RaiseEvent(WorkingChanged, SettingsCategory.Display);
+                // Apply the FULL requested display (vsync/quality included) — the candidate only carried
+                // width/height/mode; the pending DisplayData is the authoritative reconstruction source
+                // (qa-tester R1 BLOCKING: RestoreDefaults through the gate must restore ALL defaults).
+                Working = Rebuild(Working, display: acceptedDisplay);
+                RaiseWorkingChanged(SettingsCategory.Display);
+                // A WorkingChanged subscriber may CLOSE the session (Cancel/Apply) before publication
+                // starts — never publish after closure (qa-tester R4 BLOCKING 1).
+                if (!IsOpen) return;
+                PublishPorts(); // the display Working changed — republish (Vfx quality may have changed).
             }
             // RejectedOrTimeout — prior Working.Display values remain; nothing changes.
         }

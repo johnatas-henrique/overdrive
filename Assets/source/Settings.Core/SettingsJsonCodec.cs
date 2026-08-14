@@ -128,10 +128,10 @@ namespace Overdrive.Settings.Core
         {
             var audioObj = ReadObject(obj, "audio");
             return new AudioData(
-                ReadFloatOrDefault(audioObj, "master", 1f),
-                ReadFloatOrDefault(audioObj, "music", 1f),
-                ReadFloatOrDefault(audioObj, "sfx", 1f),
-                ReadFloatOrDefault(audioObj, "ui", 1f),
+                ReadFloatOrDefault(audioObj, "master", 0.8f),
+                ReadFloatOrDefault(audioObj, "music", 0.7f),
+                ReadFloatOrDefault(audioObj, "sfx", 0.8f),
+                ReadFloatOrDefault(audioObj, "ui", 0.6f),
                 ReadBoolOrDefault(audioObj, "mute_music", false),
                 ReadBoolOrDefault(audioObj, "mute_sfx", false));
         }
@@ -159,10 +159,10 @@ namespace Overdrive.Settings.Core
         {
             var cameraObj = ReadObject(obj, "camera");
             return new CameraData(
-                ReadFloatOrDefault(cameraObj, "shake_intensity", 0.5f),
+                ReadFloatOrDefault(cameraObj, "shake_intensity", 1.0f),
                 ReadBoolOrDefault(cameraObj, "motion_blur", true),
                 ReadBoolOrDefault(cameraObj, "reduced_motion", false),
-                ReadBoolOrDefault(cameraObj, "show_chase_hud_in_cockpit", false));
+                ReadBoolOrDefault(cameraObj, "show_chase_hud_in_cockpit", true));
         }
 
         private static JsonNode.ObjectNode ReadObject(JsonNode.ObjectNode parent, string key)

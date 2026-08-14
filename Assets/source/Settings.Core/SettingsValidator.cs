@@ -30,14 +30,24 @@ namespace Overdrive.Settings.Core
             ValidateNumericOrDefault(obj, "controls", "brake_ema_alpha", 0.3, min: 0.0, max: 1.0);
             ValidateNumericOrDefault(obj, "controls", "steer_ema_alpha", 0.5, min: 0.0, max: 1.0);
 
-            ValidateNumericOrDefault(obj, "audio", "master", 1.0, min: 0.0, max: 1.0);
-            ValidateNumericOrDefault(obj, "audio", "music", 1.0, min: 0.0, max: 1.0);
-            ValidateNumericOrDefault(obj, "audio", "sfx", 1.0, min: 0.0, max: 1.0);
-            ValidateNumericOrDefault(obj, "audio", "ui", 1.0, min: 0.0, max: 1.0);
+            ValidateNumericOrDefault(obj, "audio", "master", 0.8, min: 0.0, max: 1.0);
+            ValidateNumericOrDefault(obj, "audio", "music", 0.7, min: 0.0, max: 1.0);
+            ValidateNumericOrDefault(obj, "audio", "sfx", 0.8, min: 0.0, max: 1.0);
+            ValidateNumericOrDefault(obj, "audio", "ui", 0.6, min: 0.0, max: 1.0);
 
             ValidateNumericOrDefault(obj, "accessibility", "text_scale", 1.0, min: 0.75, max: 2.0);
+            // Persisted colorblind mode must be 0..3 (None..Tritanopia) — an invalid int (99) would
+            // otherwise silently map to None at emission instead of being repaired at load (consistency
+            // with the quality_preset repair; qa-tester R1).
+            ValidateNumericOrDefault(obj, "accessibility", "colorblind_mode", 0, min: 0, max: 3);
 
-            ValidateNumericOrDefault(obj, "camera", "shake_intensity", 0.5, min: 0.0, max: 1.0);
+            // shake_intensity max is 2.0 (GDD settings.md:158) — the previous 1.0 silently destroyed
+            // player values 1.5-2.0 on reload (unity-specialist BLOCKING, Story 3-7). Fallback 1.0 (GDD).
+            ValidateNumericOrDefault(obj, "camera", "shake_intensity", 1.0, min: 0.0, max: 2.0);
+
+            // Persisted quality preset must be 0..3 (Low..Ultra) — Custom (4) is never persisted, and an
+            // out-of-range int (99) would otherwise map to Ultra at load instead of the gate-R5 Medium fallback.
+            ValidateNumericOrDefault(obj, "display", "quality_preset", 1, min: 0, max: 3);
 
             return JsonNode.Serialize(root);
         }

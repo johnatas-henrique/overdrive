@@ -125,8 +125,11 @@ namespace Overdrive.Settings.Core
         /// <summary>Whether SFX is muted.</summary>
         public bool MuteSfx { get; }
 
-        /// <summary>The approved default audio settings (all full volume, unmuted).</summary>
-        public static AudioData Default => new AudioData(1f, 1f, 1f, 1f, false, false);
+        /// <summary>
+        /// The approved default audio settings (GDD settings.md:146-149 — Master 0.8, Music 0.7,
+        /// SFX 0.8, UI 0.6; unmuted). Corrected by Story 3-7 (defaults reconciliation, gate R2/R5).
+        /// </summary>
+        public static AudioData Default => new AudioData(0.8f, 0.7f, 0.8f, 0.6f, false, false);
     }
 
     /// <summary>
@@ -223,8 +226,12 @@ namespace Overdrive.Settings.Core
         /// <summary>Whether chase HUD overlays in cockpit view.</summary>
         public bool ShowChaseHudInCockpit { get; }
 
-        /// <summary>The approved default camera settings.</summary>
-        public static CameraData Default => new CameraData(0.5f, true, false, false);
+        /// <summary>
+        /// The approved default camera settings (GDD settings.md:158-161 — Shake 1.0, Motion Blur On,
+        /// Reduced Motion Off, Show Chase HUD in Cockpit On; ADR-0014). Corrected by Story 3-7
+        /// (defaults reconciliation, gate R2/R5).
+        /// </summary>
+        public static CameraData Default => new CameraData(1.0f, true, false, true);
     }
 
     /// <summary>
