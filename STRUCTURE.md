@@ -56,6 +56,9 @@
 │   │   ├── InputSystem_Actions.Extensions.cs # Generated action extensions
 │   │   ├── InputSystem_Actions.inputactions # Unity Input System action maps
 │   │   ├── InputSystemSettings.asset # Input system settings ScriptableObject
+│   │   ├── Editor/               # Editor-only bootstrapper (Overdrive.Input.Editor assembly)
+│   │   │   ├── Overdrive.Input.Editor.asmdef # Editor assembly (platform: Editor only)
+│   │   │   └── InputAssetBootstrap.cs # Rebuilds input asset, wrapper, and settings singleton from GDD bindings
 │   │   ├── Simulation/            # Engine-free simulation kernel (Overdrive.Simulation assembly)
 │   │   │   ├── Overdrive.Simulation.asmdef # Simulation assembly (noEngineReferences: true)
 │   │   │   ├── SimulationContracts.cs # Contract spine types (CarState, FuelState, TireState, GridAssignment, pipeline types)
@@ -79,7 +82,13 @@
 │   │   │   ├── Overdrive.Settings.asmdef # Settings Unity adapter assembly
 │   │   │   ├── SettingsLoader.cs  # Wires engine-free core to Unity surfaces (maps ControlsData→ControlProfile)
 │   │   │   ├── SettingsLifecycleContext.cs # Maps SimulationState to settings lifecycle queries
-│   │   │   └── PlayerPrefsStore.cs # Implements IPlayerPrefsStore over UnityEngine.PlayerPrefs
+│   │   │   ├── PlayerPrefsStore.cs # Implements IPlayerPrefsStore over UnityEngine.PlayerPrefs
+│   │   │   ├── DifficultyProfileCatalog.cs # ScriptableObject-backed IDifficultyProfileCatalog (5 tier assets → DifficultyProfile structs)
+│   │   │   ├── DifficultyProfileData.cs # ScriptableObject holding one immutable difficulty row (level, AI precision, AI error multiplier, pace noise, off-track grip, wall speed loss)
+│   │   │   ├── SettingsDifficultyProvider.cs # Decorator: reads persisted difficulty tier, resolves profile, fills ReplayInitialStateCaptureInput for GO-boundary replay
+│   │   │   ├── RebindCaptureAdapter.cs # Unity adapter implementing IRebindCapture over InputBindingCatalog (validates, applies, observes Cancel)
+│   │   │   ├── SchemeProbeAdapter.cs # Read-only ISchemeProbe backed by InputContextController.ActiveScheme
+│   │   │   └── SettingsBindingMapper.cs # Applies persisted binding overrides against Input catalog at load time (unknown id, malformed path, duplicate classification)
 │   │   ├── Settings.Core/         # Engine-free settings persistence core (Overdrive.Settings.Core assembly)
 │   │   │   ├── Overdrive.Settings.Core.asmdef # Settings core assembly (noEngineReferences: true)
 │   │   │   ├── SettingsData.cs    # GameSettingsData blob model (difficulty, controls, audio, display, accessibility, camera)
@@ -90,6 +99,10 @@
 │   │   │   ├── SettingsValidator.cs # Per-field validation (non-finite → default)
 │   │   │   ├── SettingsJsonCodec.cs # JSON serialize/deserialize for settings blob
 │   │   │   ├── SettingsBindings.cs # Binding override de-duplication
+│   │   │   ├── ControlBindingContracts.cs # Engine-free ControlScheme enum, ControlBindingState, CaptureResult/ConflictDetail/BindingTarget types
+│   │   │   ├── ControlBindingStateMachine.cs # Engine-free rebinding state machine (Open→Listening→Captured/Rejected/Conflict; transactional working override-set)
+│   │   │   ├── DifficultyProfileValidation.cs # Centralized difficulty tier range guard (shared by catalog and edit session)
+│   │   │   ├── IDifficultyProfileCatalog.cs # Engine-free port resolving tier identifier to DifficultyProfile row
 │   │   │   ├── SettingsSessionContracts.cs # Enums and seams (SettingsCategory, ApplyResult, IDisplayConfirmGate, ISettingsLifecycleContext)
 │   │   │   ├── SettingsJson.cs    # JSON element types for settings codec
 │   │   │   ├── IPlayerPrefsStore.cs # Persistence seam between core and platform store
@@ -111,6 +124,8 @@
 │   │   │   ├── multiplayer/     # Multiplayer unit tests (MultiplayerUnitTests.asmdef)
 │   │   │   │   └── MultiplayerIsolationTests.cs
 │   │   │   └── settings/        # Settings unit tests (SettingsUnitTests.asmdef)
+│   │   │       ├── ControlBindingTests.cs
+│   │   │       ├── DifficultyProfileTests.cs
 │   │   │       ├── SettingsEditSessionTests.cs
 │   │   │       └── SettingsPersistenceTests.cs
 │   │   └── integration/         # Integration tests
@@ -127,6 +142,8 @@
 │   │       │   ├── SessionEndTests.cs
 │   │       │   └── TestSteps.cs
 │   │       └── settings/        # Settings integration tests (SettingsIntegrationTests.asmdef)
+│   │           ├── ControlBindingIntegrationTests.cs
+│   │           ├── DifficultyProfileIntegrationTests.cs
 │   │           ├── SettingsLifecycleTests.cs
 │   │           └── SettingsPersistenceIntegrationTests.cs
 │   ├── sprites/                 # Game sprites (currently empty — .gitkeep)
@@ -472,7 +489,7 @@
 **`Assets/`:**
 - Purpose: Unity project assets — the actual game
 - Contains: Scenes, C# scripts, materials, sprites, input actions, render pipeline settings
-- Key files: `InputSystem_Actions.inputactions`, `Settings/PC_RPAsset.asset`, `source/Overdrive.Input.asmdef`, `source/Simulation/Overdrive.Simulation.asmdef`, `source/Multiplayer/Overdrive.Multiplayer.asmdef`, `source/Settings.Core/Overdrive.Settings.Core.asmdef`, `source/Settings/Overdrive.Settings.asmdef`, `source/SimulationDriverAdapters.cs`
+- Key files: `InputSystem_Actions.inputactions`, `Settings/PC_RPAsset.asset`, `source/Overdrive.Input.asmdef`, `source/Editor/Overdrive.Input.Editor.asmdef`, `source/Simulation/Overdrive.Simulation.asmdef`, `source/Multiplayer/Overdrive.Multiplayer.asmdef`, `source/Settings.Core/Overdrive.Settings.Core.asmdef`, `source/Settings/Overdrive.Settings.asmdef`, `source/SimulationDriverAdapters.cs`
 
 **`learning/`:**
 - Purpose: Agent learning system — style conformance records, generated lessons, and reference analysis
@@ -543,10 +560,10 @@
 - `Assets/tests/unit/input/`: Input system unit tests (EmaBrakePriorityTests.cs, SchemeArbitrationTests.cs)
 - `Assets/tests/unit/simulation/`: Simulation unit tests (SimulationDriverTests.cs, SessionStartTests.cs, InterruptionTests.cs, InterpolationTests.cs, PerformanceMonitorTests.cs, DeterminismReplayTests.cs, TestSteps.cs)
 - `Assets/tests/unit/multiplayer/`: Multiplayer unit tests (MultiplayerIsolationTests.cs — 7 ACs: D2 seam signatures, engine-free assembly, contract types, isolation guardrails, manifest denylist, no provider, deferral)
-- `Assets/tests/unit/settings/`: Settings unit tests (SettingsEditSessionTests.cs, SettingsPersistenceTests.cs)
+- `Assets/tests/unit/settings/`: Settings unit tests (ControlBindingTests.cs, DifficultyProfileTests.cs, SettingsEditSessionTests.cs, SettingsPersistenceTests.cs)
 - `Assets/tests/integration/input/`: Input system integration tests (InputContextControllerTests.cs, InputFrameDriverTests.cs, RawCaptureDeadZoneTests.cs, ContextTransitionsTests.cs, SettingsConfigurationTests.cs, SpecialRoutingTests.cs, TickProcessorTests.cs)
 - `Assets/tests/integration/simulation/`: Simulation integration tests (ContractSpineTests.cs, SessionEndTests.cs, TestSteps.cs)
-- `Assets/tests/integration/settings/`: Settings integration tests (SettingsLifecycleTests.cs, SettingsPersistenceIntegrationTests.cs)
+- `Assets/tests/integration/settings/`: Settings integration tests (ControlBindingIntegrationTests.cs, DifficultyProfileIntegrationTests.cs, SettingsLifecycleTests.cs, SettingsPersistenceIntegrationTests.cs)
 - `design/art/reference-catalog.md` — Reference image catalog
 - `design/assets/asset-manifest.md` — Master asset manifest
 - `design/ux/race-hud.md` — Race HUD UX specification
@@ -581,10 +598,10 @@
 - `Assets/tests/unit/input/`: Input system unit tests (EmaBrakePriorityTests.cs, SchemeArbitrationTests.cs)
 - `Assets/tests/unit/simulation/`: Simulation unit tests (SimulationDriverTests.cs, SessionStartTests.cs, InterruptionTests.cs, InterpolationTests.cs, PerformanceMonitorTests.cs, DeterminismReplayTests.cs, TestSteps.cs)
 - `Assets/tests/unit/multiplayer/`: Multiplayer unit tests (MultiplayerIsolationTests.cs — 7 ACs: D2 seam signatures, engine-free assembly, contract types, isolation guardrails, manifest denylist, no provider, deferral)
-- `Assets/tests/unit/settings/`: Settings unit tests (SettingsEditSessionTests.cs, SettingsPersistenceTests.cs)
+- `Assets/tests/unit/settings/`: Settings unit tests (ControlBindingTests.cs, DifficultyProfileTests.cs, SettingsEditSessionTests.cs, SettingsPersistenceTests.cs)
 - `Assets/tests/integration/input/`: Input system integration tests (InputContextControllerTests.cs, InputFrameDriverTests.cs, RawCaptureDeadZoneTests.cs, ContextTransitionsTests.cs, SettingsConfigurationTests.cs, SpecialRoutingTests.cs, TickProcessorTests.cs)
 - `Assets/tests/integration/simulation/`: Simulation integration tests (ContractSpineTests.cs, SessionEndTests.cs, TestSteps.cs)
-- `Assets/tests/integration/settings/`: Settings integration tests (SettingsLifecycleTests.cs, SettingsPersistenceIntegrationTests.cs)
+- `Assets/tests/integration/settings/`: Settings integration tests (ControlBindingIntegrationTests.cs, DifficultyProfileIntegrationTests.cs, SettingsLifecycleTests.cs, SettingsPersistenceIntegrationTests.cs)
 
 ## Naming Conventions
 
@@ -614,15 +631,17 @@
 
 **New game C# script (Input):** `Assets/source/[ScriptName].cs` — follow Unity naming conventions, use PascalCase; group under `Overdrive.Input` assembly for Unity-dependent input-system code
 
+**New input editor tool:** `Assets/source/Editor/[ScriptName].cs` — follow Unity editor naming conventions; place in `Overdrive.Input.Editor` assembly (Editor-only platform); reference `Unity.InputSystem`, `UnityEditor`, and `Overdrive.Input`
+
 **New simulation contract or pipeline step:** `Assets/source/Simulation/[Name].cs` — follow engine-free naming conventions; place in `Overdrive.Simulation` assembly (no Unity engine references allowed); depend on `Unity.Mathematics` if needed
 
 **New multiplayer seam type:** `Assets/source/Multiplayer/[Name].cs` — follow engine-free naming conventions; place in `Overdrive.Multiplayer` assembly (no Unity engine references allowed); depends only on `Overdrive.Simulation` and `Unity.Mathematics`
 
 **New multiplayer test:** `Assets/tests/unit/multiplayer/[TestName].cs` — reference `MultiplayerUnitTests` assembly; verify engine-free boundary and contract invariants
 
-**New settings core type:** `Assets/source/Settings.Core/[Name].cs` — follow engine-free naming conventions; place in `Overdrive.Settings.Core` assembly (no Unity engine references allowed); the persistence seam `IPlayerPrefsStore` is the sole storage port
+**New settings core type:** `Assets/source/Settings.Core/[Name].cs` — follow engine-free naming conventions; place in `Overdrive.Settings.Core` assembly (no Unity engine references allowed); the persistence seam `IPlayerPrefsStore` is the sole storage port; new seam interfaces (`ICapture`, `ISchemeProbe`, `IDisplayApi`, etc.) go here as engine-free ports
 
-**New settings Unity adapter:** `Assets/source/Settings/[Name].cs` — follow Unity naming conventions; place in `Overdrive.Settings` assembly (engine-allowed); bridge engine-free settings core to Unity APIs
+**New settings Unity adapter:** `Assets/source/Settings/[Name].cs` — follow Unity naming conventions; place in `Overdrive.Settings` assembly (engine-allowed); bridge engine-free settings core to Unity APIs; adapters for display/quality (`DisplayConfirmGate`, `ScreenDisplayApi`, `QualityPresetApplier`), rebinding (`RebindCaptureAdapter`, `SchemeProbeAdapter`), difficulty (`DifficultyProfileCatalog`, `SettingsDifficultyProvider`), and binding migration (`SettingsBindingMapper`) live here
 
 **New settings test:** `Assets/tests/unit/settings/[TestName].cs` or `Assets/tests/integration/settings/[TestName].cs` — reference `SettingsUnitTests` or `SettingsIntegrationTests` assembly respectively
 
