@@ -2,6 +2,7 @@
   "name": "SettingsUnitTests",
   "references": [
     "Overdrive.Settings.Core",
+    "Overdrive.Settings",
     "Overdrive.Simulation"
   ],
   "includePlatforms": [],
@@ -16,5 +17,5 @@
     "TestAssemblies"
   ],
   "noEngineReferences": false,
-  "rootNamespace": "Overdrive.Settings.Core.Tests"
+  "rootNamespace": "Overdrive.Settings.Tests"
 }

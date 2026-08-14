@@ -4,7 +4,8 @@
     "Overdrive.Settings.Core",
     "Overdrive.Input",
     "Overdrive.Simulation",
-    "Unity.InputSystem"
+    "Unity.InputSystem",
+    "Unity.RenderPipelines.Universal.Runtime"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
