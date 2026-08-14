@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Overdrive.Settings.Core;
 
 namespace Overdrive.Settings
 {
@@ -143,34 +144,7 @@ namespace Overdrive.Settings
         void Tick(float unscaledDeltaTime);
     }
 
-    /// <summary>A named quality preset (GDD settings.md:120-125).</summary>
-    public enum QualityPresetId
-    {
-        /// <summary>Low — 0.75 render scale.</summary>
-        Low = 0,
-        /// <summary>Medium — 0.85 render scale (project default).</summary>
-        Medium = 1,
-        /// <summary>High — 1.0 render scale.</summary>
-        High = 2,
-        /// <summary>Ultra — 1.0 render scale.</summary>
-        Ultra = 3,
-        /// <summary>Advanced overrides active — not a selectable preset (Story 005 AC-DR7).</summary>
-        Custom = 4
-    }
-
-    /// <summary>VFX density level (GDD settings.md:120-125).</summary>
-    public enum VfxDensityLevel
-    {
-        /// <summary>Low density.</summary>
-        Low,
-        /// <summary>Medium density.</summary>
-        Medium,
-        /// <summary>High density.</summary>
-        High,
-        /// <summary>Ultra density.</summary>
-        Ultra
-    }
-
+    /// <summary>Named quality preset — moved to <see cref="Overdrive.Settings.Core.QualityPresetId"/> (Story 3-7).</summary>
     /// <summary>Shadow quality (GDD settings.md:120-125 preset outputs).</summary>
     public enum ShadowLevel
     {

@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
+using Overdrive.Settings.Core;
 
 namespace Overdrive.Settings
 {
