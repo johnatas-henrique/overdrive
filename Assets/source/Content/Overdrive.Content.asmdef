@@ -1,0 +1,15 @@
+{
+  "name": "Overdrive.Content",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "optionalUnityReferences": [],
+  "noEngineReferences": false,
+  "rootNamespace": "Overdrive.Content"
+}
