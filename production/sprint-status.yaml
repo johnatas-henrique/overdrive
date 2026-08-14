@@ -60,13 +60,9 @@ stories:
     priority: must-have
     status: done
     owner: ""
-    estimate_days: 0.5
-    blocker: ""
-    completed: "2026-08-14"
-    owner: ""
     estimate_days: 0.625
     blocker: ""
-    completed: ""
+    completed: "2026-08-14"
   - id: "3-7"
     name: "Settings Values Contract"
     file: "production/epics/settings/story-006-settings-values-contract.md"
@@ -80,11 +76,11 @@ stories:
     name: "Content Groups & Address Mirror"
     file: "production/epics/content-pipeline/story-001-content-groups-address-mirror.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.375
     blocker: ""
-    completed: ""
+    completed: "2026-08-14"
   - id: "3-9"
     name: "CP_ State Machine & Kernel Handshake"
     file: "production/epics/content-pipeline/story-002-cp-state-machine-kernel-handshake.md"
