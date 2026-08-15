@@ -8,7 +8,7 @@ Engine: Unity 6000.3.22f1 (Unity 6.3 LTS)
 | Input System | Foundation | Input | design/gdd/input-system.md | 8 (8 done) | Done |
 | Simulation Kernel | Foundation | Simulation Architecture | design/gdd/simulation-architecture.md | 8 (8 done) | Done |
 | Settings | Foundation | Settings | design/gdd/settings.md | 6 (6 done) | Done — stories 3-2..3-7 complete (persistence/migration, edit session, difficulty profile, control bindings, display confirm, values contract) |
-| Content Pipeline | Foundation | Content Pipeline | design/gdd/content-pipeline.md | 7 (5 done) | In progress — stories 3-8..3-12 done (Address Mirror, State Machine & Kernel Handshake, Race Load, Race Unload, Startup/Catalog/Fatal); 3-13..3-14 ready |
+| Content Pipeline | Foundation | Content Pipeline | design/gdd/content-pipeline.md | 7 (6 done) | In progress — stories 3-8..3-13 done (Address Mirror, State Machine & Kernel Handshake, Race Load, Race Unload, Startup/Catalog/Fatal, Loading Screen); 3-14 ready |
 | Ghost Recording | Foundation | Ghost Recording | design/gdd/ghost-recording.md | 0 (0 done) | Ready (MVP buffer delivered by Simulation Kernel story 2-8 — Pcg32, GhostBuffer, DeterminismHarness; storage/CRC32/cache/cloud are Alpha scope) |
 | Multiplayer Architecture | Foundation | Multiplayer Architecture | design/gdd/multiplayer-architecture.md | 1 (1 done) | Done — story 3-1 (Isolation Boundary) complete; constraint epic (no runtime network in MVP; ADR-0016/0017 ratified) |
 
