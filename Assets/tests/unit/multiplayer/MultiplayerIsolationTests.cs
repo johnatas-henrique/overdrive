@@ -448,7 +448,7 @@ namespace Overdrive.Multiplayer.Tests
             Assert.That(nonEditor, Is.EquivalentTo(new[]
             {
                 "Overdrive.Input", "Overdrive.Simulation", "Overdrive.Multiplayer",
-                "Overdrive.Settings.Core", "Overdrive.Settings", "Overdrive.Content"
+                "Overdrive.Settings.Core", "Overdrive.Settings", "Overdrive.Content", "Overdrive.Content.Unity"
             }),
                 "The only non-editor gameplay assemblies under Assets/source/ must be the known manifest. Any other non-editor asmdef fails.");
         }
@@ -481,7 +481,7 @@ namespace Overdrive.Multiplayer.Tests
 
             // Seed with ALL three gameplay assemblies — a forbidden transitive reference
             // reachable only through Overdrive.Input or Overdrive.Simulation must be caught.
-            foreach (string assemblyName in new[] { "Overdrive.Multiplayer", "Overdrive.Input", "Overdrive.Simulation" })
+            foreach (string assemblyName in new[] { "Overdrive.Multiplayer", "Overdrive.Input", "Overdrive.Simulation", "Overdrive.Content" })
             {
                 Assembly seed = AppDomain.CurrentDomain.GetAssemblies()
                     .FirstOrDefault(a => a.GetName().Name == assemblyName);
