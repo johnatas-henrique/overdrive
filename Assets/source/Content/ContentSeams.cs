@@ -47,6 +47,20 @@ namespace Overdrive.Content
     }
 
     /// <summary>
+    /// Release port for the cleanup seam (Story 004): the engine-free
+    /// <see cref="RaceCleanupSeam"/> performs the release through this abstraction; the
+    /// Unity-backed composition root binds it to <c>UnityContentRuntime.ReleaseAll()</c>
+    /// (instances via <c>ReleaseInstance</c> first, then base handles via <c>Release</c> —
+    /// ADR-0003:100-105). NOT <see cref="IRaceContentAccumulator"/> — that interface
+    /// expresses load mutation and does not expose instance release.
+    /// </summary>
+    public interface IContentReleaser
+    {
+        /// <summary>Releases every retained handle and destroys the instantiated track (idempotent).</summary>
+        void ReleaseAll();
+    }
+
+    /// <summary>
     /// Readiness publication port. The SM calls <see cref="Forward"/> EXACTLY ONCE per
     /// accepted readiness and ONLY from the transitional CP_Ready state (AC-LO6). The
     /// implementation (Story 003/composition) invokes
