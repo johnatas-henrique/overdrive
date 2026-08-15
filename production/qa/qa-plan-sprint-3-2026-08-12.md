@@ -171,12 +171,16 @@
 - Handshake direction: Content emits `RaceLoadReady(mode, grid)`, Simulation accepts; never reverse
 - `ContentLoadError` path → Unloading → Idle (after cleanup)
 - `ContentUnloadComplete` only after all handles released
-- RaceReconfigure: Racing → RaceReconfigure → Ready, `RaceReconfigureStart` emitted, ZERO Addressables I/O (spy), cars from locked grid, re-emit RaceLoadReady
+- RaceReconfigure (same selection, GDD:146): CP_Racing + ContentLoadRequested → RaceReconfigure → Ready → re-emit RaceLoadReady → Racing (terminal), `RaceReconfigureStart` emitted once, ZERO Addressables I/O (spy on IContentLoadSeam), handoff validity renewed; covers the Kernel racing retry (RequestRetry — lightweight restart, ADR-0003:53)
 - Double-request idempotency (second ignored while busy)
 
 **Edge cases to cover**:
+- Selection-source query EXACTLY ONCE per accepted request (Idle and CP_Racing paths; zero for ignored busy requests)
+- AC-LO5 aggregation: fewer than 16 completed car slots (ReportCarLoaded OR ReportCarDegraded per slot, GDD:144) → stays Loading Cars; full set (1 track + 16 slots) → Ready
+- AC-LO6 exact payload: RaceLoadReady(mode, grid) carries the STORED payload, never invented
+- AC-LO7: ContentUnloadRequested from CP_Ready/CP_Racing/CP_RaceReconfigure → Unloading without Kernel Idle
 - Error in LoadingTrack vs LoadingCars (same cleanup path)
-- Reconfigure with changed selection (NOT reconfigure → unload+load)
+- Next race (changed selection, GDD:147): CP_Racing + ContentLoadRequested → Loading Track (NOT reconfigure), handoff validity cleared, no ContentUnloadComplete
 - ContentUnloadRequest without prior load (no-op)
 - Shared-already-loaded precondition (AC-SM1)
 
