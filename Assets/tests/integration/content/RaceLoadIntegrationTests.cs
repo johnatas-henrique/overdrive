@@ -72,13 +72,20 @@ namespace Overdrive.Content.Tests
 
             public int ReleaseCount;
 
+            public List<string> OperationLog = new List<string>();
+
             public object Instantiate(object prefab)
             {
                 InstantiateCount++;
+                OperationLog.Add("instantiate");
                 return new object();
             }
 
-            public void ReleaseInstance(object instance) => ReleaseCount++;
+            public void ReleaseInstance(object instance)
+            {
+                ReleaseCount++;
+                OperationLog.Add("release-instance");
+            }
         }
 
         private sealed class FakeMemory : IMemoryPressureSource
@@ -113,19 +120,6 @@ namespace Overdrive.Content.Tests
             public FakeClock(float time = 0f) => Time = time;
         }
 
-        private sealed class FakeCleanupSeam : IContentCleanupSeam
-        {
-            public int BeginCleanupCount;
-
-            public int LastCleanupId = -1;
-
-            public void BeginCleanup(int cleanupId)
-            {
-                BeginCleanupCount++;
-                LastCleanupId = cleanupId;
-            }
-        }
-
         private sealed class FakeLogger : ISimulationLogger
         {
             public void Error(string message, Exception exception) { }
@@ -139,7 +133,6 @@ namespace Overdrive.Content.Tests
             public FakeQuality Quality = new FakeQuality();
             public FakeDiagnostics Diagnostics = new FakeDiagnostics();
             public FakeClock Clock = new FakeClock();
-            public FakeCleanupSeam Cleanup = new FakeCleanupSeam();
             public SelectionSource Selection;
             public SimulationStateMachine Kernel;
             public ContentCompositionRoot Composition;
@@ -151,7 +144,6 @@ namespace Overdrive.Content.Tests
                 Kernel = new SimulationStateMachine(SimulationState.Idle, new FakeLogger());
                 Composition = new ContentCompositionRoot(
                     Selection,
-                    Cleanup,
                     new ContentResourceState(true, Array.Empty<string>()),
                     Kernel,
                     Loader,
@@ -261,14 +253,12 @@ namespace Overdrive.Content.Tests
 
             h.Loader.Handles[0].Complete(new object()); // triggers per-completion memory sample → abort
 
-            // Abort → SM enters Unloading → cleanup begun (Story 004 would release the retained handles).
-            Assert.That(h.Cleanup.BeginCleanupCount, Is.EqualTo(1), "Cleanup begun on abort (AC-SM4 ordering).");
+            // Abort → SM enters Unloading → the real cleanup seam (Story 004) runs ReleaseAll
+            // (no retained handles — nothing completed) and echoes completion, so the error is
+            // emitted synchronously (cleanup-before-error, AC-SM4).
+            Assert.That(h.ContentLoadErrorCount, Is.EqualTo(1), "ContentLoadError emitted after the real cleanup seam ran (AC-SM4).");
             // Memory sampled BEFORE the success report → all 17 handles still in flight when the abort fired.
             Assert.That(h.Loader.Handles.All(x => x.ReleaseCount == 1), Is.True, "All 17 in-flight handles released on abort.");
-
-            // Cleanup completes → the error is emitted AFTER cleanup (cleanup-before-error, AC-SM4).
-            h.Composition.StateMachine.ReportCleanupComplete(h.Cleanup.LastCleanupId);
-            Assert.That(h.ContentLoadErrorCount, Is.EqualTo(1), "ContentLoadError emitted after cleanup (AC-SM4).");
             Assert.That(h.Composition.Runtime.IsValid, Is.False, "Handoff invalidated by the error path.");
             Assert.That(h.Diagnostics.Errors.Count, Is.EqualTo(1), "Error logged via diagnostics.");
         }
@@ -339,19 +329,23 @@ namespace Overdrive.Content.Tests
                 h.Loader.Handles[i].Complete(new object());
             h.Memory.Pressure = 0.97f;
             h.Loader.Handles[16].Complete(new object());
-            Assert.That(h.Cleanup.BeginCleanupCount, Is.EqualTo(1), "Abort on the terminal completion reaches cleanup.");
-            Assert.That(h.Loader.Handles.Take(16).All(x => x.ReleaseCount == 0), Is.True, "Retained handles survive the abort (no double-release).");
-            Assert.That(h.Loader.Handles[16].ReleaseCount, Is.EqualTo(1), "Only the in-flight handle is released by the abort.");
 
-            // Cleanup completes → error emitted once, SM returns to Idle, handoff invalid.
-            h.Composition.StateMachine.ReportCleanupComplete(h.Cleanup.LastCleanupId);
-            Assert.That(h.ContentLoadErrorCount, Is.EqualTo(1), "Exactly one ContentLoadError after cleanup.");
+            // The 17th is still in flight when the abort fires (memory-before-report): the
+            // orchestrator's Abort() releases only it. The 16 retained (track + 15 cars) are
+            // released by the real cleanup seam's ReleaseAll (instances first, then handles).
+            Assert.That(h.Loader.Handles[16].ReleaseCount, Is.EqualTo(1), "The in-flight handle is released by the abort.");
+            Assert.That(h.Loader.Handles.Take(16).All(x => x.ReleaseCount == 1), Is.True, "Retained handles released by the real cleanup seam.");
+            Assert.That(h.Instantiator.ReleaseCount, Is.EqualTo(1), "Track instance destroyed by the real cleanup seam.");
+
+            // The real cleanup seam (Story 004) runs synchronously: ReleaseAll + completion
+            // echo → error emitted once, SM → Idle, handoff invalid (cleanup-before-error).
+            Assert.That(h.ContentLoadErrorCount, Is.EqualTo(1), "Exactly one ContentLoadError after the real cleanup seam.");
             Assert.That(h.Composition.StateMachine.State, Is.EqualTo(ContentPipelineState.Idle));
             Assert.That(h.Composition.Runtime.IsValid, Is.False, "Handoff invalidated by the error path.");
 
-            // The full release (Story 004 unload path) releases the retained handles.
+            // The manual ReleaseAll entry point is now idempotent — no double-release.
             h.Composition.ReleaseAll();
-            Assert.That(h.Loader.Handles.Take(16).All(x => x.ReleaseCount == 1), Is.True, "ReleaseAll releases the retained handles.");
+            Assert.That(h.Loader.Handles.All(x => x.ReleaseCount == 1), Is.True, "Idempotent ReleaseAll does not double-release.");
         }
 
         [Test]
@@ -374,6 +368,10 @@ namespace Overdrive.Content.Tests
             h.Composition.ReleaseAll();
             Assert.That(h.Instantiator.ReleaseCount, Is.EqualTo(1), "Track instance destroyed by ReleaseAll.");
             Assert.That(h.Loader.Handles.All(x => x.ReleaseCount == 1), Is.True, "All retained handles released by ReleaseAll.");
+
+            // ADR-0003:100-105 ordering: the instance is released BEFORE the base handles.
+            Assert.That(h.Instantiator.OperationLog, Is.EqualTo(new[] { "instantiate", "release-instance" }),
+                "ReleaseInstance runs before the handle Release calls (instances-first, ADR-0003:100-105).");
         }
     }
 }
