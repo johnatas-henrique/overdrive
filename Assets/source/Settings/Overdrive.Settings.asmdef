@@ -4,6 +4,7 @@
     "Overdrive.Settings.Core",
     "Overdrive.Input",
     "Overdrive.Simulation",
+    "Overdrive.Content",
     "Unity.InputSystem",
     "Unity.RenderPipelines.Universal.Runtime"
   ],
