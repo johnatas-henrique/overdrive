@@ -54,7 +54,7 @@
 **Test Evidence**: UI (controller Logic component) — 29 unit (`LoadingScreenControllerTests.cs`, ContentUnitTests) + 5 integration (attach wiring, `StartupErrorIntegrationTests.cs`) = 34 tests; 970/970 PlayMode + 43/43 EditMode green; visual evidence at `production/qa/evidence/loading-screen-evidence.md` (controller verified; UI-boundary checklist pending UI Menu epic per ownership split)
 **Code Review**: Complete (unity-specialist APPROVED R1 + final; qa-tester TESTABLE R3 — 2 production changes: `_pendingComplete` guard in NotifyLoaded, single-attach guard)
 **Gates**: LP-CODE-REVIEW APPROVED · QL-TEST-COVERAGE ADEQUATE
-**Tech debt**: None new — LS7 measurement stays under TD-026; LS9 visual layout is UI Menu epic scope
+**Tech debt**: TD-038 registered — LoadingScreenController consumers (per-frame Tick driver + InputBlocked action-map enforcement) have no owner yet; destination UI Menu epic / app-bootstrapper composition story. LS7 measurement stays under TD-026 (AC IDs synced); LS9 visual layout is UI Menu epic scope.
 
 ## Implementation Notes
 
