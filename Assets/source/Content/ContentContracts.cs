@@ -50,11 +50,12 @@ namespace Overdrive.Content
         /// <summary>Sorted team identifiers — set-semantics (order-insensitive equality via <see cref="Identity"/>).</summary>
         public readonly IReadOnlyList<string> TeamIds;
 
-        /// <summary>Creates a race selection; the team list is defensively sorted.</summary>
+        /// <summary>Creates a race selection; the team list is defensively sorted AND deduplicated (a duplicate id would otherwise poison the 17-parallel load — gate R3).</summary>
         public RaceContentSelection(string trackId, IReadOnlyList<string> teamIds)
         {
             TrackId = trackId ?? throw new ArgumentNullException(nameof(trackId));
             TeamIds = (teamIds ?? throw new ArgumentNullException(nameof(teamIds)))
+                .Distinct()
                 .OrderBy(t => t, StringComparer.Ordinal)
                 .ToList();
         }
