@@ -18,6 +18,7 @@ namespace Overdrive.Content.Unity
         private RaceLoadOrchestrator _orchestrator;
         private readonly StartupOrchestrator _startup;
         private ContentStateMachine _stateMachine;
+        private LoadingScreenController _loadingScreen;
 
         /// <summary>
         /// Creates the composition and the Content state machine it wires.
@@ -154,6 +155,30 @@ namespace Overdrive.Content.Unity
 
         /// <summary>The constructed Content state machine (null until startup completes in startup mode).</summary>
         public ContentStateMachine StateMachine => _stateMachine ?? throw new InvalidOperationException("StateMachine is not available until startup completes (RunStartup + StartupComplete).");
+
+        /// <summary>The loading screen controller (null until <see cref="AttachLoadingScreen"/>).</summary>
+        public LoadingScreenController LoadingScreen => _loadingScreen;
+
+        /// <summary>
+        /// Attaches the loading screen (story 3-13): constructs the controller over the
+        /// orchestrator's progress + the clock, and wires SM <c>RaceLoadReady</c> →
+        /// <c>NotifyLoaded</c> and SM <c>ContentLoadError</c> → <c>NotifyError</c>.
+        /// Additive: existing constructors are untouched. Must be called after startup
+        /// completes (startup mode); the bootstrapper drives Begin*/Tick per race.
+        /// </summary>
+        public void AttachLoadingScreen(ILoadingScreenPresenter presenter)
+        {
+            if (presenter == null)
+                throw new ArgumentNullException(nameof(presenter));
+            if (_stateMachine == null || _orchestrator == null)
+                throw new InvalidOperationException("AttachLoadingScreen requires the state machine and orchestrator (after startup completes).");
+            if (_loadingScreen != null)
+                throw new InvalidOperationException("AttachLoadingScreen may be called only once — the controller is single-attach (re-arm via Begin* per race).");
+
+            _loadingScreen = new LoadingScreenController(_orchestrator, _clock, presenter);
+            _stateMachine.RaceLoadReady += (_, _) => _loadingScreen.NotifyLoaded();
+            _stateMachine.ContentLoadError += (reason, _) => _loadingScreen.NotifyError(reason);
+        }
 
         /// <summary>The race runtime handoff (read by Vehicle Physics / Grid &amp; Start).</summary>
         public IRaceContentRuntime Runtime => _runtime;
