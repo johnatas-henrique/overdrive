@@ -18,7 +18,7 @@ namespace Overdrive.Content
     /// <see cref="IContentLoadSeam"/>, <see cref="IContentCleanupSeam"/>,
     /// <see cref="IReadinessForwarder"/>).
     /// </summary>
-    public class ContentStateMachine
+    public class ContentStateMachine : IContentLoadReporter
     {
         private readonly IContentSelectionSource _selectionSource;
         private readonly IContentLoadSeam _loadSeam;
@@ -139,7 +139,12 @@ namespace Overdrive.Content
 
         // ─── Inbound: load seam (the real load implementation, Story 003, invokes these) ───
 
-        /// <summary>Reports the track bundle loaded (LoadingTrack → LoadingCars + car requests).</summary>
+        /// <summary>
+        /// Reports the track bundle loaded (LoadingTrack → LoadingCars). Car completions
+        /// that arrived BEFORE the track (17-parallel — TR-content-002) were buffered in the
+        /// snapshot during LoadingTrack; if the set is now complete, readiness fires directly
+        /// (no waiting on a car that already completed).
+        /// </summary>
         public void ReportTrackLoaded(int sessionGeneration)
         {
             if (sessionGeneration != _sessionGeneration)
@@ -149,7 +154,8 @@ namespace Overdrive.Content
 
             _snapshot = _snapshot.WithCompleted(_storedSelection.TrackId);
             _state = ContentPipelineState.LoadingCars;
-            _loadSeam.RequestCarLoads(_storedSelection.TeamIds);
+            if (IsLoadComplete())
+                PublishReady(_storedMode, _storedGrid); // all cars completed before the track — complete now.
         }
 
         /// <summary>
@@ -232,13 +238,17 @@ namespace Overdrive.Content
 
         // ─── Internal transitions ───
 
-        /// <summary>Idle → LoadingTrack: one selection query, store selection + payload, request track.</summary>
+        /// <summary>Idle → LoadingTrack: one selection query, store selection + payload, request track AND cars together (17 parallel — TR-content-002).</summary>
         private void BeginLoad(ContentLoadRequest request)
         {
             RaceContentSelection selection = _selectionSource.GetSelection();
             StoreSession(selection, request);
             _state = ContentPipelineState.LoadingTrack;
+            // Both requests are issued together so the load implementation (Story 003) can
+            // start all 17 handles in parallel (TR-content-002); the states still track
+            // track-first completion (ReportTrackLoaded → LoadingCars).
             _loadSeam.RequestTrackLoad(selection.TrackId);
+            _loadSeam.RequestCarLoads(selection.TeamIds);
         }
 
         /// <summary>
@@ -278,7 +288,9 @@ namespace Overdrive.Content
             _handoffValid = false;
             StoreSession(fresh, request);
             _state = ContentPipelineState.LoadingTrack;
+            // Track + car requests together (17 parallel — same contract as BeginLoad).
             _loadSeam.RequestTrackLoad(fresh.TrackId);
+            _loadSeam.RequestCarLoads(fresh.TeamIds);
         }
 
         /// <summary>Stores selection + request payload and resets the race-resource inventory.</summary>
@@ -296,18 +308,20 @@ namespace Overdrive.Content
             _sessionGeneration++; // new session identity — stale reports from the previous session are fenced out.
         }
 
-        /// <summary>Records one car completion; unknown IDs are ignored; completes the load when full.</summary>
+        /// <summary>Records one car completion; unknown IDs are ignored; completes the load when full. Accepts completions during BOTH LoadingTrack and LoadingCars (17-parallel — a car may finish before the track).</summary>
         private void RecordCarCompletion(int sessionGeneration, string teamId)
         {
             if (sessionGeneration != _sessionGeneration)
                 return; // stale report from a previous session — session fencing.
-            if (_state != ContentPipelineState.LoadingCars)
+            if (_state != ContentPipelineState.LoadingCars && _state != ContentPipelineState.LoadingTrack)
                 return;
             if (!_storedSelection.TeamIds.Contains(teamId))
                 return;
 
             _snapshot = _snapshot.WithCompleted(teamId);
-            if (IsLoadComplete())
+            // In LoadingTrack the set can never be complete (the track is missing), so
+            // PublishReady only fires once the track is also in the snapshot.
+            if (_state == ContentPipelineState.LoadingCars && IsLoadComplete())
                 PublishReady(_storedMode, _storedGrid);
         }
 

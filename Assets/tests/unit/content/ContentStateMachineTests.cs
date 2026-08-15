@@ -297,7 +297,8 @@ namespace Overdrive.Content.Tests
             Assert.That(probe.SelectionSource.QueryCount, Is.EqualTo(1));
             Assert.That(probe.Machine.State, Is.EqualTo(ContentPipelineState.LoadingTrack));
             Assert.That(probe.LoadSeam.TrackRequests, Is.EqualTo(new[] { TrackA }));
-            Assert.That(probe.LoadSeam.CarRequests, Is.Empty, "Car requests are issued at LoadingCars entry, not before.");
+            Assert.That(probe.LoadSeam.CarRequests, Is.EqualTo(new[] { TeamsA }),
+                "Car requests are issued TOGETHER with the track request (17 parallel — TR-content-002), not deferred to LoadingCars.");
         }
 
         [Test]
@@ -1116,13 +1117,55 @@ namespace Overdrive.Content.Tests
         public void CurrentTokenReport_InWrongState_IsIgnored()
         {
             var probe = new Probe(SelectionA());
-            probe.Machine.OnContentLoadRequested(probe.RaceRequest()); // LoadingTrack
+            probe.Machine.OnContentLoadRequested(probe.RaceRequest());
+            probe.CompleteLoad(); // Racing
+            int snapshotCount = probe.Machine.Snapshot.CompletedRaceResourceIds.Count;
 
-            // Current token but wrong state: car reports must not be accepted in LoadingTrack.
+            // Current token but wrong state: car reports are no-ops outside Loading* (Racing).
             probe.ReportCar(TeamsA[0]);
             probe.ReportCarDegradedLocal(TeamsA[1]);
-            Assert.That(probe.Machine.State, Is.EqualTo(ContentPipelineState.LoadingTrack));
-            Assert.That(probe.Machine.Snapshot.CompletedRaceResourceIds, Is.Empty);
+            Assert.That(probe.Machine.State, Is.EqualTo(ContentPipelineState.Racing));
+            Assert.That(probe.Machine.Snapshot.CompletedRaceResourceIds.Count, Is.EqualTo(snapshotCount));
+        }
+
+        [Test]
+        public void CarsCompleteBeforeTrack_Buffered_PublishOnTrackReport()
+        {
+            var probe = new Probe(new RaceContentSelection(TrackA, Teams16));
+            probe.Machine.OnContentLoadRequested(probe.RaceRequest()); // LoadingTrack
+
+            // 17-parallel: all 16 cars complete BEFORE the track — completions are buffered.
+            foreach (string team in Teams16)
+                probe.ReportCar(team);
+            Assert.That(probe.Machine.State, Is.EqualTo(ContentPipelineState.LoadingTrack), "Still LoadingTrack (track missing — set incomplete).");
+            Assert.That(probe.Forwarder.Calls, Is.Empty, "No readiness before the track reports.");
+            Assert.That(probe.Machine.Snapshot.CompletedRaceResourceIds.Count, Is.EqualTo(16), "Car completions buffered in the snapshot.");
+
+            // The track report completes the set → readiness fires directly.
+            probe.ReportTrack();
+            Assert.That(probe.Machine.State, Is.EqualTo(ContentPipelineState.Racing));
+            Assert.That(probe.Forwarder.Calls.Count, Is.EqualTo(1));
+            Assert.That(probe.RaceLoadReadyCount, Is.EqualTo(1));
+            Assert.That(probe.Machine.Snapshot.CompletedRaceResourceIds.Count, Is.EqualTo(17));
+        }
+
+        [Test]
+        public void CarsCompleteBeforeTrack_Partial_ThenRemaining()
+        {
+            var probe = new Probe(new RaceContentSelection(TrackA, Teams16));
+            probe.Machine.OnContentLoadRequested(probe.RaceRequest()); // LoadingTrack
+
+            // 10 cars complete before the track; track reports; then 6 more cars complete.
+            for (int i = 0; i < 10; i++)
+                probe.ReportCar(Teams16[i]);
+            probe.ReportTrack();
+            Assert.That(probe.Machine.State, Is.EqualTo(ContentPipelineState.LoadingCars));
+            Assert.That(probe.Forwarder.Calls, Is.Empty);
+            for (int i = 10; i < 16; i++)
+                probe.ReportCar(Teams16[i]);
+
+            Assert.That(probe.Machine.State, Is.EqualTo(ContentPipelineState.Racing));
+            Assert.That(probe.Forwarder.Calls.Count, Is.EqualTo(1));
         }
     }
 }
