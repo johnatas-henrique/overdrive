@@ -1,0 +1,21 @@
+{
+  "name": "ContentIntegrationTests",
+  "references": [
+    "Overdrive.Content",
+    "Overdrive.Content.Unity",
+    "Overdrive.Simulation"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "noEngineReferences": false,
+  "rootNamespace": "Overdrive.Content.Tests"
+}
