@@ -37,7 +37,7 @@
 │   └── settings.json            # Runtime settings
 ├── Assets/                      # Unity project assets
 │   ├── Scenes/                  # Unity scenes
-│   ├── source/                  # Game C# source code — Overdrive.Input and Overdrive.Simulation assemblies
+│   ├── source/                  # Game C# source code — Overdrive.Input, Overdrive.Simulation, Overdrive.Content, and settings assemblies
 │   │   ├── Overdrive.Input.asmdef # Input assembly definition
 │   │   ├── InputContextController.cs # Action-map context controller
 │   │   ├── DeadZoneNormalizer.cs # Pure dead-zone normalization
@@ -78,6 +78,29 @@
 │   │   │   ├── INetworkSimulationDriver.cs # ADR-0017 D2 seam (SubmitInputs, SerializeSnapshot, Rollback, GetPredictedInput)
 │   │   │   ├── NetworkInput.cs    # MVP placeholder struct for remote player input
 │   │   │   └── SimulationRollbackState.cs # Corrective kinematic state (Vector3Array16/QuaternionArray16 wrappers)
+│   │   ├── Content/               # Engine-free content pipeline core (Overdrive.Content assembly)
+│   │   │   ├── Overdrive.Content.asmdef # Content core assembly (noEngineReferences: true, depends: Overdrive.Simulation)
+│   │   │   ├── ContentContracts.cs # ContentPipelineState enum (CP_ prefix), RaceContentSelection, ContentResourceState
+│   │   │   ├── ContentSeams.cs    # Injectable ports (IContentSelectionSource, IContentLoadSeam, IContentCleanupSeam, IContentReleaser, IReadinessForwarder, ICatalogInitializer, ISharedLoader, IFatalErrorHandler, IFocusSeam)
+│   │   │   ├── ContentStateMachine.cs # Authoritative lifecycle (Idle→LoadingTrack→LoadingCars→Ready→Racing→RaceReconfigure→Unloading)
+│   │   │   ├── RaceLoadOrchestrator.cs # Parallel 17-handle load, byte-derived progress, memory policy enforcement
+│   │   │   ├── RaceLoadContracts.cs # Engine-free load seams (IAddressableLoader, IAsyncLoadHandle, IContentInstantiator, IMemoryPressureSource, IRaceContentRuntime, IRaceContentAccumulator, IContentLoadReporter)
+│   │   │   ├── RaceCleanupSeam.cs # Concrete IContentCleanupSeam — delegates release, echoes cleanup ID
+│   │   │   ├── AddressableKeys.cs # Addressable key constants and builders (CarDefinition, TrackData, SharedBootstrap)
+│   │   │   ├── ContentTopologyData.cs # JSON-deserializable topology manifest (groups, root addresses, allowed types/paths)
+│   │   │   ├── StartupOrchestrator.cs # App-startup sequence (catalog init with retry, Shared group retention, focus-aware)
+│   │   │   ├── Editor/            # Editor-only content tooling (Overdrive.Content.Editor assembly)
+│   │   │   │   ├── Overdrive.Content.Editor.asmdef # Editor assembly (platform: Editor only; refs: Unity.Addressables.Editor, Overdrive.Content)
+│   │   │   │   ├── ContentTopologyValidator.cs # Validates Addressable settings against topology manifest
+│   │   │   │   └── AddressAssignmentTool.cs # Idempotent root-address assignment mirroring group names
+│   │   │   └── Unity/             # Unity-backed content runtime (Overdrive.Content.Unity assembly)
+│   │   │       ├── Overdrive.Content.Unity.asmdef # Unity runtime assembly (refs: Overdrive.Content, Overdrive.Simulation, Unity.Addressables, Unity.ResourceManager)
+│   │   │       ├── UnityContentRuntime.cs # Concrete IRaceContentRuntime + IRaceContentAccumulator
+│   │   │       ├── ContentCompositionRoot.cs # Wires ContentStateMachine with late-bound seams
+│   │   │       ├── AddressableLoadHandle.cs # IAddressableLoader / IAsyncLoadHandle over Addressables API
+│   │   │       ├── ContentInstantiator.cs # IContentInstantiator over Object.Instantiate/Destroy
+│   │   │       ├── RuntimeSources.cs # Unity-backed seams (MemoryPressureSource, DiagnosticsSink, ClockSource, QualityReductionRequest)
+│   │   │       └── StartupSources.cs # CatalogInitializer, SharedLoader, FatalErrorHandler, FocusChangeSource
 │   │   ├── Settings/              # Unity-facing settings adapters (Overdrive.Settings assembly)
 │   │   │   ├── Overdrive.Settings.asmdef # Settings Unity adapter assembly
 │   │   │   ├── SettingsLoader.cs  # Wires engine-free core to Unity surfaces (maps ControlsData→ControlProfile)
@@ -88,7 +111,14 @@
 │   │   │   ├── SettingsDifficultyProvider.cs # Decorator: reads persisted difficulty tier, resolves profile, fills ReplayInitialStateCaptureInput for GO-boundary replay
 │   │   │   ├── RebindCaptureAdapter.cs # Unity adapter implementing IRebindCapture over InputBindingCatalog (validates, applies, observes Cancel)
 │   │   │   ├── SchemeProbeAdapter.cs # Read-only ISchemeProbe backed by InputContextController.ActiveScheme
-│   │   │   └── SettingsBindingMapper.cs # Applies persisted binding overrides against Input catalog at load time (unknown id, malformed path, duplicate classification)
+│   │   │   ├── SettingsBindingMapper.cs # Applies persisted binding overrides against Input catalog at load time (unknown id, malformed path, duplicate classification)
+│   │   │   ├── DisplayContracts.cs # Unity-side display types (DisplayState, IDisplayApi, IDisplayConfirmControl, IQualityPresetApplier, IFocusChangeSource)
+│   │   │   ├── DisplayConfirmGate.cs # 15-second unscaled confirmation timer with baseline/restore and focus-loss rollback
+│   │   │   ├── ScreenDisplayApi.cs # Real Unity display surface adapter (Screen.resolutions, SetResolution, fullScreenMode)
+│   │   │   ├── DisplaySettingsOrchestrator.cs # UI-facing facade composing the display/quality flow
+│   │   │   ├── DisplayStateResolver.cs # Pure deterministic nearest-supported resolution matching
+│   │   │   ├── QualityPresetApplier.cs # URP render pipeline asset adapter (render scale and MSAA per preset)
+│   │   │   └── FocusChangeSource.cs # Unity Application.focusChanged adapter
 │   │   ├── Settings.Core/         # Engine-free settings persistence core (Overdrive.Settings.Core assembly)
 │   │   │   ├── Overdrive.Settings.Core.asmdef # Settings core assembly (noEngineReferences: true)
 │   │   │   ├── SettingsData.cs    # GameSettingsData blob model (difficulty, controls, audio, display, accessibility, camera)
@@ -103,13 +133,16 @@
 │   │   │   ├── ControlBindingStateMachine.cs # Engine-free rebinding state machine (Open→Listening→Captured/Rejected/Conflict; transactional working override-set)
 │   │   │   ├── DifficultyProfileValidation.cs # Centralized difficulty tier range guard (shared by catalog and edit session)
 │   │   │   ├── IDifficultyProfileCatalog.cs # Engine-free port resolving tier identifier to DifficultyProfile row
+│   │   │   ├── QualityPresets.cs  # Engine-free QualityPresetId and VfxDensityLevel enums
+│   │   │   ├── ValueContracts.cs  # Typed value types (AudioSettingsUpdate, AccessibilityUpdate, VfxSettingsUpdate, PaletteCue, ColorblindMode)
+│   │   │   ├── ValuePorts.cs      # Typed value ports (AudioSettingsPort, AccessibilitySettingsPort, VfxSettingsPort)
 │   │   │   ├── SettingsSessionContracts.cs # Enums and seams (SettingsCategory, ApplyResult, IDisplayConfirmGate, ISettingsLifecycleContext)
 │   │   │   ├── SettingsJson.cs    # JSON element types for settings codec
 │   │   │   ├── IPlayerPrefsStore.cs # Persistence seam between core and platform store
 │   │   │   ├── ISettingsPersistence.cs # Settings persistence interface
 │   │   │   ├── SaveResult.cs      # Save outcome enum
 │   │   │   └── BindingOverrideData.cs # Binding override data model
-│   │   ├── unit/                # Unit tests
+│   │   ├── unit/                # Unit tests (actual files in Assets/tests/unit/)
 │   │   │   ├── input/           # Input system unit tests (InputUnitTests.asmdef)
 │   │   │   │   ├── EmaBrakePriorityTests.cs
 │   │   │   │   └── SchemeArbitrationTests.cs
@@ -123,12 +156,20 @@
 │   │   │   │   └── TestSteps.cs
 │   │   │   ├── multiplayer/     # Multiplayer unit tests (MultiplayerUnitTests.asmdef)
 │   │   │   │   └── MultiplayerIsolationTests.cs
+│   │   │   ├── content/         # Content pipeline unit tests (ContentUnitTests.asmdef, RaceLoadUnitTests.asmdef)
+│   │   │   │   ├── ContentStateMachineTests.cs
+│   │   │   │   ├── RaceUnloadTests.cs
+│   │   │   │   ├── StartupErrorTests.cs
+│   │   │   │   └── raceload/    # Race load unit tests
+│   │   │   │       └── RaceLoadTests.cs
 │   │   │   └── settings/        # Settings unit tests (SettingsUnitTests.asmdef)
 │   │   │       ├── ControlBindingTests.cs
 │   │   │       ├── DifficultyProfileTests.cs
+│   │   │       ├── DisplaySettingsTests.cs
 │   │   │       ├── SettingsEditSessionTests.cs
-│   │   │       └── SettingsPersistenceTests.cs
-│   │   └── integration/         # Integration tests
+│   │   │       ├── SettingsPersistenceTests.cs
+│   │   │       └── SettingsValuesContractTests.cs
+│   │   └── integration/         # Integration tests (actual files in Assets/tests/integration/)
 │   │       ├── input/           # Input system integration tests (InputIntegrationTests.asmdef)
 │   │       │   ├── InputContextControllerTests.cs
 │   │       │   ├── InputFrameDriverTests.cs
@@ -141,37 +182,85 @@
 │   │       │   ├── ContractSpineTests.cs
 │   │       │   ├── SessionEndTests.cs
 │   │       │   └── TestSteps.cs
+│   │       ├── content/         # Content pipeline integration tests (ContentIntegrationTests.asmdef)
+│   │       │   ├── RaceLoadIntegrationTests.cs
+│   │       │   ├── RaceUnloadIntegrationTests.cs
+│   │       │   └── StartupErrorIntegrationTests.cs
 │   │       └── settings/        # Settings integration tests (SettingsIntegrationTests.asmdef)
 │   │           ├── ControlBindingIntegrationTests.cs
 │   │           ├── DifficultyProfileIntegrationTests.cs
+│   │           ├── DisplaySettingsIntegrationTests.cs
 │   │           ├── SettingsLifecycleTests.cs
-│   │           └── SettingsPersistenceIntegrationTests.cs
+│   │           ├── SettingsPersistenceIntegrationTests.cs
+│   │           └── SettingsRuntimeIntegrationTests.cs
 │   ├── sprites/                 # Game sprites (currently empty — .gitkeep)
 │   ├── Settings/                # URP render pipeline assets (Mobile, PC profiles)
+│   │   └── Content/             # Content pipeline topology manifest
+│   │       └── topology.json    # Addressable group topology (21 groups: Shared + 16 Cars + 4 Tracks)
 │   ├── tests/                    # Unity test assemblies (EditMode, PlayMode)
 │   │   ├── unit/                # Unit tests
 │   │   │   ├── input/           # Input system unit tests (InputUnitTests.asmdef)
 │   │   │   │   ├── EmaBrakePriorityTests.cs
 │   │   │   │   └── SchemeArbitrationTests.cs
-│   │   │   └── simulation/      # Simulation unit tests (SimulationUnitTests.asmdef)
-│   │   │       ├── SimulationDriverTests.cs
-│   │   │       ├── SessionStartTests.cs
-│   │   │       ├── InterruptionTests.cs
-│   │   │       ├── InterpolationTests.cs
-│   │   │       ├── PerformanceMonitorTests.cs
-│   │   │       └── DeterminismReplayTests.cs
-│   │   └── integration/         # Integration tests
-│   │       ├── input/           # Input system integration tests (InputIntegrationTests.asmdef)
-│   │       │   ├── InputContextControllerTests.cs
-│   │       │   ├── InputFrameDriverTests.cs
-│   │       │   ├── RawCaptureDeadZoneTests.cs
-│   │       │   ├── ContextTransitionsTests.cs
-│   │       │   ├── SettingsConfigurationTests.cs
-│   │       │   ├── SpecialRoutingTests.cs
-│   │       │   └── TickProcessorTests.cs
-│   │       └── simulation/      # Simulation integration tests (SimulationIntegrationTests.asmdef)
-│   │           ├── ContractSpineTests.cs
-│   │           └── SessionEndTests.cs
+│   │   │   ├── simulation/      # Simulation unit tests (SimulationUnitTests.asmdef)
+│   │   │   │   ├── SimulationDriverTests.cs
+│   │   │   │   ├── SessionStartTests.cs
+│   │   │   │   ├── InterruptionTests.cs
+│   │   │   │   ├── InterpolationTests.cs
+│   │   │   │   ├── PerformanceMonitorTests.cs
+│   │   │   │   └── DeterminismReplayTests.cs
+│   │   │   ├── multiplayer/     # Multiplayer unit tests (MultiplayerUnitTests.asmdef)
+│   │   │   │   └── MultiplayerIsolationTests.cs
+│   │   │   ├── content/         # Content pipeline unit tests
+│   │   │   │   ├── ContentUnitTests.asmdef # State machine unit tests (refs: Overdrive.Content, Overdrive.Simulation)
+│   │   │   │   ├── ContentStateMachineTests.cs
+│   │   │   │   ├── RaceUnloadTests.cs
+│   │   │   │   ├── StartupErrorTests.cs
+│   │   │   │   └── raceload/     # Race load unit tests
+│   │   │   │       ├── RaceLoadUnitTests.asmdef # (refs: Overdrive.Content, Overdrive.Simulation)
+│   │   │   │       └── RaceLoadTests.cs
+│   │   │   └── settings/        # Settings unit tests (SettingsUnitTests.asmdef)
+│   │   │       ├── ControlBindingTests.cs
+│   │   │       ├── DifficultyProfileTests.cs
+│   │   │       ├── DisplaySettingsTests.cs
+│   │   │       ├── SettingsEditSessionTests.cs
+│   │   │       ├── SettingsPersistenceTests.cs
+│   │   │       └── SettingsValuesContractTests.cs
+│   │   ├── integration/         # Integration tests
+│   │   │   ├── input/           # Input system integration tests (InputIntegrationTests.asmdef)
+│   │   │   │   ├── InputContextControllerTests.cs
+│   │   │   │   ├── InputFrameDriverTests.cs
+│   │   │   │   ├── RawCaptureDeadZoneTests.cs
+│   │   │   │   ├── ContextTransitionsTests.cs
+│   │   │   │   ├── SettingsConfigurationTests.cs
+│   │   │   │   ├── SpecialRoutingTests.cs
+│   │   │   │   └── TickProcessorTests.cs
+│   │   │   ├── simulation/      # Simulation integration tests (SimulationIntegrationTests.asmdef)
+│   │   │   │   ├── ContractSpineTests.cs
+│   │   │   │   ├── SessionEndTests.cs
+│   │   │   │   └── TestSteps.cs
+│   │   │   ├── content/         # Content pipeline integration tests
+│   │   │   │   ├── ContentIntegrationTests.asmdef # (refs: Overdrive.Content, Overdrive.Content.Unity, Overdrive.Simulation)
+│   │   │   │   ├── RaceLoadIntegrationTests.cs
+│   │   │   │   ├── RaceUnloadIntegrationTests.cs
+│   │   │   │   └── StartupErrorIntegrationTests.cs
+│   │   │   └── settings/        # Settings integration tests (SettingsIntegrationTests.asmdef)
+│   │   │       ├── ControlBindingIntegrationTests.cs
+│   │   │       ├── DifficultyProfileIntegrationTests.cs
+│   │   │       ├── DisplaySettingsIntegrationTests.cs
+│   │   │       ├── SettingsLifecycleTests.cs
+│   │   │       ├── SettingsPersistenceIntegrationTests.cs
+│   │   │       └── SettingsRuntimeIntegrationTests.cs
+│   │   ├── editor/              # Editor-only tests
+│   │   │   └── content/         # Content topology editor tests
+│   │   │       ├── ContentTopologyTests.asmdef # (refs: Overdrive.Content.Editor, Overdrive.Content, Unity.Addressables.Editor)
+│   │   │       └── ContentTopologyTests.cs
+│   │   └── content/             # Test fixture assets (committed topology, car/track/shared)
+│   │       └── Fixtures/
+│   │           ├── Cars/         # Car definition fixtures (teamA, teamB, teamC)
+│   │           ├── Tracks/       # Track data fixtures (monaco)
+│   │           ├── Shared/       # Shared fixtures (prefabs, textures, audio, shader)
+│   │           └── Scripts/       # Test fixture MonoBehaviours (CarFixtureData, TrackFixtureData)
 │   ├── assets/                  # Learning system assets (stylesheets)
 │   ├── learning-records/        # Style conformance records
 │   ├── lessons/                 # Generated lesson HTML files
@@ -489,7 +578,7 @@
 **`Assets/`:**
 - Purpose: Unity project assets — the actual game
 - Contains: Scenes, C# scripts, materials, sprites, input actions, render pipeline settings
-- Key files: `InputSystem_Actions.inputactions`, `Settings/PC_RPAsset.asset`, `source/Overdrive.Input.asmdef`, `source/Editor/Overdrive.Input.Editor.asmdef`, `source/Simulation/Overdrive.Simulation.asmdef`, `source/Multiplayer/Overdrive.Multiplayer.asmdef`, `source/Settings.Core/Overdrive.Settings.Core.asmdef`, `source/Settings/Overdrive.Settings.asmdef`, `source/SimulationDriverAdapters.cs`
+- Key files: `InputSystem_Actions.inputactions`, `Settings/PC_RPAsset.asset`, `Settings/Content/topology.json`, `source/Overdrive.Input.asmdef`, `source/Editor/Overdrive.Input.Editor.asmdef`, `source/Simulation/Overdrive.Simulation.asmdef`, `source/Multiplayer/Overdrive.Multiplayer.asmdef`, `source/Content/Overdrive.Content.asmdef`, `source/Content/Editor/Overdrive.Content.Editor.asmdef`, `source/Content/Unity/Overdrive.Content.Unity.asmdef`, `source/Settings.Core/Overdrive.Settings.Core.asmdef`, `source/Settings/Overdrive.Settings.asmdef`, `source/SimulationDriverAdapters.cs`
 
 **`learning/`:**
 - Purpose: Agent learning system — style conformance records, generated lessons, and reference analysis
@@ -508,9 +597,9 @@
 
 **`tests/`:**
 - Purpose: Unity/C# gameplay and integration tests
-- Contains: EditMode and PlayMode test directories, unit tests (input, simulation, multiplayer, settings), integration tests (input, simulation, settings), smoke tests, and test evidence
-- Test assemblies: `InputUnitTests`, `InputIntegrationTests`, `SimulationUnitTests`, `SimulationIntegrationTests`, `MultiplayerUnitTests`, `SettingsUnitTests`, `SettingsIntegrationTests`
-- Key files: `unit/input/EmaBrakePriorityTests.cs`, `unit/simulation/SimulationDriverTests.cs`, `unit/simulation/DeterminismReplayTests.cs`, `unit/multiplayer/MultiplayerIsolationTests.cs`, `unit/settings/SettingsEditSessionTests.cs`, `integration/input/InputContextControllerTests.cs`, `integration/simulation/ContractSpineTests.cs`, `integration/settings/SettingsLifecycleTests.cs`
+- Contains: EditMode and PlayMode test directories, unit tests (input, simulation, multiplayer, content, settings), integration tests (input, simulation, content, settings), editor tests (content topology), test fixtures, smoke tests, and test evidence
+- Test assemblies: `InputUnitTests`, `InputIntegrationTests`, `SimulationUnitTests`, `SimulationIntegrationTests`, `MultiplayerUnitTests`, `ContentUnitTests`, `RaceLoadUnitTests`, `ContentIntegrationTests`, `ContentTopologyTests`, `SettingsUnitTests`, `SettingsIntegrationTests`
+- Key files: `unit/input/EmaBrakePriorityTests.cs`, `unit/simulation/SimulationDriverTests.cs`, `unit/simulation/DeterminismReplayTests.cs`, `unit/multiplayer/MultiplayerIsolationTests.cs`, `unit/content/ContentStateMachineTests.cs`, `unit/content/raceload/RaceLoadTests.cs`, `unit/content/RaceUnloadTests.cs`, `unit/settings/SettingsEditSessionTests.cs`, `unit/settings/SettingsValuesContractTests.cs`, `unit/settings/DisplaySettingsTests.cs`, `integration/input/InputContextControllerTests.cs`, `integration/simulation/ContractSpineTests.cs`, `integration/content/RaceLoadIntegrationTests.cs`, `integration/content/RaceUnloadIntegrationTests.cs`, `integration/settings/SettingsLifecycleTests.cs`, `integration/settings/DisplaySettingsIntegrationTests.cs`, `editor/content/ContentTopologyTests.cs`
 
 **`production/`:**
 - Purpose: Production management — session logs, audit trails, active state, quality gate checks, feature epics and stories, QA playtest reports, sprint plans, milestone definitions
@@ -554,16 +643,36 @@
 - `Assets/source/Simulation/PerformanceMonitor.cs`: FPS protection monitor
 - `Assets/source/SimulationDriverAdapters.cs`: Unity lifecycle adapters for the simulation driver
 - `Assets/source/InputFrameCapture.cs`: Production capture adapter (IFrameInputCapture)
+- `Assets/source/Content/ContentStateMachine.cs`: Authoritative content pipeline lifecycle
+- `Assets/source/Content/RaceLoadOrchestrator.cs`: Engine-free parallel 17-handle load with memory policy
+- `Assets/source/Content/StartupOrchestrator.cs`: App-startup sequence (catalog init, Shared group retention)
+- `Assets/source/Content/ContentContracts.cs`: ContentPipelineState, RaceContentSelection, ContentResourceState
+- `Assets/source/Content/ContentSeams.cs`: Injectable content pipeline ports
+- `Assets/source/Content/RaceLoadContracts.cs`: Engine-free load seams (IAddressableLoader, IRaceContentRuntime, etc.)
+- `Assets/source/Content/Unity/ContentCompositionRoot.cs`: Wires content pipeline seams
+- `Assets/source/Content/Unity/UnityContentRuntime.cs`: Concrete IRaceContentRuntime + IRaceContentAccumulator
+- `Assets/source/Content/Editor/ContentTopologyValidator.cs`: Validates Addressable settings against topology manifest
+- `Assets/source/Settings/DisplayContracts.cs`: Unity-side display types and ports
+- `Assets/source/Settings/DisplayConfirmGate.cs`: 15-second confirmation timer with focus-loss rollback
+- `Assets/source/Settings/QualityPresetApplier.cs`: URP render pipeline asset adapter
+- `Assets/source/Settings.Core/QualityPresets.cs`: Engine-free QualityPresetId and VfxDensityLevel enums
+- `Assets/source/Settings.Core/ValueContracts.cs`: Typed value types for audio/accessibility/vfx ports
+- `Assets/source/Settings.Core/ValuePorts.cs`: Typed value ports for SettingsEditSession change publication
 
 **Design Documents:**
 - `.opencode/plugins/tests/`: Plugin unit tests (11 test suites)
 - `Assets/tests/unit/input/`: Input system unit tests (EmaBrakePriorityTests.cs, SchemeArbitrationTests.cs)
 - `Assets/tests/unit/simulation/`: Simulation unit tests (SimulationDriverTests.cs, SessionStartTests.cs, InterruptionTests.cs, InterpolationTests.cs, PerformanceMonitorTests.cs, DeterminismReplayTests.cs, TestSteps.cs)
 - `Assets/tests/unit/multiplayer/`: Multiplayer unit tests (MultiplayerIsolationTests.cs — 7 ACs: D2 seam signatures, engine-free assembly, contract types, isolation guardrails, manifest denylist, no provider, deferral)
-- `Assets/tests/unit/settings/`: Settings unit tests (ControlBindingTests.cs, DifficultyProfileTests.cs, SettingsEditSessionTests.cs, SettingsPersistenceTests.cs)
+- `Assets/tests/unit/settings/`: Settings unit tests (ControlBindingTests.cs, DifficultyProfileTests.cs, DisplaySettingsTests.cs, SettingsEditSessionTests.cs, SettingsPersistenceTests.cs, SettingsValuesContractTests.cs)
+- `Assets/tests/unit/content/`: Content pipeline unit tests (ContentStateMachineTests.cs, RaceUnloadTests.cs, StartupErrorTests.cs)
+- `Assets/tests/unit/content/raceload/`: Race load unit tests (RaceLoadTests.cs)
 - `Assets/tests/integration/input/`: Input system integration tests (InputContextControllerTests.cs, InputFrameDriverTests.cs, RawCaptureDeadZoneTests.cs, ContextTransitionsTests.cs, SettingsConfigurationTests.cs, SpecialRoutingTests.cs, TickProcessorTests.cs)
 - `Assets/tests/integration/simulation/`: Simulation integration tests (ContractSpineTests.cs, SessionEndTests.cs, TestSteps.cs)
-- `Assets/tests/integration/settings/`: Settings integration tests (ControlBindingIntegrationTests.cs, DifficultyProfileIntegrationTests.cs, SettingsLifecycleTests.cs, SettingsPersistenceIntegrationTests.cs)
+- `Assets/tests/integration/settings/`: Settings integration tests (ControlBindingIntegrationTests.cs, DifficultyProfileIntegrationTests.cs, DisplaySettingsIntegrationTests.cs, SettingsLifecycleTests.cs, SettingsPersistenceIntegrationTests.cs, SettingsRuntimeIntegrationTests.cs)
+- `Assets/tests/integration/content/`: Content pipeline integration tests (RaceLoadIntegrationTests.cs, RaceUnloadIntegrationTests.cs, StartupErrorIntegrationTests.cs)
+- `Assets/tests/editor/content/`: Content topology editor tests (ContentTopologyTests.cs)
+- `Assets/tests/content/Fixtures/`: Committed topology fixture assets (car definitions, track data, shared resources)
 - `design/art/reference-catalog.md` — Reference image catalog
 - `design/assets/asset-manifest.md` — Master asset manifest
 - `design/ux/race-hud.md` — Race HUD UX specification
@@ -598,10 +707,13 @@
 - `Assets/tests/unit/input/`: Input system unit tests (EmaBrakePriorityTests.cs, SchemeArbitrationTests.cs)
 - `Assets/tests/unit/simulation/`: Simulation unit tests (SimulationDriverTests.cs, SessionStartTests.cs, InterruptionTests.cs, InterpolationTests.cs, PerformanceMonitorTests.cs, DeterminismReplayTests.cs, TestSteps.cs)
 - `Assets/tests/unit/multiplayer/`: Multiplayer unit tests (MultiplayerIsolationTests.cs — 7 ACs: D2 seam signatures, engine-free assembly, contract types, isolation guardrails, manifest denylist, no provider, deferral)
-- `Assets/tests/unit/settings/`: Settings unit tests (ControlBindingTests.cs, DifficultyProfileTests.cs, SettingsEditSessionTests.cs, SettingsPersistenceTests.cs)
+- `Assets/tests/unit/content/`: Content pipeline unit tests (ContentStateMachineTests.cs, RaceUnloadTests.cs, StartupErrorTests.cs; raceload/RaceLoadTests.cs)
+- `Assets/tests/unit/settings/`: Settings unit tests (ControlBindingTests.cs, DifficultyProfileTests.cs, DisplaySettingsTests.cs, SettingsEditSessionTests.cs, SettingsPersistenceTests.cs, SettingsValuesContractTests.cs)
 - `Assets/tests/integration/input/`: Input system integration tests (InputContextControllerTests.cs, InputFrameDriverTests.cs, RawCaptureDeadZoneTests.cs, ContextTransitionsTests.cs, SettingsConfigurationTests.cs, SpecialRoutingTests.cs, TickProcessorTests.cs)
 - `Assets/tests/integration/simulation/`: Simulation integration tests (ContractSpineTests.cs, SessionEndTests.cs, TestSteps.cs)
-- `Assets/tests/integration/settings/`: Settings integration tests (ControlBindingIntegrationTests.cs, DifficultyProfileIntegrationTests.cs, SettingsLifecycleTests.cs, SettingsPersistenceIntegrationTests.cs)
+- `Assets/tests/integration/content/`: Content pipeline integration tests (RaceLoadIntegrationTests.cs, RaceUnloadIntegrationTests.cs, StartupErrorIntegrationTests.cs)
+- `Assets/tests/integration/settings/`: Settings integration tests (ControlBindingIntegrationTests.cs, DifficultyProfileIntegrationTests.cs, DisplaySettingsIntegrationTests.cs, SettingsLifecycleTests.cs, SettingsPersistenceIntegrationTests.cs, SettingsRuntimeIntegrationTests.cs)
+- `Assets/tests/editor/content/`: Content topology editor tests (ContentTopologyTests.cs)
 
 ## Naming Conventions
 
@@ -638,6 +750,14 @@
 **New multiplayer seam type:** `Assets/source/Multiplayer/[Name].cs` — follow engine-free naming conventions; place in `Overdrive.Multiplayer` assembly (no Unity engine references allowed); depends only on `Overdrive.Simulation` and `Unity.Mathematics`
 
 **New multiplayer test:** `Assets/tests/unit/multiplayer/[TestName].cs` — reference `MultiplayerUnitTests` assembly; verify engine-free boundary and contract invariants
+
+**New content pipeline core type:** `Assets/source/Content/[Name].cs` — follow engine-free naming conventions; place in `Overdrive.Content` assembly (no Unity engine references allowed); depends only on `Overdrive.Simulation`; new seams go here as engine-free ports (e.g., `IContentLoadSeam`, `ICatalogInitializer`, `IFocusSeam`)
+
+**New content pipeline Unity adapter:** `Assets/source/Content/Unity/[Name].cs` — follow Unity naming conventions; place in `Overdrive.Content.Unity` assembly (engine-allowed); bridge engine-free content pipeline seams to Unity APIs (Addressables, Object.Instantiate, Profiler)
+
+**New content pipeline editor tool:** `Assets/source/Content/Editor/[Name].cs` — follow Unity editor naming conventions; place in `Overdrive.Content.Editor` assembly (Editor-only platform); reference `Unity.Addressables.Editor` and `Overdrive.Content`
+
+**New content pipeline test:** `Assets/tests/unit/content/[TestName].cs` or `Assets/tests/integration/content/[TestName].cs` — reference `ContentUnitTests`/`RaceLoadUnitTests` or `ContentIntegrationTests` assembly respectively; editor tests go in `Assets/tests/editor/content/` referencing `ContentTopologyTests` assembly
 
 **New settings core type:** `Assets/source/Settings.Core/[Name].cs` — follow engine-free naming conventions; place in `Overdrive.Settings.Core` assembly (no Unity engine references allowed); the persistence seam `IPlayerPrefsStore` is the sole storage port; new seam interfaces (`ICapture`, `ISchemeProbe`, `IDisplayApi`, etc.) go here as engine-free ports
 
