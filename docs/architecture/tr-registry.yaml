@@ -1218,3 +1218,11 @@ requirements:
     created: "2026-08-05"
     revised: ""
     status: active
+
+  - id: TR-content-009
+    system: content-pipeline
+    gdd: design/gdd/content-pipeline.md
+    requirement: "Quality profiles: Medium is the WebGL default and High the PC default; Low is the automatic memory/performance fallback; car textures use QualitySettings.globalTextureMipmapLimit per quality level (QP1/QP2/WG5)"
+    created: "2026-08-05"
+    revised: "2026-08-15"
+    status: active
