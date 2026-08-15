@@ -48,7 +48,7 @@ rule, see the referenced ADR.
 - **Per-car address, never a shared constant**: `Cars/{teamId}/CarDefinition`; `Tracks/{trackId}/TrackData` ("CarDefinition" alone resolves ambiguously across 16 cars) — source: ADR-0003
 - **CP_ state machine**: CP_Idle → CP_LoadingTrack → CP_LoadingCars → CP_Ready → CP_Racing → CP_Unloading → CP_Idle (7-state base lifecycle) + transient `CP_RaceReconfigure` — source: ADR-0003
 - **`ContentErrorType` = {Track, Shared, Catalog}**; Car is never abortive — car failure emits `CarLoadDegraded(reason, teamId)`, race continues with 15 cars + placeholder — source: ADR-0003
-- **`RaceLoadReady(RaceMode, GridAssignment)` emitted only when ALL assets are fully loaded and instantiated** (car prefabs, MonoBehaviours incl. CarCollisionMonitor, CarDefinition, track data) — source: ADR-0003
+- **`RaceLoadReady(RaceMode, GridAssignment)` emitted only when ALL required slots are completed** — loaded OR degraded-placeholder per slot (GDD:144; degraded car counts as completed; car prefabs, MonoBehaviours incl. CarCollisionMonitor, CarDefinition, track data) — source: ADR-0003 as interpreted by story 002/003 + architecture.yaml:224
 - **RaceReconfigure performs NO Addressables load/unload** (cache hit only); `RaceReconfigureStart` is a one-way event — domain owners subscribe, Content Pipeline never calls them directly — source: ADR-0003
 - **Loading progress from byte counts** via `AsyncOperationHandle.GetDownloadStatus()` (DownloadedBytes / TotalBytes) — source: ADR-0003
 - **Memory pressure > 95% during loading**: abort, release partial handles, emit `ContentLoadError("Memory pressure", ContentErrorType.Track)` — source: ADR-0003

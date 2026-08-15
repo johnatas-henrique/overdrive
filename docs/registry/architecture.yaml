@@ -206,11 +206,11 @@ interfaces:
       - simulation-architecture
       - ui-menu
     adr: docs/architecture/adr-0003-content-pipeline-and-addressables.md
-    signature: "event RaceLoadReady(RaceMode, GridAssignment); event ContentLoadError(string, ContentErrorType); event RaceReconfigureStart(); event ContentUnloadComplete(); event LoadingProgress(float)"
+    signature: "event RaceLoadReady(RaceMode, GridAssignment); event ContentLoadError(string, ContentErrorType); event RaceReconfigureStart(); event ContentUnloadComplete(); IRaceLoadProgress (float Progress { get; } + event Action<float> ProgressChanged)"
     referenced_by:
       - docs/architecture/adr-0003-content-pipeline-and-addressables.md
     added: 2026-07-27
-    revised: ""
+    revised: "2026-08-14"
 
   - contract: content_race_runtime_handoff
     status: active
@@ -221,10 +221,23 @@ interfaces:
       - track-system
       - grid-and-start
     adr: docs/architecture/adr-0003-content-pipeline-and-addressables.md
-    signature: "IRaceContentRuntime { TrackInstance (loaded+instantiated by Content); CarReferences (loaded prefab assets, NOT instantiated — Vehicle Physics/Grid & Start spawn car GameObjects); Grid (locked GridAssignment); IsValid (from RaceLoadReady emission until ContentUnloadComplete; invalidated after ContentUnloadComplete, consumers must not retain past invalidation) } — supersedes the ambiguous reading of ADR-0003:159 'instantiated before RaceLoadReady': Content instantiates the track instance + loads prefab assets; car GameObject spawning is Vehicle Physics/Grid & Start responsibility."
+    signature: "IRaceContentRuntime { TrackInstance (loaded+instantiated by Content); CarReferences (loaded prefab assets, NOT instantiated — Vehicle Physics/Grid & Start spawn car GameObjects); Grid (locked GridAssignment); IsValid (SM-owned HandoffValid flag projected onto the runtime: valid from RaceLoadReady emission until the EARLIER of ContentUnloadComplete or a next-race transition into CP_LoadingTrack; consumers must not retain past either invalidation) } — supersedes the ambiguous reading of ADR-0003:159 'instantiated before RaceLoadReady': Content instantiates the track instance + loads prefab assets; car GameObject spawning is Vehicle Physics/Grid & Start responsibility."
     referenced_by:
       - docs/architecture/adr-0003-content-pipeline-and-addressables.md
     added: 2026-08-12
+    revised: ""
+
+  - contract: content_readiness_forwarder
+    status: active
+    pattern: interface
+    producer: ContentPipelineSystem
+    consumers:
+      - simulation-state-machine
+    adr: docs/architecture/adr-0003-content-pipeline-and-addressables.md
+    signature: "IReadinessForwarder { Forward(RaceMode, GridAssignment) } - the SM injectable publication port (Story 002): called EXACTLY ONCE per accepted readiness and ONLY from CP_Ready; the implementation invokes SimulationStateMachine.OnRaceLoadReady (void - no acknowledge); a throw is a wiring defect (fail-fast, SM does not catch)."
+    referenced_by:
+      - production/epics/content-pipeline/story-002-cp-state-machine-kernel-handshake.md
+    added: 2026-08-14
     revised: ""
 
   - contract: settings_input_preview_evaluator

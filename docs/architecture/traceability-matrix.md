@@ -103,7 +103,7 @@ Method: Cross-reference each Foundation GDD Technical Requirement against the 11
 | CP-12 | Loading blocks Cancel/Back: input ignored after loading begins until RaceLoadReady or ContentLoadError | ADR-0003 §Decision ("Loading state blocks Cancel/Back"); GDD Reqs table entry | ✅ |
 | CP-13 | Memory pressure threshold: <0.85 normal, 0.85–0.95 warning, >0.95 critical (abort) | ADR-0003 §Risks ("memory usage > 95% threshold during loading → abort, release partial handles, emit ContentLoadError") | ✅ |
 | CP-14 | Loading progress from total bytes: `progress = bytes_loaded / total_bytes` | ADR-0003 §Decision (OnLoadingProgress from AsyncOperationHandle.PercentComplete) | ✅ |
-| CP-15 | Error recovery: CarLoadResult (Success/SkippedPlaceholder/Failed); ContentErrorType (Track/Car/Shared/Catalog) | ADR-0003 §Decision (CarLoadResult enum, ContentErrorType enum, event-driven error propagation) | ✅ |
+| CP-15 | Error recovery: CarLoadResult (Success/SkippedPlaceholder/Failed); ContentErrorType (Track/Shared/Catalog; Car is never abortive - car failure emits CarLoadDegraded) | ADR-0003 §Decision (CarLoadResult enum, ContentErrorType enum, event-driven error propagation) | ✅ |
 
 ---
 
