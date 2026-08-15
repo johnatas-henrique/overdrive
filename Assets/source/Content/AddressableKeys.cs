@@ -31,5 +31,13 @@ namespace Overdrive.Content
 
         /// <summary>Shared track environment address.</summary>
         public const string TrackEnvironment = "TrackEnvironment";
+
+        /// <summary>
+        /// Shared bootstrap sentinel address (Story 005): the startup validates the Shared group
+        /// by loading this concrete asset type (<c>GameObject</c>) and retaining the handle for
+        /// the app lifetime. A wrong asset type in the bundle is a real type-mismatch error
+        /// (never silently accepted).
+        /// </summary>
+        public const string SharedBootstrap = "Shared/Bootstrap";
     }
 }
