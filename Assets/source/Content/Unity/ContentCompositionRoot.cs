@@ -14,8 +14,10 @@ namespace Overdrive.Content.Unity
     /// </summary>
     public sealed class ContentCompositionRoot
     {
-        private readonly UnityContentRuntime _runtime;
-        private readonly RaceLoadOrchestrator _orchestrator;
+        private UnityContentRuntime _runtime;
+        private RaceLoadOrchestrator _orchestrator;
+        private readonly StartupOrchestrator _startup;
+        private ContentStateMachine _stateMachine;
 
         /// <summary>
         /// Creates the composition and the Content state machine it wires.
@@ -44,25 +46,114 @@ namespace Overdrive.Content.Unity
             // runtime exist, so the seam references are bound after construction.
             var loadProxy = new LoadSeamProxy();
             var cleanupProxy = new CleanupSeamProxy();
-            UnityContentRuntime runtime = null;
             IReadinessForwarder forwarder = new DelegateForwarder((raceMode, grid) =>
             {
                 // Populate the locked grid BEFORE forwarding readiness (AC-LO3 ordering).
-                runtime.SetGrid(grid);
+                // _runtime is populated by BuildRaceComponents before any readiness can fire.
+                _runtime.SetGrid(grid);
                 kernel.OnRaceLoadReady(raceMode, grid);
             });
 
-            StateMachine = new ContentStateMachine(selectionSource, loadProxy, cleanupProxy, forwarder, initialSnapshot);
-
-            runtime = new UnityContentRuntime(StateMachine, instantiator);
-            _runtime = runtime;
-            _orchestrator = new RaceLoadOrchestrator(StateMachine, loader, instantiator, memory, qualityReduction, diagnostics, clock, runtime);
-            loadProxy.Bind(_orchestrator);
-            cleanupProxy.Bind(new RaceCleanupSeam(new RuntimeContentReleaser(runtime), StateMachine));
+            _stateMachine = new ContentStateMachine(selectionSource, loadProxy, cleanupProxy, forwarder, initialSnapshot);
+            BuildRaceComponents(_stateMachine, selectionSource, kernel, loader, instantiator, memory, qualityReduction, diagnostics, clock, loadProxy, cleanupProxy);
         }
 
-        /// <summary>The constructed Content state machine.</summary>
-        public ContentStateMachine StateMachine { get; }
+        /// <summary>
+        /// Startup-mode overload (Story 005): the race components are NOT constructed here —
+        /// <see cref="RunStartup"/> runs the <see cref="StartupOrchestrator"/> and, on
+        /// <see cref="StartupComplete"/>, constructs the SM (seeded with
+        /// <c>isSharedLoaded: true</c>) + race components + proxy bindings. The PUBLIC
+        /// <see cref="StartupComplete"/> fires only AFTER the SM exists; the kernel SM is
+        /// never involved in fatal startup errors.
+        /// </summary>
+        public ContentCompositionRoot(
+            IContentSelectionSource selectionSource,
+            SimulationStateMachine kernel,
+            IAddressableLoader loader,
+            IContentInstantiator instantiator,
+            IMemoryPressureSource memory,
+            IQualityReductionRequest qualityReduction,
+            IDiagnosticsSink diagnostics,
+            IClock clock,
+            ICatalogInitializer catalog,
+            ISharedLoader sharedLoader,
+            IFatalErrorHandler fatal,
+            IFocusSeam focus)
+        {
+            if (kernel == null)
+                throw new ArgumentNullException(nameof(kernel));
+
+            _startup = new StartupOrchestrator(catalog, sharedLoader, fatal, focus);
+            _startup.StartupComplete += BuildRaceComponentsAfterStartup;
+            _startup.Fatal += OnStartupFatal;
+
+            _selectionSource = selectionSource;
+            _kernel = kernel;
+            _loader = loader;
+            _instantiator = instantiator;
+            _memory = memory;
+            _qualityReduction = qualityReduction;
+            _diagnostics = diagnostics;
+            _clock = clock;
+        }
+
+        private readonly IContentSelectionSource _selectionSource;
+        private readonly SimulationStateMachine _kernel;
+        private readonly IAddressableLoader _loader;
+        private readonly IContentInstantiator _instantiator;
+        private readonly IMemoryPressureSource _memory;
+        private readonly IQualityReductionRequest _qualityReduction;
+        private readonly IDiagnosticsSink _diagnostics;
+        private readonly IClock _clock;
+
+        /// <summary>Runs the startup sequence (idempotent — the orchestrator is terminal).</summary>
+        public void RunStartup() => _startup.Run();
+
+        /// <summary>Fires exactly once after the SM exists and is seeded (startup success).</summary>
+        public event Action StartupComplete;
+
+        /// <summary>Fires exactly once on a fatal startup error (catalog after retry, or Shared).</summary>
+        public event Action<string, Overdrive.Simulation.ContentErrorType> Fatal;
+
+        private void BuildRaceComponentsAfterStartup()
+        {
+            var loadProxy = new LoadSeamProxy();
+            var cleanupProxy = new CleanupSeamProxy();
+            IReadinessForwarder forwarder = new DelegateForwarder((raceMode, grid) =>
+            {
+                _runtime.SetGrid(grid);
+                _kernel.OnRaceLoadReady(raceMode, grid);
+            });
+
+            var sm = new ContentStateMachine(_selectionSource, loadProxy, cleanupProxy, forwarder, new ContentResourceState(true, Array.Empty<string>()));
+            _stateMachine = sm;
+            BuildRaceComponents(sm, _selectionSource, _kernel, _loader, _instantiator, _memory, _qualityReduction, _diagnostics, _clock, loadProxy, cleanupProxy);
+            StartupComplete?.Invoke();
+        }
+
+        private void OnStartupFatal(string reason, Overdrive.Simulation.ContentErrorType type) => Fatal?.Invoke(reason, type);
+
+        private void BuildRaceComponents(
+            ContentStateMachine sm,
+            IContentSelectionSource selectionSource,
+            SimulationStateMachine kernel,
+            IAddressableLoader loader,
+            IContentInstantiator instantiator,
+            IMemoryPressureSource memory,
+            IQualityReductionRequest qualityReduction,
+            IDiagnosticsSink diagnostics,
+            IClock clock,
+            LoadSeamProxy loadProxy,
+            CleanupSeamProxy cleanupProxy)
+        {
+            _runtime = new UnityContentRuntime(sm, instantiator);
+            _orchestrator = new RaceLoadOrchestrator(sm, loader, instantiator, memory, qualityReduction, diagnostics, clock, _runtime);
+            loadProxy.Bind(_orchestrator);
+            cleanupProxy.Bind(new RaceCleanupSeam(new RuntimeContentReleaser(_runtime), sm));
+        }
+
+        /// <summary>The constructed Content state machine (null until startup completes in startup mode).</summary>
+        public ContentStateMachine StateMachine => _stateMachine ?? throw new InvalidOperationException("StateMachine is not available until startup completes (RunStartup + StartupComplete).");
 
         /// <summary>The race runtime handoff (read by Vehicle Physics / Grid &amp; Start).</summary>
         public IRaceContentRuntime Runtime => _runtime;
