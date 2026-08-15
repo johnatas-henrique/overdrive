@@ -21,10 +21,13 @@ namespace Overdrive.Content.Unity
         /// Creates the composition and the Content state machine it wires.
         /// <paramref name="kernel"/> is the Simulation state machine the readiness forwarder
         /// calls; the seams are the concrete Addressables wrappers (or fakes in tests).
+        /// The cleanup seam is constructed internally (Story 004): a late-bound proxy breaks
+        /// the SM ↔ seam construction cycle, then the engine-free
+        /// <see cref="RaceCleanupSeam"/> is bound with an <see cref="IContentReleaser"/>
+        /// closure over this root's <see cref="UnityContentRuntime"/>.
         /// </summary>
         public ContentCompositionRoot(
             IContentSelectionSource selectionSource,
-            IContentCleanupSeam cleanupSeam,
             ContentResourceState initialSnapshot,
             SimulationStateMachine kernel,
             IAddressableLoader loader,
@@ -40,6 +43,7 @@ namespace Overdrive.Content.Unity
             // Late-bound seams: the SM is constructed before the orchestrator and the
             // runtime exist, so the seam references are bound after construction.
             var loadProxy = new LoadSeamProxy();
+            var cleanupProxy = new CleanupSeamProxy();
             UnityContentRuntime runtime = null;
             IReadinessForwarder forwarder = new DelegateForwarder((raceMode, grid) =>
             {
@@ -48,12 +52,13 @@ namespace Overdrive.Content.Unity
                 kernel.OnRaceLoadReady(raceMode, grid);
             });
 
-            StateMachine = new ContentStateMachine(selectionSource, loadProxy, cleanupSeam, forwarder, initialSnapshot);
+            StateMachine = new ContentStateMachine(selectionSource, loadProxy, cleanupProxy, forwarder, initialSnapshot);
 
             runtime = new UnityContentRuntime(StateMachine, instantiator);
             _runtime = runtime;
             _orchestrator = new RaceLoadOrchestrator(StateMachine, loader, instantiator, memory, qualityReduction, diagnostics, clock, runtime);
             loadProxy.Bind(_orchestrator);
+            cleanupProxy.Bind(new RaceCleanupSeam(new RuntimeContentReleaser(runtime), StateMachine));
         }
 
         /// <summary>The constructed Content state machine.</summary>
@@ -93,6 +98,33 @@ namespace Overdrive.Content.Unity
                     throw new InvalidOperationException("Load seam accessed before the composition bound the orchestrator.");
                 _target.RequestCarLoads(teamIds);
             }
+        }
+
+        /// <summary>Late-bound <see cref="IContentCleanupSeam"/> forwarded to the engine-free seam once bound (Story 004 wiring).</summary>
+        private sealed class CleanupSeamProxy : IContentCleanupSeam
+        {
+            private IContentCleanupSeam _target;
+
+            public void Bind(IContentCleanupSeam target) => _target = target;
+
+            /// <inheritdoc />
+            public void BeginCleanup(int cleanupId)
+            {
+                if (_target == null)
+                    throw new InvalidOperationException("Cleanup seam accessed before the composition bound the Story 004 seam.");
+                _target.BeginCleanup(cleanupId);
+            }
+        }
+
+        /// <summary><see cref="IContentReleaser"/> bound to the runtime's full release (Story 004 unload path).</summary>
+        private sealed class RuntimeContentReleaser : IContentReleaser
+        {
+            private readonly UnityContentRuntime _runtime;
+
+            public RuntimeContentReleaser(UnityContentRuntime runtime) => _runtime = runtime;
+
+            /// <inheritdoc />
+            public void ReleaseAll() => _runtime.ReleaseAll();
         }
 
         private sealed class DelegateForwarder : IReadinessForwarder
