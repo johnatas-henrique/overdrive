@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Overdrive.Content;
 using Overdrive.Content.Unity;
+using Overdrive.Settings.Core;
 using Overdrive.Simulation;
 
 namespace Overdrive.Content.Tests
@@ -208,6 +210,23 @@ namespace Overdrive.Content.Tests
             public bool InputBlocked => false;
         }
 
+        private sealed class FakeProfileSource : IQualityProfileSource
+        {
+            public QualityPresetId Current => QualityPresetId.Medium;
+        }
+
+        private sealed class FakeMipmapApplier : ITextureMipmapApplier
+        {
+            public void Apply(int limit) { }
+        }
+
+        private sealed class FakeOverrideSource : IQualityOverrideSource
+        {
+            public bool IsReduced => false;
+
+            public event Action<bool> Changed;
+        }
+
         // ─── Loading screen attach: single-attach guard + full wiring ────────────────
 
         [Test]
@@ -229,6 +248,15 @@ namespace Overdrive.Content.Tests
             var h = new Harness();
             Assert.Throws<InvalidOperationException>(() => h.Composition.AttachLoadingScreen(new FakeLoadingPresenter()),
                 "Attach before startup completes is rejected (SM/orchestrator not built yet).");
+        }
+
+        [Test]
+        public void AttachQualityProfiles_BeforeStartupComplete_Throws()
+        {
+            var h = new Harness();
+            Assert.Throws<InvalidOperationException>(() => h.Composition.AttachQualityProfiles(
+                new FakeProfileSource(), new FakeMipmapApplier(), new FakeOverrideSource()),
+                "Attach before startup completes is rejected (load proxy not built yet).");
         }
 
         [Test]

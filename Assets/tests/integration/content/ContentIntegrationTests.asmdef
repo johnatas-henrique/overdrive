@@ -3,7 +3,10 @@
   "references": [
     "Overdrive.Content",
     "Overdrive.Content.Unity",
-    "Overdrive.Simulation"
+    "Overdrive.Simulation",
+    "Overdrive.Settings",
+    "Overdrive.Settings.Core",
+    "Unity.RenderPipelines.Universal.Runtime"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
