@@ -194,6 +194,89 @@ namespace Overdrive.Content.Tests
             }
         }
 
+        private sealed class FakeLoadingPresenter : ILoadingScreenPresenter
+        {
+            public readonly List<float> ProgressValues = new List<float>();
+            public int PreparingCount;
+            public int CompleteCount;
+            public readonly List<string> Errors = new List<string>();
+
+            public void ShowProgress(float progress) => ProgressValues.Add(progress);
+            public void ShowPreparing() => PreparingCount++;
+            public void OnLoadComplete() => CompleteCount++;
+            public void OnLoadError(string reason) => Errors.Add(reason);
+            public bool InputBlocked => false;
+        }
+
+        // ─── Loading screen attach: single-attach guard + full wiring ────────────────
+
+        [Test]
+        public void AttachLoadingScreen_SingleAttach_SecondThrows()
+        {
+            var h = new Harness();
+            h.Composition.RunStartup();
+
+            h.Composition.AttachLoadingScreen(new FakeLoadingPresenter());
+            Assert.That(h.Composition.LoadingScreen, Is.Not.Null, "Controller constructed on first attach.");
+
+            Assert.Throws<InvalidOperationException>(() => h.Composition.AttachLoadingScreen(new FakeLoadingPresenter()),
+                "Second attach is rejected (single-attach guard).");
+        }
+
+        [Test]
+        public void AttachLoadingScreen_BeforeStartupComplete_Throws()
+        {
+            var h = new Harness();
+            Assert.Throws<InvalidOperationException>(() => h.Composition.AttachLoadingScreen(new FakeLoadingPresenter()),
+                "Attach before startup completes is rejected (SM/orchestrator not built yet).");
+        }
+
+        [Test]
+        public void AttachLoadingScreen_RaceLoadReady_NotifiesController()
+        {
+            var h = new Harness();
+            h.Composition.RunStartup();
+            var presenter = new FakeLoadingPresenter();
+            h.Composition.AttachLoadingScreen(presenter);
+            var controller = h.Composition.LoadingScreen;
+            var completed = 0;
+            controller.Completed += () => completed++;
+
+            controller.BeginLoading();
+            h.Clock.Time += 0.6f;
+            // Drive the SM to emit RaceLoadReady: request a race through the real kernel path.
+            h.Kernel.StartSingleRace(new GridAssignment(new[] { 0 }));
+            h.Composition.StateMachine.OnContentLoadRequested(new ContentLoadRequest(RaceMode.Race, GridAssignment.ForRace(new[] { 0 })));
+            foreach (var (_, handle) in h.Loader.Loads)
+                handle.Complete(new object());
+
+            Assert.That(completed, Is.EqualTo(1), "RaceLoadReady wired to NotifyLoaded completes the controller.");
+            Assert.That(presenter.ProgressValues, Does.Contain(1f), "ShowProgress(1.0) reached the presenter through the wiring.");
+        }
+
+        [Test]
+        public void AttachLoadingScreen_ContentLoadError_NotifiesError()
+        {
+            var h = new Harness();
+            h.Composition.RunStartup();
+            var presenter = new FakeLoadingPresenter();
+            h.Composition.AttachLoadingScreen(presenter);
+            var controller = h.Composition.LoadingScreen;
+
+            controller.BeginLoading();
+            h.Clock.Time += 0.6f;
+            // Drive a REAL ContentLoadError through the SM: request a race, then fail the track.
+            h.Kernel.StartSingleRace(new GridAssignment(new[] { 0 }));
+            var sm = h.Composition.StateMachine;
+            sm.OnContentLoadRequested(new ContentLoadRequest(RaceMode.Race, GridAssignment.ForRace(new[] { 0 })));
+            sm.ReportLoadError(sm.SessionGeneration, ContentErrorType.Track, "track boom");
+
+            Assert.That(presenter.Errors, Is.EqualTo(new[] { "track boom" }),
+                "ContentLoadError wired to NotifyError reaches the presenter (error banner).");
+            Assert.That(presenter.CompleteCount, Is.EqualTo(0), "Error path never completes (no fade — error banner instead).");
+            Assert.That(controller.InputBlocked, Is.False, "Unblocked after the error terminal.");
+        }
+
         // ─── Startup success: SM constructed post-completion, seeded isSharedLoaded ──
 
         [Test]
