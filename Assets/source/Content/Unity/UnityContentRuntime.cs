@@ -83,17 +83,22 @@ namespace Overdrive.Content.Unity
         }
 
         /// <summary>
-        /// Full release for the unload path (Story 004): releases every retained handle AND
-        /// destroys the instantiated track. Idempotent.
+        /// Full release for the unload path (Story 004): destroys the instantiated track FIRST
+        /// via <c>ReleaseInstance</c>, then releases every retained base handle via <c>Release</c>
+        /// — instances-before-handles per ADR-0003:100-105 (prevents a window where an instance
+        /// references potentially-freed asset data). Clears the car references so no prefab
+        /// reference survives the unload (AC-UL6 no-residuals). Idempotent.
         /// </summary>
         public void ReleaseAll()
         {
-            ReleaseRetainedHandles();
             if (TrackInstance != null)
             {
                 _instantiator.ReleaseInstance(TrackInstance);
                 TrackInstance = null;
             }
+
+            ReleaseRetainedHandles();
+            _carReferences = Array.Empty<object>();
         }
     }
 }

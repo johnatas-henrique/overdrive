@@ -100,9 +100,10 @@ namespace Overdrive.Content
             _teamIndices.Clear();
             // Release the prior session's retained bundles + track instance: next-race goes
             // Racing → LoadingTrack directly (NO cleanup path), so the orchestrator releases here.
-            _runtime.ReleaseRetainedHandles();
+            // Instances FIRST (ADR-0003:100-105) — same ordering as the unload path's ReleaseAll.
             if (_runtime.TrackInstance != null)
                 _instantiator.ReleaseInstance(_runtime.TrackInstance);
+            _runtime.ReleaseRetainedHandles();
             _completedDownloadedBytes = 0;
             _completedTotalBytes = 0;
             _completedSlots = 0;
