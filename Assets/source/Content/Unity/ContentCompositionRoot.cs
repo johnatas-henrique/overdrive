@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Overdrive.Simulation;
+using Overdrive.Settings.Core;
 
 namespace Overdrive.Content.Unity
 {
@@ -14,11 +15,16 @@ namespace Overdrive.Content.Unity
     /// </summary>
     public sealed class ContentCompositionRoot
     {
+        private LoadSeamProxy _loadProxy;
         private UnityContentRuntime _runtime;
         private RaceLoadOrchestrator _orchestrator;
         private readonly StartupOrchestrator _startup;
         private ContentStateMachine _stateMachine;
         private LoadingScreenController _loadingScreen;
+        private IQualityProfileSource _profileSource;
+        private ITextureMipmapApplier _mipmapApplier;
+        private IQualityOverrideSource _overrideSource;
+        private bool _qualityAttached;
 
         /// <summary>
         /// Creates the composition and the Content state machine it wires.
@@ -46,6 +52,7 @@ namespace Overdrive.Content.Unity
             // Late-bound seams: the SM is constructed before the orchestrator and the
             // runtime exist, so the seam references are bound after construction.
             var loadProxy = new LoadSeamProxy();
+            _loadProxy = loadProxy;
             var cleanupProxy = new CleanupSeamProxy();
             IReadinessForwarder forwarder = new DelegateForwarder((raceMode, grid) =>
             {
@@ -119,6 +126,7 @@ namespace Overdrive.Content.Unity
         private void BuildRaceComponentsAfterStartup()
         {
             var loadProxy = new LoadSeamProxy();
+            _loadProxy = loadProxy;
             var cleanupProxy = new CleanupSeamProxy();
             IReadinessForwarder forwarder = new DelegateForwarder((raceMode, grid) =>
             {
@@ -186,6 +194,71 @@ namespace Overdrive.Content.Unity
         /// <summary>The aggregated load progress (read by the loading screen).</summary>
         public IRaceLoadProgress Progress => _orchestrator;
 
+        /// <summary>
+        /// Attaches the quality profiles (story 3-14): the mipmap policy is applied
+        /// at every race-load start (before the orchestrator requests the track) and
+        /// re-applied on runtime override transitions (reduced → Low-equivalent limit,
+        /// restored → working preset limit). The override never rewrites persisted
+        /// preferences. Additive — must be called after the composition is built
+        /// (startup mode: after startup completes); single-attach guard.
+        /// </summary>
+        public void AttachQualityProfiles(
+            IQualityProfileSource profileSource,
+            ITextureMipmapApplier mipmapApplier,
+            IQualityOverrideSource overrideSource)
+        {
+            if (_qualityAttached)
+                throw new InvalidOperationException("AttachQualityProfiles may only be called once.");
+            if (_loadProxy == null)
+                throw new InvalidOperationException("AttachQualityProfiles requires the composition to be built (startup mode: after startup completes).");
+            _profileSource = profileSource ?? throw new ArgumentNullException(nameof(profileSource));
+            _mipmapApplier = mipmapApplier ?? throw new ArgumentNullException(nameof(mipmapApplier));
+            _overrideSource = overrideSource ?? throw new ArgumentNullException(nameof(overrideSource));
+            _qualityAttached = true;
+            _loadProxy.LoadStarting += OnLoadStarting;
+            _overrideSource.Changed += OnOverrideChanged;
+        }
+
+        /// <summary>
+        /// Applies the mipmap limit at load start. Subscriber faults are non-fatal
+        /// (SafePublish): a mipmap failure must never break the content load — the
+        /// exception is contained and the load proceeds.
+        /// </summary>
+        private void OnLoadStarting()
+        {
+            try
+            {
+                ApplyMipmap();
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogWarning($"Mipmap policy failed at load start (non-fatal): {ex.Message}");
+            }
+        }
+
+        /// <summary>Re-applies the mipmap limit on override transitions (restore path). Same non-fatal containment.</summary>
+        private void OnOverrideChanged(bool _)
+        {
+            try
+            {
+                ApplyMipmap();
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogWarning($"Mipmap policy failed on override change (non-fatal): {ex.Message}");
+            }
+        }
+
+        private void ApplyMipmap()
+        {
+            if (_mipmapApplier == null)
+                return; // not attached — no-op
+            int limit = _overrideSource.IsReduced
+                ? MipmapLimitResolver.Resolve(QualityPresetId.Low)
+                : MipmapLimitResolver.Resolve(_profileSource.Current);
+            _mipmapApplier.Apply(limit);
+        }
+
         /// <summary>Periodic sampling hook — call from a MonoBehaviour Update.</summary>
         public void Sample() => _orchestrator.Sample();
 
@@ -197,6 +270,9 @@ namespace Overdrive.Content.Unity
         {
             private IContentLoadSeam _target;
 
+            /// <summary>Fires before the first load request of a race (load start — mipmap policy hook).</summary>
+            public event Action LoadStarting;
+
             public void Bind(IContentLoadSeam target) => _target = target;
 
             /// <inheritdoc />
@@ -204,6 +280,7 @@ namespace Overdrive.Content.Unity
             {
                 if (_target == null)
                     throw new InvalidOperationException("Load seam accessed before the composition bound the orchestrator.");
+                LoadStarting?.Invoke();
                 _target.RequestTrackLoad(trackId);
             }
 
