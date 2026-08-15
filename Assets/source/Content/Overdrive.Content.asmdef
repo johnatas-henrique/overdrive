@@ -1,7 +1,8 @@
 {
   "name": "Overdrive.Content",
   "references": [
-    "Overdrive.Simulation"
+    "Overdrive.Simulation",
+    "Overdrive.Settings.Core"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

@@ -4,6 +4,7 @@
     "references": [
         "Overdrive.Content",
         "Overdrive.Simulation",
+        "Overdrive.Settings.Core",
         "Unity.Addressables",
         "Unity.ResourceManager"
     ],
