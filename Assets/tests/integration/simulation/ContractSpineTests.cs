@@ -213,6 +213,41 @@ namespace Overdrive.Simulation.Tests
                 new[] { new AIInput(2), new AIInput(1) }));
         }
 
+        // --- TD-013: negative guard coverage (duplicate IDs, AI mismatch, capture deferral) ---
+        [Test]
+        public void TD013_DuplicateCarIdsRejected()
+        {
+            SimulationInput player = new SimulationInput(0.11f, 0.22f, -0.33f, 0.44f, 0.55f, -0.66f, true, InputAvailability.Available);
+            // Strictly-ascending guard (`carIds[i] <= carIds[i - 1]`) must reject a duplicate id.
+            Assert.Throws<System.ArgumentException>(() => SimulationKernel.ResolveCarInputs(
+                new[] { 1, 2, 2 }, player,
+                new[] { new AIInput(1), new AIInput(2), new AIInput(2) }));
+        }
+
+        [Test]
+        public void TD013_AiCarIdMismatchRejected()
+        {
+            SimulationInput player = new SimulationInput(0.11f, 0.22f, -0.33f, 0.44f, 0.55f, -0.66f, true, InputAvailability.Available);
+            // Car 2 resolved against an AI entry for car 3 — the per-entry guard must reject.
+            Assert.Throws<System.ArgumentException>(() => SimulationKernel.ResolveCarInputs(
+                new[] { 1, 2 }, player,
+                new[] { new AIInput(1), new AIInput(3) }));
+        }
+
+        [Test]
+        public void TD013_CaptureAfterTickDeferredToNextTick()
+        {
+            var kernel = new SimulationKernel(new TickProcessor(), Spies(14));
+            kernel.CaptureLatestRawSample(Sample(1, 0.1f));
+            SimulationTickContext first = kernel.ExecuteTick();   // consumes sample 1
+            kernel.CaptureLatestRawSample(Sample(2, 0.8f));       // captured AFTER the tick
+            SimulationTickContext second = kernel.ExecuteTick();  // next tick sees sample 2
+            Assert.AreEqual(1UL, first.RawInputSample.CaptureSequence);
+            Assert.AreEqual(0.1f, first.SimulationInput.RawAcceleratePostDeadZone);
+            Assert.AreEqual(2UL, second.RawInputSample.CaptureSequence);
+            Assert.AreEqual(0.8f, second.SimulationInput.RawAcceleratePostDeadZone);
+        }
+
         // --- AC-3.8: lifecycle snapshot preserves last authoritative values ---
         [Test]
         public void AC38_StateGateAndLifecycleEventPreserveBoundary()
