@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 6 — Blender Asset Preparation and Export Validation</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production · Lesson 6</p>
+  <h1>Blender asset preparation and export validation</h1>
+  <p class="meta">2026-08-07 · Mission: <a href="../MISSION.md">MISSION.md</a> · ~50 min</p>
+</header>
+
+<h2>The question this lesson answers</h2>
+
+<p>How do you know that a Blender scene is actually ready to export, instead of merely containing objects with plausible names?</p>
+
+<blockquote><strong>An export is valid only when the visible result, object relationships, variants, and animation dependencies have all been checked.</strong></blockquote>
+
+<p>This lesson exists because the first Ferrari export exposed several hidden problems: important body objects were hidden with per-view-layer state, the car was exported without every intended variant, and enabling all animation actions produced a large set of duplicated Unity clips.</p>
+
+<h2>1. Protect the source before inspecting it</h2>
+
+<p>Do not use the original Blender file as the working test file.</p>
+
+<ol>
+  <li>Open the original <code>.blend</code> file.</li>
+  <li>Use <code>File → Save As</code>.</li>
+  <li>Create a copy with a diagnostic name, for example:</li>
+</ol>
+
+<pre><code>asr_ferrari_643_export-validation.blend</code></pre>
+
+<p>The original file remains the source of truth. The validation copy is allowed to contain temporary visibility changes, preview cameras, selection changes, and export tests.</p>
+
+<h2>2. Understand the four visibility states</h2>
+
+<p>Blender visibility is not one single switch. An object can appear available in the Outliner and still be absent from the active viewport or view layer.</p>
+
+<table>
+  <tr><th>State to inspect</th><th>What it controls</th><th>Why it matters</th></tr>
+  <tr><td>Object viewport visibility</td><td>Whether the object is visible in the current 3D View</td><td>A hidden body part can make the export look exploded</td></tr>
+  <tr><td>Render visibility</td><td>Whether the object appears in a render</td><td>A preview render can falsely look incomplete</td></tr>
+  <tr><td>Collection visibility</td><td>Whether an entire collection is available</td><td>A disabled collection can hide many valid objects</td></tr>
+  <tr><td>View Layer state</td><td>Per-view-layer overrides such as hidden objects</td><td>The same file can look different in different view layers</td></tr>
+</table>
+
+<h3>Practical visibility check</h3>
+
+<ol>
+  <li>Open the <strong>Outliner</strong>.</li>
+  <li>Confirm that the relevant car collection is enabled.</li>
+  <li>Check the eye icon for the car body, cockpit, cover, airscope, and wheels.</li>
+  <li>Check the camera icon if you are using a render as the preview.</li>
+  <li>Press <code>Alt+H</code> in the 3D View to reveal objects hidden in the current view.</li>
+  <li>Switch through every relevant entry in the <strong>View Layer</strong> selector and repeat the check.</li>
+</ol>
+
+<p>Do not conclude that an object is visible because its name exists in the Outliner. The effective state is the state seen by the active View Layer and viewport.</p>
+
+<h2>3. Prove that the car is visually complete</h2>
+
+<p>A complete hierarchy is not the same as a complete car. The validation question is visual:</p>
+
+<pre><code>Can I see a complete, assembled car from every required view?</code></pre>
+
+<p>Use the <strong>Material Preview</strong> or <strong>Rendered</strong> shading mode. Check at least these views:</p>
+
+<ol>
+  <li>front three-quarter;</li>
+  <li>rear three-quarter;</li>
+  <li>left side;</li>
+  <li>right side;</li>
+  <li>top;</li>
+  <li>underside and wheel area.</li>
+</ol>
+
+<p>For each view, look for:</p>
+
+<ul>
+  <li>missing main body panels;</li>
+  <li>missing cockpit or engine cover;</li>
+  <li>wheels detached from the car;</li>
+  <li>parts floating far from the chassis;</li>
+  <li>duplicate parts occupying the same space;</li>
+  <li>unexpected helper geometry or validation objects;</li>
+  <li>visible driver parts that should belong to a separate export.</li>
+</ul>
+
+<p>Save screenshots of the six views. These are visual evidence, not decoration.</p>
+
+<h2>4. Verify variants instead of trusting their names</h2>
+
+<p>The Ferrari contains variant objects such as <code>CINTURE_ON</code> and <code>CINTURE_OFF</code>. The name alone does not prove whether an object is an alternate, a helper, or a required production state.</p>
+
+<p>For each variant:</p>
+
+<ol>
+  <li>locate the object or collection in the Outliner;</li>
+  <li>make it visible while hiding the competing variant;</li>
+  <li>render or inspect the complete car;</li>
+  <li>confirm that it changes the intended visual element;</li>
+  <li>record whether Unity must receive both variants or only one.</li>
+</ol>
+
+<p>For Overdrive's driver-belt case, both meaningful states must remain available for Unity-side control. Do not delete or omit <code>CINTURE_OFF</code> merely because the name looks like a discardable alternate.</p>
+
+<h2>5. Verify parentage and asset boundaries</h2>
+
+<p>Use the Outliner indentation to check which objects are children of which parents. A wheel should remain attached to the correct wheel assembly, and a driver should not accidentally become part of the car mesh export.</p>
+
+<p>The intended boundary is:</p>
+
+<pre><code>Car export
+  body, cockpit, wheels, steering wheel, dashboard, suspension
+
+Driver export
+  driver mesh, armature, clothing, gloves, helmet</code></pre>
+
+<p>Inspect the parent chain of important objects. If a driver mesh is parented under the car only because the source scene was convenient, that is not sufficient reason to export them as one production asset.</p>
+
+<h2>6. Inspect animation actions before exporting</h2>
+
+<p>Open the <strong>Dope Sheet</strong> and switch it to <strong>Action Editor</strong>. Use the action selector to inspect the available actions one at a time.</p>
+
+<p>Classify each action:</p>
+
+<table>
+  <tr><th>Action category</th><th>Meaning</th><th>Export treatment</th></tr>
+  <tr><td>Production action</td><td>Needed by the car or driver at runtime</td><td>Keep and export deliberately</td></tr>
+  <tr><td>Validation action</td><td>Temporary pose or alignment check</td><td>Use during inspection, then remove</td></tr>
+  <tr><td>Duplicate or generated action</td><td>Created by the exporter or source pipeline</td><td>Do not export without a reason</td></tr>
+  <tr><td>Unrelated action</td><td>Belongs to another object or test</td><td>Exclude from this asset export</td></tr>
+</table>
+
+<p>Actions with names beginning <code>VAL_</code> were used in the Ferrari inspection as validation controls. They must not remain assigned to production bones after the validation step, because they can create misleading poses or clipping at non-neutral frames.</p>
+
+<h3>Why “all actions” is dangerous</h3>
+
+<p>The learning export used <code>bake_anim_use_all_actions=True</code>. Unity imported 154 AnimationClip subassets from 10 actions and 283 objects. That result proves that animation baking occurred, but it is not a clean production animation library.</p>
+
+<p>Before export, decide explicitly:</p>
+
+<pre><code>Which object is animated?
+Which action is required?
+Which frame range is required?
+Which validation actions must be excluded?</code></pre>
+
+<p>Do not enable “all actions” simply because it is available in the exporter.</p>
+
+<h2>7. Export car and driver separately</h2>
+
+<p>Use separate export selections:</p>
+
+<ol>
+  <li>select the complete car hierarchy;</li>
+  <li>export the car to a car-specific FBX;</li>
+  <li>select the driver hierarchy;</li>
+  <li>export the driver to a driver-specific FBX.</li>
+</ol>
+
+<p>Before each export, verify the selection in the Outliner and record the export filename. Do not rely on the active object alone when the asset contains hundreds of objects.</p>
+
+<p>Use a naming pattern that makes the boundary obvious:</p>
+
+<pre><code>Ferrari643_Learning_Car_Complete.fbx
+Ferrari643_Learning_Driver.fbx</code></pre>
+
+<p>Keep the texture workflow explicit. If textures are not embedded, copy or import the referenced texture files into the Unity asset folder and verify that every material resolves to the intended image.</p>
+
+<h2>8. Validate the imported FBX in Unity</h2>
+
+<ol>
+  <li>Wait for Unity to finish importing.</li>
+  <li>Select the FBX in the Project window.</li>
+  <li>Inspect the generated hierarchy and subassets.</li>
+  <li>Drag the model into <code>AssetLearningLab.unity</code> as a temporary reference instance.</li>
+  <li>Check the same six views used in Blender.</li>
+  <li>Check that textures and materials resolve.</li>
+  <li>Check that the car and driver remain separate.</li>
+  <li>Count the generated animation clips and compare them with the intended list.</li>
+</ol>
+
+<p>Unity validation is not complete if the FBX imports without an error but the visual result is exploded, white, missing textures, or missing required variants.</p>
+
+<h2>9. Acceptance matrix</h2>
+
+<table>
+  <tr><th>Criterion</th><th>Evidence required</th><th>Status</th></tr>
+  <tr><td>Effective visibility</td><td>Outliner and View Layer checked; complete car visible</td><td>PASS / FAIL</td></tr>
+  <tr><td>Visual completeness</td><td>Six-view Blender screenshots</td><td>PASS / FAIL</td></tr>
+  <tr><td>Variants</td><td>Each required variant independently inspected</td><td>PASS / FAIL</td></tr>
+  <tr><td>Parentage</td><td>Car and driver boundaries confirmed</td><td>PASS / FAIL</td></tr>
+  <tr><td>Actions</td><td>Production and validation actions classified</td><td>PASS / FAIL</td></tr>
+  <tr><td>Export scope</td><td>Car and driver FBXs contain only intended objects</td><td>PASS / FAIL</td></tr>
+  <tr><td>Unity import</td><td>Textures, materials, hierarchy, and clips validated</td><td>PASS / FAIL</td></tr>
+</table>
+
+<h2>10. Controlled exercise</h2>
+
+<ol>
+  <li>Open the Ferrari source copy in Blender.</li>
+  <li>Check the active View Layer and reveal the car body.</li>
+  <li>Capture front, rear, left, right, top, and underside views.</li>
+  <li>Inspect <code>CINTURE_ON</code> and <code>CINTURE_OFF</code> as separate variants.</li>
+  <li>Inspect the car and driver parent boundaries.</li>
+  <li>List every action and mark it Production, Validation, Duplicate, or Unrelated.</li>
+  <li>Export car and driver as separate learning FBXs.</li>
+  <li>Import both into Unity and compare the result with the Blender screenshots.</li>
+</ol>
+
+<details>
+  <summary>Expected reasoning</summary>
+  <div class="answer">
+    <p>A successful export is not defined by the presence of an FBX file. It is defined by a matching visual result in Blender and Unity, a verified object boundary, deliberately selected variants, and an intentional animation list. If any of these is unknown, the asset is still in validation.</p>
+  </div>
+</details>
+
+<h2>Decision rule</h2>
+
+<pre><code>inspect effective state
+  → preview every required view
+  → classify variants and actions
+  → export the smallest intentional scope
+  → reopen in Unity
+  → compare against baseline
+  → accept only with evidence</code></pre>
+
+<h2>Primary sources</h2>
+
+<ul>
+  <li><code>asr_1991_ferrari_ring_pinkie_reset_neutral_stage90.blend</code> — Blender source scene used for inspection.</li>
+  <li><code>Ferrari643_Learning_Complete.fbx</code> — learning export that exposed action duplication.</li>
+  <li><a href="../../docs/plans/asr-car-import-pipeline.md">ASR Car Import Pipeline</a> — car/driver boundary and import constraints.</li>
+  <li><a href="overdrive-asset-production-lesson-05-uvs-decals-mirrored-text.html">Lesson 5</a> — previous texture and UV diagnosis workflow.</li>
+</ul>
+
+<div class="callout">
+  <strong>Next:</strong> Lesson 7 is now available and traces Unity import, material routing, and prefab assembly from the imported FBX to a usable scene asset.
+</div>
+
+<footer>
+  Overdrive Learning Workspace · Lesson 6 of the asset-production track · <a href="overdrive-asset-production-lesson-05-uvs-decals-mirrored-text.html">Previous lesson</a> · <a href="overdrive-asset-production-learning-index.html">Learning index</a> · <a href="../MISSION.md">Mission</a>
+</footer>
+
+</body>
+</html>

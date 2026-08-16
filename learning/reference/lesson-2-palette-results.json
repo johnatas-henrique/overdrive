@@ -1,0 +1,188 @@
+[
+  {
+    "file": "D:\\projects\\overdrive\\design\\art\\reference\\generated\\team_tier1_a\\front-d-1.png",
+    "size": [
+      1280,
+      720
+    ],
+    "mode": "RGB",
+    "corner_average": {
+      "rgb": [
+        175,
+        172,
+        174
+      ],
+      "hex": "#AFACAE"
+    },
+    "target_background": "#CCCCCC",
+    "background_distance": 52.58,
+    "background_match_within_25": false,
+    "dominant_colors": [
+      {
+        "hex": "#AFACAE",
+        "rgb": [
+          175,
+          172,
+          174
+        ],
+        "percent": 26.67
+      },
+      {
+        "hex": "#080709",
+        "rgb": [
+          8,
+          7,
+          9
+        ],
+        "percent": 14.44
+      },
+      {
+        "hex": "#EFEDED",
+        "rgb": [
+          239,
+          237,
+          237
+        ],
+        "percent": 13.24
+      },
+      {
+        "hex": "#634445",
+        "rgb": [
+          99,
+          68,
+          69
+        ],
+        "percent": 12.09
+      },
+      {
+        "hex": "#291E21",
+        "rgb": [
+          41,
+          30,
+          33
+        ],
+        "percent": 10.6
+      },
+      {
+        "hex": "#AEABAD",
+        "rgb": [
+          174,
+          171,
+          173
+        ],
+        "percent": 10.0
+      },
+      {
+        "hex": "#887E81",
+        "rgb": [
+          136,
+          126,
+          129
+        ],
+        "percent": 7.62
+      },
+      {
+        "hex": "#B5B1B1",
+        "rgb": [
+          181,
+          177,
+          177
+        ],
+        "percent": 5.34
+      }
+    ]
+  },
+  {
+    "file": "D:\\projects\\overdrive\\design\\art\\reference\\generated\\team_tier1_a\\side-1.png",
+    "size": [
+      1280,
+      720
+    ],
+    "mode": "RGB",
+    "corner_average": {
+      "rgb": [
+        185,
+        183,
+        184
+      ],
+      "hex": "#B9B7B8"
+    },
+    "target_background": "#CCCCCC",
+    "background_distance": 34.67,
+    "background_match_within_25": false,
+    "dominant_colors": [
+      {
+        "hex": "#B9B7B8",
+        "rgb": [
+          185,
+          183,
+          184
+        ],
+        "percent": 20.89
+      },
+      {
+        "hex": "#B9B6B7",
+        "rgb": [
+          185,
+          182,
+          183
+        ],
+        "percent": 19.91
+      },
+      {
+        "hex": "#734847",
+        "rgb": [
+          115,
+          72,
+          71
+        ],
+        "percent": 16.61
+      },
+      {
+        "hex": "#B8B6B7",
+        "rgb": [
+          184,
+          182,
+          183
+        ],
+        "percent": 15.32
+      },
+      {
+        "hex": "#BAB7B8",
+        "rgb": [
+          186,
+          183,
+          184
+        ],
+        "percent": 15.1
+      },
+      {
+        "hex": "#D0CFD1",
+        "rgb": [
+          208,
+          207,
+          209
+        ],
+        "percent": 7.38
+      },
+      {
+        "hex": "#B9B7B7",
+        "rgb": [
+          185,
+          183,
+          183
+        ],
+        "percent": 3.33
+      },
+      {
+        "hex": "#B8B7B8",
+        "rgb": [
+          184,
+          183,
+          184
+        ],
+        "percent": 1.45
+      }
+    ]
+  }
+]

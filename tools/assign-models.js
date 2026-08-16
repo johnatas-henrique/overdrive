@@ -18,10 +18,11 @@ Options:
   --dry-run         Preview changes without writing files
 
 Examples:
-  node utils/assign-models.js --dry-run --map '{
-    "opencode-go/kimi-k2.6":         "anthropic/claude-opus-4",
-    "opencode-go/qwen3.6-plus":      "openai/gpt-4o",
-    "opencode-go/deepseek-v4-flash": "ollama/llama3.2"
+  node tools/assign-models.js --dry-run --map '{
+    "opencode-go/kimi-k2.6":         "openai/gpt-5.6-sol",
+    "opencode-go/minimax-m3":      "openai/gpt-5.6-sol",
+    "opencode/mimo-v2.5": "openai/gpt-5.6-terra",
+    "opencode/mimo-v2.5-free": "openai/gpt-5.6-terra"
   }'
 
   node utils/assign-models.js --config my-models.json

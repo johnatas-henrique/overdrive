@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 5 — UVs, Decals, and Mirrored Text</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production · Lesson 5</p>
+  <h1>UVs, decals, and mirrored text</h1>
+  <p class="meta">2026-08-07 · Mission: <a href="../MISSION.md">MISSION.md</a> · ~40 min</p>
+</header>
+
+<h2>The question this lesson answers</h2>
+
+<p>Lesson 4 showed how a material changes the response of a surface. This lesson moves one layer earlier: how an image is placed on the surface in the first place.</p>
+
+<blockquote><strong>When a logo is upside down, mirrored, stretched, or tilted, is the problem in the image, the UV layout, the material assignment, or the mesh orientation?</strong></blockquote>
+
+<p>We will use two real Ferrari observations: the incorrectly oriented <code>GOODYEAR/EAGLE</code> lettering on the tire sidewalls and the skewed <code>Marlboro / A. Prost</code> decal on the body. These are diagnosis cases first. Do not edit the production asset until the cause is isolated.</p>
+
+<h2>1. UVs are the bridge between mesh and image</h2>
+
+<p>A mesh exists in 3D space. A texture exists in 2D space. UV coordinates create the correspondence between them.</p>
+
+<pre><code>3D mesh surface
+  ↓ UV coordinates
+2D texture image
+  ↓ material and shader
+visible surface in Unity</code></pre>
+
+<p>Each vertex can have a position in 3D and a separate position in the texture. The UV does not change the mesh shape. It changes which part of the image appears on each polygon.</p>
+
+<p>That is why a mesh can have a correct silhouette but a wrong logo. The geometry can be perfectly usable while the 2D-to-3D mapping is not.</p>
+
+<h2>2. Four different decal problems</h2>
+
+<table>
+  <tr><th>Visual result</th><th>Likely cause</th><th>First test</th></tr>
+  <tr><td>Text reads backwards</td><td>Mirrored UV island, mirrored texture, or wrong left/right material</td><td>Compare the corresponding left and right mesh/material assignments</td></tr>
+  <tr><td>Text is upside down</td><td>UV island rotated 180 degrees or source image orientation is wrong</td><td>Inspect the UV island orientation against the texture</td></tr>
+  <tr><td>Logo is stretched</td><td>UV island has the wrong aspect ratio or texture is being scaled</td><td>Compare the UV proportions with the logo proportions</td></tr>
+  <tr><td>Logo follows a strange angle</td><td>UV island is rotated, or the decal follows a sloped surface</td><td>Compare neighboring geometry and the decal's intended baseline</td></tr>
+</table>
+
+<p>These problems can look similar from the camera. The solution depends on identifying which transformation is wrong:</p>
+
+<pre><code>flip horizontal  ≠  rotate 180°  ≠  scale non-uniformly  ≠  wrong material</code></pre>
+
+<h2>3. The Ferrari tire case</h2>
+
+<p>The actual imported Ferrari uses separate sidewall materials:</p>
+
+<pre><code>Left-side tire meshes
+  FER_LF_TIRE-1 / FER_LR_TIRE-1
+    → 9X_GWAL-L
+    → G9X_twall-l.dds
+
+Right-side tire meshes
+  FER_RF_TIRE.001 / FER_RR_TIRE.001
+    → 9X_GWAL-R
+    → G9X_twall-r.dds</code></pre>
+
+<p>This is important evidence. The tires do not all share one sidewall material. A correction applied globally could fix one side and damage the other.</p>
+
+<p>The visible problem is that the <code>GOODYEAR/EAGLE</code> lettering has an incorrect orientation on the inspected flanks. At this stage, there are three competing hypotheses:</p>
+
+<ol>
+  <li>The left or right sidewall texture is itself mirrored or rotated.</li>
+  <li>The corresponding UV island is mirrored or rotated.</li>
+  <li>The left/right material assignment is swapped on one wheel group.</li>
+</ol>
+
+<p>Do not choose between these hypotheses from the name alone. The correct test is to inspect the actual image orientation, UV layout, and material assignment together.</p>
+
+<h3>Verified Unity correction</h3>
+
+<p>The tire issue was tested in Unity without changing the mesh. A copied sidewall material was corrected with a vertical Base Map transform:</p>
+
+<pre><code>Tiling:  X = 1,  Y = -1
+Offset:  X = 0,  Y = 1</code></pre>
+
+<p>The lettering became readable on the affected wheel flanks, and the result was verified from the same scene setup. This proves that the visible Unity problem can be corrected in material texture space. It does not prove that the original Blender UV layout or source texture has been repaired; those remain separate production decisions.</p>
+
+<p><strong>Classification:</strong> the Unity correction is a material texture-transform change, not a mesh or silhouette change. The smallest successful correction was therefore the appropriate one for this learning test.</p>
+
+<h2>4. The Ferrari body decal case</h2>
+
+<p>The skewed <code>Marlboro / A. Prost</code> marking is not on the main body material alone. Blender inspection identified a dedicated decal mesh and material:</p>
+
+<pre><code>Mesh:       fer_body-6
+Material:   643_BODY_DECAL
+Texture:    643_INT_Decals_DIF.dds</code></pre>
+
+<p>This narrows the search. The red body mesh and the decal layer are separate inputs. If the body silhouette is correct and the decal is the only tilted element, changing the entire car mesh would be the wrong fix.</p>
+
+<p>The remaining hypotheses are:</p>
+
+<ul>
+  <li>the decal UV island is rotated or skewed;</li>
+  <li>the decal image itself contains a tilted logo;</li>
+  <li>the decal mesh is angled relative to the body;</li>
+  <li>the material is assigned to the wrong body section;</li>
+  <li>the camera angle exaggerates an intentional perspective on a curved surface.</li>
+</ul>
+
+<p>A visual complaint such as “the logo is crooked” is therefore a valid observation but not yet a repair instruction.</p>
+
+<h3>Verified texture-space evidence</h3>
+
+<p>Inspection of the decal atlas confirmed that the <code>FIAT</code> block and the <code>Marlboro / A. Prost</code> block are visibly skewed in the 2D texture itself, while nearby logos such as Pioneer, Agip, and Magneti Marelli provide aligned comparison anchors.</p>
+
+<p>This is evidence of a texture-space defect in those decal blocks. It is not evidence that the entire car mesh or decal mesh must be remodeled. The atlas also contains rotated packed regions, so atlas rotation alone must not be confused with a crooked decal; the UV layout can intentionally rotate a packed region back into place.</p>
+
+<h2>5. Texture-space operations</h2>
+
+<p>When the image is correct but its orientation is wrong, the correction can occur in texture space or UV space.</p>
+
+<table>
+  <tr><th>Operation</th><th>What it changes</th><th>Risk</th></tr>
+  <tr><td>Flip image horizontally</td><td>Mirrors every use of that image</td><td>Can fix one side and break another</td></tr>
+  <tr><td>Rotate image</td><td>Rotates every logo/detail in the texture</td><td>Other decals may become wrong</td></tr>
+  <tr><td>Flip UV island</td><td>Changes one mesh region's orientation</td><td>Can affect only the selected part, but requires UV editing</td></tr>
+  <tr><td>Rotate UV island</td><td>Corrects local orientation without changing the source image</td><td>Requires a valid UV layout and careful alignment</td></tr>
+  <tr><td>Assign a different material</td><td>Routes another texture/material to the mesh</td><td>Can change the entire surface response, not only the logo</td></tr>
+</table>
+
+<p>The safest correction is usually the smallest one that fixes only the affected region. If only one sidewall is wrong, do not flip the shared source image until you know that both sidewalls use it in the same orientation.</p>
+
+<h2>6. How to diagnose before editing</h2>
+
+<ol>
+  <li><strong>Capture the baseline:</strong> save a screenshot showing the problem and record the object, material, and texture names.</li>
+  <li><strong>Identify the mesh:</strong> find the exact renderer carrying the visible decal or lettering.</li>
+  <li><strong>Identify the material:</strong> confirm which material is assigned to that renderer.</li>
+  <li><strong>Identify the image:</strong> inspect the material's Base Map and any other texture slots.</li>
+  <li><strong>Compare sides:</strong> determine whether the opposite side uses a different material or image.</li>
+  <li><strong>Inspect UVs:</strong> compare the island orientation and proportions with the image.</li>
+  <li><strong>Change one layer:</strong> edit the image, UV, or assignment, never all three simultaneously.</li>
+  <li><strong>Reopen and capture:</strong> verify the result from the same camera and an opposite-side camera.</li>
+</ol>
+
+<h2>7. What not to do</h2>
+
+<ul>
+  <li>Do not flip a texture globally because one logo appears backwards.</li>
+  <li>Do not rotate the entire car to fix a decal.</li>
+  <li>Do not remodel the body when the problem is isolated to a decal mesh.</li>
+  <li>Do not infer left/right behavior from names such as <code>GWAL-L</code> or <code>GWAL-R</code> without visual confirmation.</li>
+  <li>Do not overwrite the original ASR source while testing.</li>
+</ul>
+
+<h2>8. Controlled exercise</h2>
+
+<p>This exercise is diagnostic first and correction second. The tire orientation received one targeted Unity correction; the crooked body decals were classified as texture-space issues and intentionally left unchanged.</p>
+
+<ol>
+  <li>Open <code>AssetLearningLab.unity</code> and frame the Ferrari side-on.</li>
+  <li>Record which tire flanks show the wrong lettering orientation.</li>
+  <li>Write down the mesh and material names for those flanks.</li>
+  <li>Compare <code>G9X_twall-l.dds</code> and <code>G9X_twall-r.dds</code> as separate sources.</li>
+  <li>Frame the body decal and record whether the whole decal mesh is tilted or only the logo inside the texture is tilted.</li>
+  <li>Classify each issue as texture, UV, material assignment, mesh orientation, or still unresolved.</li>
+  <li>For a confirmed orientation issue, change only the smallest responsible layer and capture the result from the same camera.</li>
+</ol>
+
+<details>
+  <summary>Expected reasoning</summary>
+  <div class="answer">
+    <p>The tire issue was corrected in Unity with a material Base Map vertical flip, proving a successful texture-space correction for the imported asset. The source Blender UV layout remains a separate verification target. The body issue is localized to <code>fer_body-6</code>, <code>643_BODY_DECAL</code>, and skewed atlas blocks, so changing the complete body mesh would be unjustified. The correct action is targeted correction, not a global texture or geometry change.</p>
+  </div>
+</details>
+
+<h2>Decision rule</h2>
+
+<p>When text or a decal is wrong, follow this order:</p>
+
+<pre><code>object
+  → renderer
+  → material
+  → texture slot
+  → texture image
+  → UV island
+  → mesh orientation</code></pre>
+
+<p>Stop at the first layer that explains the evidence. Do not modify later layers just because they are easier to reach.</p>
+
+<h2>Primary sources</h2>
+
+<ul>
+  <li><code>Assets/Prototype/RaceFeel/LearningAssets/ASR/Ferrari643/Ferrari643_Learning_Complete.fbx</code> — imported Ferrari mesh hierarchy.</li>
+  <li><code>Assets/Prototype/RaceFeel/LearningAssets/ASR/Ferrari643/Textures/G9X_twall-l.dds</code> and <code>G9X_twall-r.dds</code> — separate tire sidewall textures.</li>
+  <li><code>Assets/Prototype/RaceFeel/LearningAssets/ASR/Ferrari643/Materials/asr-car-body.mat</code> — body material inspected in Unity.</li>
+  <li><a href="../../docs/plans/asr-car-import-pipeline.md">ASR Car Import Pipeline</a> — source hierarchy and import constraints.</li>
+</ul>
+
+<div class="callout">
+  <strong>Next:</strong> Lesson 6 will cover Blender asset preparation and export validation. The goal will be to verify visibility, variants, parentage, animation dependencies, and visual completeness before an FBX reaches Unity.
+</div>
+
+<footer>
+  Overdrive Learning Workspace · Lesson 5 of the asset-production track · <a href="overdrive-asset-production-lesson-04-materials-shaders-surface-response.html">Previous lesson</a> · <a href="overdrive-asset-production-learning-index.html">Learning index</a> · <a href="../MISSION.md">Mission</a>
+</footer>
+
+</body>
+</html>

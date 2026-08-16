@@ -1,4 +1,24 @@
 ﻿<Solution>
+  <Project Path="Overdrive.Settings.csproj" />
+  <Project Path="Overdrive.Simulation.csproj" />
+  <Project Path="Overdrive.Content.Unity.csproj" />
+  <Project Path="ContentUnitTests.csproj" />
+  <Project Path="Overdrive.Input.Editor.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
-  <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="Overdrive.Simulation.Unity.csproj" />
+  <Project Path="InputIntegrationTests.csproj" />
+  <Project Path="SimulationUnitTests.csproj" />
+  <Project Path="Overdrive.Input.csproj" />
+  <Project Path="Overdrive.Settings.Core.csproj" />
+  <Project Path="Overdrive.Content.csproj" />
+  <Project Path="SimulationIntegrationTests.csproj" />
+  <Project Path="ContentTopologyTests.csproj" />
+  <Project Path="ContentIntegrationTests.csproj" />
+  <Project Path="Overdrive.Multiplayer.csproj" />
+  <Project Path="InputUnitTests.csproj" />
+  <Project Path="SettingsIntegrationTests.csproj" />
+  <Project Path="SettingsUnitTests.csproj" />
+  <Project Path="RaceLoadUnitTests.csproj" />
+  <Project Path="MultiplayerUnitTests.csproj" />
+  <Project Path="Overdrive.Content.Editor.csproj" />
 </Solution>

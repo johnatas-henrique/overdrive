@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Technical Candidate Evaluation — 11-Point Asset Audit</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production · Technical candidate evaluation</p>
+  <h1>How to evaluate a downloaded car as a game asset</h1>
+  <p class="meta">11-point audit · Blender + Unity · ~60 min per candidate · Mission: <a href="../MISSION.md">MISSION.md</a></p>
+</header>
+
+<h2>The question this lesson answers</h2>
+
+<p>All candidates in the current inventory have already passed the visual selection made before this audit: they are attractive Formula cars from the target period. The question here is different:</p>
+
+<blockquote><strong>Which visually acceptable model is technically the best base for the Overdrive car pipeline?</strong></blockquote>
+
+<p>This lesson does not teach how to recognize an F1 car. It teaches how to inspect a model's data, organization, runtime cost, and production dependencies before choosing it for a first test.</p>
+
+<h2>What a “good” candidate means in this project</h2>
+
+<p>A good first-test candidate is not necessarily the most detailed, the most expensive, or the most historically famous model. It is the model that lets us test the pipeline without an unrelated technical failure obscuring the result.</p>
+
+<p>For this project, the candidate must eventually support:</p>
+
+<ul>
+  <li>one exterior car asset: bodywork, cockpit surround, wings, wheels, and suspension;</li>
+  <li>a shared internal cockpit module: driver, seat, belts, steering wheel, dashboard, and pedals;</li>
+  <li>Unity material replacement and Overdrive livery work;</li>
+  <li>wheel and vehicle presentation animation;</li>
+  <li>up to 16 car instances in a race scene;</li>
+  <li>Addressables loading and a reusable car prefab.</li>
+</ul>
+
+<p>The audit separates <strong>hard blockers</strong> from <strong>preparation work</strong>. A missing LOD or collider may be work we can add. A legally unusable model or a failed import route may block the candidate entirely.</p>
+
+<h2>Tool capability audit</h2>
+
+<p>No new tool is required for the first audit. The connected Blender MCP can inspect the scene directly and can execute Blender Python when a built-in information panel is insufficient. Unity MCP can verify the imported asset after the Blender stage.</p>
+
+<table>
+  <tr><th>Capability</th><th>Available tool</th><th>What it can prove</th><th>Limit</th></tr>
+  <tr><td>Scene inventory</td><td><code>blender-mcp_get_scene_info</code></td><td>Objects, collections, scene structure, and high-level scene data</td><td>May not expose every mesh statistic in the summary</td></tr>
+  <tr><td>Object inspection</td><td><code>blender-mcp_get_object_info</code></td><td>Object type, transforms, and object-level details</td><td>Use a Blender Python audit for complete mesh/material data</td></tr>
+  <tr><td>Deep mesh audit</td><td><code>blender-mcp_execute_blender_code</code></td><td>Vertices, triangles, UV layers, materials, modifiers, parents, actions, bounds, and custom properties through <code>bpy</code></td><td>Requires an explicit audit script; the result must be recorded</td></tr>
+  <tr><td>Visual evidence</td><td><code>blender-mcp_get_viewport_screenshot</code></td><td>Evidence of the actual assembled scene and selected views</td><td>A screenshot cannot prove UVs, legal rights, or hidden animation data</td></tr>
+  <tr><td>Unity asset inspection</td><td><code>ai-game-developer_assets-find</code>, <code>ai-game-developer_assets-get-data</code>, Unity editor tools</td><td>Imported asset presence, subassets, materials, prefab structure, and Unity-side components</td><td>Requires a real Unity import; Blender success is not enough</td></tr>
+  <tr><td>Unity rendering/material verification</td><td><code>ai-game-developer_assets-shader-get-data</code>, screenshots, prefab tools</td><td>Shader support, material assignment, renderer structure, and runtime presentation</td><td>Does not establish the original asset's license</td></tr>
+  <tr><td>License/provenance</td><td>Source page, purchase receipt, license text, archive metadata</td><td>Whether the model may be modified and shipped</td><td>No Blender or Unity tool can prove legal permission</td></tr>
+</table>
+
+<p><strong>Important:</strong> a tool can report that Blender opened a file. That is only the first format check. It does not prove that the complete production route works.</p>
+
+<h2>Before starting: create a diagnostic copy</h2>
+
+<p>Do not evaluate by modifying the only copy of a downloaded model.</p>
+
+<ol>
+  <li>Keep the downloaded source untouched.</li>
+  <li>Open or import the candidate into Blender.</li>
+  <li>Use <strong>File → Save As</strong>.</li>
+  <li>Use a diagnostic name such as <code>candidate-march-cg891-technical-audit.blend</code>.</li>
+  <li>Do not apply transforms, delete objects, join meshes, or repair holes during the audit.</li>
+</ol>
+
+<p>The purpose of the first pass is to measure and understand the candidate. Editing before recording the original state hides the cost of preparation.</p>
+
+<h2>1. Format and import route</h2>
+
+<h3>What it is</h3>
+
+<p>A format is not only the file extension. It is the way the file stores meshes, hierarchy, materials, textures, animation, and external dependencies.</p>
+
+<p>The current folder includes formats such as:</p>
+
+<ul>
+  <li><strong>GLB/GLTF:</strong> a packaged exchange format that often carries meshes, materials, textures, and sometimes animation in one file;</li>
+  <li><strong>FBX:</strong> a broad exchange format commonly used for Unity, but material and animation interpretation depends on export settings;</li>
+  <li><strong>KN5:</strong> an Assetto Corsa-oriented format. Opening or converting it does not automatically preserve a clean general-purpose production structure;</li>
+  <li><strong>DAE and converted files:</strong> alternative exchange copies whose data may differ from the original.</li>
+</ul>
+
+<h3>Why “it opens in Blender” is not enough</h3>
+
+<p>Blender opening the file proves only that the current Blender installation has a reader or importer for that file. The production question is:</p>
+
+<pre><code>Can this candidate travel from its source representation to Blender, then to Unity, while preserving the data we need?</code></pre>
+
+<p>A file may open while losing:</p>
+
+<ul>
+  <li>material assignments;</li>
+  <li>texture paths;</li>
+  <li>object hierarchy;</li>
+  <li>animation actions;</li>
+  <li>custom properties;</li>
+  <li>correct scale or axis orientation.</li>
+</ul>
+
+<h3>Where and how to verify</h3>
+
+<ol>
+  <li>Record the original filename and extension.</li>
+  <li>Record whether the model was imported directly or converted from another format.</li>
+  <li>In Blender, inspect the Outliner, materials, textures, actions, and transforms before exporting.</li>
+  <li>Export a diagnostic FBX or GLB using a deliberate export scope.</li>
+  <li>Import that diagnostic export into Unity.</li>
+  <li>Compare the Blender source and Unity result: object count, mesh appearance, materials, textures, scale, orientation, and animation.</li>
+</ol>
+
+<h3>Pass, warning, and blocker</h3>
+
+<table>
+  <tr><th>Status</th><th>Meaning</th></tr>
+  <tr><td><strong>Pass</strong></td><td>The candidate survives a documented Blender-to-Unity round trip with the required data intact.</td></tr>
+  <tr><td><strong>Warning</strong></td><td>The candidate opens, but conversion or export loses fixable data such as material links or animation clips.</td></tr>
+  <tr><td><strong>Blocker</strong></td><td>The candidate cannot be exported/imported reliably, depends on an unavailable proprietary route, or loses essential geometry or structure.</td></tr>
+</table>
+
+<p><strong>MCP capability:</strong> Blender MCP can inspect the imported scene and execute a round-trip audit. Unity MCP can verify the destination asset. The license and proprietary-converter question require external source research; no editor tool can answer them.</p>
+
+<h2>2. Hierarchy and object separation</h2>
+
+<h3>What hierarchy means</h3>
+
+<p>Hierarchy is the tree of objects and parent-child relationships inside the model. It is not the same as visual appearance and not the same as material slots.</p>
+
+<pre><code>Car_Root
+├── Body
+├── Cockpit_Surround
+├── FrontWing
+├── RearWing
+├── Wheel_FL
+├── Wheel_FR
+├── Wheel_RL
+├── Wheel_RR
+└── Suspension</code></pre>
+
+<p>A model can look perfectly assembled while being one single mesh object. That may be acceptable for a static render, but it makes wheel rotation, suspension animation, material replacement, part replacement, and cockpit insertion harder.</p>
+
+<h3>Where to inspect</h3>
+
+<ol>
+  <li>Open the <strong>Outliner</strong>.</li>
+  <li>Expand the car collection.</li>
+  <li>Count the mesh objects and identify their names.</li>
+  <li>Select a wheel and move only the selection temporarily in the diagnostic copy; undo immediately.</li>
+  <li>Confirm whether the wheel is a separate object or only a disconnected island inside the body mesh.</li>
+  <li>Inspect parent arrows and indentation in the Outliner.</li>
+</ol>
+
+<p>For a non-destructive audit, Blender MCP can perform the same check through <code>bpy.data.objects</code> and report object type, parent, collection, vertex count, and bounding box without moving anything.</p>
+
+<h3>Pass, warning, and blocker</h3>
+
+<table>
+  <tr><th>Status</th><th>Example</th><th>Production meaning</th></tr>
+  <tr><td><strong>Pass</strong></td><td>Body, wheels, wings, suspension, and cockpit surround are independently addressable.</td><td>Good base for assembly and later animation.</td></tr>
+  <tr><td><strong>Warning</strong></td><td>Some parts are fused but can be separated with a controlled cleanup operation.</td><td>Preparation cost must be estimated before choosing the candidate.</td></tr>
+  <tr><td><strong>Blocker</strong></td><td>Essential moving or replaceable parts are fused into a dense mesh and separating them would require destructive remodeling.</td><td>Poor first-test candidate.</td></tr>
+</table>
+
+<p><strong>MCP capability:</strong> fully inspectable through Blender MCP, especially with a short <code>bpy</code> audit. A screenshot alone is not sufficient because it cannot show whether two visible parts are separate objects.</p>
+
+<h2>3. Scale, orientation, and pivots</h2>
+
+<h3>Definitions</h3>
+
+<ul>
+  <li><strong>Scale:</strong> the physical size of the model and the scale values applied to its objects.</li>
+  <li><strong>Orientation:</strong> which direction is forward, which axis is vertical, and how the model is rotated relative to the game.</li>
+  <li><strong>Pivot/origin:</strong> the point around which an object rotates, scales, or is positioned.</li>
+</ul>
+
+<h3>Why they matter</h3>
+
+<p>Scale affects physics, camera distance, lighting, collision size, and the relative position of the shared cockpit. Orientation affects movement direction, camera placement, export conventions, and prefab setup. Pivots affect animation.</p>
+
+<p>A wheel can look correct while having its origin several centimeters away from its axle. In Unity, rotating that wheel around the wrong origin makes it orbit or wobble instead of rolling.</p>
+
+<h3>Where to inspect</h3>
+
+<ol>
+  <li>Select the car root and open <strong>N → Item</strong>.</li>
+  <li>Record location, rotation, scale, and dimensions.</li>
+  <li>Select each wheel and record its origin relative to the wheel center.</li>
+  <li>Enable the object-origin display if necessary.</li>
+  <li>Use the same axis convention for every candidate and record any conversion needed.</li>
+  <li>Do not apply transforms during the audit; record the current state first.</li>
+</ol>
+
+<p>Blender MCP can inspect object transforms, world-space matrices, dimensions, and origins through <code>bpy</code>. A viewport screenshot can prove the visible axis relationship but not replace the numeric record.</p>
+
+<h3>Pass, warning, and blocker</h3>
+
+<ul>
+  <li><strong>Pass:</strong> one consistent car scale, known forward/up axes, and wheel origins near axle centers.</li>
+  <li><strong>Warning:</strong> scale or orientation needs a documented normalization step.</li>
+  <li><strong>Blocker:</strong> parts use inconsistent scales, wheel pivots are unusable, or the model cannot be normalized without changing geometry relationships.</li>
+</ul>
+
+<h2>4. Triangle count and mesh cost</h2>
+
+<h3>What is being counted?</h3>
+
+<p>A mesh may be described by vertices, edges, faces, or triangles. The renderer ultimately processes triangles, so the audit records triangles rather than relying only on the number of polygons shown in Blender.</p>
+
+<ul>
+  <li><strong>Vertex:</strong> a point in space.</li>
+  <li><strong>Edge:</strong> a connection between points.</li>
+  <li><strong>Face/polygon:</strong> a surface region, often a quad or triangle.</li>
+  <li><strong>Triangle:</strong> the basic primitive used by the renderer after triangulation.</li>
+</ul>
+
+<h3>Where to see it in Blender</h3>
+
+<ol>
+  <li>Open <strong>Viewport Overlays</strong>.</li>
+  <li>Enable <strong>Statistics</strong>.</li>
+  <li>Read the viewport statistics for selected objects and the scene.</li>
+  <li>For an exact audit, use Blender MCP Python to call <code>mesh.calc_loop_triangles()</code> and count <code>mesh.loop_triangles</code>.</li>
+  <li>Record LOD0 total triangles and the largest individual objects.</li>
+</ol>
+
+<p>The exact number must be recorded from the candidate rather than guessed from its appearance. The project loads 16 car slots, so also record the simple projection:</p>
+
+<pre><code>LOD0 triangles × 16 cars</code></pre>
+
+<p>This is not the final frame-cost prediction because materials, LOD selection, shadows, culling, and screen size also matter. It is a first risk indicator.</p>
+
+<h3>Do not invent a pass threshold</h3>
+
+<p>No approved project-wide triangle budget is established by this audit. Therefore, do not call a 50,000-triangle model automatically good or a 100,000-triangle model automatically bad. Compare the candidates, inspect their LODs, and measure the actual Unity scene before setting a production budget.</p>
+
+<h3>Pass, warning, and blocker</h3>
+
+<ul>
+  <li><strong>Pass:</strong> the cost is known, the mesh is not obviously wasteful, and reduction or LOD creation is practical.</li>
+  <li><strong>Warning:</strong> the candidate is heavy but has useful detail, or no LOD exists yet.</li>
+  <li><strong>Blocker:</strong> the candidate is so heavy or fragmented that it prevents a controlled first Unity test and cannot be reduced without destroying the required form.</li>
+</ul>
+
+<p><strong>MCP capability:</strong> fully measurable via Blender Python. Unity profiling is still required for the final runtime decision.</p>
+
+<h2>5. UV maps</h2>
+
+<h3>What a UV map is</h3>
+
+<p>A UV map is the two-dimensional layout that tells a texture where to appear on a three-dimensional mesh. The letters U and V represent the texture-space axes, separate from the model's X, Y, and Z axes.</p>
+
+<h3>Where to inspect</h3>
+
+<ol>
+  <li>Select a body mesh.</li>
+  <li>Open the <strong>UV Editing</strong> workspace.</li>
+  <li>Check the <strong>Object Data Properties → UV Maps</strong> list.</li>
+  <li>Enter Edit Mode and select all faces.</li>
+  <li>Confirm that the UV islands appear in the UV Editor.</li>
+  <li>Inspect body, wings, wheels, cockpit, and suspension separately.</li>
+  <li>Check whether unique left/right markings require overlapping UVs or have distinct islands.</li>
+</ol>
+
+<p>Blender MCP can report the existence and names of UV layers and can calculate basic UV coverage. It can also generate diagnostic screenshots. Exact quality still requires looking at the UV layout because a UV layer can exist while being unusable.</p>
+
+<h3>Reproducible UV-space and overlap check</h3>
+
+<p>The following is the exact verification protocol used on the March CG891 in Blender 5.2.0 LTS. It distinguishes a UV layout that looks organized from one that gives important livery surfaces enough texture resolution.</p>
+
+<ol>
+  <li>Work in the <strong>UV Editing</strong> workspace. In the tested Blender 5.2 layout, the large area on the left was an <strong>Image Editor/UV Editor</strong> and the 3D Viewport was on the right. The location can vary, so always place the mouse over the intended area before using a shortcut.</li>
+  <li>In the 3D Viewport, enter <strong>Edit Mode</strong> and select the body faces to measure: first the engine-cover side, then the main sidepod livery panel.</li>
+  <li>Move the mouse over the UV Editor and press <code>Alt+A</code> before making a new selection. This clears the previous UV-overlap selection.</li>
+  <li>Observe the selected UV region. The full UV tile represents coordinates <code>0–1</code>. On the observed grid, each major division is approximately <code>0.1</code> UV units.</li>
+  <li>For a 2048×2048 texture, convert normalized UV size to pixels with:<br><code>pixel width = UV width × 2048</code><br><code>pixel height = UV height × 2048</code></li>
+</ol>
+
+<p>Blender 5.2 does not provide a simple Width/Height readout for a multi-face UV selection in the standard UV Editor sidebar. The grid is sufficient for a quick visual estimate. For an exact, non-destructive measurement, use the MCP tool <code>blender-mcp_execute_blender_code</code> with this Blender Python audit:</p>
+
+<pre><code>import bpy, bmesh, json
+
+obj = bpy.data.objects.get("march")
+bm = bmesh.from_edit_mesh(obj.data)
+uv = bm.loops.layers.uv.active
+
+points = []
+selected_faces = 0
+for face in bm.faces:
+    if face.select:
+        selected_faces += 1
+        points += [(loop[uv].uv.x, loop[uv].uv.y) for loop in face.loops]
+
+unique_points = []
+for point in points:
+    if not any(abs(point[0] - other[0]) &lt; 1e-6 and
+               abs(point[1] - other[1]) &lt; 1e-6
+               for other in unique_points):
+        unique_points.append(point)
+
+min_x = min(point[0] for point in unique_points)
+max_x = max(point[0] for point in unique_points)
+min_y = min(point[1] for point in unique_points)
+max_y = max(point[1] for point in unique_points)
+
+print(json.dumps({
+    "selected_faces": selected_faces,
+    "uv_width": max_x - min_x,
+    "uv_height": max_y - min_y,
+    "pixel_width_at_2048": (max_x - min_x) * 2048,
+    "pixel_height_at_2048": (max_y - min_y) * 2048
+}, indent=2))</code></pre>
+
+<p>The result is a bounding-box measurement, not the exact filled area of the island. It is still the correct first metric for checking whether a livery panel is too small for readable markings.</p>
+
+<p><strong>March CG891 evidence:</strong> the selected engine-cover side measured approximately <code>0.12055 × 0.28916</code>, or <code>247 × 592 pixels</code> at 2048×2048. The selected sidepod measured approximately <code>0.17670 × 0.35700</code>, or <code>362 × 731 pixels</code>. The sidepod is therefore the stronger livery surface and is large enough for a number, stripe, and medium-sized sponsor treatment.</p>
+
+<h3>UV-overlap check</h3>
+
+<ol>
+  <li>With the UV Editor active, press <code>A</code>.</li>
+  <li>Press <code>F3</code> and search for <code>Select Overlap</code>.</li>
+  <li>Press <code>Enter</code>. Do not move or delete the selected UVs.</li>
+  <li>Inspect the corresponding orange faces in the 3D Viewport.</li>
+</ol>
+
+<p>Overlapping UVs are acceptable on surfaces that intentionally share one uniform or seamless texture. They are a warning when those faces may later receive different numbers, logos, damage, or directional markings. They are a blocker on a lightmap UV channel that must remain unique for baked lighting. Always record which UV channel was tested; the March livery check used <code>UVChannel_1</code> and the body texture <code>march_16extra0.dds</code> at 2048×2048.</p>
+
+<h3>Pass, warning, and blocker</h3>
+
+<ul>
+  <li><strong>Pass:</strong> important visible meshes have usable UVs and there is enough layout for the intended livery.</li>
+  <li><strong>Warning:</strong> UVs exist but are crowded, mirrored, stretched, or require repacking.</li>
+  <li><strong>Blocker:</strong> the body has no usable UVs and the intended surface workflow depends on painted livery that cannot be applied without a full unwrap.</li>
+</ul>
+
+<p>Mirrored UVs are not automatically bad. They are only a problem when the left and right sides need different readable markings.</p>
+
+<h2>6. Materials and textures</h2>
+
+<h3>What to inspect</h3>
+
+<p>A material is the set of surface parameters assigned to a renderer. A texture is an image or data map used by that material. A shader is the program that interprets those inputs.</p>
+
+<p>Inspect:</p>
+
+<ul>
+  <li>material slots per renderer;</li>
+  <li>total material count;</li>
+  <li>base-color textures;</li>
+  <li>normal, roughness, metallic, and emission maps;</li>
+  <li>missing image paths;</li>
+  <li>shader names and custom nodes;</li>
+  <li>whether materials are shared across unrelated parts.</li>
+</ul>
+
+<h3>Where to inspect</h3>
+
+<ol>
+  <li>Select an object and open <strong>Material Properties</strong>.</li>
+  <li>Record every material slot.</li>
+  <li>Open the <strong>Shader Editor</strong>.</li>
+  <li>Trace image texture nodes and note their file paths.</li>
+  <li>Use <strong>File → External Data → Report Missing Files</strong> when appropriate.</li>
+  <li>Use Blender MCP Python to produce a complete material-to-object and material-to-texture report.</li>
+  <li>After Unity import, inspect the generated materials and shader assignments with Unity tools.</li>
+</ol>
+
+<h3>Pass, warning, and blocker</h3>
+
+<ul>
+  <li><strong>Pass:</strong> materials and textures are discoverable, replaceable, and can be routed to the project's URP material strategy.</li>
+  <li><strong>Warning:</strong> many materials, missing textures, or game-specific shader graphs require consolidation.</li>
+  <li><strong>Blocker:</strong> essential visual data is inaccessible, encrypted, legally unusable, or dependent on a shader that cannot be reproduced in Unity.</li>
+</ul>
+
+<p>The original livery does not need to be retained. The technical question is whether the model provides a workable surface representation or a clean mesh that can receive new materials.</p>
+
+<h3>Blender 5.2 practical procedure</h3>
+
+<ol>
+  <li>Select the object in the <strong>3D Viewport</strong> or <strong>Outliner</strong>.</li>
+  <li>Open <strong>Material Properties</strong> in the Properties editor. The icon is the red sphere near the bottom of the vertical icon strip.</li>
+  <li>Record the material slots assigned to that object.</li>
+  <li>Switch to the <strong>Shading</strong> workspace. The <strong>Shader Editor</strong> is normally along the bottom of the workspace.</li>
+  <li>Find the <strong>Image Texture</strong>, <strong>Principled BSDF</strong>, and <strong>Material Output</strong> nodes.</li>
+  <li>Confirm that image <strong>Color</strong> connects to <strong>Base Color</strong> and that the normal texture passes through <strong>Normal Map</strong> into <strong>Normal</strong>.</li>
+  <li>Inspect whether an image <strong>Alpha</strong> socket is connected to <strong>Principled BSDF → Alpha</strong>. Disconnect the wire by dragging from the socket into empty space only when the surface is opaque.</li>
+  <li>For Assetto Corsa atlas materials, Alpha is often a shader mask, not transparency. This was proven on the March bodywork, carbon floor, dashboard, and steering-wheel materials.</li>
+  <li>Keep Alpha for genuine glass, glow, LED, blur, or cutout materials until their visual result is confirmed.</li>
+  <li>Run <strong>File → External Data → Report Missing Files</strong>.</li>
+  <li>Inspect the final result in Material Preview from front, rear, side, top, and three-quarter views.</li>
+</ol>
+
+<h3>Worked material example: March CG891</h3>
+
+<p>The March audit found 42 materials, 33 textures, and no missing texture references. The original Assetto Corsa Alpha connections made opaque body and cockpit geometry invisible in Blender. Removing only the incorrect Alpha-to-Alpha connections revealed the existing carbon floor, cockpit panels, dashboard, steering wheel, buttons, and gear lever. No replacement geometry was required.</p>
+
+<p>The correct result is <strong>PASS with engine-conversion work remaining</strong>: the source materials are discoverable and usable, while Unity/URP materials will be created later. Do not remove Alpha from every material without checking whether it represents real glass, glow, or cutout behavior.</p>
+
+<h2>7. Animations and rig data</h2>
+
+<h3>What to inspect</h3>
+
+<p>Inspect whether the candidate contains:</p>
+
+<ul>
+  <li>armatures and bones;</li>
+  <li>object actions;</li>
+  <li>shape keys;</li>
+  <li>wheel rotation actions;</li>
+  <li>steering actions;</li>
+  <li>suspension actions;</li>
+  <li>driver actions;</li>
+  <li>duplicate or validation clips.</li>
+</ul>
+
+<h3>Where to inspect</h3>
+
+<ol>
+  <li>Check the Outliner for armatures.</li>
+  <li>Open the <strong>Dope Sheet → Action Editor</strong>.</li>
+  <li>Open the <strong>NLA Editor</strong> if the candidate uses NLA tracks.</li>
+  <li>Check Blender's <code>bpy.data.actions</code> through MCP Python.</li>
+  <li>Record action names, frame ranges, and the objects they animate.</li>
+  <li>Verify whether animation data is part of the car or belongs to a separate driver.</li>
+</ol>
+
+<h3>Interpretation</h3>
+
+<p>No animation is not automatically a failure. A static car with clean wheel objects and correct pivots can receive animation later. Conversely, hundreds of imported clips are not automatically valuable; they may be validation actions from the source game.</p>
+
+<ul>
+  <li><strong>Pass:</strong> animation ownership is understandable, or the model is cleanly static and ready for our own animation setup.</li>
+  <li><strong>Warning:</strong> useful parts exist but actions require cleanup or rebaking.</li>
+  <li><strong>Blocker:</strong> essential parts depend on a broken rig or animation data that cannot be separated from the asset without losing the car.</li>
+</ul>
+
+<p><strong>MCP capability:</strong> Blender MCP Python can inspect actions, F-curves, armatures, constraints, and object animation. Actual motion quality still requires playing or rendering the animation.</p>
+
+<h3>Blender 5.2 practical procedure</h3>
+
+<ol>
+  <li>In the <strong>Outliner</strong>, search for <code>Armature</code>. Record whether an armature exists.</li>
+  <li>Change an editor to <strong>Dope Sheet</strong> using the editor-type button at the top-left of that editor.</li>
+  <li>In the Dope Sheet mode selector, choose <strong>Action Editor</strong>. Record the available actions and frame ranges.</li>
+  <li>If the asset uses animation tracks, change an editor to <strong>NLA Editor</strong> and record its tracks.</li>
+  <li>Select a mesh, open <strong>Object Data Properties</strong> (green triangle icon), and inspect the <strong>Shape Keys</strong> panel.</li>
+  <li>In the Outliner, expand the wheel groups and record whether the tyre, rim, disc, and blur parts are separated and parented together.</li>
+  <li>Enable origin display in the 3D Viewport: click the small arrow beside <strong>Overlays</strong> (the two overlapping circles), open <strong>Objects</strong>, then enable <strong>Origins</strong> or <strong>Origins (All)</strong>.</li>
+  <li>Do not move origins during the evaluation. An origin at world <code>0,0,0</code> is evidence that the part still needs a functional pivot; it is not a reason to move the mesh itself.</li>
+</ol>
+
+<h3>Wheel animation interpretation</h3>
+
+<p>Separate wheel parts are valuable, but separation alone is not a pivot. The complete wheel assembly must rotate together around a new pivot at the axle center:</p>
+
+<pre><code>STEER_LF
+└── ROLL_LF
+    ├── Tyre
+    ├── Rim
+    ├── Disc
+    └── Blur</code></pre>
+
+<p><code>STEER_LF</code> turns a front wheel left or right. <code>ROLL_LF</code> rotates the complete assembly while the car moves. Rear wheels normally need only the rolling pivot. A wheel-side mesh separated from the centre is useful because it reduces editing work, but the tyre, rim, disc, and blur meshes must still be placed under the same rolling pivot.</p>
+
+<h3>Worked animation example: March CG891</h3>
+
+<p>The March contains no armature, no Actions, and no Shape Keys. It does contain four wheel groups (<code>WHEEL_LF</code>, <code>WHEEL_RF</code>, <code>WHEEL_LR</code>, and <code>WHEEL_RR</code>) with separated disc, rim, tyre, and blur branches. The groups are useful organization, but the audited origins are all at world <code>0,0,0</code>; they are not functional wheel pivots yet.</p>
+
+<p>Classification: <strong>WARNING, not BLOCKER</strong>. This is a clean static source that can receive steering and rolling pivots later. No imported animation is required for the model to become a usable game asset.</p>
+
+<h2>8. LODs</h2>
+
+<h3>What LOD means</h3>
+
+<p>LOD means Level of Detail. A model has multiple visual versions, and the game selects a cheaper version when the car is farther from the camera.</p>
+
+<h3>Where to inspect</h3>
+
+<ol>
+  <li>Search the Outliner for names such as <code>LOD0</code>, <code>LOD1</code>, <code>LOD2</code>, or source-specific equivalents.</li>
+  <li>Compare each variant's triangle count with the high-detail version.</li>
+  <li>Compare the silhouette and important parts between variants.</li>
+  <li>Check for missing wheels, wings, or materials in the lower variants.</li>
+  <li>After Unity import, verify whether a real <code>LODGroup</code> can be created and configured.</li>
+</ol>
+
+<p>Blender MCP can identify candidate LOD objects, compare their mesh statistics, and report whether they are genuinely different meshes. Unity MCP can verify the runtime LODGroup after assembly.</p>
+
+<ul>
+  <li><strong>Pass:</strong> existing LODs are real, progressively cheaper, and visually stable.</li>
+  <li><strong>Warning:</strong> LODs are absent or need creation, but LOD0 is usable.</li>
+  <li><strong>Blocker:</strong> lower variants are broken, misleadingly named, or the LOD structure cannot be separated from unrelated source-game logic.</li>
+</ul>
+
+<h2>9. Colliders</h2>
+
+<h3>What a collider is</h3>
+
+<p>A collider is the simplified physical shape used for contact and physics queries. It is not the same as the detailed visible mesh.</p>
+
+<p>Typical car colliders include:</p>
+
+<ul>
+  <li>body/chassis collider;</li>
+  <li>wheel colliders or wheel reference objects;</li>
+  <li>front and rear collision volumes;</li>
+  <li>source-game helper meshes.</li>
+</ul>
+
+<h3>Where to inspect</h3>
+
+<ol>
+  <li>In Blender, inspect the Outliner for objects named <code>COL</code>, <code>Collider</code>, or similar.</li>
+  <li>Check whether helper meshes are visibly separate from render meshes.</li>
+  <li>After Unity import, inspect GameObject components with Unity's component tools.</li>
+  <li>Record whether the collider is a usable primitive, a mesh collider, or merely source-game data.</li>
+</ol>
+
+<p>Blender MCP can report helper objects and mesh statistics. Unity is the authoritative place to verify Collider components and their settings.</p>
+
+<ul>
+  <li><strong>Pass:</strong> collision can be created or reused without coupling it to the render mesh.</li>
+  <li><strong>Warning:</strong> no usable collider is included, but the car body can receive a new simplified collider.</li>
+  <li><strong>Blocker:</strong> the candidate depends on inaccessible source-game collision logic or the render hierarchy makes a safe collision setup impractical.</li>
+</ul>
+
+<p>A missing collider alone should not reject an otherwise excellent visual model. It is normally preparation work.</p>
+
+<h2>10. Shared cockpit integration</h2>
+
+<h3>Project-specific boundary</h3>
+
+<p>Each car owns its exterior: bodywork, cockpit surround, wings, wheels, suspension, and livery. The project uses one shared internal cockpit containing the driver, seat, belts, steering wheel, dashboard, and pedals.</p>
+
+<p>The audit therefore does not ask whether every downloaded car has a complete historical interior. It asks whether the car's exterior can accept the shared module.</p>
+
+<h3>Where to inspect</h3>
+
+<ol>
+  <li>Hide the driver and interior objects in the diagnostic copy.</li>
+  <li>Inspect the external cockpit opening from side, front three-quarter, rear three-quarter, and top views.</li>
+  <li>Check whether the opening is a clean boundary in the exterior shell.</li>
+  <li>Measure the opening and record its center, width, length, and height.</li>
+  <li>Check whether bodywork blocks the planned driver, steering wheel, or dashboard volume.</li>
+  <li>Check whether the internal cockpit is fused to the exterior mesh.</li>
+</ol>
+
+<p>Blender MCP can inspect the object boundary, bounding boxes, and separation. A screenshot is required to prove the visual fit; numeric dimensions alone do not prove that the module will look correct.</p>
+
+<ul>
+  <li><strong>Pass:</strong> the exterior opening is usable and the internal cockpit can be replaced or inserted.</li>
+  <li><strong>Warning:</strong> interior removal or a small fit adjustment is required.</li>
+  <li><strong>Blocker:</strong> the exterior has no usable cockpit boundary or the cockpit is fused into essential bodywork in a way that requires remodeling.</li>
+</ul>
+
+<h2>11. License and provenance</h2>
+
+<h3>Why it belongs in the technical audit</h3>
+
+<p>A model can be technically excellent and still be unusable in a commercial or public game. Download location alone does not establish rights.</p>
+
+<h3>What to record</h3>
+
+<ul>
+  <li>source website and product page;</li>
+  <li>creator or publisher;</li>
+  <li>license text;</li>
+  <li>commercial-use permission;</li>
+  <li>permission to modify;</li>
+  <li>permission to redistribute inside a compiled game;</li>
+  <li>texture and material license;</li>
+  <li>whether the model was extracted from another game;</li>
+  <li>purchase receipt or account record, if applicable.</li>
+</ul>
+
+<p>Neither Blender MCP nor Unity MCP can prove this. This criterion requires reading the source license and, when necessary, contacting the creator. A missing license is a production risk, not evidence that the mesh is bad.</p>
+
+<ul>
+  <li><strong>Pass:</strong> rights cover the intended use.</li>
+  <li><strong>Warning:</strong> rights are unclear and require confirmation.</li>
+  <li><strong>Blocker:</strong> the license prohibits the intended use or the model is clearly extracted without redistribution permission.</li>
+</ul>
+
+<h2>Recommended audit order</h2>
+
+<p>Do not spend equal time on every criterion before checking the likely blockers. Use this order for each candidate:</p>
+
+<ol>
+  <li>source and license;</li>
+  <li>format route and diagnostic round trip;</li>
+  <li>hierarchy and object separation;</li>
+  <li>scale, orientation, and wheel pivots;</li>
+  <li>triangle count and mesh cost;</li>
+  <li>UV maps;</li>
+  <li>materials and textures;</li>
+  <li>cockpit boundary;</li>
+  <li>animations;</li>
+  <li>LODs;</li>
+  <li>colliders.</li>
+</ol>
+
+<p>If a candidate fails a hard blocker in the first three stages, record the reason and stop spending time on the remaining stages. If it passes, complete the full audit so candidates can be compared fairly.</p>
+
+<h2>Candidate audit sheet</h2>
+
+<table>
+  <tr><th>#</th><th>Criterion</th><th>Evidence to record</th><th>Status</th><th>Preparation cost</th></tr>
+  <tr><td>1</td><td>Format route</td><td>Source format, conversion, round-trip result</td><td>Pass / Warning / Blocker</td><td>Low / Medium / High</td></tr>
+  <tr><td>2</td><td>Hierarchy</td><td>Object tree and separable parts</td><td>Pass / Warning / Blocker</td><td>Low / Medium / High</td></tr>
+  <tr><td>3</td><td>Transforms and pivots</td><td>Dimensions, axes, wheel origins</td><td>Pass / Warning / Blocker</td><td>Low / Medium / High</td></tr>
+  <tr><td>4</td><td>Triangles</td><td>LOD0 total, per-part cost, 16-car projection</td><td>Pass / Warning / Blocker</td><td>Low / Medium / High</td></tr>
+  <tr><td>5</td><td>UVs</td><td>UV layers, layout, overlap, body coverage</td><td>Pass / Warning / Blocker</td><td>Low / Medium / High</td></tr>
+  <tr><td>6</td><td>Materials/textures</td><td>Slots, maps, missing files, shader dependencies</td><td>Pass / Warning / Blocker</td><td>Low / Medium / High</td></tr>
+  <tr><td>7</td><td>Animations</td><td>Actions, armatures, wheel/driver ownership</td><td>Pass / Warning / Blocker</td><td>Low / Medium / High</td></tr>
+  <tr><td>8</td><td>LODs</td><td>Variants, triangle reduction, silhouette stability</td><td>Pass / Warning / Blocker</td><td>Low / Medium / High</td></tr>
+  <tr><td>9</td><td>Colliders</td><td>Helper meshes and Unity collider plan</td><td>Pass / Warning / Blocker</td><td>Low / Medium / High</td></tr>
+  <tr><td>10</td><td>Cockpit integration</td><td>Opening dimensions, boundary, interior separation</td><td>Pass / Warning / Blocker</td><td>Low / Medium / High</td></tr>
+  <tr><td>11</td><td>License</td><td>Source, rights, modification and redistribution terms</td><td>Pass / Warning / Blocker</td><td>Low / Medium / High</td></tr>
+</table>
+
+<h2>Final classification</h2>
+
+<table>
+  <tr><th>Classification</th><th>Required evidence</th><th>Next action</th></tr>
+  <tr><td><strong>First-test candidate</strong></td><td>No hard blockers; hierarchy, transforms, material route, UVs, and mesh cost are understood; cockpit boundary is usable.</td><td>Perform the controlled Blender-to-Unity import and build the first learning prefab.</td></tr>
+  <tr><td><strong>Usable with preparation</strong></td><td>No hard blockers, but one or more fixable tasks such as UV repacking, material consolidation, LOD creation, or collider setup remain.</td><td>Estimate the preparation work and compare it with other candidates.</td></tr>
+  <tr><td><strong>Reference only</strong></td><td>Useful geometry or historical data, but high cleanup cost, poor organization, or unclear rights.</td><td>Keep for comparison; do not make it the first pipeline test.</td></tr>
+  <tr><td><strong>Reject for production use</strong></td><td>Legal blocker, failed round trip, unrecoverable structure, or essential data loss.</td><td>Record the reason and stop investing time in the candidate.</td></tr>
+</table>
+
+<h2>What this audit proves</h2>
+
+<p>At the end of the audit, the decision must be evidence-based:</p>
+
+<ul>
+  <li>not “this model looks good”;</li>
+  <li>not “Blender opened it”;</li>
+  <li>not “it has many polygons”;</li>
+  <li>not “it already has textures”.</li>
+</ul>
+
+<p>The useful conclusion is:</p>
+
+<pre><code>This candidate has a known import route, separable production parts,
+correct transforms and pivots, usable UV/material data, a measurable
+mesh cost, a compatible cockpit boundary, and no unresolved blocker.</code></pre>
+
+<p>Only then is it a defensible first model for the Overdrive pipeline.</p>
+
+<h2>Primary sources</h2>
+
+<ul>
+  <li><a href="overdrive-asset-production-lesson-03-3d-asset-anatomy.html">Lesson 3 — Anatomy of a 3D Asset</a></li>
+  <li><a href="overdrive-asset-production-lesson-06-blender-export-validation.html">Lesson 6 — Blender Asset Preparation and Export Validation</a></li>
+  <li><code>design/art/art-bible.md</code></li>
+  <li><code>design/assets/asset-manifest.md</code></li>
+  <li><code>docs/architecture/adr-0002-vehicle-physics-implementation-pattern.md</code></li>
+  <li><code>docs/architecture/adr-0003-content-pipeline-and-addressables.md</code></li>
+</ul>
+
+<footer>
+  Overdrive Learning Workspace · Technical candidate evaluation
+</footer>
+
+</body>
+</html>

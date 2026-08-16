@@ -1,0 +1,21 @@
+{
+  "name": "SettingsUnitTests",
+  "references": [
+    "Overdrive.Settings.Core",
+    "Overdrive.Settings",
+    "Overdrive.Simulation"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "noEngineReferences": false,
+  "rootNamespace": "Overdrive.Settings.Tests"
+}

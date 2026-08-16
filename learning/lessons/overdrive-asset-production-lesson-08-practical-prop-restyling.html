@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 8 — Practical Restyling of a Simple Prop</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production · Lesson 8</p>
+  <h1>Practical restyling of a simple prop</h1>
+  <p class="meta">2026-08-08 · Mission: <a href="../MISSION.md">MISSION.md</a> · ~45 min</p>
+</header>
+
+<h2>The question this lesson answers</h2>
+
+<p>How can the visual identity of an asset change while its geometry, hierarchy, and prefab structure remain unchanged?</p>
+
+<blockquote><strong>Restyling changes the surface treatment. It does not silently remodel the object.</strong></blockquote>
+
+<p>This lesson moves away from vehicles and uses a small environment asset: <code>prop_wall_A</code>. A prop is deliberately smaller than a car, so one visual decision can be isolated, compared, and undone without mixing it with vehicle proportions, UV problems, animation, or cockpit materials.</p>
+
+<h2>1. The verified prop</h2>
+
+<p>The source prefab is:</p>
+
+<pre><code>Assets/Prototype/RaceFeel/Prefabs/prop_wall_A.prefab</code></pre>
+
+<p>It contains two visible mesh branches:</p>
+
+<table>
+  <tr><th>Branch</th><th>Renderer</th><th>Material</th><th>Role</th></tr>
+  <tr><td><code>prop_wall_A</code></td><td>Root MeshRenderer</td><td><code>GARAGES.mat</code></td><td>Main wall structure</td></tr>
+  <tr><td><code>wall_fence_001</code></td><td>Child MeshRenderer</td><td><code>FENCE.mat</code></td><td>Fence element</td></tr>
+</table>
+
+<p>This is useful because the prop has more than one material route but remains small enough to understand completely. The root and the child share the prefab hierarchy, but they do not share the same material asset.</p>
+
+<h2>2. What restyling is allowed to change</h2>
+
+<table>
+  <tr><th>Layer</th><th>Change in this lesson?</th></tr>
+  <tr><td>Mesh and silhouette</td><td>No</td></tr>
+  <tr><td>Hierarchy and child objects</td><td>No</td></tr>
+  <tr><td>UV layout</td><td>No</td></tr>
+  <tr><td>Material reference</td><td>Yes, through an isolated copy</td></tr>
+  <tr><td>Base Color or Base Map</td><td>Yes, one controlled variable</td></tr>
+  <tr><td>Shader family</td><td>Only if the experiment explicitly tests it</td></tr>
+  <tr><td>Lighting</td><td>No; keep the baseline fixed</td></tr>
+</table>
+
+<p>The constraint is intentional. If the wall changes shape, material, lighting, and camera at the same time, you cannot know what caused the visual difference.</p>
+
+<h2>3. Baseline before editing</h2>
+
+<ol>
+  <li>Open or import a copy of <code>prop_wall_A.prefab</code> in the lesson Unity project.</li>
+  <li>Place one original instance in the scene.</li>
+  <li>Frame the object from the same camera view that will be used after the change.</li>
+  <li>Capture a baseline image.</li>
+  <li>Record the root material and the fence material separately.</li>
+</ol>
+
+<p>The baseline must answer:</p>
+
+<pre><code>What is the original geometry?
+What is the original material route?
+Which parts are controlled by GARAGES.mat?
+Which parts are controlled by FENCE.mat?
+Which camera and light settings are fixed?</code></pre>
+
+<h2>4. Make an isolated material copy</h2>
+
+<p>Do not edit <code>GARAGES.mat</code> directly. The original material may be used by other walls or scene instances.</p>
+
+<ol>
+  <li>Select <code>GARAGES.mat</code> in the Project window.</li>
+  <li>Duplicate it.</li>
+  <li>Rename the copy to <code>GARAGES_Lesson8.mat</code>.</li>
+  <li>Keep <code>FENCE.mat</code> unchanged for the first experiment.</li>
+</ol>
+
+<p>The intended reference graph becomes:</p>
+
+<pre><code>Original wall instance
+  prop_wall_A → GARAGES.mat
+  wall_fence_001 → FENCE.mat
+
+Restyled wall instance
+  prop_wall_A → GARAGES_Lesson8.mat
+  wall_fence_001 → FENCE.mat</code></pre>
+
+<p>Only the root wall material is isolated. The fence remains a control condition.</p>
+
+<h2>5. Perform one surface change</h2>
+
+<p>Choose one change. Do not combine them in the first pass.</p>
+
+<ul>
+  <li>change the Base Color to a controlled Overdrive color;</li>
+  <li>replace the Base Map with a prepared painted texture;</li>
+  <li>reduce Smoothness to make the wall less plastic;</li>
+  <li>switch from URP/Lit to Simple Lit as a shader experiment.</li>
+</ul>
+
+<p>The strongest first experiment is usually Base Color or Smoothness because the result is easy to see and does not introduce a new UV question.</p>
+
+<p>Keep these fixed:</p>
+
+<ul>
+  <li>camera position;</li>
+  <li>camera angle;</li>
+  <li>light direction and intensity;</li>
+  <li>object position and scale;</li>
+  <li>mesh and child hierarchy;</li>
+  <li>the fence material.</li>
+</ul>
+
+<h2>6. Assign the copy to one instance</h2>
+
+<p>Duplicate the original wall instance in the scene. Assign <code>GARAGES_Lesson8.mat</code> only to the root MeshRenderer of the duplicate.</p>
+
+<p>Do not edit the prefab asset in Prefab Mode for this experiment. A scene-instance assignment makes the scope visible:</p>
+
+<pre><code>Original instance → original material
+Duplicate instance → copied material
+Same mesh → same hierarchy → different surface result</code></pre>
+
+<p>If both walls change, the material is still shared. If only the duplicate changes, the material route is isolated correctly.</p>
+
+<h2>7. Read the visual result</h2>
+
+<p>Compare the baseline and the restyled instance using the same camera.</p>
+
+<table>
+  <tr><th>Question</th><th>What to inspect</th></tr>
+  <tr><td>Did the silhouette change?</td><td>If yes, something beyond material editing changed.</td></tr>
+  <tr><td>Did the fence change?</td><td>If yes, the wrong material was edited or shared.</td></tr>
+  <tr><td>Did the wall become more Overdrive-like?</td><td>Judge color, surface response, and graphic clarity.</td></tr>
+  <tr><td>Did the scene lighting change?</td><td>If yes, the comparison is invalid.</td></tr>
+  <tr><td>Did the original instance change?</td><td>If yes, the material copy was not isolated.</td></tr>
+</table>
+
+<h2>8. What this teaches about the art bible</h2>
+
+<p>The art bible does not require every asset to be remodeled from scratch. It requires the visible result to belong to the same visual world.</p>
+
+<p>A structurally acceptable prop can move closer to that world through:</p>
+
+<ul>
+  <li>controlled palette;</li>
+  <li>painted rather than photoreal surface information;</li>
+  <li>reduced unwanted gloss;</li>
+  <li>clear material separation;</li>
+  <li>consistent lighting and presentation.</li>
+</ul>
+
+<p>The mesh is not automatically “Overdrive” or “not Overdrive.” Its surface treatment and presentation are part of the evaluation.</p>
+
+<h2>Controlled exercise</h2>
+
+<ol>
+  <li>Import or copy <code>prop_wall_A.prefab</code> into the lesson Unity project.</li>
+  <li>Place two instances side by side.</li>
+  <li>Capture the original instance as the baseline.</li>
+  <li>Duplicate <code>GARAGES.mat</code> as <code>GARAGES_Lesson8.mat</code>.</li>
+  <li>Change exactly one material property.</li>
+  <li>Assign the copy only to the second instance's root MeshRenderer.</li>
+  <li>Capture the same camera view.</li>
+  <li>Confirm that the fence and the original wall remain unchanged.</li>
+  <li>Record whether the result is a useful visual improvement or only a different color.</li>
+</ol>
+
+<details>
+  <summary>Expected reasoning</summary>
+  <div class="answer">
+    <p>The successful result is not “the wall changed color.” It is: the mesh stayed identical, the fence stayed under its original material, the second wall used an isolated material copy, and one controlled surface change produced a measurable visual difference.</p>
+  </div>
+</details>
+
+<h2>Acceptance matrix</h2>
+
+<table>
+  <tr><th>Criterion</th><th>Evidence required</th><th>Status</th></tr>
+  <tr><td>Prop structure understood</td><td>Root and <code>wall_fence_001</code> identified</td><td>PASS / FAIL</td></tr>
+  <tr><td>Material routes recorded</td><td><code>GARAGES.mat</code> and <code>FENCE.mat</code> mapped to their renderers</td><td>PASS / FAIL</td></tr>
+  <tr><td>Baseline captured</td><td>Original instance recorded under fixed camera and lighting</td><td>PASS / FAIL</td></tr>
+  <tr><td>Material copy isolated</td><td><code>GARAGES_Lesson8.mat</code> assigned only to the test instance</td><td>PASS / FAIL</td></tr>
+  <tr><td>One-variable change</td><td>Only one surface property changed</td><td>PASS / FAIL</td></tr>
+  <tr><td>Geometry preserved</td><td>Silhouette, hierarchy, position, and scale unchanged</td><td>PASS / FAIL</td></tr>
+  <tr><td>Original preserved</td><td>Original wall and fence remain unchanged</td><td>PASS / FAIL</td></tr>
+</table>
+
+<h2>Decision rule</h2>
+
+<pre><code>choose a simple prop
+  → capture baseline
+  → duplicate the material
+  → change one surface variable
+  → assign the copy to one instance
+  → compare under identical presentation
+  → classify improvement, neutral change, or regression</code></pre>
+
+<h2>Primary sources</h2>
+
+<ul>
+  <li><code>Assets/Prototype/RaceFeel/Prefabs/prop_wall_A.prefab</code> — verified two-branch prop structure.</li>
+  <li><code>Assets/Prototype/RaceFeel/Materials/GARAGES.mat</code> — root wall material.</li>
+  <li><code>Assets/Prototype/RaceFeel/Materials/FENCE.mat</code> — child fence material.</li>
+  <li><code>design/art/art-bible.md</code> — Overdrive material, palette, and presentation standards.</li>
+  <li><a href="overdrive-asset-production-lesson-07-unity-import-material-routing-prefab-assembly.html">Lesson 7</a> — Unity import and material routing.</li>
+</ul>
+
+<div class="callout">
+  <strong>Next:</strong> Lesson 9 will translate the art bible into a vehicle surface specification without changing the vehicle mesh first.
+</div>
+
+<footer>
+  Overdrive Learning Workspace · Lesson 8 of the asset-production track · <a href="overdrive-asset-production-lesson-07-unity-import-material-routing-prefab-assembly.html">Previous lesson</a> · <a href="overdrive-asset-production-learning-index.html">Learning index</a> · <a href="../MISSION.md">Mission</a>
+</footer>
+
+</body>
+</html>

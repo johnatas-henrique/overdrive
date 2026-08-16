@@ -11,6 +11,8 @@
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
 *.log
+.env
+.env.*
 
 # MemoryCaptures can get excessive in size.
 # They also could contain extremely sensitive data
@@ -27,6 +29,9 @@
 
 # Visual Studio cache directory
 .vs/
+
+# VSCode
+.vscode/
 
 # Gradle cache directory
 .gradle/
@@ -101,3 +106,16 @@ desktop.ini
 
 # Godot editor cache
 .godot/
+
+# Submodule dependencies
+tools/aseprite-mcp/.venv/
+
+# OCGS framework mirror — .opencode/{agents,commands,rules,skills} are local junctions
+# pointing at .agents/ (pi reads .agents/ on Windows; opencode reads .opencode/ via the
+# junction on WSL). Content is tracked once, under .agents/. The junction paths are
+# environment-local and must not be tracked — git on WSL reads reparse points incorrectly
+# and sees the junction as a symlink, so the patterns must NOT end in a trailing slash.
+/.opencode/agents
+/.opencode/commands
+/.opencode/rules
+/.opencode/skills

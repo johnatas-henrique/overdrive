@@ -1,0 +1,20 @@
+{
+  "name": "Overdrive.Content.Editor",
+  "references": [
+    "Unity.Addressables.Editor",
+    "Overdrive.Content"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "optionalUnityReferences": [],
+  "noEngineReferences": false,
+  "rootNamespace": "Overdrive.Content.Editor"
+}

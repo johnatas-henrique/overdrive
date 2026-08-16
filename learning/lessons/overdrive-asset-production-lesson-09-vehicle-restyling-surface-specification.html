@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 9 — Vehicle Restyling: From Art Bible to Surface Specification</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production · Lesson 9</p>
+  <h1>Vehicle restyling: from art bible to surface specification</h1>
+  <p class="meta">2026-08-09 · Mission: <a href="../MISSION.md">MISSION.md</a> · ~60 min</p>
+</header>
+
+<h2>The question this lesson answers</h2>
+
+<p>How do you turn a visual direction into a concrete vehicle surface specification without remodeling the vehicle first?</p>
+
+<blockquote><strong>A vehicle becomes stylistically coherent when its mesh, livery, material response, shader, palette, and presentation obey the same contract.</strong></blockquote>
+
+<p>Lesson 8 isolated one material change on a small prop. This lesson scales the same discipline to a vehicle, where the surface is divided into several material domains and where a shader experiment can easily be mistaken for a complete art direction.</p>
+
+<h2>1. The art bible is the surface contract</h2>
+
+<p>The Overdrive art bible already defines the approved baseline. A new shader may be tested, but it does not become the production standard merely because it looks more “anime.” The result must still satisfy the established visual language.</p>
+
+<table>
+  <tr><th>Vehicle domain</th><th>Approved baseline</th><th>What to avoid</th></tr>
+  <tr><td>Car paint</td><td>URP Simple Lit with controlled specular response</td><td>PBR metallic workflow or uncontrolled reflections</td></tr>
+  <tr><td>Carbon</td><td>URP Simple Lit, matte and low specular</td><td>Photoreal carbon weave and excessive gloss</td></tr>
+  <tr><td>Cockpit</td><td>URP Simple Lit with a flat painted response</td><td>Uncontrolled dark realism that hides the interior</td></tr>
+  <tr><td>Tire</td><td>URP Simple Lit, near-black and low specular</td><td>Bright rubber highlights or decorative noise</td></tr>
+  <tr><td>Helmet</td><td>URP Simple Lit with a controlled glossy shell</td><td>Different lighting logic from the car</td></tr>
+  <tr><td>Grass, sky, and selected flat surfaces</td><td>Unlit painted colors</td><td>Forcing every surface into one shader family</td></tr>
+</table>
+
+<p>The art bible also prohibits normal maps on painted surfaces, specular maps, and PBR metallic workflow. These are not optional style preferences; they are constraints on the surface specification.</p>
+
+<h2>2. Divide the vehicle into surface domains</h2>
+
+<p>Do not describe a vehicle as having one material called “the car.” A reusable surface specification names the domains that need different visual treatment:</p>
+
+<pre><code>Vehicle
+├── CarPaint
+├── Carbon
+├── Cockpit
+├── Tire
+├── Helmet
+├── Mirror
+└── Exhaust</code></pre>
+
+<p>The hierarchy may not use these exact names. The task is to map the imported renderer slots and material names to semantic roles before changing anything.</p>
+
+<table>
+  <tr><th>Question</th><th>Evidence</th></tr>
+  <tr><td>Which object owns the visible body?</td><td>MeshRenderer and material slot inspection</td></tr>
+  <tr><td>Which materials are shared?</td><td>Project material reference and instance comparison</td></tr>
+  <tr><td>Which textures are base color maps?</td><td>Material shader properties and texture references</td></tr>
+  <tr><td>Which parts must remain independent?</td><td>Domain role: tire, cockpit, glass, carbon, or body</td></tr>
+</table>
+
+<h2>3. Write the surface specification before editing</h2>
+
+<p>A surface specification is a decision record for one vehicle. It should be specific enough that another person can reproduce the result without interpreting the art bible from scratch.</p>
+
+<pre><code>Vehicle: [vehicle identifier]
+Reference role: [hero car / rival / civilian / learning asset]
+
+Geometry:
+  Mesh change: none for this pass
+  Silhouette decision: preserve historical anchor
+
+Surface domains:
+  CarPaint: [material route, palette, gloss target]
+  Carbon: [material route, matte target]
+  Cockpit: [readability target]
+  Tire: [value and specular target]
+  Helmet: [color and gloss target]
+
+Texture:
+  Base-map source: [file]
+  Painted information: [what is drawn]
+  Unwanted detail: [what must be removed]
+
+Shader experiment:
+  Baseline: URP Simple Lit
+  Candidate: [Unlit / cel-ramp / edge outline]
+  Reason: [one visual question]
+
+Presentation:
+  Camera: [fixed camera]
+  Lighting: [fixed lighting state]
+  Background: [fixed background]
+</code></pre>
+
+<p>The specification prevents a shader experiment from silently becoming a geometry change, a livery redesign, or a lighting comparison.</p>
+
+<h2>4. What an “anime shader” can and cannot solve</h2>
+
+<table>
+  <tr><th>Technique</th><th>Can improve</th><th>Cannot replace</th></tr>
+  <tr><td>Simple Lit tuning</td><td>Specular strength, matte response, readable volume</td><td>Missing livery design or wrong silhouette</td></tr>
+  <tr><td>Unlit</td><td>Stable painted colors and flat graphic presentation</td><td>Natural volume, ground contact, and scene lighting response</td></tr>
+  <tr><td>Cel or ramp shading</td><td>Discrete light and shadow bands</td><td>A coherent palette or painted texture</td></tr>
+  <tr><td>Depth/normal outline</td><td>Visible silhouette and 3D face-edge emphasis</td><td>Correct UV placement or livery graphics</td></tr>
+  <tr><td>Rim light</td><td>Separation from the background and a graphic accent</td><td>Material identity and historical color accuracy</td></tr>
+</table>
+
+<p>The shader is one layer of the result. If the mesh is too realistic, the livery is wrong, the texture contains photographic detail, or the palette contradicts the team identity, a more anime-looking shader will not repair the full asset.</p>
+
+<h2>5. Approved, experimental, and rejected decisions</h2>
+
+<p>Every candidate should receive a status instead of being described vaguely as “cool” or “more anime.”</p>
+
+<table>
+  <tr><th>Status</th><th>Meaning</th><th>Evidence required</th></tr>
+  <tr><td>Approved baseline</td><td>Matches the art bible and is safe for production experiments</td><td>Material, palette, lighting, and performance checks</td></tr>
+  <tr><td>Experimental</td><td>Useful for comparison but not yet a production rule</td><td>Before/after capture and a stated visual question</td></tr>
+  <tr><td>Rejected</td><td>Creates a contradiction, artifact, or unacceptable cost</td><td>Concrete failure evidence</td></tr>
+  <tr><td>Blocked</td><td>Cannot be judged because a required input is missing</td><td>Named missing asset, camera, texture, or measurement</td></tr>
+</table>
+
+<h2>6. The one-variable vehicle experiment</h2>
+
+<ol>
+  <li>Choose one vehicle instance and record its current renderer-to-material routes.</li>
+  <li>Duplicate only the material or material set required for the experiment.</li>
+  <li>Keep the mesh, UVs, hierarchy, camera, light, and background fixed.</li>
+  <li>Capture the baseline before changing the shader or material property.</li>
+  <li>Change exactly one variable: shader family, smoothness, specular response, base color, or texture.</li>
+  <li>Capture the same view after the change.</li>
+  <li>Compare silhouette, color masses, surface response, graphic clarity, cockpit readability, and ground contact.</li>
+  <li>Classify the result as approved, experimental, rejected, or blocked.</li>
+</ol>
+
+<p>For a shader comparison, the strongest first matrix is:</p>
+
+<pre><code>Vehicle_Surface_01_SimpleLit_Baseline
+Vehicle_Surface_02_SimpleLit_LowSpecular
+Vehicle_Surface_03_Unlit_Reference
+Vehicle_Surface_04_CelRamp_Experimental
+Vehicle_Surface_05_DepthNormalOutline_Experimental</code></pre>
+
+<p>Do not compare all five at once in the final decision. Use the matrix to identify the visual mechanism, then repeat the winning candidate against the fixed baseline.</p>
+
+<h2>7. Read the result like a production reviewer</h2>
+
+<table>
+  <tr><th>Criterion</th><th>Pass condition</th><th>Failure signal</th></tr>
+  <tr><td>Historical silhouette</td><td>Recognizable vehicle proportions remain intact</td><td>Shader test hides or distorts the silhouette judgment</td></tr>
+  <tr><td>Palette</td><td>Team colors read as intentional masses</td><td>Lighting changes the apparent team identity</td></tr>
+  <tr><td>Texture</td><td>Painted information remains legible and controlled</td><td>Photoreal noise dominates the surface</td></tr>
+  <tr><td>Material response</td><td>Paint, carbon, tire, and cockpit separate clearly</td><td>Every domain looks equally glossy or equally flat</td></tr>
+  <tr><td>Outline or edge treatment</td><td>Lines reinforce readable structure</td><td>Lines appear on every tiny detail or through occluders</td></tr>
+  <tr><td>Presentation</td><td>Result works under the fixed Overdrive lighting state</td><td>It only works under a special test light</td></tr>
+</table>
+
+<h2>Controlled exercise</h2>
+
+<ol>
+  <li>Choose the Porsche CARRERA or another reusable vehicle learning asset.</li>
+  <li>Record the current material domains and the base shader.</li>
+  <li>Capture a fixed baseline with the car in the same camera and light setup.</li>
+  <li>Create one isolated material route for the body paint.</li>
+  <li>Run a Simple Lit low-specular comparison.</li>
+  <li>Run an Unlit comparison only as a visual reference.</li>
+  <li>If available, run a cel/ramp or depth/normal outline comparison as an experimental candidate.</li>
+  <li>Do not change the mesh, UVs, livery texture, camera, or light during the shader comparison.</li>
+  <li>Record which technique improves the surface and which problem remains unsolved.</li>
+</ol>
+
+<details>
+  <summary>Expected reasoning</summary>
+  <div class="answer">
+    <p>A successful result is not “the car looks more anime.” It is: the visual question was isolated, the approved Simple Lit baseline remained available, the material route was independent, the same presentation was used, and the candidate was classified from visible evidence.</p>
+  </div>
+</details>
+
+<h2>Verified exercise result</h2>
+
+<p>The Porsche CARRERA comparison produced three useful states:</p>
+
+<pre><code>CARRERA
+  Original URP/Lit materials, no outline
+
+CARRERA_Lesson9
+  Simple Lit on visually important domains, outline enabled
+
+CARRERA_Lesson9_AllSimpleLit
+  Simple Lit on every active material, outline enabled</code></pre>
+
+<table>
+  <tr><th>Finding</th><th>Evidence</th><th>Meaning</th></tr>
+  <tr><td>Body, glass, and lamps changed the image most</td><td>Side-by-side capture under the same Scene View lighting</td><td>Large visible surfaces and high-contrast reflective parts dominate perception</td></tr>
+  <tr><td>Converting every remaining material produced little visible change</td><td>The partial and complete Simple Lit cars were visually almost identical</td><td>Technical consistency is not the same as perceptual impact</td></tr>
+  <tr><td>The outline contributed a strong graphic difference</td><td>Only the Lesson 9 cars were on <code>OutlineObjects</code></td><td>Silhouette treatment can matter more than hidden material slots</td></tr>
+  <tr><td>The batch conversion still had value</td><td>The third car reached 29/29 active renderers on Simple Lit</td><td>A complete material pass proves the workflow and prevents future inconsistency</td></tr>
+</table>
+
+<p>Evidence capture from the lesson Unity project:</p>
+
+<pre><code>Assets/Screenshots/lesson9-second-third-all-simplelit.png</code></pre>
+
+<p>The result is a valid visual experiment, not a final production approval. The experiment proves that the most visible vehicle domains should be tuned first, while a complete material conversion remains useful for asset consistency and later LOD or camera changes.</p>
+
+<h2>Acceptance matrix</h2>
+
+<table>
+  <tr><th>Criterion</th><th>Evidence required</th><th>Status</th></tr>
+  <tr><td>Surface domains mapped</td><td>Body, carbon, cockpit, tires, helmet, mirror, and exhaust routes recorded</td><td>PASS</td></tr>
+  <tr><td>Art bible contract translated</td><td>Shader, palette, texture, and prohibition decisions written</td><td>PASS</td></tr>
+  <tr><td>Baseline captured</td><td>Fixed camera, lighting, and original material state recorded</td><td>PASS</td></tr>
+  <tr><td>Material route isolated</td><td>Candidate changes only the intended vehicle instance</td><td>PASS</td></tr>
+  <tr><td>Shader candidates classified</td><td>Simple Lit and outline tested; Unlit and cel/ramp remain untested candidates</td><td>PARTIAL</td></tr>
+  <tr><td>Geometry preserved</td><td>Mesh, UVs, hierarchy, and silhouette remain unchanged</td><td>PASS</td></tr>
+  <tr><td>Presentation fixed</td><td>Camera, light, background, and capture framing match the baseline</td><td>PASS</td></tr>
+  <tr><td>Production recommendation recorded</td><td>Visible domains prioritized for Simple Lit tuning; full conversion retained as a consistency pass</td><td>PASS</td></tr>
+</table>
+
+<h2>Decision rule</h2>
+
+<pre><code>art bible
+  → surface domains
+  → baseline material route
+  → one-variable shader experiment
+  → identical presentation
+  → visual and technical comparison
+  → classify the candidate
+  → record the production surface specification</code></pre>
+
+<h2>Primary sources</h2>
+
+<ul>
+  <li><code>design/art/art-bible.md</code> — approved material, shader, palette, lighting, texture, and prohibition rules.</li>
+  <li><a href="overdrive-asset-production-lesson-04-materials-shaders-surface-response.html">Lesson 4</a> — material properties, shader families, and surface response.</li>
+  <li><a href="overdrive-asset-production-lesson-07-unity-import-material-routing-prefab-assembly.html">Lesson 7</a> — Unity material routing and editability.</li>
+  <li><a href="overdrive-asset-production-lesson-08-practical-prop-restyling.html">Lesson 8</a> — one-variable restyling on a simple prop.</li>
+  <li><code>Assets/Prototype/RaceFeel/Scripts/CarVisualLivery.cs</code> — verified prototype livery application that preserves imported body textures and non-body materials.</li>
+</ul>
+
+<div class="callout">
+  <strong>Next:</strong> Lesson 10 will separate vehicle animation, driver animation, validation clips, and cutscene presentation so technical exports do not become production content by accident.
+</div>
+
+<footer>
+  Overdrive Learning Workspace · Lesson 9 of the asset-production track · <a href="overdrive-asset-production-lesson-08-practical-prop-restyling.html">Previous lesson</a> · <a href="overdrive-asset-production-learning-index.html">Learning index</a> · <a href="../MISSION.md">Mission</a>
+</footer>
+
+</body>
+</html>

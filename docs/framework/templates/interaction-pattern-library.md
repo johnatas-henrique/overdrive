@@ -138,11 +138,11 @@ not the primary intent of the screen.
 - Minimum touch target: 44x44pt (iOS HIG) / 48x48dp (Android). Apply even on PC if touch support is possible.
 
 **Implementation Notes**:
-[Godot: Extend `Button` control. Override `_draw()` for custom states rather than
-modifying themes mid-state. Use `focus_mode = FOCUS_ALL` to ensure keyboard
-focusability. Set `mouse_default_cursor_shape = CURSOR_POINTING_HAND`. For the
-scale animation, use a Tween on the `scale` property of the button's parent
-Control — scaling the Button itself can clip children.]
+[Implementation: Use the engine's button control. Override its draw path for
+custom states rather than modifying theme styles mid-state. Ensure keyboard
+focusability (the engine's focusable mode) and a pointing-hand cursor on hover.
+For the scale animation, animate the button's parent container — scaling the
+button itself can clip children. Use the engine's animation system for the tween.]
 
 ---
 
@@ -238,8 +238,8 @@ a description field alongside).
 - Screen reader: Role: "switch." State: "on" or "off" — the accessible name should NOT include the state (the screen reader announces state separately). Correct: accessible name "Subtitles," state "on." Incorrect: accessible name "Subtitles On."
 - The toggle label (not just the visual thumb position) must change to show current state for players who cannot reliably distinguish left from right positions.
 
-**Implementation Notes**: [Godot: Use a custom Control or a CheckButton. The
-built-in CheckButton provides accessibility role but uses a checkbox-style visual;
+**Implementation Notes**: [Implementation: Use a custom control or the engine's built-in toggle. The
+built-in toggle provides the accessibility role but uses a checkbox-style visual;
 a custom slide-toggle animation may be needed for the target art style. Ensure
 the slide animation is skipped when motion reduction mode is active — in that
 case, snap to final state instantly.]
@@ -274,9 +274,9 @@ discrete list (use Dropdown). Binary state (use Toggle).
 - Screen reader: Role: "slider." Accessible name: the label (e.g., "Music Volume"). Current value announced on every change: "Music Volume, 80 percent." Min/max values announced on first focus.
 - All sliders must show a numeric value alongside the visual position. Relying only on track fill position excludes players who cannot perceive relative position.
 
-**Implementation Notes**: [Godot `HSlider`: set `step` to appropriate increment.
-Override keyboard input to add Page Up/Down support via `_input()`. Bind the
-`value_changed` signal to update the displayed numeric label. When motion reduction
+**Implementation Notes**: [Implementation: Use the engine's horizontal slider control and set the step
+increment. Add keyboard input for Page Up/Down support (large step). Bind the
+value-changed event to update the displayed numeric label. When motion reduction
 mode is enabled, ensure value label updates are the sole feedback — do not suppress
 them. Rumble feedback on gamepad slider adjustment is a nice enhancement for
 accessibility.]
@@ -312,11 +312,11 @@ as selecting one (show options visibly, e.g., as a horizontal selector or list).
 - Screen reader: Role: "combobox." Accessible name: the field label. Expanded/collapsed state announced. Current value announced when focused. Each list item announces its value and position: "English, 1 of 12."
 - The dropdown list must never obscure the current item or the control that opened it — this is a common failure on small screens.
 
-**Implementation Notes**: [Godot: Custom implementation using a `Button` (the
-closed state) and a `PopupMenu` or a `VBoxContainer` revealed by animation. Native
-`OptionButton` provides accessibility but limited visual customization. Ensure
-the popup positions itself above the control if it would be clipped by the screen
-bottom. Close the popup on `_input` detecting click outside its rect.]
+**Implementation Notes**: [Implementation: Custom implementation using a button (the closed state) and a
+popup list revealed by animation. The engine's native dropdown provides
+accessibility but limited visual customization. Ensure the popup positions itself
+above the control if it would be clipped by the screen bottom. Close the popup
+when input detects a click outside its bounds.]
 
 ---
 
@@ -346,11 +346,11 @@ Non-selectable content rows (remove hover/focus states and the pressed state).
 - Screen reader: Role: "listitem." Parent list role: "list." Accessible name: primary label content. Metadata (secondary label) is optionally included in the description. Position announced: "Quest Log, 3 of 12."
 - Minimum row height: 44pt / 48dp for touch. For controller-primary platforms, 56px rows are more comfortable.
 
-**Implementation Notes**: [Godot: Use a `VBoxContainer` inside a `ScrollContainer`.
-Each row is a custom `Control` or `PanelContainer` with a `_gui_input` override.
-For keyboard navigation inside the scroll container, implement custom focus
-traversal — Godot's default Tab navigation does not scroll the container to keep
-focused items in view. Use `ensure_control_visible()` on the scroll container.]
+**Implementation Notes**: [Implementation: Use the engine's scroll container with a vertical layout.
+Each row is a custom row control with an input override. For keyboard navigation
+inside the scroll container, implement custom focus traversal — the default Tab
+navigation does not scroll the container to keep focused items in view. Use the
+engine's scroll-to-reveal API on the container.]
 
 ---
 
@@ -384,10 +384,10 @@ cells (remove interactive states).
 - Screen reader: Role: "gridcell." Parent role: "grid." Accessible name: item name (or "empty slot" for empty cells). State: "selected" when selected, "dimmed" when locked. Position: "row 2, column 3."
 - Tooltips must be reachable by keyboard — they must appear when the cell is focused, not only when hovered.
 
-**Implementation Notes**: [Godot: `GridContainer` with fixed column count. Each
-cell is a custom `Control`. Implement custom D-pad navigation by overriding
-`_gui_input` and calculating the cell to the left/right/above/below based on
-index and column count. `GridContainer` does not provide this natively.]
+**Implementation Notes**: [Implementation: Use the engine's grid container with a fixed column count.
+Each cell is a custom control. Implement custom D-pad navigation by overriding
+the input handler and calculating the cell to the left/right/above/below based on
+index and column count. The grid container does not provide this natively.]
 
 ---
 
@@ -424,12 +424,11 @@ Dialogs that should allow the player to continue playing behind them.
 - Keyboard: Escape key always maps to the cancel/dismiss action (same as Secondary button or close button). Enter always maps to the primary/confirm action.
 - Motion reduction: Scale animation replaced with instant appear/disappear. Overlay fade retained at 100ms (faster).
 
-**Implementation Notes**: [Godot: Implement as a `CanvasLayer` with a high layer
-value (100+) to ensure it renders above all game content. The background overlay
-is a full-screen `ColorRect` at 60% black opacity. Use `grab_focus()` on the
-dialog's primary button after the open animation completes. Override `_input()` to
-implement the focus trap — intercept Tab navigation and reroute to the dialog's
-focusable elements.]
+**Implementation Notes**: [Implementation: Implement on a high render layer (100+) to ensure it renders
+above all game content. The background overlay is a full-screen element at 60%
+black opacity. Move focus to the dialog's primary button after the open animation
+completes. Override the input handler to implement the focus trap — intercept Tab
+navigation and reroute to the dialog's focusable elements.]
 
 ---
 
@@ -462,8 +461,8 @@ focus on Cancel is a requirement, not a preference.
 
 **Implementation Notes**: [Confirmation Dialog is a specific instance of Modal
 Dialog — implement it as a subclass or as a parameterized scene. The default
-focus on Cancel is critical: set `grab_focus()` on the Cancel button, not the
-Confirm button, after open animation completes.]
+focus on Cancel is critical: move focus to the Cancel button, not the
+Confirm button, after the open animation completes.]
 
 ---
 
@@ -494,12 +493,11 @@ must not miss.
 - Toasts must never be the sole communication channel for information the player needs to act on. If the information requires action, use a persistent UI element in addition to the toast.
 - Auto-dismiss timer: 5 seconds is the minimum. Players with cognitive processing differences may need more time. Consider a setting to extend to 10 or 15 seconds.
 
-**Implementation Notes**: [Godot: Manage a queue of `PanelContainer` scenes in a
-`VBoxContainer` anchored to a screen corner. Each toast is instantiated, added to
-the container, then auto-removed after a timer. The container should be on a high
-`CanvasLayer` (50+) but below modal dialogs (100+). Animate using a `Tween` on
-`modulate.a` and `position.x`. When motion reduction is active, skip the position
-animation.]
+**Implementation Notes**: [Implementation: Manage a queue of toast panels in a container anchored to a
+screen corner. Each toast is instantiated, added to the container, then
+auto-removed after a timer. The container should be on a high render layer (50+)
+but below modal dialogs (100+). Animate opacity and position with the engine's
+animation system. When motion reduction is active, skip the position animation.]
 
 ---
 
@@ -532,11 +530,10 @@ that opens a description modal instead.
 - The delay (300-400ms) prevents accidental tooltip display and is required — instant tooltips are disruptive in gamepad navigation.
 - Tooltip text must meet the same contrast requirements as body text (4.5:1 minimum).
 
-**Implementation Notes**: [Godot: Attach a custom `TooltipControl` scene as a
-child of the trigger element. Show/hide with a `Timer` node. Position the tooltip
-using a `CanvasLayer` to ensure it appears above all other UI. For screen edges,
-detect if the tooltip rect extends beyond `get_viewport_rect()` and flip the
-position to the opposite side.]
+**Implementation Notes**: [Implementation: Attach a custom tooltip control as a child of the trigger
+element. Show/hide with a timer. Position the tooltip on a high render layer to
+ensure it appears above all other UI. For screen edges, detect if the tooltip
+rect extends beyond the viewport and flip the position to the opposite side.]
 
 ---
 
@@ -567,10 +564,10 @@ Bar pattern). Values with no defined endpoint.
 - Indeterminate progress bars: announce "Loading, in progress" — do not announce changes since the value is unknown.
 - Motion reduction: Indeterminate animation is replaced with a static "loading" indicator. Smooth fill animation is replaced with instant jump to new value.
 
-**Implementation Notes**: [Godot: `ProgressBar` built-in with custom theming.
-For indeterminate mode, `ProgressBar` does not have a native indeterminate state
-in Godot 4.x — implement using a looping `Tween` on a fill element's position.
-Ensure the Tween is paused when motion reduction mode is active and a static
+**Implementation Notes**: [Implementation: Use the engine's progress bar with custom theming.
+For indeterminate mode, the built-in bar may not have a native indeterminate state
+— implement using a looping animation on a fill element's position.
+Ensure the animation is paused when motion reduction mode is active and a static
 indicator is shown instead.]
 
 ---
@@ -606,12 +603,11 @@ which is high friction.
 - Screen reader: Role: "textbox." Accessible name: field label (not placeholder text). Current value announced. Character limit announced when reached. Validation errors announced immediately on occurrence.
 - Placeholder text must not be used as the only label — a visible label above or beside the field is required. Placeholder text disappears when the player types, causing confusion for players with cognitive or memory impairments.
 
-**Implementation Notes**: [Godot `LineEdit`: set `placeholder_text` for the hint
-but always include a visible `Label` node as the field's accessible name. Bind
-`text_changed` signal for real-time validation. Bind `text_submitted` for form
-submission on Enter. On console, `LineEdit.call("_popup_keyboard")` or use the OS
-virtual keyboard API — verify against engine-reference/godot/ for Godot 4.6
-console keyboard API specifics.]
+**Implementation Notes**: [Implementation: Use the engine's text input field — set placeholder text for
+the hint but always include a visible label as the field's accessible name. Bind
+the text-changed event for real-time validation. Bind the submit event for form
+submission on Enter. On console, use the engine's virtual keyboard API — verify
+against engine-reference/<engine>/ for console keyboard API specifics.]
 
 ---
 
@@ -644,10 +640,10 @@ visibility (use a layout pattern instead). Navigation between different screens
 - Screen reader: Role: "tab" for individual tabs. Role: "tablist" for the container. Role: "tabpanel" for the content area. Active tab state: "selected." Accessible name: tab label. Tabpanel is labeled by its corresponding tab.
 - The active tab must be visually distinguishable by more than color alone (underline, fill pattern, or weight change in addition to color).
 
-**Implementation Notes**: [Godot: `TabContainer` built-in. For custom visual
-styling, implement manually with a `HBoxContainer` of tab buttons and a
-`MarginContainer` for content. The shoulder button shortcut (LB/RB) must be
-implemented in the screen's `_input()` override — it is not built into Godot's
+**Implementation Notes**: [Implementation: Use the engine's tab container if available. For custom visual
+styling, implement manually with a horizontal row of tab buttons and a
+content container. The shoulder button shortcut (LB/RB) must be
+implemented in the screen's input handler — it is not built into the engine's
 tab system. Check platform conventions: Xbox uses LB/RB; PlayStation uses L1/R1;
 both are the same physical button, so a single binding works.]
 
@@ -679,13 +675,13 @@ state and an end state).
 
 **Accessibility**:
 - Keyboard/Gamepad: The scroll container itself should not require explicit scrollbar interaction — navigating list items inside it should auto-scroll to keep focused items in view.
-- Screen reader: The scroll container announces "scrollable" and the scroll position ("showing items 5 through 15 of 30"). This requires engine accessibility support — verify in engine-reference/godot/.
+- Screen reader: The scroll container announces "scrollable" and the scroll position ("showing items 5 through 15 of 30"). This requires engine accessibility support — verify in engine-reference/<engine>/.
 - Fade edges (content fading at scroll boundaries to indicate more content exists) are a helpful visual affordance but must not be the only indicator that content exists beyond the visible area. Include a scrollbar.
 
-**Implementation Notes**: [Godot `ScrollContainer`: call `ensure_control_visible()`
-on the focused child whenever `gui_focus_changed` fires inside the container.
-Bind this via a recursive `connect` on the container's `gui_focus_changed` signal.
-For smooth scroll animation, use a `Tween` on `scroll_vertical` rather than
+**Implementation Notes**: [Implementation: Use the engine's scroll container — call its scroll-to-reveal
+API on the focused child whenever the focus-changed event fires inside the
+container. Bind this via a recursive handler on the container's focus-changed
+event. For smooth scroll animation, animate the scroll position rather than
 setting it directly.]
 
 ---
@@ -717,7 +713,7 @@ content.
 
 **Accessibility**: Stack counts and quality tiers must have text or icon alternatives to color coding. Tooltip is the primary accessibility mechanism — ensure it is reachable by keyboard and screen reader. Locked slots must announce "locked" to screen readers.
 
-**Implementation Notes**: [Godot: Custom `Control` node. Quality border implemented as a `StyleBoxFlat` swapped based on rarity — avoid using `modulate` color for quality, as it affects the icon color. Drag and drop implemented via `get_drag_data()` and `can_drop_data()` / `drop_data()` override methods.]
+**Implementation Notes**: [Implementation: Custom control. Quality border implemented as a styled box swapped based on rarity — avoid using opacity/color tinting for quality, as it affects the icon color. Drag and drop implemented via the engine's drag-and-drop API (drag source and drop target handlers).]
 
 ---
 
@@ -742,11 +738,11 @@ any context where an ability must show availability state.
 
 **Accessibility**: All cooldown/charge information must have a numeric value (screen reader cannot parse radial overlays). The cooldown timer number satisfies this. Ability names and descriptions must be exposed to screen readers via tooltip.
 
-**Implementation Notes**: [Godot: Custom `TextureButton` subclass with overlay
-`Control` nodes for cooldown radial and charge pips. The cooldown radial uses a
-custom shader on a `ColorRect` rotating a mask — or implement with a
-`ProgressBar` styled as circular if engine supports it. Verify against
-engine-reference/godot/ for Godot 4.6 shader support for this pattern.]
+**Implementation Notes**: [Implementation: Custom button subclass with overlay
+controls for cooldown radial and charge pips. The cooldown radial uses a
+custom shader on a rotating mask — or implement with a
+progress bar styled as circular if the engine supports it. Verify against
+engine-reference/<engine>/ for shader support for this pattern.]
 
 ---
 
@@ -770,10 +766,10 @@ critical player resource. Health, mana, stamina, shield, fuel.
 
 **Accessibility**: The current value must be accessible as a number (tooltip or persistent display, or both). Color-coded threshold states must have non-color backups (icon, flashing, or audio visual warning). Warning state at 25% must have a visual signal independent of the color change.
 
-**Implementation Notes**: [Godot: Two overlapping `ProgressBar` nodes for ghost
-bar effect — back bar holds previous value (drains via Tween), front bar holds
-current value (updates instantly). Threshold states trigger `StyleBoxFlat` swaps
-on the front bar. Ghost bar Tween duration is tunable as a designer parameter.]
+**Implementation Notes**: [Implementation: Two overlapping progress bars for the ghost
+bar effect — back bar holds previous value (drains via animation), front bar holds
+current value (updates instantly). Threshold states trigger style swaps
+on the front bar. Ghost bar drain duration is tunable as a designer parameter.]
 
 ---
 
@@ -800,12 +796,12 @@ delivered through a character. All dialogue that has a speaker.
 
 **Accessibility**: Subtitles are always enabled by default for all voiced dialogue. Typewriter animation speed is a user setting (see accessibility-requirements.md). The dialogue box must not auto-advance — players must control pacing. Speaker name is always shown. All choice buttons must be navigable by keyboard and gamepad. Choices must be accessible to screen readers with position announced.
 
-**Implementation Notes**: [Godot: `RichTextLabel` with `bbcode_enabled` for
-formatting. Typewriter effect via `visible_characters` property animated by a
-`Timer`. Bind the advance input to a function that either skips typewriter
-( sets `visible_characters = -1`) or advances the dialogue state. Speaker name
-displayed in a separate `Label` above or beside the box. Dialogue data loaded from
-JSON or a dedicated dialogue format (e.g., Dialogic, Yarn Spinner for Godot).]
+**Implementation Notes**: [Implementation: Use the engine's rich text control with formatting enabled.
+Typewriter effect via the engine's character-visibility property animated by a
+timer. Bind the advance input to a function that either skips the typewriter
+(show the full line instantly) or advances the dialogue state. Speaker name
+displayed in a separate label above or beside the box. Dialogue data loaded from
+JSON or a dedicated dialogue format (e.g., Dialogic, Yarn Spinner).]
 
 ---
 
@@ -829,7 +825,7 @@ when the player enters the interaction zone, disappears when they leave.
 
 **Accessibility**: The button icon must be accompanied by a text label — do not rely on icon alone (some players use custom button labels or adaptive controllers with non-standard icons). The prompt must be positioned to not overlap character health or critical HUD information.
 
-**Implementation Notes**: [Godot: Attach as a `Node3D` child (or `Node2D` child in 2D) of the interactable object. Use a `BillboardMesh` or a `SubViewport` with a UI scene for 3D games — this keeps the prompt facing the camera without code. Update the button icon texture based on `Input.get_joy_name()` or keyboard detection via `InputEventKey` vs `InputEventJoypadButton`. Hold progress implemented as an `AnimationPlayer` or `Tween` on a radial mask shader.]
+**Implementation Notes**: [Implementation: Attach as a world-space child (3D or 2D) of the interactable object. Use a billboarded mesh or a world-space UI view for 3D games — this keeps the prompt facing the camera without code. Update the button icon texture based on the current input device (gamepad vs keyboard detection). Hold progress implemented as an animation on a radial mask shader.]
 
 ---
 
@@ -854,11 +850,11 @@ damage, critical damage, healing, miss.
 
 **Accessibility**: Damage numbers are purely supplementary feedback — they must never be the only way to understand combat state. Health bars are the authoritative source. Provide an option to disable damage numbers entirely (some players find them visually overwhelming). When disabled, the game must remain fully playable.
 
-**Implementation Notes**: [Godot: Pool of `Label3D` (3D games) or `Label` (2D games)
-instances recycled via an object pool. Each instance is given a random small
+**Implementation Notes**: [Implementation: Pool of world-space or screen-space label instances
+recycled via an object pool. Each instance is given a random small
 horizontal offset on spawn (±20px) to reduce overlap. Float animation via
-`Tween` on `position.y` and `modulate.a`. Critical hit scale-pop via Tween
-with `EASE_OUT` on scale followed by linear settle.]
+the engine's animation system on vertical position and opacity. Critical hit
+scale-pop via an ease-out animation on scale followed by a linear settle.]
 
 ---
 
@@ -883,10 +879,10 @@ These three patterns define how screens enter and exit the navigation stack.
 
 **Motion reduction**: All slide animations become fades. Duration reduces to 100ms.
 
-**Implementation Notes**: [Godot: Implement as a `ScreenManager` singleton managing
-a stack of `Control` scenes. `push(screen_scene)` instantiates and animates in.
-`pop()` animates out and frees. `replace(screen_scene)` calls pop then push without
-the intermediate stack state. Use `CanvasLayer` per screen to isolate input handling.
+**Implementation Notes**: [Implementation: Implement as a screen manager service managing
+a stack of screen layouts. `push(screen)` instantiates and animates in.
+`pop()` animates out and destroys. `replace(screen)` calls pop then push without
+the intermediate stack state. Use a render layer per screen to isolate input handling.
 Store the "return focus" element reference before pushing so it can be restored on pop.]
 
 ---
@@ -1065,7 +1061,7 @@ Store the "return focus" element reference before pushing so it can be restored 
 
 | Question | Owner | Deadline | Resolution |
 |----------|-------|----------|-----------|
-| [Does the engine's accessibility node system support screen reader announcements for toast notifications without requiring focus? Verify against engine-reference/godot/ for Godot 4.6.] | [ux-designer] | [Before first menu implementation] | [Unresolved] |
+| [Does the engine's accessibility node system support screen reader announcements for toast notifications without requiring focus? Verify against engine-reference/<engine>/ for the pinned engine version.] | [ux-designer] | [Before first menu implementation] | [Unresolved] |
 | [What is the platform-correct confirm/cancel button mapping for Nintendo Switch release? Nintendo first-party convention differs from Xbox/PlayStation.] | [producer] | [Before platform certification submission] | [Unresolved] |
 | [Should damage numbers be pooled as Label3D nodes or rendered in a SubViewport? Verify performance budget in coordination with technical-director.] | [lead-programmer, ux-designer] | [Before combat HUD implementation] | [Unresolved] |
 | [What is the maximum number of simultaneous toast notifications before the queue becomes visually overwhelming? Needs playtesting.] | [ux-designer] | [First playtesting session] | [Unresolved] |

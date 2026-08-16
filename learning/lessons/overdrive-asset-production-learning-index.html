@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overdrive Asset Production — Learning Track</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production</p>
+  <h1>Learning track</h1>
+  <p class="meta">A navigable map of the asset-production lessons</p>
+</header>
+
+<div class="callout">
+  <strong>How to use this index:</strong> complete the available lessons in order. The roadmap below is planning information, not a claim that future lessons already exist. Each lesson separates visual judgment, measurable evidence, and production decisions.
+</div>
+
+<h2>Available lessons</h2>
+
+<ol>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-01-style-conformance.html">Lesson 1 — Style, Technique, Standard, and Conformance Checking</a></h3>
+    <p><strong>Purpose:</strong> distinguish visual identity from the technical method used to render it and from measurable production standards.</p>
+    <p><strong>Outcome:</strong> evaluate a generated image with an eight-point checklist instead of relying only on “I like it”.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-02-palette-measurement.html">Lesson 2 — Programmatic Palette Checks</a></h3>
+    <p><strong>Purpose:</strong> learn what a script can measure in an image: dimensions, background color, color distance, and dominant colors.</p>
+    <p><strong>Outcome:</strong> understand what the machine proved and what still requires visual inspection.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-03-3d-asset-anatomy.html">Lesson 3 — Anatomy of a 3D Asset</a></h3>
+    <p><strong>Purpose:</strong> locate problems in the mesh, silhouette, proportions, UVs, textures, materials, shader, prefab, or context.</p>
+    <p><strong>Case study:</strong> compare the Porsche Carrera and the Unity-imported ASR Ferrari 643 in <code>AssetLearningLab.unity</code>.</p>
+    <p><strong>Outcome:</strong> diagnose the Ferrari's damage-map artifact, material fragmentation, inverted tire lettering, and skewed <code>Marlboro / A. Prost</code> decal without confusing those problems with geometry.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-04-materials-shaders-surface-response.html">Lesson 4 — Materials, Shaders, and Surface Response</a></h3>
+    <p><strong>Purpose:</strong> understand how textures, material properties, shaders, and lighting combine to produce the visible surface.</p>
+    <p><strong>Case study:</strong> compare the Porsche's reflective URP/Lit material with the Ferrari's imported materials and removed damage-map input.</p>
+    <p><strong>Outcome:</strong> identify surface problems before changing geometry and perform controlled one-variable material experiments.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-05-uvs-decals-mirrored-text.html">Lesson 5 — UVs, Decals, and Mirrored Text</a></h3>
+    <p><strong>Purpose:</strong> understand how images are placed on meshes and how mirrored, rotated, stretched, or skewed decals are diagnosed.</p>
+    <p><strong>Case study:</strong> inspect the Ferrari's tire lettering and <code>Marlboro / A. Prost</code> body decal.</p>
+    <p><strong>Outcome:</strong> isolate texture, UV, material-assignment, and mesh-orientation problems; apply a targeted material-space correction to the tire lettering; and classify the crooked body decals as texture-space defects without remodeling the car.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-06-blender-export-validation.html">Lesson 6 — Blender Asset Preparation and Export Validation</a></h3>
+    <p><strong>Purpose:</strong> verify effective visibility, collections, variants, parentage, animation dependencies, and visual completeness before exporting an FBX.</p>
+    <p><strong>Case study:</strong> reproduce the Ferrari export failures involving hidden body objects, the <code>CINTURE_ON/OFF</code> variants, separate car/driver exports, and duplicated Unity animation clips.</p>
+    <p><strong>Outcome:</strong> export the smallest intentional scope and prove that the Unity import matches the Blender source.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-07-unity-import-material-routing-prefab-assembly.html">Lesson 7 — Unity Import, Material Routing, and Prefab Assembly</a></h3>
+    <p><strong>Purpose:</strong> trace an FBX through Unity's importer, subassets, renderer material slots, textures, shaders, scene instances, and prefab decisions.</p>
+    <p><strong>Case study:</strong> explain why two Ferrari instances accidentally shared materials and how to isolate a second-car shader experiment.</p>
+    <p><strong>Outcome:</strong> distinguish embedded materials from editable external materials and decide whether an imported model is still a learning reference or ready for production prefab assembly.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-08-practical-prop-restyling.html">Lesson 8 — Practical Restyling of a Simple Prop</a></h3>
+    <p><strong>Purpose:</strong> change surface treatment without changing geometry, hierarchy, or presentation.</p>
+    <p><strong>Case study:</strong> restyle <code>prop_wall_A</code> using isolated copies of <code>GARAGES.mat</code> and <code>FENCE.mat</code>.</p>
+    <p><strong>Outcome:</strong> perform a one-variable material experiment and prove that the original prop remains unchanged.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-09-vehicle-restyling-surface-specification.html">Lesson 9 — Vehicle Restyling: From Art Bible to Surface Specification</a></h3>
+    <p><strong>Purpose:</strong> turn the art bible into a concrete vehicle surface contract before remodeling the vehicle.</p>
+    <p><strong>Case study:</strong> map vehicle surface domains and compare Simple Lit, Unlit, cel/ramp, and depth/normal outline candidates.</p>
+    <p><strong>Outcome:</strong> classify shader and material candidates from fixed-camera evidence and record a reproducible production surface specification.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-10-animation-cutscene-presentation-separation.html">Lesson 10 — Animation, Cutscene Assets, and Presentation Separation</a></h3>
+    <p><strong>Purpose:</strong> separate car animation, driver animation, validation actions, and cinematic presentation.</p>
+    <p><strong>Case study:</strong> classify <code>VAL_*</code> actions, preserve the car/driver boundary, and avoid treating all imported clips as production content.</p>
+    <p><strong>Outcome:</strong> assign motion ownership, fit the driver in the correct order, and export only intentional animation content.</p>
+  </li>
+  <li>
+    <h3><a href="overdrive-asset-production-lesson-11-2d-generation-smoke-test.html">Lesson 11 — 2D Generation Smoke Test and Model Selection</a></h3>
+<p><strong>Purpose:</strong> prove a reproducible Krea2 + LoRA 2D baseline before committing any design to multi-view or 3D reconstruction.</p>
+     <p><strong>Provided procedure:</strong> assemble the fixed Krea2 node graph manually from the lesson's connection contract; do not change model, prompt, or parameters during the first run.</p>
+     <p><strong>Case study:</strong> reproduce the user's successful Krea2 setup, test the LoRA and enhancer one variable at a time, then generate one original tier-one vehicle concept with the Fujishima + Matsuri style anchor.</p>
+     <p><strong>Outcome:</strong> prove technical reproducibility, classify structural and style failures, record provenance, and approve only candidates with reconstruction potential.</p>
+  </li>
+   <li>
+ <h3><a href="overdrive-asset-production-lesson-12-visual-candidate-discard-gate.html">Lesson 12 — Technical Candidate Evaluation: 11-Point Asset Audit</a> <span class="badge current">READY</span></h3>
+      <p><strong>Purpose:</strong> evaluate technically acceptable F1 models before choosing a first Overdrive pipeline candidate.</p>
+      <p><strong>Outcome:</strong> inspect format route, hierarchy, transforms, pivots, mesh cost, UVs, materials, animation, LODs, colliders, cockpit integration, and license with reproducible Blender/Unity checks.</p>
+   </li>
+   <li>
+      <h3><a href="march-cg891-technical-evaluation-worksheet.md">March CG891 — Live Technical Evaluation Worksheet</a> <span class="badge current">ACTIVE</span></h3>
+      <p><strong>Purpose:</strong> record measured evidence from the first real application of Lesson 12 instead of relying on a generic checklist.</p>
+      <p><strong>Current findings:</strong> 28,052 triangles, 90 mesh objects, 25 empties, transparent body caused by DDS alpha interpretation, object scale 0.01, useful local wheel/suspension parents, and no global car-root object.</p>
+   </li>
+</ol>
+
+<h2>Next production phase</h2>
+
+<p>The next step is now executable. Complete the historical identity lock before generating consistent views or downloading a large image-to-3D model.</p>
+
+<ol start="12">
+  <li>
+    <h3><a href="overdrive-asset-production-phase-4-historical-fidelity-lock.html">Phase 4 — Historical Fidelity Lock: March CG891</a> <span class="badge current">READY</span></h3>
+    <p><strong>Provided procedure:</strong> assemble the fixed Krea2 edit graph manually and use <code>design/art/reference/team_tier2_a/historical_clean.png</code> as the supplied CG891 reference.</p>
+    <p><strong>Outcome:</strong> approve one historically recognizable side-profile identity before multi-view or 3D reconstruction.</p>
+  </li>
+</ol>
+
+<h2>Planned roadmap after Phase 4</h2>
+
+<ol start="13">
+  <li>
+    <h3>Lesson 13 — Multi-View Identity Preservation <span class="badge partial">PLANNED</span></h3>
+    <p>Generate front, rear, side, and three-quarter views that describe the same approved vehicle rather than four related vehicles.</p>
+  </li>
+  <li>
+    <h3>Lesson 14 — Image-to-3D Model Comparison <span class="badge partial">PLANNED</span></h3>
+    <p>Compare Trellis2, Hunyuan3D, Pixal3D, and other candidates by geometry, texture, topology, runtime cost, and cleanup burden.</p>
+  </li>
+  <li>
+    <h3>Lesson 15 — Blender Cleanup and Vehicle Part Separation <span class="badge partial">PLANNED</span></h3>
+    <p>Clean the reconstructed mesh, establish useful pivots, separate wheels and major visual domains, and prepare a Unity-oriented export.</p>
+  </li>
+  <li>
+    <h3>Lesson 16 — Unity Import, Runtime Presentation, and Toon Shader Experiment <span class="badge partial">PLANNED</span></h3>
+    <p>Import the approved vehicle, establish the Simple Lit baseline, then evaluate Toon Shader as a bounded presentation experiment without confusing shading with asset quality.</p>
+  </li>
+</ol>
+
+<h2>Current position</h2>
+
+<p>You are currently at <strong>Phase 4 — Historical Fidelity Lock</strong>. The provided workflow turns the March CG891 reference into a controlled Overdrive-style side-profile candidate.</p>
+
+<h2>Reference pages</h2>
+
+<ul>
+  <li><a href="../MISSION.md">Learning mission</a></li>
+  <li><a href="../NOTES.md">Learning notes and working preferences</a></li>
+  <li><a href="../RESOURCES.md">Verified resources</a></li>
+</ul>
+
+<footer>
+  Overdrive Learning Workspace · <a href="../MISSION.md">Mission</a>
+</footer>
+
+</body>
+</html>

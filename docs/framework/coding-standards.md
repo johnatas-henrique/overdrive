@@ -40,7 +40,7 @@ All stories must have appropriate test evidence before they can be marked Done:
 
 ## Automated Test Rules
 
-- **Naming**: `[system]_[feature]_test.[ext]` for files; `test_[scenario]_[expected]` for functions
+- **Naming**: `[SystemName]Tests.cs` for files (system-based, PascalCase — e.g. `ContractSpineTests.cs`, `SimulationDriverTests.cs`); `[Behavior]_[Scenario]` PascalCase for methods (e.g. `AC15_AccumulatorClampLimitsFrameToTwoSteps`). Story-slug prefixes (`story-001-*`) are prohibited on file/method names — names must say what they do (code-review Phase 6b).
 - **Determinism**: Tests must produce the same result every run — no random seeds, no time-dependent assertions
 - **Isolation**: Each test sets up and tears down its own state; tests must not depend on execution order
 - **No hardcoded data**: Test fixtures use constant files or factory functions, not inline magic numbers

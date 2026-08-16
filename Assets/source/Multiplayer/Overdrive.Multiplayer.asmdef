@@ -1,0 +1,17 @@
+{
+  "name": "Overdrive.Multiplayer",
+  "references": [
+    "Overdrive.Simulation",
+    "Unity.Mathematics"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true,
+  "rootNamespace": "Overdrive.Multiplayer"
+}

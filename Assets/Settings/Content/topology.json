@@ -1,0 +1,34 @@
+{
+  "groups": [
+    {
+      "name": "Shared",
+      "category": "Shared",
+      "rootAddress": null,
+      "allowedTypes": [ "Prefab", "AudioClip", "Shader", "Texture2D" ],
+      "allowedPaths": [ "Assets/UI/**", "Assets/HUD/**", "Assets/Audio/Shared/**", "Assets/Shaders/**", "Assets/Loading/**" ]
+    },
+    { "name": "Cars/team_tier1_a", "category": "Cars", "rootAddress": "Cars/team_tier1_a/CarDefinition", "rootPath": "Assets/Cars/team_tier1_a/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier1_a/**" ] },
+    { "name": "Cars/team_tier1_b", "category": "Cars", "rootAddress": "Cars/team_tier1_b/CarDefinition", "rootPath": "Assets/Cars/team_tier1_b/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier1_b/**" ] },
+    { "name": "Cars/team_tier1_c", "category": "Cars", "rootAddress": "Cars/team_tier1_c/CarDefinition", "rootPath": "Assets/Cars/team_tier1_c/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier1_c/**" ] },
+    { "name": "Cars/team_tier1_d", "category": "Cars", "rootAddress": "Cars/team_tier1_d/CarDefinition", "rootPath": "Assets/Cars/team_tier1_d/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier1_d/**" ] },
+    { "name": "Cars/team_tier2_a", "category": "Cars", "rootAddress": "Cars/team_tier2_a/CarDefinition", "rootPath": "Assets/Cars/team_tier2_a/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier2_a/**" ] },
+    { "name": "Cars/team_tier2_b", "category": "Cars", "rootAddress": "Cars/team_tier2_b/CarDefinition", "rootPath": "Assets/Cars/team_tier2_b/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier2_b/**" ] },
+    { "name": "Cars/team_tier2_c", "category": "Cars", "rootAddress": "Cars/team_tier2_c/CarDefinition", "rootPath": "Assets/Cars/team_tier2_c/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier2_c/**" ] },
+    { "name": "Cars/team_tier2_d", "category": "Cars", "rootAddress": "Cars/team_tier2_d/CarDefinition", "rootPath": "Assets/Cars/team_tier2_d/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier2_d/**" ] },
+    { "name": "Cars/team_tier3_a", "category": "Cars", "rootAddress": "Cars/team_tier3_a/CarDefinition", "rootPath": "Assets/Cars/team_tier3_a/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier3_a/**" ] },
+    { "name": "Cars/team_tier3_b", "category": "Cars", "rootAddress": "Cars/team_tier3_b/CarDefinition", "rootPath": "Assets/Cars/team_tier3_b/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier3_b/**" ] },
+    { "name": "Cars/team_tier3_c", "category": "Cars", "rootAddress": "Cars/team_tier3_c/CarDefinition", "rootPath": "Assets/Cars/team_tier3_c/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier3_c/**" ] },
+    { "name": "Cars/team_tier3_d", "category": "Cars", "rootAddress": "Cars/team_tier3_d/CarDefinition", "rootPath": "Assets/Cars/team_tier3_d/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier3_d/**" ] },
+    { "name": "Cars/team_tier4_a", "category": "Cars", "rootAddress": "Cars/team_tier4_a/CarDefinition", "rootPath": "Assets/Cars/team_tier4_a/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier4_a/**" ] },
+    { "name": "Cars/team_tier4_b", "category": "Cars", "rootAddress": "Cars/team_tier4_b/CarDefinition", "rootPath": "Assets/Cars/team_tier4_b/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier4_b/**" ] },
+    { "name": "Cars/team_tier4_c", "category": "Cars", "rootAddress": "Cars/team_tier4_c/CarDefinition", "rootPath": "Assets/Cars/team_tier4_c/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier4_c/**" ] },
+    { "name": "Cars/team_tier4_d", "category": "Cars", "rootAddress": "Cars/team_tier4_d/CarDefinition", "rootPath": "Assets/Cars/team_tier4_d/CarDefinition.prefab", "allowedPaths": [ "Assets/Cars/team_tier4_d/**" ] },
+    { "name": "Tracks/monaco", "category": "Tracks", "rootAddress": "Tracks/monaco/TrackData", "rootPath": "Assets/Tracks/monaco/TrackData.asset", "allowedPaths": [ "Assets/Tracks/monaco/**" ] },
+    { "name": "Tracks/monza", "category": "Tracks", "rootAddress": "Tracks/monza/TrackData", "rootPath": "Assets/Tracks/monza/TrackData.asset", "allowedPaths": [ "Assets/Tracks/monza/**" ] },
+    { "name": "Tracks/silverstone", "category": "Tracks", "rootAddress": "Tracks/silverstone/TrackData", "rootPath": "Assets/Tracks/silverstone/TrackData.asset", "allowedPaths": [ "Assets/Tracks/silverstone/**" ] },
+    { "name": "Tracks/spa", "category": "Tracks", "rootAddress": "Tracks/spa/TrackData", "rootPath": "Assets/Tracks/spa/TrackData.asset", "allowedPaths": [ "Assets/Tracks/spa/**" ] }
+  ],
+  "expectedGroupCount": 21,
+  "allowedSharedDependencies": true,
+  "forbiddenCrossCarDependencies": true
+}

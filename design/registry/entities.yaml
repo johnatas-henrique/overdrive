@@ -8,20 +8,20 @@
 # RULES:
 #   - Only register facts that cross system boundaries. Internal-only facts
 #     (a formula used in one GDD only) do NOT need to be registered.
-#   - Never delete entries — set status: deprecated instead.
+#   - Never delete entries -- set status: deprecated instead.
 #   - When a value changes: update the value, set revised: to today's date,
 #     and add a comment with the old value and which GDD changed it.
-#   - source: is the authoritative GDD — the one that "owns" this fact.
+#   - source: is the authoritative GDD -- the one that "owns" this fact.
 #     Other GDDs that reference it list themselves in referenced_by.
 #   - When a new GDD references an existing entry, append its path to
 #     referenced_by. Do not create a duplicate entry.
 #
-# WRITTEN BY: /design-system (Phase 5 — after GDD sections are approved)
+# WRITTEN BY: /design-system (Phase 5 -- after GDD sections are approved)
 #             /consistency-check (when resolving conflicts)
-# READ BY:    /design-system (Phase 2 — before authoring begins, and after
+# READ BY:    /design-system (Phase 2 -- before authoring begins, and after
 #               Section C/D writes to conflict-check new entities/formulas)
-#             /consistency-check (primary input — grep-first, GDD-second)
-#             /review-all-gdds (Phase 1 — baseline for Phase 2 checks)
+#             /consistency-check (primary input -- grep-first, GDD-second)
+#             /review-all-gdds (Phase 1 -- baseline for Phase 2 checks)
 #             /architecture-review (data structure and interface validation)
 #
 # SEARCH PATTERNS (for skills using Grep):
@@ -38,36 +38,408 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: ""
+last_updated: "2026-07-27"
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
-# Register an entity here when it appears in more than one GDD — e.g., an
+# Register an entity here when it appears in more than one GDD -- e.g., an
 # enemy defined in combat.md that also drops items listed in inventory.md.
 #
 # Required fields: name, status, source, referenced_by, added
 # Attribute fields: any key stats that could appear in another GDD
 #   (health, damage, drops, faction, etc.)
 
-entities: []
+entities:
+  - name: team_tier1_a
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 1
+    ai_archetype: Consistent
+    stats:
+      top_speed: 20
+      acceleration: 20
+      brake_power: 16
+      grip_level: 20
+      stability: 20
+      efficiency: 20
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
 
-# Example (remove when first real entry is added):
-#
-# entities:
-#   - name: goblin
-#     status: active              # active | deprecated
-#     source: design/gdd/combat.md
-#     referenced_by:
-#       - design/gdd/combat.md
-#       - design/gdd/inventory.md
-#     health: 40
-#     damage: 8
-#     drops:
-#       - item: goblin_arm        # must match an entry in items section
-#         qty: 1
-#         drop_rate: 0.8          # 0.0–1.0
-#     added: 2026-03-26
-#     revised: ""
+  - name: team_tier1_b
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 1
+    ai_archetype: Consistent
+    stats:
+      top_speed: 20
+      acceleration: 20
+      brake_power: 20
+      grip_level: 16
+      stability: 20
+      efficiency: 20
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
+
+  - name: team_tier1_c
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 1
+    ai_archetype: Inconsistent
+    stats:
+      top_speed: 17
+      acceleration: 19
+      brake_power: 20
+      grip_level: 16
+      stability: 16
+      efficiency: 16
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
+
+  - name: team_tier1_d
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 1
+    ai_archetype: Cautious
+    stats:
+      top_speed: 15
+      acceleration: 17
+      brake_power: 20
+      grip_level: 20
+      stability: 20
+      efficiency: 20
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
+
+  - name: team_tier2_a
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 2
+    # was: Consistent before 2026-07-27 — aligned to game-concept "Aggressive overtakes"
+    ai_archetype: Aggressive
+    stats:
+      top_speed: 11
+      acceleration: 14
+      brake_power: 16
+      grip_level: 16
+      stability: 16
+      efficiency: 16
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
+
+  - name: team_tier2_b
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 2
+    # was: Aggressive before 2026-07-27 — aligned to game-concept "Inconsistent when pressured"
+    ai_archetype: Inconsistent
+    stats:
+      top_speed: 11
+      acceleration: 14
+      brake_power: 20
+      grip_level: 16
+      stability: 12
+      efficiency: 16
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
+
+  - name: team_tier2_c
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 2
+    # was: Inconsistent before 2026-07-27 — aligned to game-concept "Defensive, blocks persistently"
+    ai_archetype: Aggressive
+    stats:
+      top_speed: 8
+      acceleration: 11
+      brake_power: 16
+      grip_level: 16
+      stability: 16
+      efficiency: 16
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
+
+  - name: team_tier2_d
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 2
+    # was: Aggressive before 2026-07-27 — aligned to game-concept "Smooth, consistent execution"
+    ai_archetype: Consistent
+    stats:
+      top_speed: 11
+      acceleration: 14
+      brake_power: 16
+      grip_level: 12
+      stability: 12
+      efficiency: 12
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
+
+  - name: team_tier3_a
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 3
+    ai_archetype: Cautious
+    stats:
+      top_speed: 8
+      acceleration: 11
+      brake_power: 12
+      grip_level: 12
+      stability: 12
+      efficiency: 12
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
+
+  - name: team_tier3_b
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 3
+    # was: Aggressive before 2026-07-27 — aligned to game-concept "Technical, smooth driving style"
+    ai_archetype: Consistent
+    stats:
+      top_speed: 8
+      acceleration: 11
+      brake_power: 8
+      grip_level: 12
+      stability: 8
+      efficiency: 8
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
+
+  - name: team_tier3_c
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 3
+    # was: Cautious before 2026-07-27 — aligned to game-concept "Aggressive, prone to contact"
+    ai_archetype: Aggressive
+    stats:
+      top_speed: 8
+      acceleration: 11
+      brake_power: 16
+      grip_level: 16
+      stability: 16
+      efficiency: 16
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
+
+  - name: team_tier3_d
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 3
+    # was: Consistent before 2026-07-27 — aligned to game-concept "Quick in clean air, struggles in traffic"
+    ai_archetype: Cautious
+    stats:
+      top_speed: 8
+      acceleration: 11
+      brake_power: 8
+      grip_level: 12
+      stability: 8
+      efficiency: 8
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
+
+  - name: team_tier4_a
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 4
+    ai_archetype: Inconsistent
+    stats:
+      top_speed: 8
+      acceleration: 11
+      brake_power: 8
+      grip_level: 12
+      stability: 12
+      efficiency: 8
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
+
+  - name: team_tier4_b
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 4
+    ai_archetype: Cautious
+    stats:
+      top_speed: 8
+      acceleration: 11
+      brake_power: 8
+      grip_level: 12
+      stability: 8
+      efficiency: 8
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
+
+  - name: team_tier4_c
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 4
+    ai_archetype: Aggressive
+    stats:
+      top_speed: 8
+      acceleration: 11
+      brake_power: 8
+      grip_level: 8
+      stability: 8
+      efficiency: 8
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
+
+  - name: team_tier4_d
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+      - design/gdd/ui-menu.md
+      - design/gdd/hud.md
+      - design/gdd/audio-system.md
+      - design/gdd/content-pipeline.md
+    tier: 4
+    ai_archetype: Inconsistent
+    stats:
+      top_speed: 6
+      acceleration: 6
+      brake_power: 4
+      grip_level: 12
+      stability: 12
+      efficiency: 8
+    weight_kg: 505
+    added: 2026-07-22
+    revised: ""
 
 
 # ─── ITEMS ───────────────────────────────────────────────────────────────────
@@ -80,23 +452,6 @@ entities: []
 
 items: []
 
-# Example:
-#
-# items:
-#   - name: goblin_arm
-#     status: active
-#     source: design/gdd/combat.md   # drop defined in combat GDD
-#     referenced_by:
-#       - design/gdd/combat.md
-#       - design/gdd/inventory.md    # inventory GDD lists its weight/stack rules
-#       - design/gdd/economy.md      # economy GDD references its sell price
-#     value_gold: 5
-#     weight: 1
-#     stackable: true
-#     category: crafting_material
-#     added: 2026-03-26
-#     revised: ""
-
 
 # ─── FORMULAS ────────────────────────────────────────────────────────────────
 # Named calculations with defined variables and output ranges.
@@ -107,29 +462,196 @@ items: []
 #   output_range[min, max], added
 # Optional: expression (the actual formula), notes
 
-formulas: []
+formulas:
+  - name: fuel_consumption_rate
+    status: active
+    source: design/gdd/fuel-system.md
+    referenced_by:
+      - design/gdd/fuel-system.md
+      - design/gdd/car-definition-data.md
+      - design/gdd/vehicle-physics.md
+    variables:
+      - base_rate
+      - throttle_input
+      - efficiency_modifier
+    output_range: [0.0, 0.054]
+    expression: "0.06 L/s × throttle_input × efficiency_modifier"
+    notes: "Fuel System owns base_rate = 0.06 L/s for MVP. Car Definition Data supplies only the dimensionless efficiency_modifier = (1 - stat × 0.025); Vehicle Physics consumes Fuel output. Difficulty does not modify Fuel rules."
+    added: 2026-07-22
+    revised: 2026-07-24
 
-# Example:
-#
-# formulas:
-#   - name: damage_formula
-#     status: active
-#     source: design/gdd/combat.md
-#     referenced_by:
-#       - design/gdd/combat.md
-#       - design/gdd/progression.md   # progression GDD scales attack variable
-#     variables:
-#       - attack
-#       - defense
-#       - crit_chance
-#       - crit_multiplier
-#     output_range: [0, 999]
-#     expression: "max(0, attack - defense) * (1 + crit_chance * crit_multiplier)"
-#     notes: "Output feeds into health-system damage intake. Min is 0 (armour
-#       can absorb all damage). Max is uncapped in formula but tuning knob
-#       damage_cap in combat.md clamps at 999."
-#     added: 2026-03-26
-#     revised: ""
+  - name: tire_wear_rate
+    status: active
+    source: design/gdd/tire-system.md
+    referenced_by:
+      - design/gdd/tire-system.md
+      - design/gdd/car-definition-data.md
+    variables:
+      - base_rate
+      - distance_factor
+      - aggression
+      - surface_penalty
+      - efficiency_modifier
+      - wearRateMultiplier
+    output_range: [0.0, null]
+    expression: "base_rate × distance_factor × aggression × surface_penalty × efficiency_modifier × wearRateMultiplier"
+    notes: "Tire System GDD defines the full expression. Car Definition Data provides efficiency stat that feeds into efficiency_modifier. wearRateMultiplier is 1.0 in MVP. Difficulty does not modify Tire rules."
+    added: 2026-07-22
+    revised: "2026-07-24"
+
+  # was: name was ai_pit_projection before 2026-07-25
+  - name: pit_required_before_next_lap
+    status: active
+    source: design/gdd/pit-stop.md
+    referenced_by:
+      - design/gdd/pit-stop.md
+      - design/gdd/ai-rival.md
+      - design/gdd/race-session-manager.md
+    variables:
+      - fuel_consumed_in_last_completed_lap
+      - tire_wear_gained_in_last_completed_lap
+      - fuel_after_current_lap
+      - tire_life_after_current_lap
+      - is_final_lap
+      - predicted_fuel_per_lap
+      - predicted_tire_wear_per_lap
+    output_range: [0.0, 1.0]
+    expression: "pit_required_before_next_lap = fuel_after_current_lap < 1.10 × predicted_fuel_per_lap OR tire_life_after_current_lap < 1.10 × predicted_tire_wear_per_lap; evaluate only after LapCompleted(1), never before final lap"
+    notes: "AI Rival owns the request. Fuel and Tire publish measured completed-lap deltas; Race Session Manager publishes lap boundaries and final-lap state."
+    added: 2026-07-23
+    revised: "2026-07-25"
+
+  - name: player_pit_advisory
+    status: active
+    source: design/gdd/pit-stop.md
+    referenced_by:
+      - design/gdd/pit-stop.md
+      - design/gdd/hud.md
+      - design/gdd/track-system.md
+      - design/gdd/race-session-manager.md
+    variables:
+      - current_fuel
+      - current_tire_wear_fraction
+      - last_lap_fuel_use
+      - last_lap_tire_wear_fraction
+      - racing_spline_progress
+      - pit_entry_progress
+      - is_final_lap
+      - remaining_racing_progress
+      - predicted_fuel_per_lap
+      - predicted_tire_wear_per_lap
+    output_range: [0.0, 1.0]
+    # was: expression used undefined `progress` in both forecast terms before 2026-07-24
+    expression: "PitThisLap = after LapCompleted(1) AND not final lap AND (current_fuel - last_lap_fuel_use × remaining_racing_progress < 1.10 × last_lap_fuel_use OR (1 - current_tire_wear_fraction) - last_lap_tire_wear_fraction × remaining_racing_progress < 1.10 × last_lap_tire_wear_fraction); warning_start = min(0.80, max(0.0, pit_entry_progress - 0.05))"
+    notes: "Pit Stop owns evaluation; HUD renders only the transient output; Track supplies pit-entry progress and RSM supplies mapped racing progress."
+    added: 2026-07-23
+    revised: "2026-07-24"
+
+  - name: grip_stacking
+    status: active
+    source: design/gdd/vehicle-physics.md
+    referenced_by:
+      - design/gdd/vehicle-physics.md
+      - design/gdd/tire-system.md
+    variables:
+      - grip_base
+      - tire_runtime_grip_multiplier
+      - surface_grip_multiplier
+    output_range: [0.20, 1.20]
+    # was: expression included × control_threshold before 2026-08-04 — stability removed from grip stack (validated 2026-08-04); control_threshold now modulates slip only (car-definition-data.md)
+    expression: "clamp(grip_base × surface_grip_multiplier × tire_runtime_grip_multiplier, 0.20, 1.20)"
+    notes: "Tire System outputs tire_runtime_grip_multiplier = grip_base × (1.0 - (wear_fraction × (1.0 - grip_floor))) where grip_floor = 0.20. Vehicle Physics consumes this multiplier in the multiplicative stack and clamps the final result to 0.20–1.20. Stability (control_threshold) is NOT part of this stack — it modulates slip behavior only."
+    added: 2026-07-22
+    revised: "2026-08-04"
+
+  - name: vfx_intensity
+    status: active
+    source: design/gdd/vfx.md
+    referenced_by:
+      - design/gdd/vfx.md
+      - design/gdd/car-definition-data.md
+    variables:
+      - speed
+      - streak_onset_speed
+      - global_max_velocity
+    output_range: [0.0, 1.0]
+    # was: expression treated streak_intensity as clamp(speed / global_max_velocity, 0, 1) before 2026-07-24
+    expression: "base_speed_intensity = clamp(speed / global_max_velocity, 0, 1); streak_intensity = clamp((speed - streak_onset_speed) / (global_max_velocity - streak_onset_speed), 0, 1); blur_amount = 0 when Motion Blur is Off or Reduced Motion is active, else clamp(speed / global_max_velocity, 0, 1) × 0.5; vignette_intensity = clamp((speed / global_max_velocity) - 0.6, 0, 0.4)"
+    notes: "streak_onset_speed = 100 km/h. global_max_velocity is read from Car Definition Data at runtime as max(all car top speeds). Runtime precedence is PerformanceReduced > Reduced Motion > Settings preference; overrides never rewrite saved values."
+    added: 2026-07-22
+    revised: "2026-07-25"
+
+  - name: qualifying_time
+    status: active
+    source: design/gdd/qualifying.md
+    referenced_by:
+      - design/gdd/qualifying.md
+      - design/gdd/ai-rival.md
+      - design/gdd/grid-start.md
+    variables:
+      - track_reference_lap_time
+      - tier_modifier
+      - ai_precision
+      - ai_error_multiplier
+      - pace_noise
+    output_range: [null, null]
+    expression: "ai_time = track_reference_lap_time × tier_modifier × (1 + (1-ai_precision) + PCG32Float01×0.005×ai_error_multiplier + PCG32Range(-pace_noise,+pace_noise))"
+    # was: note stated that raw qualifying time directly fed Grid & Start before 2026-07-24
+    notes: "Tier modifier: T1=1.00, T2=1.015, T3=1.035, T4=1.055. DifficultyProfile supplies precision, error multiplier and pace noise. Lower tiers may outqualify higher tiers when deterministic profile variation crosses the base tier spread. Qualifying outputs times to RSM, which creates immutable GridAssignment; stable-car tie rules apply only to exact equal times."
+    added: 2026-07-22
+    revised: "2026-07-25"
+
+  - name: ema_smoothing
+    status: active
+    source: design/gdd/input-system.md
+    referenced_by:
+      - design/gdd/input-system.md
+      - design/gdd/settings.md
+      - design/gdd/simulation-architecture.md
+    variables:
+      - alpha
+      - raw_input
+      - previous_output
+    output_range: [-1.0, 1.0]
+    expression: "output = alpha × raw_input + (1 - alpha) × previous_output"
+    notes: "Executed once per 60 Hz simulation tick. Accelerate and Brake use range 0.0–1.0; Steer uses range -1.0–1.0. Defaults: alpha=0.3 for Accelerate/Brake and alpha=0.5 for Steer."
+    added: 2026-07-23
+    revised: "2026-07-24"
+
+  - name: dead_zone_normalization
+    status: active
+    source: design/gdd/input-system.md
+    referenced_by:
+      - design/gdd/input-system.md
+      - design/gdd/settings.md
+      - design/gdd/simulation-architecture.md
+    variables:
+      - raw_value
+      - inner_threshold
+      - outer_threshold
+    output_range: [-1.0, 1.0]
+    expression: "stick: normalize(v) × clamp((|v| - inner) / (outer - inner), 0, 1); trigger: clamp((t - inner) / (1 - inner), 0, 1)"
+    notes: "MVP defaults: stick inner=0.15, outer=0.95; trigger inner=0.05. Settings may tune stick thresholds only; trigger inner remains Input-owned tuning. Profiles validate 0≤inner<outer≤1 before use. Keyboard and mouse pointer input have no dead zone."
+    added: 2026-07-23
+    revised: "2026-07-25"
+
+  - name: position_ranking
+    status: active
+    source: design/gdd/race-session-manager.md
+    referenced_by:
+      - design/gdd/race-session-manager.md
+      - design/gdd/grid-start.md
+    variables:
+      - lapCount
+      - splinePosition
+      - positionEntryStep
+      - carId
+    output_range: [1, 16]
+    # was: tiebreaker used time reaching position before 2026-07-24
+    expression: "rank(cars) by: 1. lapCount DESC, 2. splinePosition DESC (within same lap), 3. positionEntryStep ASC, 4. carId ASC"
+    notes: "Race Session Manager uses this for live race position. Grid & Start uses the finalized GridAssignment after qualifying; its qualifying-time ordering and stable-car tie rules are separate from live position ranking."
+    added: 2026-07-22
+    revised: "2026-07-24"
 
 
 # ─── CONSTANTS ───────────────────────────────────────────────────────────────
@@ -140,30 +662,92 @@ formulas: []
 #
 # Required fields: name, status, source, referenced_by, value, unit, added
 
-constants: []
+constants:
+  - name: race_laps
+    status: active
+    source: design/gdd/race-session-manager.md
+    referenced_by:
+      - design/gdd/race-session-manager.md
+      - design/gdd/hud.md
+      - design/gdd/game-concept.md
+    value: 5
+    unit: laps
+    added: 2026-07-22
+    revised: ""
 
-# Example:
-#
-# constants:
-#   - name: gold_carry_limit
-#     status: active
-#     source: design/gdd/economy.md
-#     referenced_by:
-#       - design/gdd/economy.md
-#       - design/gdd/inventory.md   # inventory enforces the carry limit
-#       - design/gdd/ui.md          # HUD displays current gold vs limit
-#     value: 9999
-#     unit: gold
-#     added: 2026-03-26
-#     revised: ""
-#
-#   - name: base_inventory_slots
-#     status: active
-#     source: design/gdd/inventory.md
-#     referenced_by:
-#       - design/gdd/inventory.md
-#       - design/gdd/progression.md  # progression unlocks additional slots
-#     value: 20
-#     unit: slots
-#     added: 2026-03-26
-#     revised: ""
+  - name: grid_size
+    status: active
+    source: design/gdd/race-session-manager.md
+    referenced_by:
+      - design/gdd/race-session-manager.md
+      - design/gdd/grid-start.md
+      - design/gdd/ai-rival.md
+      - design/gdd/game-concept.md
+    value: 16
+    unit: cars
+    added: 2026-07-22
+    revised: ""
+
+  - name: pit_stop_time
+    status: active
+    source: design/gdd/pit-stop.md
+    referenced_by:
+      - design/gdd/pit-stop.md
+      - design/gdd/race-session-manager.md
+      - design/gdd/fuel-system.md
+      - design/gdd/tire-system.md
+    value: "2-10"
+    unit: seconds
+    notes: "Tire swap completes in 2s while fuel fills at 0.8 L/s. Service duration = max(2s, missingFuelLiters / 0.8 L/s): 2–10s. Player may exit after tire swap; AI waits full in MVP."
+    added: 2026-07-22
+    revised: ""
+
+  - name: car_weight
+    status: active
+    source: design/gdd/car-definition-data.md
+    referenced_by:
+      - design/gdd/car-definition-data.md
+      - design/gdd/vehicle-physics.md
+      - design/gdd/fuel-system.md
+    value: 505
+    unit: kg
+    notes: "Fixed for all 16 cars. Not a differentiating stat -- exists for physics calculations. Fuel System confirms weight is constant regardless of fuel level."
+    added: 2026-07-22
+    revised: ""
+
+  - name: fuel_tank_capacity
+    status: active
+    source: design/gdd/fuel-system.md
+    referenced_by:
+      - design/gdd/fuel-system.md
+      - design/gdd/pit-stop.md
+    value: 8.0
+    unit: liters
+    notes: "Fixed across all tiers and difficulties. Pit Stop fills at 0.8 L/s; player may exit after the 2s tire swap with partial fuel, while AI waits until this full 8.0L value is restored in MVP."
+    added: 2026-07-22
+    revised: ""
+
+  - name: global_max_velocity
+    status: active
+    source: design/gdd/vfx.md
+    referenced_by:
+      - design/gdd/vfx.md
+      - design/gdd/car-definition-data.md
+    value: "max(all car top speeds)"
+    unit: km/h
+    # was: note stated that every VFX intensity used only global_max_velocity before 2026-07-24
+    notes: "Computed at runtime as the maximum top speed across all 16 cars on the current grid. Tier 1 max = ~340 km/h (top_speed 20 → 300 + 20×2). Used as the denominator in blur/vignette mappings and as the upper bound in the onset-adjusted streak_intensity formula."
+    added: 2026-07-22
+    revised: "2026-07-24"
+
+  - name: fixed_timestep
+    status: active
+    source: design/gdd/simulation-architecture.md
+    referenced_by:
+      - design/gdd/simulation-architecture.md
+      - design/gdd/vehicle-physics.md
+    value: 0.016667
+    unit: seconds (1/60 Hz)
+    notes: "FIXED_DT = 1/60 seconds ≈ 16.667ms. Simulation runs at 60 Hz via Physics.Simulate(FIXED_DT) decoupled from render frame rate."
+    added: 2026-07-22
+    revised: ""

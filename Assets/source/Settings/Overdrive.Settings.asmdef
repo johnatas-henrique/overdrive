@@ -1,0 +1,21 @@
+{
+  "name": "Overdrive.Settings",
+  "references": [
+    "Overdrive.Settings.Core",
+    "Overdrive.Input",
+    "Overdrive.Simulation",
+    "Overdrive.Content",
+    "Unity.InputSystem",
+    "Unity.RenderPipelines.Universal.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "rootNamespace": "Overdrive.Settings"
+}

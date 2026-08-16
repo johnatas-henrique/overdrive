@@ -1,0 +1,17 @@
+{
+  "name": "Overdrive.Input",
+  "references": [
+    "Unity.InputSystem",
+    "Overdrive.Simulation"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "rootNamespace": "Overdrive.Input"
+}

@@ -1,0 +1,20 @@
+{
+    "name": "Overdrive.Content.Unity",
+    "rootNamespace": "Overdrive.Content.Unity",
+    "references": [
+        "Overdrive.Content",
+        "Overdrive.Simulation",
+        "Overdrive.Settings.Core",
+        "Unity.Addressables",
+        "Unity.ResourceManager"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

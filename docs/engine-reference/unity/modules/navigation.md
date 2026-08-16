@@ -1,6 +1,6 @@
 # Unity 6.3 — Navigation Module Reference
 
-**Last verified:** 2026-02-13
+**Last verified:** 2026-07-19
 **Knowledge Gap:** Unity 6 NavMesh improvements
 
 ---
@@ -9,7 +9,7 @@
 
 Unity 6 navigation systems:
 - **NavMesh**: Built-in pathfinding for AI agents
-- **NavMeshComponents**: Package for runtime NavMesh building
+- **AI Navigation**: Installed package for runtime NavMesh building and links
 
 ---
 
@@ -168,53 +168,22 @@ obstacle.carving = true; // Create dynamic hole in NavMesh
 
 ---
 
-## Off-Mesh Links (Jumps, Teleports)
+## NavMesh Links (Jumps, Teleports)
 
-### Create Off-Mesh Link
+Use `Unity.AI.Navigation.NavMeshLink`. The old `UnityEngine.AI.OffMeshLink` component and its members are obsolete in the installed editor.
 
-1. `GameObject > Create Empty` (at jump start)
-2. Add `Off Mesh Link` component
-3. Set Start/End transforms
-4. Configure:
-   - **Bi-Directional**: Can traverse both ways
-   - **Cost Override**: Path cost for this link
-
-### Detect Off-Mesh Link Traversal
-
-```csharp
-void Update() {
-    // Check if agent is on an off-mesh link
-    if (agent.isOnOffMeshLink) {
-        // Manually traverse (e.g., play jump animation)
-        StartCoroutine(TraverseOffMeshLink());
-    }
-}
-
-IEnumerator TraverseOffMeshLink() {
-    OffMeshLinkData data = agent.currentOffMeshLinkData;
-    Vector3 startPos = agent.transform.position;
-    Vector3 endPos = data.endPos;
-
-    float duration = 0.5f;
-    float elapsed = 0f;
-
-    while (elapsed < duration) {
-        agent.transform.position = Vector3.Lerp(startPos, endPos, elapsed / duration);
-        elapsed += Time.deltaTime;
-        yield return null;
-    }
-
-    agent.CompleteOffMeshLink(); // Resume normal pathfinding
-}
-```
+1. Add a `NavMeshLink` component to a GameObject.
+2. Configure `startTransform` and `endTransform`.
+3. Configure `bidirectional`, `area`, and `costModifier` only when the traversal design requires them.
+4. Keep animation-specific traversal behavior in the gameplay system that owns the agent; do not copy examples based on obsolete `OffMeshLink` APIs.
 
 ---
 
-## NavMeshComponents Package (Runtime Baking)
+## AI Navigation Package (Runtime Baking)
 
-### Installation
-1. `Window > Package Manager`
-2. Add from Git URL: `com.unity.ai.navigation`
+### Project State
+
+`com.unity.ai.navigation` 2.0.14 is installed.
 
 ### Runtime NavMesh Baking
 
@@ -321,10 +290,9 @@ void OnDrawGizmos() {
 - **Limit Obstacle Avoidance Quality**: Use `LowQualityObstacleAvoidance` for distant agents
 - **Update Frequency**: Don't call `SetDestination()` every frame if target hasn't moved
 - **Area Masks**: Limit walkable areas to reduce pathfinding search space
-- **NavMesh Tiles**: Use tiled NavMesh for large worlds (NavMeshComponents package)
+- **NavMesh Tiles**: Use tiled NavMesh for large worlds (AI Navigation package)
 
 ---
 
 ## Sources
-- https://docs.unity3d.com/6000.0/Documentation/Manual/Navigation.html
 - https://docs.unity3d.com/Packages/com.unity.ai.navigation@2.0/manual/index.html

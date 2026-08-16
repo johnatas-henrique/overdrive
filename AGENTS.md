@@ -5,13 +5,13 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 ## Technology Stack
 
-- **Engine**: Unity 6.0.3.19f1
+- **Engine**: Unity 6000.3.22f1 (Unity 6.3 LTS)
 - **Language**: C#
 - **Build System**: Unity Build Pipeline
 - **Rendering**: Universal Render Pipeline 17.3.0
-- **Input**: Unity Input System 1.19.0
+- **Input**: Unity Input System 1.20.0
 - **Navigation**: AI Navigation 2.0.14
-- **Asset Pipeline**: Unity AssetDatabase/import pipeline with Coplay MCP for
+- **Asset Pipeline**: Unity Asset Import Pipeline + Addressables + Coplay MCP for
   editor-assisted scene, asset, and visual verification workflows
 
 > **Note**: This project is developed exclusively for Unity. Use Unity-native
@@ -19,6 +19,10 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 > **Note**: Engine-specialist agents exist for Godot, Unity, Unreal, SFML 3,
 > and Raylib. Use the set matching your engine.
+
+## Engine Version Reference
+
+@docs/engine-reference/unity/VERSION.md
 
 ## Agent Model Policy
 
@@ -88,9 +92,11 @@ separate module installation step.
 Every task follows: **Question -> Options -> Decision -> Draft -> Approval**
 
 - Agents MUST ask "May I write this to [filepath]?" before using Write/Edit tools
+- **Whenever you need to ask the user anything — approvals, decisions, clarifications — use the appropriate question tool for the runtime** (the name varies: `question` in OpenCode, `ask` in Claude Code, etc.), not inline text, even when a skill says "ask 'May I write...'" literally
 - Agents MUST show drafts or summaries before requesting approval
 - Multi-file changes require explicit approval for the full changeset
 - No commits without user instruction
+- **Skill next-step recommendations are GENERIC boilerplate** — validate them against the actual project context before repeating (e.g. team-qa's "run /gate-check" only applies to phase transitions, not sprint-to-sprint within the same phase)
 
 ## Coding Standards
 
@@ -226,3 +232,17 @@ plugin architecture guide.
 
 To contribute to the framework itself — adding agents, skills, commands, rules,
 or plugins — see `docs/CONTRIBUTING.md`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as markdown files under `docs/issues/<feature>/` in this repo. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical triage labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — root `CONTEXT.md`, ADRs in `docs/architecture/`. See `docs/agents/domain.md`.

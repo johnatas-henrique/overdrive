@@ -1,6 +1,6 @@
 # Unity 6.3 — Animation Module Reference
 
-**Last verified:** 2026-02-13
+**Last verified:** 2026-07-19
 **Knowledge Gap:** Unity 6 animation improvements, Timeline enhancements
 
 ---
@@ -10,17 +10,17 @@
 Unity 6.3 animation systems:
 - **Animator Controller (Mecanim)**: State machine-based (RECOMMENDED)
 - **Timeline**: Cinematic sequences, cutscenes
-- **Animation Rigging**: Procedural runtime animation
+- **Animation Rigging**: Optional package for procedural runtime animation; not installed
 - **Legacy Animation**: Deprecated, avoid
 
 ---
 
 ## Key Changes from 2022 LTS
 
-### Animation Rigging Package (Production-Ready in Unity 6)
+### Animation Rigging Package (Optional)
 
 ```csharp
-// Install: Package Manager > Animation Rigging
+// Package not installed in this project. Install only after approval.
 // Runtime IK, aim constraints, procedural animation
 ```
 
@@ -201,13 +201,13 @@ public class CutsceneEvents : MonoBehaviour {
 
 ```csharp
 // ✅ CrossFade (smooth transition)
-animator.CrossFade("Attack", 0.2f); // 0.2s transition
+animator.CrossFade("Attack", 0.2f); // Normalized transition duration
 
 // ✅ Play (instant)
 animator.Play("Idle");
 
-// ❌ Avoid: Legacy Animation component
-Animation anim = GetComponent<Animation>(); // DEPRECATED
+// Legacy Animation component retained for compatibility; use Animator for new gameplay animation.
+Animation anim = GetComponent<Animation>();
 ```
 
 ---
@@ -284,6 +284,6 @@ string currentClip = clipInfo[0].clip.name;
 ---
 
 ## Sources
-- https://docs.unity3d.com/6000.0/Documentation/Manual/AnimationOverview.html
+- https://docs.unity3d.com/6000.3/Documentation/Manual/AnimationOverview.html
 - https://docs.unity3d.com/Packages/com.unity.animation.rigging@1.3/manual/index.html
 - https://docs.unity3d.com/Packages/com.unity.timeline@1.8/manual/index.html

@@ -5,44 +5,45 @@
 
 ## Engine & Language
 
-- **Engine**: [TO BE CONFIGURED — run /setup-engine]
-- **Language**: [TO BE CONFIGURED]
-- **Rendering**: [TO BE CONFIGURED]
-- **Physics**: [TO BE CONFIGURED]
+- **Engine**: Unity 6000.3.22f1 (Unity 6.3 LTS)
+- **Language**: C#
+- **Rendering**: Universal Render Pipeline 17.3.0
+- **Physics**: Unity Physics 3D. Vehicle simulation remains pending prototype evaluation.
+- **Networking**: Deferred. MVP selects no provider. Alpha selects an online-services provider for identity and durable ghost sharing; Beta separately selects a real-time racing SDK. No provider-specific API, transport, rollback, storage, pricing, or leaderboard claim is an approved project fact before those decisions are accepted.
 
 ## Input & Platform
 
 <!-- Written by /setup-engine. Read by /ux-design, /ux-review, /test-setup, /team-ui, and /dev-story -->
 <!-- to scope interaction specs, test helpers, and implementation to the correct input methods. -->
 
-- **Target Platforms**: [TO BE CONFIGURED — e.g., PC, Console, Mobile, Web]
-- **Input Methods**: [TO BE CONFIGURED — e.g., Keyboard/Mouse, Gamepad, Touch, Mixed]
-- **Primary Input**: [TO BE CONFIGURED — the dominant input for this game]
-- **Gamepad Support**: [TO BE CONFIGURED — Full / Partial / None]
-- **Touch Support**: [TO BE CONFIGURED — Full / Partial / None]
-- **Platform Notes**: [TO BE CONFIGURED — any platform-specific UX constraints]
+- **Target Platforms**: PC, Web
+- **Input Methods**: Keyboard/Mouse, Gamepad
+- **Primary Input**: Keyboard/Mouse and Gamepad are equivalent
+- **Gamepad Support**: Full
+- **Touch Support**: None
+- **Platform Notes**: Web builds target WebGL2. Do not depend on experimental WebGPU. UI and prompts must adapt to the active keyboard/mouse or gamepad control scheme.
 
 ## Naming Conventions
 
-- **Classes**: [TO BE CONFIGURED]
-- **Variables**: [TO BE CONFIGURED]
-- **Signals/Events**: [TO BE CONFIGURED]
-- **Files**: [TO BE CONFIGURED]
-- **Scenes/Prefabs**: [TO BE CONFIGURED]
-- **Constants**: [TO BE CONFIGURED]
+- **Classes**: PascalCase
+- **Variables**: PascalCase for visible fields, `_camelCase` for private fields, camelCase for parameters and locals
+- **Signals/Events**: PascalCase
+- **Files**: PascalCase matching the primary class
+- **Scenes/Prefabs**: PascalCase
+- **Constants**: PascalCase unless an ADR establishes a system-specific convention
 
 ## Performance Budgets
 
-- **Target Framerate**: [TO BE CONFIGURED]
-- **Frame Budget**: [TO BE CONFIGURED]
-- **Draw Calls**: [TO BE CONFIGURED]
-- **Memory Ceiling**: [TO BE CONFIGURED]
+- **Target Framerate**: 60 FPS
+- **Frame Budget**: 16.6 ms
+- **Draw Calls**: Establish from the first representative PC and Web prototype
+- **Memory Ceiling**: Establish from the first representative PC and Web prototype
 
 ## Testing
 
-- **Framework**: [TO BE CONFIGURED]
-- **Minimum Coverage**: [TO BE CONFIGURED]
-- **Required Tests**: Balance formulas, gameplay systems, networking (if applicable)
+- **Framework**: Unity Test Framework 1.6.0 (NUnit)
+- **Minimum Coverage**: No numeric target before a baseline exists; cover public game logic and every fixed bug with deterministic tests.
+- **Required Tests**: EditMode for deterministic logic; PlayMode for Unity behavior; balance formulas and gameplay systems; networking only if later introduced.
 
 ## Forbidden Patterns
 
@@ -52,12 +53,18 @@
 ## Allowed Libraries / Addons
 
 <!-- Add approved third-party dependencies here -->
-- [None configured yet — add as dependencies are approved]
+- Universal Render Pipeline 17.3.0
+- Input System 1.20.0
+- AI Navigation 2.0.14
+- Addressables 3.1.0
+- No online-services provider or real-time networking SDK is approved before its Alpha or Beta selection ADR is Accepted.
+- Unity Test Framework 1.6.0
+- MCP for Unity (CoplayDev) via `com.coplaydev.unity-mcp`
 
 ## Architecture Decisions Log
 
 <!-- Quick reference linking to full ADRs in docs/architecture/ -->
-- [No ADRs yet — use /architecture-decision to create one]
+- [ADR-0001 — Manual Simulation Authority and Determinism Boundary](../architecture/adr-0001-manual-simulation-authority-and-determinism-boundary.md)
 
 ## Engine Specialists
 
@@ -65,12 +72,12 @@
 <!-- Read by /code-review, /architecture-decision, /architecture-review, and team skills -->
 <!-- to know which specialist to spawn for engine-specific validation. -->
 
-- **Primary**: [TO BE CONFIGURED — run /setup-engine]
-- **Language/Code Specialist**: [TO BE CONFIGURED]
-- **Shader Specialist**: [TO BE CONFIGURED]
-- **UI Specialist**: [TO BE CONFIGURED]
-- **Additional Specialists**: [TO BE CONFIGURED]
-- **Routing Notes**: [TO BE CONFIGURED]
+- **Primary**: unity-specialist
+- **Language/Code Specialist**: unity-specialist
+- **Shader Specialist**: unity-shader-specialist
+- **UI Specialist**: unity-ui-specialist
+- **Additional Specialists**: unity-dots-specialist, unity-addressables-specialist
+- **Routing Notes**: Use the primary specialist for Unity architecture and C# review. Use the Addressables specialist for content groups, catalogs, and asset-loading decisions. Use the DOTS specialist only when ECS, Jobs, or Burst architecture is actively introduced. Use the shader and UI specialists for rendering and interface work respectively.
 
 ### File Extension Routing
 
@@ -79,9 +86,9 @@
 
 | File Extension / Type | Specialist to Spawn |
 |-----------------------|---------------------|
-| Game code (primary language) | [TO BE CONFIGURED] |
-| Shader / material files | [TO BE CONFIGURED] |
-| UI / screen files | [TO BE CONFIGURED] |
-| Scene / prefab / level files | [TO BE CONFIGURED] |
-| Native extension / plugin files | [TO BE CONFIGURED] |
-| General architecture review | Primary |
+| Game code (.cs files) | unity-specialist |
+| Shader / material files (.shader, .shadergraph, .mat) | unity-shader-specialist |
+| UI / screen files (.uxml, .uss, Canvas prefabs) | unity-ui-specialist |
+| Scene / prefab / level files (.unity, .prefab) | unity-specialist |
+| Native extension / plugin files (.dll, native plugins) | unity-specialist |
+| General architecture review | unity-specialist |

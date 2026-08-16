@@ -8,12 +8,13 @@
   "command": {
     "hybrid-prototype": {
       "template": "Run the hybrid-prototype skill: load .opencode/skills/hybrid-prototype/SKILL.md and follow the fast-lane prototype workflow. Concept: $ARGUMENTS",
-      "description": "Fast-lane prototype for discovery phase — build a playable prototype in 2-3 days with minimal process overhead.",
+      "description": "Fast-lane prototype for discovery phase \u2014 build a playable prototype in 2-3 days with minimal process overhead.",
       "agent": "prototyper"
     }
   },
   "mcp": {
     "aseprite": {
+      "enabled": false,
       "type": "local",
       "command": [
         "uv",
@@ -23,15 +24,41 @@
         "-m",
         "aseprite_mcp"
       ],
-      "enabled": false,
       "environment": {
         "ASEPRITE_PATH": "{env:ASEPRITE_PATH}"
       }
     },
-    "unityMCP": {
+    "blender-mcp": {
+      "enabled": false,
+      "type": "local",
+      "command": [
+        "uvx",
+        "blender-mcp"
+      ],
+      "environment": {
+        "BLENDER_HOST": "localhost",
+        "BLENDER_PORT": "9876"
+      }
+    },
+    "unity-coplay": {
+      "enabled": false,
       "type": "remote",
-      "url": "http://127.0.0.1:8080/mcp",
-      "enabled": true
+      "url": "http://127.0.0.1:8080/mcp"
+    },
+    "unity-cli": {
+      "enabled": false,
+      "type": "local",
+      "command": [
+        "powershell.exe",
+        "-NoProfile",
+        "-Command",
+        "\u0026 \u0027C:\\Users\\Johnatas\\AppData\\Local\\Unity\\bin\\unity.exe\u0027 mcp --project-path D:/projects/overdrive"
+      ]
+    },
+    "ai-game-developer": {
+      "enabled": true,
+      "type": "remote",
+      "url": "http://localhost:8081/p/55a3e7c2"
     }
   },
   "permission": {
@@ -53,7 +80,7 @@
       "git clean -f*": "deny",
       "sudo *": "deny",
       "chmod 777*": "deny",
-      "*>.env*": "deny",
+      "*\u003E.env*": "deny",
       "cat *.env*": "deny",
       "type *.env*": "deny"
     },

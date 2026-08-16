@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 4 — Historical Fidelity Lock</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production · Phase 4</p>
+  <h1>Historical Fidelity Lock — March CG891</h1>
+  <p class="meta">2026-08-10 · Mission: <a href="../MISSION.md">MISSION.md</a> · ~45–60 min</p>
+</header>
+
+<h2>The purpose of this phase</h2>
+<p>Phase 4 converts the approved Overdrive-style candidate into a historically recognizable March CG891 reference before any multi-view or 3D reconstruction work begins.</p>
+<blockquote><strong>Style is not identity.</strong> A car can look like Overdrive and still be the wrong car. This phase locks the CG891 silhouette and livery logic without copying commercial logos or text.</blockquote>
+
+<h2>1. Provided artifacts</h2>
+<ul>
+  <li>Clean side reference: <code>design/art/reference/team_tier2_a/historical_clean.png</code></li>
+  <li>Source montage: <code>design/art/reference/1989-canonical-reference.jpg</code></li>
+  <li>Style authority: <code>design/art/art-bible.md</code> — Overdrive style means the Fujishima + Matsuri fusion.</li>
+  <li>Vehicle authority: <code>design/assets/specs/team_tier2_a-car-assets.md</code> — team_tier2_a / May / March CG891.</li>
+</ul>
+
+<h2>2. What is locked and what is adapted</h2>
+<table>
+<tr><th>Locked by the historical reference</th><th>Adapted for Overdrive</th></tr>
+<tr><td>Narrow low nose, thin monocoque, low open cockpit, no halo, compact sidepods, period wings, exposed wheels, side-profile proportions</td><td>Fujishima + Matsuri linework, cel shading, warm highlights, painted opaque colors</td></tr>
+<tr><td>Miami Blue body dominance and the location of the green accent band</td><td>Commercial logos, sponsor names, numbers, lettering, and readable decals are removed</td></tr>
+<tr><td>Functional black/carbon areas on tires, floor, wings, suspension, and mechanical parts</td><td>Neutral gray background and clean presentation framing</td></tr>
+</table>
+
+<h2>3. Build the edit graph manually</h2>
+<p>No workflow file is required. Create the graph from the following contract so the lesson remains reproducible after the old export is removed.</p>
+<ol>
+<li>Use <code>design/art/reference/team_tier2_a/historical_clean.png</code> as the clean side reference. Copy it into the ComfyUI input folder. Recommended Windows command:
+<pre><code>Copy-Item "design/art/reference/team_tier2_a/historical_clean.png" `
+  "E:\ComfyUI\ComfyUI-Easy-Install\ComfyUI\input\historical_clean.png" -Force</code></pre>
+</li>
+<li>Create these 13 nodes: <code>UNETLoader</code>, <code>CLIPLoader</code>, <code>VAELoader</code>, <code>LoraLoaderModelOnly</code>, <code>LoadImage</code>, <code>VAEEncode</code>, <code>EmptySD3LatentImage</code>, <code>Krea2EditModelPatch</code>, <code>Krea2EditGroundedEncode</code>, <code>ConditioningZeroOut</code>, <code>KSampler</code>, <code>VAEDecode</code>, and <code>SaveImage</code>.</li>
+<li>Connect <code>LoadImage.image</code> to <code>VAEEncode.pixels</code>, <code>Krea2EditModelPatch.source_image</code>, and <code>Krea2EditGroundedEncode.image</code>.</li>
+<li>Connect <code>VAELoader.vae</code> to <code>VAEEncode.vae</code>, <code>Krea2EditModelPatch.vae</code>, and <code>VAEDecode.vae</code>. Connect <code>VAEEncode.latent</code> to <code>Krea2EditModelPatch.source_latent</code>. Connect <code>EmptySD3LatentImage.latent</code> to both <code>Krea2EditModelPatch.target_latent</code> and <code>KSampler.latent_image</code>; do not connect raw image or VAE outputs to these ports.</li>
+<li>Connect <code>UNETLoader.model</code> to <code>LoraLoaderModelOnly.model</code>, set the LoRA strength to <code>1.0</code>, connect its model output to <code>Krea2EditModelPatch.model</code>, then connect the patched model to <code>KSampler.model</code>.</li>
+<li>Connect <code>CLIPLoader.clip</code> to <code>Krea2EditGroundedEncode.clip</code>, enter the prompt from Section 5 in the encoder, connect its conditioning output to <code>KSampler.positive</code> and to <code>ConditioningZeroOut.conditioning</code>, then connect <code>ConditioningZeroOut.conditioning</code> to <code>KSampler.negative</code>.</li>
+<li>Connect <code>KSampler.samples</code> to <code>VAEDecode.samples</code>, <code>VAELoader.vae</code> to <code>VAEDecode.vae</code>, and <code>VAEDecode.image</code> to <code>SaveImage.images</code>.</li>
+<li>Do not enable the Krea2T Enhancer. It is intentionally absent from this phase.</li>
+</ol>
+
+<h2>4. Fixed generation contract</h2>
+<table>
+<tr><th>Setting</th><th>Value</th></tr>
+<tr><td>Diffusion model</td><td><code>krea2\krea2_turbo_int8_convrot.safetensors</code></td></tr>
+<tr><td>Text encoder</td><td><code>qwen3vl_4b_fp8_scaled.safetensors</code>, type <code>krea2</code></td></tr>
+<tr><td>VAE</td><td><code>qwen_image_vae.safetensors</code></td></tr>
+<tr><td>LoRA</td><td><code>hina_Krea2Turbo_animeEnhance_v1.0.safetensors</code>, strength <code>1.0</code></td></tr>
+<tr><td>Trigger</td><td><code>anime style</code></td></tr>
+<tr><td>Target</td><td><code>1280 × 720</code>, strict left-facing side profile</td></tr>
+<tr><td>Sampler</td><td><code>euler</code> / <code>simple</code></td></tr>
+<tr><td>Steps / CFG / denoise</td><td><code>8 / 1 / 1.0</code></td></tr>
+<tr><td>Seed</td><td><code>5573231954461200</code>, control after generate <code>fixed</code></td></tr>
+<tr><td>Negative conditioning</td><td><code>ConditioningZeroOut</code>; no text negative prompt</td></tr>
+</table>
+
+<h2>5. Prompt used by the graph</h2>
+<pre><code>anime style, 2D hand-painted anime racing illustration, Overdrive style: Kosuke Fujishima and Hino Matsuri fusion, clean heroic mechanical drafting, delicate expressive linework, vibrant hard-edged cel shading, painted opaque colors, warm golden highlights. Transform the supplied March CG891 side-profile reference into a historical-fidelity Overdrive reference image. Treat the reference silhouette as structural authority: preserve the extremely narrow and low 1989 monocoque, long pointed nose, low open cockpit, no halo, exposed wheels, visible double-wishbone suspension, compact sidepods, compact engine cover, period-correct front wing and large rear wing. Keep a strict left-facing side profile with the entire car centered and visible from nose to rear wing. Keep the livery historically recognizable but adapted for Overdrive: Miami Blue #66C5C5 covers approximately 70 percent of the visible body; restrained deep green #2E7D32 follows the reference accent band and small geometric blocks; matte black or carbon appears only on tires, floor, wings, suspension, and mechanical areas. No broad white body panels. Remove all sponsor names, logos, numbers, letters, watermarks, and readable markings while preserving their geometric placement only as unmarked color shapes. Do not invent modern aerodynamic features, halo bars, oversized sidepods, modern high noses, or unrelated parts. Solid neutral gray background, soft controlled studio lighting, full car in frame, no driver, no helmet, no cropping, no photorealism, no PBR, no normal maps, no gradients.</code></pre>
+
+<h2>6. Execute the phase</h2>
+<ol>
+<li>Queue the manually built graph once without changing any value.</li>
+<li>Wait for the image at <code>E:\ComfyUI\ComfyUI-Easy-Install\ComfyUI\output\overdrive\phase4</code>.</li>
+<li>Confirm the output is a single complete side-profile car, not a turnaround sheet or a perspective view.</li>
+<li>Compare the generated image against the source crop and the Art Bible. Do not compare only against the previous D image; D is a style candidate, not the historical authority.</li>
+<li>Record the result using the evidence template below.</li>
+</ol>
+
+<h2>7. Acceptance matrix</h2>
+<table>
+<tr><th>Criterion</th><th>Pass condition</th></tr>
+<tr><td>Silhouette</td><td>The nose, cockpit, sidepods, rear wing, exposed wheels, and wheelbase read as the narrow 1989 CG891 rather than a generic modern F1 car.</td></tr>
+<tr><td>Era cues</td><td>No halo, no modern high nose, no oversized modern sidepod treatment, and no unrelated aerodynamic devices.</td></tr>
+<tr><td>Livery base</td><td>Miami Blue is dominant; green follows the reference logic; no large white body panels appear.</td></tr>
+<tr><td>Clean adaptation</td><td>No readable sponsor text, logos, numbers, watermarks, or invented branding.</td></tr>
+<tr><td>Overdrive style</td><td>Fujishima + Matsuri linework, clean cel shading, painted color blocks, and warm heroic presentation are visible.</td></tr>
+<tr><td>3D readiness</td><td>Major boundaries are stable and readable enough to guide later views and reconstruction.</td></tr>
+</table>
+<p><strong>Gate:</strong> every criterion must pass. If silhouette or livery fails, stop and revise this phase. Do not proceed to multi-view or 3D.</p>
+
+<h2>8. Evidence record</h2>
+<pre><code>Phase: 4 — Historical Fidelity Lock
+Graph: manual Krea2 edit graph from Section 3
+Reference: design/art/reference/team_tier2_a/historical_clean.png
+Output:
+Seed: 5573231954461200
+Technical result: PASS / FAIL
+Silhouette: PASS / FAIL
+Era cues: PASS / FAIL
+Livery: PASS / FAIL
+Clean adaptation: PASS / FAIL
+Overdrive style: PASS / FAIL
+3D readiness: PASS / FAIL
+Observed mismatch:
+Next controlled change:</code></pre>
+
+<h2>9. Exit condition</h2>
+<p>Phase 4 is complete only when one side-profile reference is approved as the historical identity lock for team_tier2_a. The next phase may use this approved image as the source for 3/4 and multi-view identity preservation.</p>
+
+<footer>
+  Overdrive Learning Workspace · <a href="overdrive-asset-production-learning-index.html">Learning index</a> · <a href="overdrive-asset-production-lesson-11-2d-generation-smoke-test.html">Previous: Lesson 11</a>
+</footer>
+</body>
+</html>

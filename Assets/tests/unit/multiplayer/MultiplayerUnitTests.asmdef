@@ -1,0 +1,21 @@
+{
+  "name": "MultiplayerUnitTests",
+  "references": [
+    "Overdrive.Multiplayer",
+    "Overdrive.Simulation",
+    "Unity.Mathematics"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "noEngineReferences": false,
+  "rootNamespace": "Overdrive.Multiplayer.Tests"
+}

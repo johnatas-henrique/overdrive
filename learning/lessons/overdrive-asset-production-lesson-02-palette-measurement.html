@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 2 — Programmatic Palette Checks</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production · Lesson 2</p>
+  <h1>Programmatic palette checks: measuring an image before judging it</h1>
+  <p class="meta">2026-08-06 · Mission: <a href="../MISSION.md">MISSION.md</a> · ~25 min</p>
+</header>
+
+<h2>What this lesson adds</h2>
+
+<p>Lesson 1 taught the visual checklist. This lesson adds a small machine-checkable layer: image dimensions, approximate corner background, and dominant colors. The script does <strong>not</strong> decide whether an image is beautiful or anime. It catches measurable deviations before they consume your attention.</p>
+
+<div class="callout">
+  <strong>Important:</strong> a program can say that an image contains a gray background and the expected red. It cannot prove that the silhouette, drawing quality, or emotional tone belongs to Overdrive. Visual judgment and measurement work together.
+</div>
+
+<h2>The first concept: a color is data</h2>
+
+<p>A color can be represented as three numbers: red, green, and blue. `#CCCCCC` means red 204, green 204, blue 204. The art bible's gray presentation background is therefore a measurable target, not only an impression of gray.</p>
+
+<table>
+  <tr><th>Representation</th><th>Example</th><th>Meaning</th></tr>
+  <tr><td>Hex</td><td><code>#E03C31</code></td><td>Compact notation used in the art bible</td></tr>
+  <tr><td>RGB</td><td><code>(224, 60, 49)</code></td><td>Three channels from 0 to 255</td></tr>
+  <tr><td>Distance</td><td><code>sqrt((R₁-R₂)² + ...)</code></td><td>Approximate difference between two colors</td></tr>
+</table>
+
+<h2>What the script does</h2>
+
+<ol>
+  <li>Opens each PNG with Pillow.</li>
+  <li>Reports width, height, and color mode.</li>
+  <li>Samples small patches from the four corners.</li>
+  <li>Calculates their average color and compares it with `#CCCCCC`.</li>
+  <li>Reduces the image to a small sample and reports its dominant colors.</li>
+</ol>
+
+<p>The script is at <code>learning/reference/check-image-palette.py</code>. It is deliberately small enough to read from top to bottom. The useful idea is not memorizing Python; it is learning how a visual requirement becomes a test.</p>
+
+<h2>Run it</h2>
+
+<p>The WSL Python in this environment has no Pillow, so the lesson uses the embedded Python shipped with your ComfyUI installation. In PowerShell:</p>
+
+<pre><code>&amp; "E:\ComfyUI\ComfyUI-Easy-Install\python_embeded\python.exe" `
+  "D:\projects\overdrive\learning\reference\check-image-palette.py" `
+  "D:\projects\overdrive\design\art\reference\generated\team_tier1_a\front-d-1.png" `
+  "D:\projects\overdrive\design\art\reference\generated\team_tier1_a\side-1.png" `
+  --output "D:\projects\overdrive\learning\reference\lesson-2-palette-results.json"</code></pre>
+
+<p>The same command can inspect a whole directory after the script is extended with directory input. We start with two images because small feedback loops are easier to understand.</p>
+
+<h2>How to read the result</h2>
+
+<table>
+  <tr><th>Field</th><th>Question it answers</th><th>What it cannot answer</th></tr>
+  <tr><td><code>size</code></td><td>Is the image the expected resolution?</td><td>Whether the composition is good</td></tr>
+  <tr><td><code>corner_average</code></td><td>Do the corners resemble the required gray background?</td><td>Whether the whole background is clean</td></tr>
+  <tr><td><code>background_distance</code></td><td>How far is the sampled gray from #CCCCCC?</td><td>Whether the image contains a correct livery</td></tr>
+  <tr><td><code>dominant_colors</code></td><td>Which colors occupy much of the image?</td><td>Whether each color is assigned to the right car part</td></tr>
+</table>
+
+<p>The threshold in this first script is `25` RGB-distance units. It is a teaching threshold, not a final production rule. A future asset-pipeline specification should choose thresholds from real samples and record them.</p>
+
+<h2>Evidence from the actual Overdrive images</h2>
+
+<p>We ran the script against the current project references <code>front-d-1.png</code> and <code>side-1.png</code>. Both images look like gray-background car presentation sheets, but the corner averages were darker than the literal target <code>#CCCCCC</code>:</p>
+
+<table>
+  <tr><th>Image</th><th>Corner average</th><th>Distance from #CCCCCC</th><th>Strict threshold result</th></tr>
+  <tr><td><code>front-d-1.png</code></td><td><code>#AFACAE</code></td><td>52.58</td><td>Outside 25</td></tr>
+  <tr><td><code>side-1.png</code></td><td><code>#B9B7B8</code></td><td>34.67</td><td>Outside 25</td></tr>
+</table>
+
+<p>This is not evidence that the images are unusable. It is evidence that the test is too simplistic for a final gate: the corner samples include presentation shading and the target may have been interpreted as a gray range rather than one exact pixel color. A useful verifier reports the discrepancy; a human or a better segmentation rule decides whether it matters.</p>
+
+<h2>What the check can reveal in Overdrive</h2>
+
+<ul>
+  <li>A supposedly neutral presentation image whose corners are blue, green, or warm orange.</li>
+  <li>A team image whose dominant red is too dark or too brown compared with the team palette.</li>
+  <li>An image with an unintended background or scene color occupying most of the frame.</li>
+  <li>Images whose dimensions do not match the intended reference or multiview workflow.</li>
+</ul>
+
+<p>It will not detect the invented word on a tire. That remains a visual/OCR problem. It will not decide whether the Porsche's silhouette belongs in a scene. That remains an art-direction and context decision.</p>
+
+<h2>Exercise</h2>
+
+<ol>
+  <li>Run the script on <code>front-d-1.png</code> and <code>side-1.png</code>.</li>
+  <li>Find the two <code>corner_average</code> values.</li>
+  <li>Compare the reported dominant colors with the intended white, red, black, and gray presentation background.</li>
+  <li>Write one sentence distinguishing what the script proved from what still requires visual inspection.</li>
+</ol>
+
+<details>
+  <summary>Expected reasoning</summary>
+  <div class="answer">
+    <p>The script can provide evidence about dimensions, corner color, distance from #CCCCCC, and dominant colors. It cannot prove that the car has the right silhouette, that the red is placed on the correct body panels, or that the rendering feels like Overdrive. Those require the visual checklist.</p>
+  </div>
+</details>
+
+<p><strong>Key lesson:</strong> measurement does not replace judgment. It exposes assumptions. Here, the script exposed the difference between “the prompt requested #CCCCCC” and “the rendered background is exactly #CCCCCC.”</p>
+
+<h2>Primary source and next concept</h2>
+
+<p>Use the <a href="../../design/art/art-bible.md">Overdrive Art Bible</a> as the authority for target colors and standards. The next lesson will map a 3D asset into its production layers: mesh, UVs, textures, materials, shader, prefab, and Unity scene role.</p>
+
+<footer>
+  Overdrive Learning Workspace · Lesson 2 of the asset-production track · <a href="overdrive-asset-production-lesson-01-style-conformance.html">Previous lesson</a> · <a href="../MISSION.md">Mission</a>
+</footer>
+
+</body>
+</html>

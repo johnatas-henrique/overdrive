@@ -1,0 +1,27 @@
+{
+  "name": "SettingsIntegrationTests",
+  "references": [
+    "Overdrive.Settings",
+    "Overdrive.Settings.Core",
+    "Overdrive.Input",
+    "Overdrive.Simulation",
+    "Unity.InputSystem",
+    "Unity.InputSystem.TestFramework",
+    "UnityEngine.UI",
+    "UnityEditor",
+    "Unity.RenderPipelines.Universal.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "noEngineReferences": false,
+  "rootNamespace": "Overdrive.Settings.Tests"
+}

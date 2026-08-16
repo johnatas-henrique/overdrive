@@ -15,7 +15,7 @@ game without hiding how Unity's compilation, testing, build, and versioning work
 
 | Area | Current state |
 |---|---|
-| Unity version | 6000.3.19f1 |
+| Unity version | 6000.3.22f1 |
 | Primary language | C# |
 | Unity Test Framework | Installed as `com.unity.test-framework` 1.6.0 |
 | Git execution environment | WSL currently performs repository commands |

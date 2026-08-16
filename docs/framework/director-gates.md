@@ -410,6 +410,28 @@ or before finalizing any engine-specific implementation approach
 
 ---
 
+### TD-MANIFEST — Control Manifest Review
+
+**Trigger**: After `/create-control-manifest` extracts rules from Accepted ADRs
+(Phase 4b), before the manifest is written
+
+**Context to pass**:
+- Consolidated rule extraction (all Accepted ADRs, each rule with explicit source)
+- Global rules from `docs/framework/technical-preferences.md` and engine reference
+- Layer classification (Foundation / Core / Feature / Presentation)
+
+**Prompt**:
+> "Review the control manifest extraction. (1) Are all mandatory ADR patterns
+> captured and accurately stated? (2) Are forbidden approaches complete and
+> correctly attributed? (3) Does every rule have a source ADR or preference
+> document — were any rules invented? (4) Are performance guardrails consistent
+> with the ADR constraints? Return APPROVE, CONCERNS [specific gaps], or
+> REJECT [rules are inaccurate, contradictory, missing, or unattributed]."
+
+**Verdicts**: APPROVE / CONCERNS / REJECT
+
+---
+
 ## Tier 1 — Producer Gates
 
 Agent: `producer` | Model tier: Opus | Domain: Scope, timeline, dependencies, production risk
@@ -685,7 +707,19 @@ as part of `/code-review`
 > an automated test? For Integration stories: is each criterion observable in a
 > controlled test environment? Flag criteria that are too vague to implement
 > against, and flag criteria that require a full game build to test (mark these
-> DEFERRED, not BLOCKED). Return ADEQUATE (criteria are implementable as written),
+> DEFERRED, not BLOCKED).
+>
+> **Cross-epic verifiability**: additionally, for each criterion ask: *"Can this
+> assertion be verified with the contracts, events, and interfaces the story's
+> OWN work exposes — the types, signals, and injectable seams it produces
+> itself?"* A criterion that asserts the behaviour of a system outside the
+> story's scope (owned by another epic, an external service, or a third-party
+> integration not yet mounted as an interface here) is a GAP **even when the
+> criterion is testable in isolation** — testable in general does not mean
+> testable with this story's own seams. Require it to be re-scoped to the
+> boundary this work exposes (its own state transitions, published events,
+> output types) or marked DEFERRED with its destination epic/story. Return
+> ADEQUATE (criteria are implementable as written),
 > GAPS [specific criteria needing refinement], or INADEQUATE [criteria are too
 > vague — story must be revised before sprint inclusion]."
 

@@ -24,33 +24,1213 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 1
-last_updated: ""
+version: 8
+last_updated: "2026-08-06"
+review_notes: "Eighth architecture review (validation rerun v6). 21 GDDs, 19 ADRs assessed. 144 TRs assessed: 143 covered (99.3%), 1 partial (0.7%), 0 gaps (0.0%). Verdict FAIL (advisory) — 0 cross-ADR conflicts (C1 player-input timing, C2 presentation timing, C3 premature CloudStorage contract resolved by amends); TR-camera-004 resolved via camera.md propagation fixes. No new TR-IDs (registry complete); 5 requirement-text revisions applied in v5 (TR-ai-001, TR-audio-001, TR-camera-004, TR-multiplayer-008, TR-vfx-005); TR-camera-004 re-revised in v6 (velocity-direction model). No deprecations. Engine consultation PASS; 7 implementation gates + 13 deferred master-architecture gates. Full report: docs/architecture/architecture-review-2026-08-06.md."
 
-requirements: []
+requirements:
+  # ═══════════════════════════════════════════════════════════════
+  # FOUNDATION LAYER
+  # ═══════════════════════════════════════════════════════════════
 
-# --- EXAMPLE ENTRIES (remove when first real entries are added) ---
-#
-# - id: TR-combat-001
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Player takes damage from enemies based on attack power minus defence"
-#   created: 2026-03-10
-#   revised: ""
-#   status: active
-#
-# - id: TR-combat-002
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Combo window timing is 0.4 seconds between hits"
-#   created: 2026-03-10
-#   revised: "2026-04-01"
-#   status: active
-#
-# - id: TR-combat-003
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Old damage formula using raw stats"
-#   created: 2026-03-10
-#   revised: ""
-#   status: superseded-by: TR-combat-001
+  # --- Input System ---
+  - id: TR-input-001
+    system: input-system
+    gdd: design/gdd/input-system.md
+    requirement: "Two action maps exist: OverdriveGameplay (5 actions) and OverdriveUI (6 actions)"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-input-002
+    system: input-system
+    gdd: design/gdd/input-system.md
+    requirement: "InputContextController is the sole owner of action-map and InputSystemUIInputModule activation"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-input-003
+    system: input-system
+    gdd: design/gdd/input-system.md
+    requirement: "CameraToggle is presentation-only; never enters SimulationInput, tick pipeline, Replay, or Ghost Recording"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-input-004
+    system: input-system
+    gdd: design/gdd/input-system.md
+    requirement: "Reserved bindings: Confirm (Enter/South), Cancel (Escape/East), Pause (Escape/Start) cannot be replaced or removed"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-input-005
+    system: input-system
+    gdd: design/gdd/input-system.md
+    requirement: "CaptureLatestRawSample() called once per frame before accumulator in same Simulation driver Update call"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-input-006
+    system: input-system
+    gdd: design/gdd/input-system.md
+    requirement: "SimulationInput contract: accelerateOut, brakeOut, steerOut, rawXxxPostDeadZone, pauseEdge, inputAvailability"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-input-007
+    system: input-system
+    gdd: design/gdd/input-system.md
+    requirement: "EMA alphas: Accelerate 0.3, Brake 0.3, Steer 0.5; brake priority with EMA freeze"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-input-008
+    system: input-system
+    gdd: design/gdd/input-system.md
+    requirement: "Context handoff latching: newly enabled digital latched until neutral; Accelerate/Brake/Steer exempt on UI to Gameplay"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-input-009
+    system: input-system
+    gdd: design/gdd/input-system.md
+    requirement: "ActiveControlScheme arbitration: KeyboardMouse default, last meaningful device wins"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-input-010
+    system: input-system
+    gdd: design/gdd/input-system.md
+    requirement: "Mouse is UI-only in MVP; never produces Accelerate, Brake, or Steer"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-input-011
+    system: input-system
+    gdd: design/gdd/input-system.md
+    requirement: "Gamepad stick uses radial dead-zone normalization with inner 0.15 and outer 0.95; triggers use axial inner 0.05; keyboard is exempt"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-input-012
+    system: input-system
+    gdd: design/gdd/input-system.md
+    requirement: "Non-finite raw axes become zero and processed axes are clamped to their legal ranges before EMA"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-input-013
+    system: input-system
+    gdd: design/gdd/input-system.md
+    requirement: "Binding overrides use stable action and binding GUIDs; an unknown ID invalidates only that override"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-input-014
+    system: input-system
+    gdd: design/gdd/input-system.md
+    requirement: "`NoInputDevice` produces zeroed driving input without freezing simulation and recovers when a valid scheme returns"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- Simulation Architecture ---
+  - id: TR-sim-001
+    system: simulation-architecture
+    gdd: design/gdd/simulation-architecture.md
+    requirement: "Fixed 60 Hz timestep via manual accumulator in Update(), not FixedUpdate"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-sim-002
+    system: simulation-architecture
+    gdd: design/gdd/simulation-architecture.md
+    requirement: "Physics.simulationMode = SimulationMode.Script; one Physics.Simulate(FIXED_DT) per tick"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-sim-003
+    system: simulation-architecture
+    gdd: design/gdd/simulation-architecture.md
+    requirement: "14-step tick pipeline: TickStartSnapshot through PublishedSimulationSnapshot"
+    created: "2026-07-27"
+    revised: "2026-08-05"
+    status: active
+
+  - id: TR-sim-004
+    system: simulation-architecture
+    gdd: design/gdd/simulation-architecture.md
+    requirement: "Focus-loss creates non-physics lifecycle boundary; focus return never auto-resumes"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-sim-005
+    system: simulation-architecture
+    gdd: design/gdd/simulation-architecture.md
+    requirement: "Performance gate: 16-car prototype p95 <= 6ms, max <= 8ms"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-sim-006
+    system: simulation-architecture
+    gdd: design/gdd/simulation-architecture.md
+    requirement: "Render interpolation in LateUpdate; Rigidbody.interpolation = None"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-sim-007
+    system: simulation-architecture
+    gdd: design/gdd/simulation-architecture.md
+    requirement: "Determinism: PCG32 for all randomness, Unity.Mathematics, no UnityEngine.Random on sim path"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-sim-008
+    system: simulation-architecture
+    gdd: design/gdd/simulation-architecture.md
+    requirement: "Simulation is sole writer of SimulationState; RSM owns RaceMode; Content Pipeline emits signals"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-sim-009
+    system: simulation-architecture
+    gdd: design/gdd/simulation-architecture.md
+    requirement: "Countdown 300 ticks; GO on tick 300; Qualifying skips Countdown"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-sim-010
+    system: simulation-architecture
+    gdd: design/gdd/simulation-architecture.md
+    requirement: "Accumulator backlog is clamped to `2 × FIXED_DT`; discarded time is never caught up later"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-sim-011
+    system: simulation-architecture
+    gdd: design/gdd/simulation-architecture.md
+    requirement: "TickStart, Published, PostFinish, and ReplayInitial snapshots are immutable consumer boundaries"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-sim-012
+    system: simulation-architecture
+    gdd: design/gdd/simulation-architecture.md
+    requirement: "`simulationStepCount`, `activeRaceStepCount`, and race-time progression have explicit Countdown, Racing, Pause, and finish behavior"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-sim-013
+    system: simulation-architecture
+    gdd: design/gdd/simulation-architecture.md
+    requirement: "Below 30 FPS for 3 seconds emits `PerformanceReduced`; recovery and below-15 FPS pause thresholds are explicit"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-sim-014
+    system: simulation-architecture
+    gdd: design/gdd/simulation-architecture.md
+    requirement: "Finished and Results execute no gameplay simulation; Results remains active until content unload completes"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- Settings ---
+  - id: TR-settings-001
+    system: settings
+    gdd: design/gdd/settings.md
+    requirement: "Single JSON blob in PlayerPrefs under OverdriveSettings with backup-first atomic write"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-settings-002
+    system: settings
+    gdd: design/gdd/settings.md
+    requirement: "Schema migration v1 to v3 with sequential version processing"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-settings-003
+    system: settings
+    gdd: design/gdd/settings.md
+    requirement: "SettingsEditSession with snapshot, working copy, and Apply/Cancel"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-settings-004
+    system: settings
+    gdd: design/gdd/settings.md
+    requirement: "DifficultyProfile immutable per race; snapshotted at race initialization"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-settings-005
+    system: settings
+    gdd: design/gdd/settings.md
+    requirement: "ControlProfile validation: stick_inner < stick_outer, EMA alpha in 0 to 1; invalid falls back to defaults"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-settings-006
+    system: settings
+    gdd: design/gdd/settings.md
+    requirement: "Display changes use `RefreshRate`, a 15-second confirmation, and rollback on timeout, cancellation, or focus loss"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-settings-007
+    system: settings
+    gdd: design/gdd/settings.md
+    requirement: "`show_chase_hud_in_cockpit` controls chase-overlay visibility without changing HUD data ownership"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-settings-008
+    system: settings
+    gdd: design/gdd/settings.md
+    requirement: "Four quality presets configure render scale and VFX density without requiring recompilation"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-settings-009
+    system: settings
+    gdd: design/gdd/settings.md
+    requirement: "Rebinding flow: state machine (Open→Listening→Captured/Rejected/Conflict), transactional working override-set with baseline diff, catalog-aware capture (reserved/busy/duplicate classification), and persisted override migration (unknown id / malformed path / duplicate path classification)"
+    created: "2026-08-15"
+    revised: ""
+    status: active
+
+  # --- Content Pipeline ---
+  - id: TR-content-001
+    system: content-pipeline
+    gdd: design/gdd/content-pipeline.md
+    requirement: "3 Addressable groups: Shared, Cars/{teamId}, Tracks/{trackId}"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-content-002
+    system: content-pipeline
+    gdd: design/gdd/content-pipeline.md
+    requirement: "Parallel loading of track + 16 car bundles"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-content-003
+    system: content-pipeline
+    gdd: design/gdd/content-pipeline.md
+    requirement: "CP_ state machine with RaceReconfigure for qualifying-to-race transition"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-content-004
+    system: content-pipeline
+    gdd: design/gdd/content-pipeline.md
+    requirement: "Error handling: car failure → CarLoadDegraded (non-fatal, continue with 15); track abort → ContentLoadError; shared fatal; catalog retry"
+    created: "2026-07-27"
+    revised: "2026-08-05"
+    status: active
+
+  - id: TR-content-005
+    system: content-pipeline
+    gdd: design/gdd/content-pipeline.md
+    requirement: "Memory budgets: PC 730-1320 MB, WebGL 415-670 MB per race"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-content-006
+    system: content-pipeline
+    gdd: design/gdd/content-pipeline.md
+    requirement: "Addressable instances and handles are released with `ReleaseInstance`/`Release`; race unload completes before Idle"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-content-007
+    system: content-pipeline
+    gdd: design/gdd/content-pipeline.md
+    requirement: "Race loading must complete within 5 seconds on PC and 10 seconds on Web"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-content-008
+    system: content-pipeline
+    gdd: design/gdd/content-pipeline.md
+    requirement: "Back/Cancel is blocked after loading begins; unload and partial-failure cleanup have explicit completion signals"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- Ghost Recording ---
+  - id: TR-ghost-001
+    system: ghost-recording
+    gdd: design/gdd/ghost-recording.md
+    requirement: "Continuous 12 bytes/tick (3 x float32) plus edge event stream"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-ghost-002
+    system: ghost-recording
+    gdd: design/gdd/ghost-recording.md
+    requirement: "80-byte binary header with magic 0x47485354 and version field; fields total exactly 80 bytes (reserved byte[14])"
+    created: "2026-07-27"
+    revised: "2026-08-05"
+    status: active
+
+  - id: TR-ghost-003
+    system: ghost-recording
+    gdd: design/gdd/ghost-recording.md
+    requirement: "22,500 tick cap; non-serializable only on attempted overflow beyond 22,500; never discard oldest ticks"
+    created: "2026-07-27"
+    revised: "2026-08-05"
+    status: active
+
+  - id: TR-ghost-004
+    system: ghost-recording
+    gdd: design/gdd/ghost-recording.md
+    requirement: "MVP buffer always discarded on Results/Forfeit/Idle/Load failure"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-ghost-005
+    system: ghost-recording
+    gdd: design/gdd/ghost-recording.md
+    requirement: "Alpha persistence gate: only new local personal best is serialized"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-ghost-006
+    system: ghost-recording
+    gdd: design/gdd/ghost-recording.md
+    requirement: "CRC32 is stored per 256-tick block and LZ4 is optional and version-flagged"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-ghost-007
+    system: ghost-recording
+    gdd: design/gdd/ghost-recording.md
+    requirement: "ReplayInitialState captures race/content identity, seed, grid, cars, resources, and Perfect Start state at GO"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- Multiplayer Architecture ---
+  - id: TR-multiplayer-001
+    system: multiplayer-architecture
+    gdd: design/gdd/multiplayer-architecture.md
+    requirement: "MVP links no online-services or real-time SDK and creates no network traffic"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-multiplayer-002
+    system: multiplayer-architecture
+    gdd: design/gdd/multiplayer-architecture.md
+    requirement: "Alpha selects identity and durable ghost storage independently from Beta’s real-time SDK"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-multiplayer-003
+    system: multiplayer-architecture
+    gdd: design/gdd/multiplayer-architecture.md
+    requirement: "The Beta driver is a guest of the manual accumulator and never owns physics stepping or `SimulationState`"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-multiplayer-004
+    system: multiplayer-architecture
+    gdd: design/gdd/multiplayer-architecture.md
+    requirement: "Beta’s candidate `NetworkInput` is a fixed 14-byte versioned packet distinct from the 12-byte ghost record"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-multiplayer-005
+    system: multiplayer-architecture
+    gdd: design/gdd/multiplayer-architecture.md
+    requirement: "Real-time play uses input prediction with owner-published corrective kinematic state; local PhysX is not canonical"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-multiplayer-006
+    system: multiplayer-architecture
+    gdd: design/gdd/multiplayer-architecture.md
+    requirement: "Clock alignment, input delay, jitter buffer, redundancy, `W_drop`, `W_rollback`, held-last, and timeout are empirically selected"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-multiplayer-007
+    system: multiplayer-architecture
+    gdd: design/gdd/multiplayer-architecture.md
+    requirement: "Rollback replays vehicle kinematics and recorded input while Fuel, Tire, Pit, RSM, AI RNG, counters, and Ghost remain forward-only"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-multiplayer-008
+    system: multiplayer-architecture
+    gdd: design/gdd/multiplayer-architecture.md
+    requirement: "Beta reconnect lifecycle includes five exponential-backoff attempts, RECONNECTING behavior, resynchronization, and AI takeover after permanent failure"
+    created: "2026-08-05"
+    revised: "2026-08-06"
+    status: active
+
+  # ═══════════════════════════════════════════════════════════════
+  # CORE LAYER
+  # ═══════════════════════════════════════════════════════════════
+
+  # --- Vehicle Physics ---
+  - id: TR-vp-001
+    system: vehicle-physics
+    gdd: design/gdd/vehicle-physics.md
+    requirement: "Grip stack multiplicative: effective_grip = clamp(grip_base × surface × tire, 0.20, 1.20); Stability modulates slip behavior only"
+    created: "2026-07-27"
+    revised: "2026-08-05"
+    status: active
+
+  - id: TR-vp-002
+    system: vehicle-physics
+    gdd: design/gdd/vehicle-physics.md
+    requirement: "CarState produced every tick: Position (float3, Unity.Mathematics), Rotation (quaternion), LinearVelocity (float3), SpeedKmh, Rpm, Gear, Throttle, Brake, Steer, IsGridLocked (bool), Surface (SurfaceType), PitPhase, State (CarStateEnum: Driving/OffTrack/WallHit/Pitting/GridLocked), SlipState (SlipState: Normal/Slipping/SpinOut), SlideState (float, normalized slip), WallContact (bool), ForwardDot (float)"
+    created: "2026-07-27"
+    revised: "2026-08-05"
+    status: active
+
+  - id: TR-vp-003
+    system: vehicle-physics
+    gdd: design/gdd/vehicle-physics.md
+    requirement: "IVehicleDriver interface for future DOTS migration; MVP uses RigidbodyVehicleDriver"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-vp-004
+    system: vehicle-physics
+    gdd: design/gdd/vehicle-physics.md
+    requirement: "Wall bounce angle <= 30 degrees; WallHit cooldown 0.2-0.5s; repeated bounce impulse reduction 50%"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-vp-005
+    system: vehicle-physics
+    gdd: design/gdd/vehicle-physics.md
+    requirement: "Lift-off rotation with 0.3s anti-spam cooldown"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-vp-006
+    system: vehicle-physics
+    gdd: design/gdd/vehicle-physics.md
+    requirement: "Steering uses `min(steerCeiling(v), v/minTurnRadius, gripCeiling)` with speed falloff"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-vp-007
+    system: vehicle-physics
+    gdd: design/gdd/vehicle-physics.md
+    requirement: "Lift-off adds fixed +3.0g in both yaw-request and velocity-rotation consumers"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-vp-008
+    system: vehicle-physics
+    gdd: design/gdd/vehicle-physics.md
+    requirement: "Drift activation uses the validated track-radius factor and `driftHeadBoost` behavior"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-vp-009
+    system: vehicle-physics
+    gdd: design/gdd/vehicle-physics.md
+    requirement: "Longitudinal acceleration uses the validated engine-power-over-speed and quadratic-drag formula"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-vp-010
+    system: vehicle-physics
+    gdd: design/gdd/vehicle-physics.md
+    requirement: "Car-to-car contact applies 15–25% speed loss, push impulse, and repeated-contact cooldown through Vehicle Physics"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- Fuel System ---
+  - id: TR-fuel-001
+    system: fuel-system
+    gdd: design/gdd/fuel-system.md
+    requirement: "Fixed 8.0L tank for all cars; fuel_rate = base_rate x throttle x efficiency_modifier"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-fuel-002
+    system: fuel-system
+    gdd: design/gdd/fuel-system.md
+    requirement: "Base rate 0.06 L/s; efficiency_modifier formula is a TUNING KNOB owned by Car Definition Data (ADR-0015) — current value 1 - stat x 0.025, adjustable during playtesting, not a fixed architecture contract. Fuel System consumes the modifier per car; it does not define the formula."
+    created: "2026-07-27"
+    revised: "2026-08-05"
+    status: active
+
+  - id: TR-fuel-003
+    system: fuel-system
+    gdd: design/gdd/fuel-system.md
+    requirement: "Low fuel speed bonus: +1% top speed below 25% fuel"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-fuel-004
+    system: fuel-system
+    gdd: design/gdd/fuel-system.md
+    requirement: "No fuel consumption during Countdown; begins on first Racing tick after GO"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-fuel-005
+    system: fuel-system
+    gdd: design/gdd/fuel-system.md
+    requirement: "Refueling reads next-tick `PitServiceCommand.active/targetFuel` and fills at 0.8 L/s"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- Tire System ---
+  - id: TR-tire-001
+    system: tire-system
+    gdd: design/gdd/tire-system.md
+    requirement: "Continuous linear wear; grip_multiplier = grip_base x (1 - wear_fraction x (1 - grip_floor))"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-tire-002
+    system: tire-system
+    gdd: design/gdd/tire-system.md
+    requirement: "Grip floor 0.20; tire change at pit is binary 2.0s service"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-tire-003
+    system: tire-system
+    gdd: design/gdd/tire-system.md
+    requirement: "TireCompound ScriptableObject: compoundName, gripBase, wearRateMultiplier"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-tire-004
+    system: tire-system
+    gdd: design/gdd/tire-system.md
+    requirement: "Wear consumes distance, aggression, surface, efficiency, and compound multipliers from immutable tick inputs"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-tire-005
+    system: tire-system
+    gdd: design/gdd/tire-system.md
+    requirement: "Qualifying disables wear; pit service resets wear only through `PitServiceCommand`"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- Pit Stop ---
+  - id: TR-pit-001
+    system: pit-stop
+    gdd: design/gdd/pit-stop.md
+    requirement: "Service duration = max(2s, missing_fuel_liters / 0.8 L/s); tire and fuel in parallel"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-pit-002
+    system: pit-stop
+    gdd: design/gdd/pit-stop.md
+    requirement: "Player may exit after tire swap (2s) with partial fuel; AI waits for full tank"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-pit-003
+    system: pit-stop
+    gdd: design/gdd/pit-stop.md
+    requirement: "PitThisLap advisory from min(0.80, max(0, pit_entry_progress - 0.05)) until pit entry"
+    created: "2026-07-27"
+    revised: "2026-08-05"
+    status: active
+
+  - id: TR-pit-004
+    system: pit-stop
+    gdd: design/gdd/pit-stop.md
+    requirement: "Vehicle Physics solely writes `PitPhase`; Pit Stop writes only `PitState` and next-tick `PitServiceCommand`"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-pit-005
+    system: pit-stop
+    gdd: design/gdd/pit-stop.md
+    requirement: "Pit transit enforces the track’s speed limit and navigates through the assigned one-of-16 pit box"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- Qualifying ---
+  - id: TR-qual-001
+    system: qualifying
+    gdd: design/gdd/qualifying.md
+    requirement: "Single flying lap; no retry; RaceMode.Qualifying within Racing state"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-qual-002
+    system: qualifying
+    gdd: design/gdd/qualifying.md
+    requirement: "Qualifying fuel load = min(8.0L, fuel_rate x reference_flying_lap_time x 1.10)"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-qual-003
+    system: qualifying
+    gdd: design/gdd/qualifying.md
+    requirement: "No tire wear during qualifying; tires at 100% grip"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-qual-004
+    system: qualifying
+    gdd: design/gdd/qualifying.md
+    requirement: "Single flying lap format: one chance, no retry; enters Racing directly (no Countdown)"
+    created: "2026-08-01"
+    revised: ""
+    status: active
+    source: docs/architecture/adr-0013-qualifying-session-format.md
+
+  - id: TR-qual-005
+    system: qualifying
+    gdd: design/gdd/qualifying.md
+    requirement: "Skip/fail behavior: P16 grid position, no retry; AI times pre-generated"
+    created: "2026-08-01"
+    revised: ""
+    status: active
+    source: docs/architecture/adr-0013-qualifying-session-format.md
+
+  - id: TR-qual-006
+    system: qualifying
+    gdd: design/gdd/qualifying.md
+    requirement: "Tier order not preserved; cross-tier outqualification allowed by DifficultyProfile"
+    created: "2026-08-01"
+    revised: ""
+    status: active
+    source: docs/architecture/adr-0013-qualifying-session-format.md
+
+  - id: TR-qual-007
+    system: qualifying
+    gdd: design/gdd/qualifying.md
+    requirement: "Player spawns in a pit box, drives an untimed out-lap, then times exactly one start-line-to-start-line flying lap"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-qual-008
+    system: qualifying
+    gdd: design/gdd/qualifying.md
+    requirement: "RSM creates immutable GridAssignment by ascending time with stable `carId` tie-break"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- AI Rival ---
+  - id: TR-ai-001
+    system: ai-rival
+    gdd: design/gdd/ai-rival.md
+    requirement: "Deterministic counter-based AI noise keyed by race seed, car ID, simulation step, and slot ID"
+    created: "2026-07-27"
+    revised: "2026-08-06"
+    status: active
+
+  - id: TR-ai-002
+    system: ai-rival
+    gdd: design/gdd/ai-rival.md
+    requirement: "4 archetypes: Consistent, Aggressive, Inconsistent, Cautious with specific error parameters"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-ai-003
+    system: ai-rival
+    gdd: design/gdd/ai-rival.md
+    requirement: "AI pit projection uses 1.10x resource margin; never pits before lap 1 or final lap"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-ai-004
+    system: ai-rival
+    gdd: design/gdd/ai-rival.md
+    requirement: "AI reads only published snapshot; writes cached AIInput for next tick"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-ai-005
+    system: ai-rival
+    gdd: design/gdd/ai-rival.md
+    requirement: "Target speed combines base, state, personality, pace-noise, and error-noise factors"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-ai-006
+    system: ai-rival
+    gdd: design/gdd/ai-rival.md
+    requirement: "AI uses the same Vehicle Physics path as the player and has no active obstacle avoidance in MVP"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- Track System ---
+  - id: TR-track-001
+    system: track-system
+    gdd: design/gdd/track-system.md
+    requirement: "Track stored as JSON: spline, width, surface zones, pit lane, grid positions, metadata"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-track-002
+    system: track-system
+    gdd: design/gdd/track-system.md
+    requirement: "6 surface types: Asphalt (1.0), Kerb (0.85), Gravel (0.4), Grass (0.3), Runoff (0.6), PitLane (1.0)"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-track-003
+    system: track-system
+    gdd: design/gdd/track-system.md
+    requirement: "Pit lane: separate spline, two-lane F1 model, 16 boxes at ~10m intervals"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-track-004
+    system: track-system
+    gdd: design/gdd/track-system.md
+    requirement: "Track JSON is schema-versioned, Addressable, and materialized into chordal Catmull-Rom runtime structures"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-track-005
+    system: track-system
+    gdd: design/gdd/track-system.md
+    requirement: "Pit progress maps to racing progress and lap counting requires the 90%-distance anti-cut gate"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- Car Definition Data ---
+  - id: TR-car-001
+    system: car-definition-data
+    gdd: design/gdd/car-definition-data.md
+    requirement: "16 teams with 6 integer stats in [0,20]; weight constant 505 kg"
+    created: "2026-07-27"
+    revised: "2026-08-05"
+    status: active
+
+  - id: TR-car-002
+    system: car-definition-data
+    gdd: design/gdd/car-definition-data.md
+    requirement: "Stat-to-behavior formulas (max_velocity 300 + TS×2, t300 Acceleration metric, brake_distance, grip % of vmax, control_threshold slip-only, efficiency_modifier) are TUNING KNOBS: current values documented in the GDD, ownership in ADR-0015 (formula) and ADR-0002 (physics consumption), adjustable during playtesting — not fixed architecture contracts."
+    created: "2026-07-27"
+    revised: "2026-08-05"
+    status: active
+
+  - id: TR-car-003
+    system: car-definition-data
+    gdd: design/gdd/car-definition-data.md
+    requirement: "Load-time stat validation: clamp out-of-range stats to nearest integer in [0,20] with warning, run once at race init"
+    created: "2026-08-01"
+    revised: "2026-08-05"
+    status: active
+    source: docs/architecture/adr-0015-car-definition-data-validation.md
+
+  - id: TR-car-004
+    system: car-definition-data
+    gdd: design/gdd/car-definition-data.md
+    requirement: "Authoring-time differentiation check: team stats must differ (no duplicate 12/12/12/12/12/12 profiles)"
+    created: "2026-08-01"
+    revised: ""
+    status: active
+    source: docs/architecture/adr-0015-car-definition-data-validation.md
+
+  - id: TR-car-005
+    system: car-definition-data
+    gdd: design/gdd/car-definition-data.md
+    requirement: "CarDefinition stores stats, structured audio profile, opaque team color, and cockpit offset through read-only accessors"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- Race Session Manager ---
+  - id: TR-rsm-001
+    system: race-session-manager
+    gdd: design/gdd/race-session-manager.md
+    requirement: "Position ranking: lapCount DESC, splinePosition DESC, positionEntryStep ASC, carId ASC"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-rsm-002
+    system: race-session-manager
+    gdd: design/gdd/race-session-manager.md
+    requirement: "Lap detection: CrossedLapBoundary AND distanceSinceLastLap > trackLength x 0.90"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-rsm-003
+    system: race-session-manager
+    gdd: design/gdd/race-session-manager.md
+    requirement: "FinishOrderResolver reads PostFinishSnapshot once; projects unfinished AI by pace-only"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-rsm-004
+    system: race-session-manager
+    gdd: design/gdd/race-session-manager.md
+    requirement: "Result classification is Finished, DNF, or Forfeit, with no fabricated position for Forfeit"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-rsm-005
+    system: race-session-manager
+    gdd: design/gdd/race-session-manager.md
+    requirement: "RSM emits transition requests while Simulation remains the sole state-machine writer"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-rsm-006
+    system: race-session-manager
+    gdd: design/gdd/race-session-manager.md
+    requirement: "RSM owns immutable GridAssignment and carries it through qualifying-to-race reconfiguration"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- Grid & Start ---
+  - id: TR-grid-001
+    system: grid-start
+    gdd: design/gdd/grid-start.md
+    requirement: "16 cars in 2-wide formation; column stagger depends on first corner direction"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-grid-002
+    system: grid-start
+    gdd: design/gdd/grid-start.md
+    requirement: "Perfect Start: rawAcceleratePostDeadZone > 0.5 AND rawBrakePostDeadZone == 0 from GO-12 through GO"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-grid-003
+    system: grid-start
+    gdd: design/gdd/grid-start.md
+    requirement: "perfectStartDriveForceMultiplier = 1.15 for 600 ticks post-GO"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-grid-004
+    system: grid-start
+    gdd: design/gdd/grid-start.md
+    requirement: "Countdown contains five one-second lights over 300 ticks while driving input advances behind grid lock"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-grid-005
+    system: grid-start
+    gdd: design/gdd/grid-start.md
+    requirement: "Qualifying Results permits Confirm only, has no timeout or Back/Cancel path, and owns no generic stack navigation"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # ═══════════════════════════════════════════════════════════════
+  # PRESENTATION LAYER
+  # ═══════════════════════════════════════════════════════════════
+
+  # --- Camera ---
+  - id: TR-camera-001
+    system: camera
+    gdd: design/gdd/camera.md
+    requirement: "Cockpit primary, Chase secondary; 0.35s transitions; SphereCast collision avoidance"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-camera-002
+    system: camera
+    gdd: design/gdd/camera.md
+    requirement: "3-layer shake (Speed Vibration, Surface, Impact) clamped to 3.0 degrees total"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-camera-003
+    system: camera
+    gdd: design/gdd/camera.md
+    requirement: "FOV: Cockpit 78-95 degrees quadratic; Chase 70-90 degrees; Reduced Motion suppresses dynamic FOV"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-camera-004
+    system: camera
+    gdd: design/gdd/camera.md
+    requirement: "Chase look-ahead follows the velocity direction (velocityDirection × speed × lookAheadFactor, quadratic ~0.5-3 m); Cockpit has no look-ahead (fixed driver eye position)"
+    created: "2026-08-05"
+    revised: "2026-08-06"
+    status: active
+
+  - id: TR-camera-005
+    system: camera
+    gdd: design/gdd/camera.md
+    requirement: "PitCamera and terminal three-quarter presentation consume interpolated snapshot state without changing simulation"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- HUD ---
+  - id: TR-hud-001
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "8 chase elements: Speed+Gear, Position, Lap, Fuel Bar, Tire %, Lap Time, Rival Gap, Track Map; Ghost Delta is the ninth element when active"
+    created: "2026-07-27"
+    revised: "2026-08-05"
+    status: active
+
+  - id: TR-hud-002
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Every element readable in under 0.5 seconds at 200+ km/h; max 2 items per glance"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-hud-003
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Team color theming with auto-contrast fallback; 85% opacity Asphalt Black panels"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-hud-004
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Every HUD element has one authoritative data owner and an explicit update cadence"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-hud-005
+    system: hud
+    gdd: design/gdd/hud.md
+    requirement: "Cockpit uses a four-element warning layout; the settings toggle may reveal the full Chase overlay; pit/performance advisories remain transient"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- Audio System ---
+  - id: TR-audio-001
+    system: audio-system
+    gdd: design/gdd/audio-system.md
+    requirement: "Procedural two-oscillator engine derives base frequency from RPM × EngineCylinders / 120, then applies fuel factor and gear ratio"
+    created: "2026-07-27"
+    revised: "2026-08-06"
+    status: active
+
+  - id: TR-audio-002
+    system: audio-system
+    gdd: design/gdd/audio-system.md
+    requirement: "4 music stings: Race Start, Final Lap, Finish, Pit Entry; duck background 6dB"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-audio-003
+    system: audio-system
+    gdd: design/gdd/audio-system.md
+    requirement: "Tire squeal: volume rises with wear, pitch constant 1200 Hz, frequency rises with wear"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-audio-004
+    system: audio-system
+    gdd: design/gdd/audio-system.md
+    requirement: "Master, Music, SFX, and UI settings route through the Unity Audio Mixer and follow Simulation/Race/Pit lifecycle state"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-audio-005
+    system: audio-system
+    gdd: design/gdd/audio-system.md
+    requirement: "`IEngineSoundProvider` permits procedural/sample replacement and passes parameters safely to the audio callback thread"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  # --- VFX ---
+  - id: TR-vfx-001
+    system: vfx
+    gdd: design/gdd/vfx.md
+    requirement: "Speed streaks scale from global_max_velocity; onset at 100 km/h"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-vfx-002
+    system: vfx
+    gdd: design/gdd/vfx.md
+    requirement: "Total VFX budget: <= 1.6ms per frame (10% of 60 FPS budget)"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-vfx-003
+    system: vfx
+    gdd: design/gdd/vfx.md
+    requirement: "4 density presets: Low, Medium, High, Ultra; PerformanceReduced forces Low"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-vfx-004
+    system: vfx
+    gdd: design/gdd/vfx.md
+    requirement: "Screen-space effects use URP RenderGraph/FullScreenPass; Motion Blur uses URP Volume overrides"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-vfx-005
+    system: vfx
+    gdd: design/gdd/vfx.md
+    requirement: "Reduced Motion disables blur/shake while preserving non-motion visibility; tire-smoke live caps are 25/50/100/150 particles per car by preset"
+    created: "2026-08-05"
+    revised: "2026-08-06"
+    status: active
+
+  # --- UI Menu ---
+  - id: TR-ui-001
+    system: ui-menu
+    gdd: design/gdd/ui-menu.md
+    requirement: "Screen flow: Title to Track to Car to Qualifying to Qualifying Results to Loading to Countdown to Race to Results to Title"
+    created: "2026-07-27"
+    revised: "2026-08-05"
+    status: active
+
+  - id: TR-ui-002
+    system: ui-menu
+    gdd: design/gdd/ui-menu.md
+    requirement: "3D car turntable at 15 RPM with Garage Lit lighting in car selection"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-ui-003
+    system: ui-menu
+    gdd: design/gdd/ui-menu.md
+    requirement: "Results: Normal (position, time) vs Forfeit (no position) vs DNF"
+    created: "2026-07-27"
+    revised: ""
+    status: active
+
+  - id: TR-ui-004
+    system: ui-menu
+    gdd: design/gdd/ui-menu.md
+    requirement: "Pointer, keyboard, and gamepad navigation have explicit focus, boundary, prompt, and reserved Confirm/Cancel routing"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-ui-005
+    system: ui-menu
+    gdd: design/gdd/ui-menu.md
+    requirement: "Loading, Finished Presentation, Qualifying Results, Pause, and Results use explicit non-stack lifecycle and input behavior"
+    created: "2026-08-05"
+    revised: ""
+    status: active
+
+  - id: TR-content-009
+    system: content-pipeline
+    gdd: design/gdd/content-pipeline.md
+    requirement: "Quality profiles: Medium is the WebGL default and High the PC default; Low is the automatic memory/performance fallback; car textures use QualitySettings.globalTextureMipmapLimit per quality level (QP1/QP2/WG5)"
+    created: "2026-08-05"
+    revised: "2026-08-15"
+    status: active

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "unity-coplay": {
+      "disabled": false,
+      "directTools": false
+    },
+    "ai-game-developer": {
+      "disabled": false,
+      "directTools": true
+    },
+    "blender-mcp": {
+      "disabled": false
+    }
+  }
+}

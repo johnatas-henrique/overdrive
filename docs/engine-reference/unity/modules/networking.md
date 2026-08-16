@@ -1,14 +1,16 @@
 # Unity 6.3 — Networking Module Reference
 
-**Last verified:** 2026-02-13
-**Knowledge Gap:** Unity 6 uses Netcode for GameObjects (UNet deprecated)
+**Last verified:** 2026-07-19
+**Project State:** `com.unity.netcode.gameobjects` is not installed.
+
+> **Do not use these APIs in the current project.** Every `Unity.Netcode` example below requires a package that is absent. Before introducing multiplayer, create an ADR, approve the package, install it, and refresh this document against the installed package version.
 
 ---
 
 ## Overview
 
-Unity 6 networking options:
-- **Netcode for GameObjects** (RECOMMENDED): Official Unity multiplayer framework
+Unity networking options for future evaluation:
+- **Netcode for GameObjects**: Official Unity multiplayer framework; not installed
 - **Mirror**: Community-driven (UNet successor)
 - **Photon**: Third-party service (PUN2)
 - **Custom**: Low-level sockets
@@ -17,7 +19,7 @@ Unity 6 networking options:
 
 ---
 
-## Netcode for GameObjects
+## Netcode for GameObjects Reference — Not Active
 
 ### Installation
 1. `Window > Package Manager`

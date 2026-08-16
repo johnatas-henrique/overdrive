@@ -1,22 +1,20 @@
 # Unity 6.3 LTS — Current Best Practices
 
-**Last verified:** 2026-02-13
+**Editor version:** 6000.3.22f1
+**Last verified:** 2026-08-13
 
-Modern Unity 6 patterns that may not be in the LLM's training data.
-These are production-ready recommendations as of Unity 6.3 LTS.
+These practices apply to packages that are installed in this project.
 
 ---
 
-## Project Setup
+## Active Project Stack
 
-### Use Unity 6.3 LTS for Production
-- **Tech Stream** (6.4+): Latest features, less stable
-- **LTS** (6.3): Production-ready, 2-year support (until Dec 2027)
-
-### Choose the Right Render Pipeline
-- **URP (Universal)**: Mobile, cross-platform, good performance ✅ Recommended for most games
-- **HDRP (High Definition)**: High-end PC/console, photorealistic
-- **Built-in**: Deprecated, avoid for new projects
+- **Rendering:** URP 17.3.0.
+- **Input:** Input System 1.20.0 with keyboard/mouse and gamepad parity.
+- **Physics:** Unity Physics 3D. The vehicle model remains a prototype decision.
+- **Asset management:** Addressables 3.1.0, initially for local content groups.
+- **Testing:** Unity Test Framework 1.6.0 with NUnit.
+- **Not installed:** Entities/DOTS, Netcode for GameObjects, Cinemachine, and VFX Graph.
 
 ---
 
@@ -28,9 +26,9 @@ These are production-ready recommendations as of Unity 6.3 LTS.
 // ✅ Record types for data
 public record PlayerData(string Name, int Level, float Health);
 
-// ✅ Init-only properties
+// Use a conventional setter unless the project deliberately adds IsExternalInit.
 public class Config {
-    public string GameMode { get; init; }
+    public string GameMode { get; set; }
 }
 
 // ✅ Pattern matching
@@ -41,64 +39,9 @@ var result = enemy switch {
 };
 ```
 
-### Async/Await for Asset Loading
+### Package Boundaries
 
-```csharp
-// ✅ Modern async pattern
-public async Task<GameObject> LoadEnemyAsync(string key) {
-    var handle = Addressables.LoadAssetAsync<GameObject>(key);
-    return await handle.Task;
-}
-```
-
-### Use Source Generators for Serialization (Unity 6+)
-
-```csharp
-// ✅ Source-generated serialization (faster, less reflection)
-[GenerateSerializer]
-public partial struct PlayerStats : IComponentData {
-    public int Health;
-    public int Mana;
-}
-```
-
----
-
-## DOTS/ECS (Production-Ready in Unity 6.3 LTS)
-
-### Use ISystem (Not ComponentSystem)
-
-```csharp
-// ✅ Modern unmanaged ISystem (Burst-compatible)
-public partial struct MovementSystem : ISystem {
-    public void OnCreate(ref SystemState state) { }
-
-    public void OnUpdate(ref SystemState state) {
-        foreach (var (transform, speed) in
-            SystemAPI.Query<RefRW<LocalTransform>, RefRO<MoveSpeed>>()) {
-            transform.ValueRW.Position += speed.ValueRO.Value * SystemAPI.Time.DeltaTime;
-        }
-    }
-}
-```
-
-### Use IJobEntity for Parallel Jobs
-
-```csharp
-// ✅ IJobEntity (replaces IJobForEach)
-[BurstCompile]
-public partial struct DamageJob : IJobEntity {
-    public float DeltaTime;
-
-    void Execute(ref Health health, in DamageOverTime dot) {
-        health.Value -= dot.DamagePerSecond * DeltaTime;
-    }
-}
-
-// Schedule it
-var job = new DamageJob { DeltaTime = SystemAPI.Time.DeltaTime };
-job.ScheduleParallel();
-```
+Addressables 3.1.0 is installed. Use it for approved asynchronous asset-loading and content-group decisions. Entities/DOTS is not installed; do not use `IComponentData`, `ISystem`, or `IJobEntity` until that package is approved and added.
 
 ---
 
@@ -129,10 +72,14 @@ Create Input Actions asset in editor, generate C# class via inspector.
 
 ## UI
 
-### Use UI Toolkit for Runtime UI (Production-Ready in Unity 6)
+### Runtime UI Selection
+
+Use uGUI by default for runtime UI. Use UI Toolkit when its UXML/USS workflow is a better fit for a specific screen.
+
+### UI Toolkit Runtime Alternative
 
 ```csharp
-// ✅ UI Toolkit (replaces UGUI for new projects)
+// UI Toolkit is a valid runtime alternative, not a replacement for uGUI.
 using UnityEngine.UIElements;
 
 public class MainMenu : MonoBehaviour {
@@ -154,22 +101,7 @@ public class MainMenu : MonoBehaviour {
 
 ## Asset Management
 
-### Use Addressables (Not Resources)
-
-```csharp
-// ✅ Addressables (async, memory-efficient)
-using UnityEngine.AddressableAssets;
-
-public async Task SpawnEnemyAsync(string enemyKey) {
-    var handle = Addressables.InstantiateAsync(enemyKey);
-    var enemy = await handle.Task;
-
-    // Cleanup: release when destroyed
-    Addressables.ReleaseInstance(enemy);
-}
-```
-
-**Benefits:** Async loading, remote content delivery, better memory control.
+Addressables 3.1.0 is installed. Begin with local groups for the MVP; do not configure remote catalogs or content delivery until a production requirement justifies them.
 
 ---
 
@@ -219,7 +151,7 @@ var job = new ParticleUpdateJob {
 job.Schedule(positions.Length, 64).Complete();
 ```
 
-**20-100x faster** than equivalent C# code.
+Measure the benefit in a representative prototype before adding jobs or changing an architecture around them.
 
 ---
 
@@ -256,23 +188,7 @@ using var data = new NativeArray<int>(1000, Allocator.TempJob);
 
 ## Multiplayer
 
-### Use Netcode for GameObjects (Official)
-
-```csharp
-// ✅ Unity's official netcode
-using Unity.Netcode;
-
-public class Player : NetworkBehaviour {
-    private NetworkVariable<int> health = new NetworkVariable<int>(100);
-
-    [ServerRpc]
-    public void TakeDamageServerRpc(int damage) {
-        health.Value -= damage;
-    }
-}
-```
-
-**Replaces:** UNet (deprecated), MLAPI (renamed to Netcode for GameObjects).
+Netcode for GameObjects is not installed. Do not use `Unity.Netcode` APIs until multiplayer is designed, approved, and its package is added.
 
 ---
 
@@ -316,19 +232,19 @@ Debug.Log($"Player {playerName} scored {score} points");
 
 ## Summary: Unity 6 Tech Stack
 
-| Feature | Use This (2026) | Avoid This (Legacy) |
-|---------|------------------|----------------------|
-| **Input** | Input System package | `Input` class |
-| **UI** | UI Toolkit | UGUI (Canvas) |
-| **ECS** | ISystem + IJobEntity | ComponentSystem |
-| **Rendering** | URP + RenderGraph | Built-in pipeline |
-| **Assets** | Addressables | Resources |
-| **Jobs** | Burst + IJobParallelFor | Coroutines for heavy work |
-| **Multiplayer** | Netcode for GameObjects | UNet |
+| Feature | Current Project Standard | Scope Boundary |
+|---------|--------------------------|----------------|
+| **Input** | Input System package | Legacy Input remains functional but is not the project standard |
+| **UI** | uGUI for runtime; UI Toolkit when appropriate | UI Toolkit is the editor UI recommendation |
+| **Rendering** | URP + RenderGraph for custom passes | Do not introduce Built-in RP-only assumptions |
+| **Assets** | Unity import pipeline + Addressables 3.1.0 | Begin with local groups; remote delivery is not yet in scope |
+| **Physics** | Unity Physics 3D | Vehicle model remains a prototype decision |
+| **Multiplayer** | No networking stack | Netcode is not installed |
 
 ---
 
 **Sources:**
-- https://docs.unity3d.com/6000.0/Documentation/Manual/BestPracticeGuides.html
-- https://docs.unity3d.com/Packages/com.unity.entities@1.3/manual/index.html
-- https://docs.unity3d.com/Packages/com.unity.inputsystem@1.11/manual/index.html
+- https://docs.unity3d.com/6000.3/Documentation/Manual/UI-system-compare.html
+- https://docs.unity3d.com/6000.3/Documentation/Manual/WebGPU.html
+- https://docs.unity3d.com/Packages/com.unity.inputsystem@1.19/manual/index.html
+- https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@17.3/manual/index.html

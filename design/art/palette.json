@@ -1,0 +1,94 @@
+{
+  "meta": {
+    "project": "Overdrive",
+    "generated": "2026-07-27",
+    "source": "art-bible.md Section 2"
+  },
+  "primary": [
+    { "name": "Overdrive Orange", "hex": "#FF6B2B", "rgb": [255, 107, 43], "role": "Energy, UI accents, speed" },
+    { "name": "Victory Red", "hex": "#E03C31", "rgb": [224, 60, 49], "role": "Critical warnings, urgency" },
+    { "name": "Champion Gold", "hex": "#F5C518", "rgb": [245, 197, 24], "role": "Victory, sunlight, premium" },
+    { "name": "Racing Blue", "hex": "#1E3A5F", "rgb": [30, 58, 95], "role": "Sky, calm states, depth" },
+    { "name": "Pit White", "hex": "#FFF8F0", "rgb": [255, 248, 240], "role": "Text, clarity, clean surfaces" },
+    { "name": "Carbon Black", "hex": "#1A1A1A", "rgb": [26, 26, 26], "role": "Contrast, asphalt, outlines" },
+    { "name": "Grid Green", "hex": "#2D8C3C", "rgb": [45, 140, 60], "role": "Go signals, grass, safe states" }
+  ],
+  "semantic": [
+    { "name": "Red", "hex": "#E03C31", "meaning": "Critical warning (fuel/tire < 25%)", "secondary": "Team identity (aggressive teams)" },
+    { "name": "Yellow/Amber", "hex": "#F5C518", "meaning": "Caution — medium state (25-50%)", "secondary": "Caution flag, pit advisory" },
+    { "name": "Green", "hex": "#2D8C3C", "meaning": "Safe — healthy state (> 50%)", "secondary": "Go signal (start lights)" },
+    { "name": "Blue", "hex": "#1E3A5F", "meaning": "Calm — all systems nominal", "secondary": "Sky, environmental" },
+    { "name": "White", "hex": "#FFF8F0", "meaning": "Information — read this", "secondary": "Curbs, clean surfaces" },
+    { "name": "Black", "hex": "#1A1A1A", "meaning": "Background — this is context", "secondary": "Asphalt, rubber, outlines" },
+    { "name": "Orange", "hex": "#FF6B2B", "meaning": "Excitement — this is thrilling", "secondary": "Speed, acceleration, highlight" }
+  ],
+  "flags": [
+    { "name": "Green Flag", "hex": "#2D8C3C", "meaning": "Track clear, race start", "shape_backup": "Checkered pattern" },
+    { "name": "Yellow Flag", "hex": "#F5C518", "meaning": "Caution, slow down", "shape_backup": "Diagonal stripes" },
+    { "name": "Red Flag", "hex": "#E03C31", "meaning": "Race stopped, danger", "shape_backup": "Solid fill" },
+    { "name": "Blue Flag", "hex": "#1E3A5F", "meaning": "Faster car approaching", "shape_backup": "Arrow icon" },
+    { "name": "White Flag", "hex": "#FFF8F0", "meaning": "Final lap", "shape_backup": "Checkered pattern" },
+    { "name": "Black Flag", "hex": "#1A1A1A", "meaning": "Black flag, penalty", "shape_backup": "Stop icon" }
+  ],
+  "teams": [
+    { "id": "team_tier1_a", "name": "Madonna", "based_on": "McLaren-Honda", "primary": "#E03C31", "secondary": "#FFF8F0", "tier": 1 },
+    { "id": "team_tier1_b", "name": "Firenze", "based_on": "Ferrari", "primary": "#DC2828", "secondary": null, "tier": 1 },
+    { "id": "team_tier1_c", "name": "Millions", "based_on": "Williams-Renault", "primary": "#1A3A6B", "secondary": "#F5C518", "tier": 1 },
+    { "id": "team_tier1_d", "name": "Bestowal", "based_on": "Benetton-Ford", "primary": "#2E7D32", "secondary": "#F5C518", "tier": 1 },
+    { "id": "team_tier2_a", "name": "May", "based_on": "March-Leyton House-Judd", "primary": "#66C5C5", "secondary": "#FFF8F0", "tier": 2 },
+    { "id": "team_tier2_b", "name": "Losel", "based_on": "Lotus-Judd", "primary": "#E8A830", "secondary": "#1A3A6B", "tier": 2 },
+    { "id": "team_tier2_c", "name": "Tyrant", "based_on": "Tyrrell-Ford", "primary": "#1E4D8C", "secondary": "#FFF8F0", "tier": 2 },
+    { "id": "team_tier2_d", "name": "Blanche", "based_on": "Brabham-Judd", "primary": "#1A3A8C", "secondary": "#FFF8F0", "tier": 2 },
+    { "id": "team_tier3_a", "name": "Minarae", "based_on": "Minardi-Ford", "primary": "#F5C518", "secondary": "#1A1A1A", "tier": 3 },
+    { "id": "team_tier3_b", "name": "Linden", "based_on": "Ligier-Ford", "primary": "#1A3A6B", "secondary": null, "tier": 3 },
+    { "id": "team_tier3_c", "name": "Dardan", "based_on": "Dallara-BMS Scuderia Italia-Ford", "primary": "#DC2828", "secondary": "#1A1A1A", "tier": 3 },
+    { "id": "team_tier3_d", "name": "Bullets", "based_on": "Arrows-Ford", "primary": "#FFF8F0", "secondary": "#E03C31", "tier": 3 },
+    { "id": "team_tier4_a", "name": "Rigel", "based_on": "Rial-Ford", "primary": "#1A3A8C", "secondary": "#F5C518", "tier": 4 },
+    { "id": "team_tier4_b", "name": "Comet", "based_on": "Coloni-Ford", "primary": "#FFF8F0", "secondary": "#66C5C5", "tier": 4 },
+    { "id": "team_tier4_c", "name": "Orchis", "based_on": "Onyx-Ford", "primary": "#1A2A5C", "secondary": "#E87A90", "tier": 4 },
+    { "id": "team_tier4_d", "name": "Zeroforce", "based_on": "Zakspeed-Yamaha", "primary": "#8B1A1A", "secondary": "#FFF8F0", "tier": 4, "player_start": true }
+  ],
+  "track_environment": [
+    { "element": "Asphalt", "hex": "#3D3835" },
+    { "element": "Asphalt (sunlit)", "hex": "#5A524D" },
+    { "element": "Kerb Red", "hex": "#E03C31" },
+    { "element": "Kerb White", "hex": "#FFF8F0" },
+    { "element": "Grass", "hex": "#4CAF50" },
+    { "element": "Grass (sunlit)", "hex": "#66BB6A" },
+    { "element": "Gravel", "hex": "#A1887F" },
+    { "element": "Runoff", "hex": "#78909C" },
+    { "element": "Sky (clear)", "hex": "#5C9CE6" },
+    { "element": "Sky (horizon)", "hex": "#FFB74D" },
+    { "element": "Cloud", "hex": "#FFF8F0" },
+    { "element": "Barrier (concrete)", "hex": "#9E9E9E" },
+    { "element": "Barrier (tire wall)", "hex": "#212121" },
+    { "element": "Grandstand", "hex": "#8D6E63" },
+    { "element": "Pit Lane", "hex": "#424242" }
+  ],
+  "hud": {
+    "background": { "hex": "#1A1A1A", "opacity": 0.7 },
+    "primary_text": { "hex": "#FFF8F0" },
+    "secondary_text": { "hex": "#B0BEC5" },
+    "speed_accent": { "hex": "#FF6B2B" },
+    "state_colors": {
+      "healthy": { "hex": "#2D8C3C", "min": 50, "max": 100 },
+      "caution": { "hex": "#F5C518", "min": 25, "max": 50 },
+      "critical": { "hex": "#E03C31", "min": 0, "max": 25 }
+    }
+  },
+  "menu": {
+    "background": "#1A1A1A",
+    "panel": "#2A2520",
+    "text": "#FFF8F0",
+    "accent": "#FF6B2B",
+    "secondary": "#F5C518",
+    "divider": "#424242",
+    "team_tint_opacity": 0.2
+  },
+  "colorblind_mode": {
+    "green": "#FFFFFF",
+    "yellow": "#9E9E9E",
+    "red": "#8B0000",
+    "patterns": { "safe": "solid", "caution": "stripes", "critical": "dots" }
+  }
+}
