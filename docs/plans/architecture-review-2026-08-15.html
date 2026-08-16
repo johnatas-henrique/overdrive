@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Architecture review — Overdrive</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+    </script>
+    <style>
+      .seam { stroke-dasharray: 4 4; }
+      .leak { stroke: #dc2626; }
+      .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+      .modlabel { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans">
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-12">
+      <header class="space-y-3">
+        <p class="text-xs uppercase tracking-wider text-slate-500">Overdrive — 2026-08-15</p>
+        <h1 class="font-serif text-3xl font-bold">Architecture review</h1>
+        <div class="flex flex-wrap gap-3 text-xs text-slate-600">
+          <span><span class="inline-block w-4 h-3 bg-slate-800 border border-slate-800 align-middle mr-1"></span>module</span>
+          <span><span class="inline-block w-4 h-3 border-t-2 border-dashed border-slate-500 align-middle mr-1"></span>seam</span>
+          <span><span class="inline-block w-4 h-3 border border-red-600 align-middle mr-1"></span>leakage</span>
+          <span><span class="inline-block w-4 h-3 deep align-middle mr-1"></span>deep module</span>
+        </div>
+      </header>
+
+      <section id="candidates" class="space-y-10">
+
+        <!-- ═══ 1 ═══ -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-xl font-bold">1 · Make the per-frame driver sequence structural</h2>
+            <span class="shrink-0 rounded-full bg-emerald-100 text-emerald-800 text-xs px-3 py-1">Strong</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">
+            Assets/source/Simulation/SimulationDriver.cs (Update 167–257) · SimulationKernel.cs
+          </p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">Before</p>
+              <div class="rounded-lg border-2 border-slate-400 p-2 space-y-1 text-xs">
+                <p class="modlabel">Update() — 90 lines</p>
+                <div class="border border-slate-200 rounded p-1 flex items-center gap-1"><span class="text-[10px]">hook pair</span><span class="text-red-500">→</span><span class="text-[10px]">accum reset</span><span class="text-red-500">→</span><span class="text-[10px]">pause snap</span><span class="text-red-500">→</span><span class="text-[10px]">forfeit</span><span class="text-red-500">→</span><span class="text-[10px]">perf</span><span class="text-red-500">→</span><span class="text-[10px]">ghost</span></div>
+                <p class="text-[10px] text-slate-500">6 orderings encoded in one body; 11-param ctor (8 optional)</p>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">After</p>
+              <div class="rounded-lg border-2 deep p-2 text-white text-xs space-y-1">
+                <p class="modlabel">Driver — phases</p>
+                <div class="flex gap-1">
+                  <span class="bg-slate-700 rounded px-1.5 py-0.5 text-[10px]">capture</span>
+                  <span class="bg-slate-700 rounded px-1.5 py-0.5 text-[10px]">boundary</span>
+                  <span class="bg-slate-700 rounded px-1.5 py-0.5 text-[10px]">monitor</span>
+                  <span class="bg-slate-700 rounded px-1.5 py-0.5 text-[10px]">tick loop</span>
+                </div>
+                <p class="text-[10px] text-slate-300">ordering enforced by the phase list, not the body</p>
+              </div>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> Ordering invariants live in one 90-line body guarded by prose comments; every new concern adds a ctor parameter and a call.</p>
+          <p><span class="font-semibold">Solution.</span> Fixed phase list (capture → boundary → monitor → tick loop) that concerns subscribe to.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>Ordering per-phase testable</li>
+            <li>New concerns stop touching the timing path</li>
+            <li>Ctor surface shrinks</li>
+          </ul>
+        </article>
+
+        <!-- ═══ 2 ═══ -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-xl font-bold">2 · Ghost lifecycle: one tick-boundary API</h2>
+            <span class="shrink-0 rounded-full bg-amber-100 text-amber-800 text-xs px-3 py-1">Worth exploring</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">
+            Assets/source/Simulation/GhostRecorderLifecycle.cs · call sites SimulationDriver.cs 229/333/351/356
+          </p>
+          <div class="rounded-lg border border-slate-200 bg-white p-3">
+            <div class="grid md:grid-cols-2 gap-4">
+              <div>
+                <p class="modlabel text-slate-400 mb-2">Before</p>
+                <pre class="mermaid">
+sequenceDiagram
+  participant D as Driver
+  participant G as GhostRecorderLifecycle
+  D->>G: ObserveTransition (before early-return)
+  D->>G: RecordPauseEdge (edge only)
+  D->>G: CaptureAtGo (once, pre-record)
+  D->>G: RecordCompletedTick (post-increment idx)
+  Note over G: contract = call position, invisible here
+                </pre>
+              </div>
+              <div>
+                <p class="modlabel text-slate-400 mb-2">After</p>
+                <pre class="mermaid">
+sequenceDiagram
+  participant D as Driver
+  participant G as GhostRecorderLifecycle
+  D->>G: OnTickCommitted(state, tickIndex, isGo, input)
+  Note over G: decides capture/edge/record internally
+                </pre>
+              </div>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> Correctness depends on when the driver calls each of the four entry points; the module's own doc comment documents the driver's ordering.</p>
+          <p><span class="font-semibold">Solution.</span> One tick-boundary API that internally decides record/capture/pause-edge.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>Locality: ghost correctness self-contained</li>
+            <li>Tests stop replicating driver call order</li>
+            <li>Call-position errors impossible</li>
+          </ul>
+        </article>
+
+        <!-- ═══ 3 ═══ -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-xl font-bold">3 · Single-source the snapshot schema aliases</h2>
+            <span class="shrink-0 rounded-full bg-emerald-100 text-emerald-800 text-xs px-3 py-1">Strong</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">
+            Assets/source/Simulation/SimulationContracts.cs (PublishedSimulationSnapshot 236–249) · SimulationDriver.cs 141–146
+          </p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">Before — every field twice</p>
+              <div class="space-y-1 text-[10px] font-mono">
+                <div class="border border-slate-300 rounded p-1">public int SimulationStepCount</div>
+                <div class="border border-red-300 rounded p-1 text-red-700">public int sim_step_count // alias</div>
+                <div class="border border-slate-300 rounded p-1">public float SimTime</div>
+                <div class="border border-red-300 rounded p-1 text-red-700">public float sim_time // alias</div>
+                <p class="text-slate-500 pt-1">contracts + driver keep two lists in sync by hand</p>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">After — one source</p>
+              <div class="space-y-1 text-[10px] font-mono">
+                <div class="border-2 deep rounded p-1 text-white">PublishedSimulationSnapshot (PascalCase only)</div>
+                <div class="text-center text-slate-400">↓ generated</div>
+                <div class="border border-slate-300 rounded p-1">schema aliases (single consumer adapter)</div>
+              </div>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> Every field exists twice by hand; a missed alias is a silent schema gap for Unity-side consumers.</p>
+          <p><span class="font-semibold">Solution.</span> Generate aliases from the PascalCase surface, or move the mapping into the single consumer adapter.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>New fields touch one place</li>
+            <li>Leverage: immutable published contract rises</li>
+            <li>Deletion test: aliases are boundary-load-bearing, generation is the fix</li>
+          </ul>
+        </article>
+
+        <!-- ═══ 4 ═══ -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-xl font-bold">4 · One frame-input seam, not three</h2>
+            <span class="shrink-0 rounded-full bg-emerald-100 text-emerald-800 text-xs px-3 py-1">Strong</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">
+            Assets/source/InputFrameDriver.cs · InputFrameCapture.cs · SimulationDriver.cs (Func&lt;bool&gt; _pauseEdgeSource / Action _pauseEdgeConsumer)
+          </p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">Before — triplicated concern</p>
+              <pre class="mermaid">
+flowchart LR
+  subgraph Tests
+    T[InputFrameDriver] 
+  end
+  subgraph Production
+    C[InputFrameCapture] -. no consumer .-> X
+    D[SimulationDriver] ---|Func bool/Action| P[PauseEdge raw delegates]
+  end
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class C leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">After — one contract</p>
+              <pre class="mermaid">
+flowchart LR
+  D[SimulationDriver] --> S[IFrameInputSeam]
+  S --> C[InputFrameCapture]
+  S --> P[PauseEdge pair]
+              </pre>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> Frame input is triplicated: a test-only driver class, an adapter with no production consumer, and raw delegates bypassing both (ADR-0005 concern split).</p>
+          <p><span class="font-semibold">Solution.</span> Fold capture + pause-edge into one interface; delete InputFrameDriver or convert it into the production adapter.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>Deletion test: InputFrameDriver moves nothing</li>
+            <li>One canonical path: resolve → capture → consume edge</li>
+            <li>Tests and production cannot diverge</li>
+          </ul>
+        </article>
+
+        <!-- ═══ 5 ═══ -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-xl font-bold">5 · Index-aware spine steps, phase-typed context</h2>
+            <span class="shrink-0 rounded-full bg-amber-100 text-amber-800 text-xs px-3 py-1">Worth exploring</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">
+            Assets/source/Simulation/SimulationKernel.cs · SimulationTickContext (15 mutable props) · Assets/tests/integration/simulation/TestSteps.cs
+          </p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">Before — order by convention</p>
+              <div class="space-y-1 text-[10px] font-mono">
+                <div class="flex gap-1"><span class="border border-slate-300 rounded px-1">[0]</span><span class="border border-slate-300 rounded px-1">[1]</span><span class="border border-red-300 rounded px-1 text-red-700">[2] Countdown?</span><span class="border border-slate-300 rounded px-1">…</span></div>
+                <div class="border border-slate-300 rounded p-1">TickContext: 15 mutable props — "read what earlier indices wrote"</div>
+                <div class="border border-slate-300 rounded p-1">spine index map lives in test constants</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">After — fail-fast</p>
+              <div class="space-y-1 text-[10px] font-mono">
+                <div class="border-2 deep rounded p-1 text-white">Kernel: validates slot identity vs canonical index</div>
+                <div class="border border-slate-300 rounded p-1">Step(index) → context view typed by phase</div>
+                <div class="text-slate-500">misconfiguration = construction error, not runtime audit</div>
+              </div>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> The kernel enforces exactly 14 steps but not their identity — a step in the wrong slot is a silent behavioral bug; context misuse is a runtime failure, not a compile error.</p>
+          <p><span class="font-semibold">Solution.</span> Steps receive their canonical slot; context access is phase-typed so a step can only read what its index may see.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>"Fails fast on misconfiguration" becomes true</li>
+            <li>Reordering is a construction error</li>
+            <li>Test fixtures stop owning the spine map</li>
+          </ul>
+        </article>
+
+        <!-- ═══ 6 ═══ -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-xl font-bold">6 · Adapters live where their seam lives</h2>
+            <span class="shrink-0 rounded-full bg-amber-100 text-amber-800 text-xs px-3 py-1">Worth exploring</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">
+            Assets/source/SimulationDriverAdapters.cs (namespace Overdrive.Simulation.UnityAdapters, hosted in the Overdrive.Input assembly)
+          </p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">Before — namespace ≠ assembly</p>
+              <div class="text-[10px] font-mono space-y-1">
+                <div class="border border-slate-300 rounded p-1">assembly: Overdrive.Input</div>
+                <div class="border border-red-300 rounded p-1 text-red-700">namespace: Overdrive.Simulation.UnityAdapters</div>
+                <div class="border border-slate-300 rounded p-1">UnityFrameDeltaSource · UnityPhysicsSimulator · SimulationDriverBehaviour</div>
+                <p class="text-slate-500">undiscoverable from the Simulation assembly</p>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">After — namespace == assembly</p>
+              <div class="text-[10px] font-mono space-y-1">
+                <div class="border-2 deep rounded p-1 text-white">assembly: Overdrive.Simulation.Unity (or folder)</div>
+                <div class="border border-slate-300 rounded p-1">namespace: Overdrive.Simulation.UnityAdapters</div>
+                <p class="text-slate-500">adapter next to the seam it implements</p>
+              </div>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> The engine-free rule pushes Unity adapters into a foreign assembly; namespace-prefix searches and IDE navigation miss them.</p>
+          <p><span class="font-semibold">Solution.</span> A dedicated adapter assembly/folder so namespace == assembly, or rename the namespace to match ownership.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>Locality: seam bridge discoverable</li>
+            <li>"Adapter next to its seam" mechanically true</li>
+          </ul>
+        </article>
+
+        <!-- ═══ 7 ═══ -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-xl font-bold">7 · Route session mutations through the typed ports</h2>
+            <span class="shrink-0 rounded-full bg-amber-100 text-amber-800 text-xs px-3 py-1">Worth exploring</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">
+            Assets/source/Settings.Core/SettingsEditSession.cs (34KB, 32 symbols) · ValuePorts.cs · DisplayContracts.cs
+          </p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">Before — shallow mutation surface</p>
+              <div class="text-[10px] font-mono space-y-1">
+                <div class="border border-slate-300 rounded p-1">SetValue(SettingsCategory, object)</div>
+                <div class="border border-slate-300 rounded p-1">Require&lt;T&gt; / RequireDifficulty (static per category)</div>
+                <div class="border border-red-300 rounded p-1 text-red-700">display-confirm versioned callbacks inlined</div>
+                <p class="text-slate-500">type safety of AudioSettingsPort thrown away at the session edge</p>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">After — deep session</p>
+              <div class="text-[10px] font-mono space-y-1">
+                <div class="border-2 deep rounded p-1 text-white">Session delegates to typed ports</div>
+                <div class="border border-slate-300 rounded p-1">DisplayConfirm coordinator extracted (own tests)</div>
+                <p class="text-slate-500">mutation edge typed; display lifecycle isolated</p>
+              </div>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> The boxed SetValue surface discards the port type safety, and the display-confirm handshake lives inside a class that also owns blob/defaults.</p>
+          <p><span class="font-semibold">Solution.</span> Mutate through the typed ports; extract the display-confirm version/handshake into a dedicated coordinator.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>Type safety at the mutation edge</li>
+            <li>Display-confirm testable in isolation</li>
+            <li>Deletion test: boxed surface is removable, blob ownership is not</li>
+          </ul>
+        </article>
+
+        <!-- ═══ 8 ═══ -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-xl font-bold">8 · Declarative field map for the settings codec</h2>
+            <span class="shrink-0 rounded-full bg-amber-100 text-amber-800 text-xs px-3 py-1">Worth exploring</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">
+            Settings.Core/SettingsJsonCodec.cs · SettingsJson.cs (14KB) · SettingsMigration.cs
+          </p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">Before — per-field boilerplate</p>
+              <div class="text-[10px] font-mono space-y-1">
+                <div class="border border-slate-300 rounded p-1">ReadByteOrDefault / ReadIntOrDefault / ReadFloatOrDefault</div>
+                <div class="border border-slate-300 rounded p-1">new field → codec (2×) + migration + validator + blob tests</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">After — table-driven</p>
+              <div class="text-[10px] font-mono space-y-1">
+                <div class="border-2 deep rounded p-1 text-white">Schema table: field → type → default</div>
+                <div class="border border-slate-300 rounded p-1">serialize/deserialize + defaults derived</div>
+              </div>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> One new settings field touches codec, migration, validator, and tests; each helper is a trivial default wrapper the developer extends by hand.</p>
+          <p><span class="font-semibold">Solution.</span> A declarative field map deriving serialize/deserialize and defaults from one source of truth.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>New fields become one-touch</li>
+            <li>Codec/migration drift is compile-time</li>
+            <li>Deletion test: codec is load-bearing, boilerplate is not</li>
+          </ul>
+        </article>
+
+        <!-- ═══ 9 ═══ -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-xl font-bold">9 · Defer the speculative rollback layout</h2>
+            <span class="shrink-0 rounded-full bg-slate-200 text-slate-700 text-xs px-3 py-1">Speculative</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">
+            Assets/source/Multiplayer/SimulationRollbackState.cs · INetworkSimulationDriver.cs
+          </p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">Before — fixed-capacity guess</p>
+              <div class="text-[10px] font-mono space-y-1">
+                <div class="border border-slate-300 rounded p-1">Vector3Array16 / QuaternionArray16 (cap 16, FromEnumerable truncates)</div>
+                <div class="border border-red-300 rounded p-1 text-red-700">zero adapters · zero production consumers</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">After — narrow contract</p>
+              <div class="text-[10px] font-mono space-y-1">
+                <div class="border-2 deep rounded p-1 text-white">INetworkSimulationDriver only</div>
+                <div class="border border-slate-300 rounded p-1">layout derived from grid/team count when the consumer lands</div>
+              </div>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> The 16-car capacity is a guess; the whole assembly is a dormant seam with no consumer — the clearest speculative signal in the codebase.</p>
+          <p><span class="font-semibold">Solution.</span> Keep the driver interface contract; defer the concrete serialization layout until the first consumer exists.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>Deletion test: deleting the arrays moves nothing</li>
+            <li>Contract-narrowing, not a feature</li>
+          </ul>
+        </article>
+
+        <!-- ═══ 10 ═══ -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-xl font-bold">10 · Two-stage composition with visible availability</h2>
+            <span class="shrink-0 rounded-full bg-amber-100 text-amber-800 text-xs px-3 py-1">Worth exploring</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">
+            Assets/source/Content/Unity/ContentCompositionRoot.cs (LoadSeamProxy, CleanupSeamProxy, RuntimeContentReleaser, DelegateForwarder) · RaceLoadOrchestrator.cs
+          </p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">Before — 4 proxy hops</p>
+              <pre class="mermaid">
+flowchart LR
+  A[SM] --> B[LoadSeamProxy]
+  B --> C[Orchestrator]
+  A --> D[CleanupSeamProxy]
+  D --> E[RuntimeContentReleaser]
+  C --> F[DelegateForwarder]
+  F --> G[Kernel]
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">After — bind order in types</p>
+              <pre class="mermaid">
+flowchart LR
+  A[TwoStageRoot] --> B[Startup stage: explicit types]
+  A --> C[Race stage: explicit types]
+              </pre>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> Reading the root requires tracking when each Bind runs relative to first use; proxies add a hop to every seam call and the root doubles as per-frame sampler.</p>
+          <p><span class="font-semibold">Solution.</span> Once the startup/race split stabilizes, model "not yet available" in types; move per-frame duties (Sample, mipmap) into the orchestrators they serve.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>Fewer indirection hops</li>
+            <li>Startup ordering visible in types</li>
+            <li>Deletion test: proxies load-bearing while two-phase startup exists</li>
+          </ul>
+        </article>
+
+        <!-- ═══ 11 ═══ -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-xl font-bold">11 · Split the input context authority</h2>
+            <span class="shrink-0 rounded-full bg-amber-100 text-amber-800 text-xs px-3 py-1">Worth exploring</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">
+            Assets/source/InputContextController.cs (952 lines)
+          </p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">Before — 4 responsibilities</p>
+              <div class="text-[10px] font-mono space-y-1">
+                <div class="border border-slate-300 rounded p-1">6 context setters (Gameplay…PitTransit)</div>
+                <div class="border border-slate-300 rounded p-1">14 public event counters (no consumer contract)</div>
+                <div class="border border-slate-300 rounded p-1">scheme arbitration (ResolveActiveScheme)</div>
+                <div class="border border-slate-300 rounded p-1">pointer visibility</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-3">
+              <p class="modlabel text-slate-400 mb-2">After — 3 modules</p>
+              <div class="text-[10px] font-mono space-y-1">
+                <div class="border-2 deep rounded p-1 text-white">Context switching</div>
+                <div class="border border-slate-300 rounded p-1">Action latches (event stream, not raw ints)</div>
+                <div class="border border-slate-300 rounded p-1">Scheme arbitration (already has tests)</div>
+              </div>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> Public counters are mutable state with no consumer contract — a HUD must know which setter resets which latch; two pause-edge consumers differ in timing.</p>
+          <p><span class="font-semibold">Solution.</span> Split context-switching, action-latch, and scheme-arbitration behind the existing public surface; counters become an explicit event stream.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>Each responsibility gets focused tests</li>
+            <li>Edge consumption becomes one documented path</li>
+            <li>Deletion test: authority is load-bearing, split is decomposition</li>
+          </ul>
+        </article>
+
+        <!-- ═══ 12 ═══ -->
+        <article class="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-xl font-bold">12 · Codify the publish-step contract before the RSM lands</h2>
+            <span class="shrink-0 rounded-full bg-amber-100 text-amber-800 text-xs px-3 py-1">Worth exploring</span>
+          </div>
+          <p class="font-mono text-sm text-slate-600">
+            Assets/tests/integration/simulation/TestSteps.cs (PublishStep) · SimulationKernel.cs
+          </p>
+          <div class="rounded-lg border border-slate-200 bg-white p-3">
+            <div class="grid md:grid-cols-2 gap-4">
+              <div>
+                <p class="modlabel text-slate-400 mb-2">Before</p>
+                <pre class="mermaid">
+flowchart LR
+  K[Kernel] --> T[Test PublishStep]
+  T -->|"fabricates synthetic Racing terminal"| C[consumers]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class T leak
+                </pre>
+              </div>
+              <div>
+                <p class="modlabel text-slate-400 mb-2">After</p>
+                <pre class="mermaid">
+flowchart LR
+  K[Kernel] --> P[Production PublishStep]
+  P --> C[consumers]
+  T[Tests] --> P
+                </pre>
+              </div>
+            </div>
+          </div>
+          <p><span class="font-semibold">Problem.</span> Tests pass against test-owned behavior; when the RSM/Vehicle Physics epics land they must replicate the fabricated semantics exactly or the suite silently tests the wrong thing.</p>
+          <p><span class="font-semibold">Solution.</span> Codify the step-12 contract (interface + ADR note) or ship a minimal production PublishStep now.</p>
+          <ul class="list-disc list-inside text-sm text-slate-700 space-y-1">
+            <li>"Steps are seams" stays honest</li>
+            <li>No test-fabrication drift when RSM lands</li>
+          </ul>
+        </article>
+
+      </section>
+
+      <section id="top-recommendation">
+        <article class="rounded-xl border-2 border-slate-800 bg-slate-900 text-white p-6 space-y-3">
+          <p class="text-xs uppercase tracking-wider text-slate-400">Top recommendation</p>
+          <h2 class="font-serif text-2xl font-bold">4 · One frame-input seam, not three</h2>
+          <p class="text-slate-300">
+            The clearest signal in the codebase: a test-only driver class, an adapter with no production consumer, and raw delegates bypassing both. The deletion test is unambiguous — deleting <span class="font-mono text-sm">InputFrameDriver</span> moves nothing. Fixing it now, before the app bootstrapper becomes the first production consumer, prevents the triplication from hardening into a contract. Lowest risk of the three Strong candidates — it touches input seams, not the driver's timing core.
+          </p>
+          <a href="#candidates" class="text-emerald-400 underline text-sm">All candidates ↑</a>
+        </article>
+      </section>
+
+    </main>
+  </body>
+</html>
