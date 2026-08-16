@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overdrive — Sprint 4+ MVP Flow · Two Orchestrators</title>
+<style>
+  :root {
+    --bg: #0e1116; --panel: #161b23; --panel2: #1c232e; --border: #2a3340;
+    --text: #d7dee8; --muted: #8b97a8; --accent: #4fc3f7;
+    --green: #4caf7d; --amber: #e2a63b; --red: #e06c6c; --blue: #5b8def;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.55 "Segoe UI", system-ui, sans-serif; padding: 32px 40px; max-width: 1180px; margin: 0 auto; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h2 { font-size: 17px; margin: 34px 0 12px; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+  .grid { display: grid; gap: 10px; }
+
+  /* --- Epic tables --- */
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+  .done { color: var(--green); font-weight: 600; }
+  .todo { color: var(--amber); font-weight: 600; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11.5px; font-weight: 600; }
+  .pill.green { background: #1d3528; color: var(--green); }
+  .pill.amber { background: #3a2d14; color: var(--amber); }
+  .pill.blue { background: #1c2b45; color: var(--blue); }
+  .pill.red { background: #3a1c1c; color: var(--red); }
+  .layer { display: flex; gap: 6px; align-items: center; }
+
+  /* --- Timeline --- */
+  .timeline { display: grid; grid-template-columns: 120px 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 14px; }
+  .tl-head { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; padding: 4px 2px; text-align: center; }
+  .tl-label { display: flex; flex-direction: column; justify-content: center; padding: 0 8px; border-right: 1px solid var(--border); font-weight: 700; font-size: 14px; }
+  .tl-label small { color: var(--muted); font-weight: 400; font-size: 12px; line-height: 1.35; margin-top: 3px; }
+  .phase { border-radius: 8px; padding: 10px 11px; border: 1px solid var(--border); background: var(--panel); min-height: 96px; display: flex; flex-direction: column; gap: 6px; }
+  .phase .name { font-weight: 700; font-size: 13.5px; }
+  .phase .desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .phase .wait { font-size: 11.5px; margin-top: auto; }
+  .s1 { border-left: 3px solid var(--blue); }
+  .s2 { border-left: 3px solid var(--green); }
+  .wait { color: var(--amber); }
+  .wait span { color: var(--muted); }
+
+  /* --- Bridges --- */
+  .bridge { grid-column: 1 / -1; display: grid; grid-template-columns: 120px 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 2px; }
+  .bridge .line { position: relative; border-radius: 6px; padding: 8px 12px; font-size: 12.5px; }
+  .bridge .line::before { content: "▼"; position: absolute; left: -6px; top: 50%; transform: translateY(-50%); color: var(--accent); font-size: 10px; }
+  .bridge .line.alt::before { content: "▲"; }
+  .bridge .b1 { background: #152234; border: 1px solid #2b4768; color: #9ec5f0; grid-column: 2 / span 2; }
+  .bridge .b2 { background: #1d3528; border: 1px solid #2f5c43; color: #a5d8b8; grid-column: 2 / span 1; }
+  .bridge .b3 { background: #2a2613; border: 1px solid #5a4f22; color: #e0c987; grid-column: 3 / span 2; }
+
+  /* --- Dependency matrix --- */
+  .matrix td { font-size: 13px; }
+  .matrix .epic { font-weight: 600; white-space: nowrap; }
+  .matrix .tr { color: var(--blue); }
+  .matrix .sess { font-size: 11.5px; color: var(--muted); }
+
+  /* --- Visual testing section --- */
+  .vt-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .vt { border-radius: 8px; padding: 12px 14px; border: 1px solid var(--border); background: var(--panel); }
+  .vt h3 { font-size: 13.5px; margin-bottom: 5px; }
+  .vt p { font-size: 12.5px; color: var(--muted); }
+  .vt .tag { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 4px; padding: 2px 8px; margin-bottom: 6px; }
+  .vt .t1 { background: #152234; color: #9ec5f0; }
+  .vt .t2 { background: #1d3528; color: #a5d8b8; }
+  .vt .t3 { background: #3a2d14; color: #e0c987; }
+
+  .note { font-size: 12.5px; color: var(--muted); border-left: 3px solid var(--amber); background: #1a1f28; padding: 10px 14px; border-radius: 0 6px 6px 0; margin-top: 12px; }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 10px; flex-wrap: wrap; }
+  .legend b { color: var(--text); }
+</style>
+</head>
+<body>
+
+<h1>Overdrive — MVP Flow · Two Orchestrators</h1>
+<div class="sub">Sprint 4+ · 2026-08-16 · 21 epics until MVP (6 done · 15 pending) · 2 parallel sessions</div>
+
+<h2>1 · Scope to MVP — 21 epics</h2>
+<table>
+  <tr><th>Layer</th><th>Epic</th><th>Status</th><th>Session</th></tr>
+  <tr><td class="layer"><span class="pill green">Foundation</span></td><td>Input · Simulation Kernel · Settings · Content Pipeline · Ghost Recording · Multiplayer Architecture</td><td class="done">6/6 done</td><td class="sess">— (Sprints 1–3)</td></tr>
+  <tr><td class="layer"><span class="pill blue">Core</span></td><td>Vehicle Physics</td><td class="todo">Pending</td><td>S1</td></tr>
+  <tr><td class="layer"><span class="pill blue">Core</span></td><td>Race Session Manager · Grid &amp; Start · Qualifying</td><td class="todo">Pending</td><td>S1</td></tr>
+  <tr><td class="layer"><span class="pill blue">Core</span></td><td>AI Rival (16 personalities)</td><td class="todo">Pending</td><td>S1</td></tr>
+  <tr><td class="layer"><span class="pill blue">Core</span></td><td>Track · Car Definition Data</td><td class="todo">Pending</td><td>S2</td></tr>
+  <tr><td class="layer"><span class="pill blue">Core</span></td><td>Fuel · Tire · Pit Stop</td><td class="todo">Pending</td><td>S2</td></tr>
+  <tr><td class="layer"><span class="pill red">Present.</span></td><td>Camera · HUD · Audio · VFX</td><td class="todo">Pending</td><td>S2</td></tr>
+  <tr><td class="layer"><span class="pill red">Present.</span></td><td>UI Menu (navigation + production bootstrapper)</td><td class="todo">Pending</td><td>S2</td></tr>
+</table>
+
+<h2>2 · The two-session flow (runs to the end of MVP)</h2>
+<div class="timeline">
+  <div class="tl-head"></div><div class="tl-head">Phase 1</div><div class="tl-head">Phase 2</div><div class="tl-head">Phase 3</div><div class="tl-head">Phase 4</div>
+
+  <div class="tl-label">Session 1 <small>kernel + race loop<br>(has full history)</small></div>
+  <div class="phase s1">
+    <div class="name">Vehicle Physics</div>
+    <div class="desc">Step 6 of the kernel. The feel. High-risk, solo.</div>
+    <div class="wait"><span>Needs:</span> nothing but the stat contract</div>
+  </div>
+  <div class="phase s1">
+    <div class="name">RSM · Grid · Qualifying</div>
+    <div class="desc">Race-session orchestration (steps 9/10), standing start, qualifying session.</div>
+    <div class="wait"><span>Needs:</span> Vehicle Physics running</div>
+  </div>
+  <div class="phase s1">
+    <div class="name">AI Rival</div>
+    <div class="desc">16 personalities driving the same physics (step 12).</div>
+    <div class="wait">⏳ <span>Needs:</span> VP + Track + CarDef (from S2)</div>
+  </div>
+  <div class="phase s1">
+    <div class="name">Integration + Playtest</div>
+    <div class="desc">Full-loop smoke, CD-PLAYTEST (cockpit + sound + art in motion).</div>
+    <div class="wait"><span>Needs:</span> everything</div>
+  </div>
+
+  <div class="tl-label">Session 2 <small>data + presentation<br>(new context, handoff)</small></div>
+  <div class="phase s2">
+    <div class="name">Track · CarDef</div>
+    <div class="desc">Spline format (ADR-0007) + 16 team stats (ADR-0015). Zero dependencies.</div>
+    <div class="wait"><span>Needs:</span> nothing</div>
+  </div>
+  <div class="phase s2">
+    <div class="name">Fuel · Tire · Pit Stop</div>
+    <div class="desc">Consumption, wear, service. Against state contracts (already shipped).</div>
+    <div class="wait"><span>Needs:</span> contracts only, not the VP</div>
+  </div>
+  <div class="phase s2">
+    <div class="name">Camera · HUD · Audio · VFX</div>
+    <div class="desc">Consumers of telemetry: pose, speed, RPM, fuel/tire, or audio profile.</div>
+    <div class="wait">⏳ <span>Needs:</span> Vehicle Physics + tilt rig</div>
+  </div>
+  <div class="phase s2">
+    <div class="name">UI Menu</div>
+    <div class="desc">Title → selection → race navigation + production bootstrapper (TD-038).</div>
+    <div class="wait"><span>Needs:</span> everything (composes it)</div>
+  </div>
+</div>
+
+<div class="bridge">
+  <div class="line"></div>
+  <div class="line b3">Bridge 3 — Playtest rig (see §4): unblocks visual testing of S2 Phase 3 before the UI Menu exists</div>
+</div>
+<div class="bridge">
+  <div class="line"></div>
+  <div class="line b1">Bridge 1 — Vehicle Physics → consumers (RSM/Grid S1 · Camera/HUD/Audio/VFX S2)</div>
+  <div class="line b2">Bridge 2 — Track+CarDef → AI Rival (S1 waits on S2)</div>
+</div>
+
+<h2>3 · Dependency matrix — what each epic needs before it starts</h2>
+<table class="matrix">
+  <tr><th>Epic</th><th>Needs before start</th><th>Session</th></tr>
+  <tr><td class="epic">Track</td><td>Nothing</td><td>S2 · Ph.1</td></tr>
+  <tr><td class="epic">Car Definition Data</td><td>Nothing</td><td>S2 · Ph.1</td></tr>
+  <tr><td class="epic">Vehicle Physics</td><td>Only the <span class="tr">stat contract</span> (already prototype-validated) — not the 16 cars</td><td>S1 · Ph.1</td></tr>
+  <tr><td class="epic">Fuel · Tire</td><td>Only the <span class="tr">state contracts</span> (FuelState / TireState — already shipped)</td><td>S2 · Ph.2</td></tr>
+  <tr><td class="epic">Pit Stop</td><td>Fuel/Tire contracts + car state</td><td>S2 · Ph.2</td></tr>
+  <tr><td class="epic">RSM · Grid · Qualifying</td><td><span class="tr">Vehicle Physics running</span></td><td>S1 · Ph.2</td></tr>
+  <tr><td class="epic">Camera · HUD · Audio · VFX</td><td><span class="tr">Vehicle Physics</span> (pose/telemetry) · HUD also Fuel/Tire · Audio also CarDef profile</td><td>S2 · Ph.3</td></tr>
+  <tr><td class="epic">AI Rival</td><td><span class="tr">VP + Track + CarDef</span> (most coupled epic)</td><td>S1 · Ph.3</td></tr>
+  <tr><td class="epic">UI Menu</td><td><span class="tr">Everything</span> — it composes the app</td><td>S2 · Ph.4</td></tr>
+</table>
+
+<h2>4 · How we test visually before the UI Menu exists</h2>
+<div class="note">
+  <b>The correction:</b> UI Menu is last only as <i>navigation + production bootstrapper</i>.
+  <b>Visual testing does NOT wait for it.</b> Session 1 builds a <b>playtest rig</b> right after the
+  Vehicle Physics lands (bridge 3 in the timeline) — a minimal dev scene that composes
+  kernel + driver + input + content (one track, one car) + camera + placeholder HUD.
+  Each visual epic plugs into the rig as soon as it ships and is verified by screenshot/playtest.
+  The UI Menu replaces the rig at the end.
+</div>
+<div class="vt-grid">
+  <div class="vt">
+    <span class="tag t1">Per-component · immediate</span>
+    <h3>Screenshot isolation</h3>
+    <p>Each visual piece (camera view, HUD panel, VFX streak, audio profile) is validated in a
+       dedicated test scene via <code>screenshot-isolated</code> / <code>screenshot-camera</code> —
+       no full app required. Already the established pattern.</p>
+  </div>
+  <div class="vt">
+    <span class="tag t2">Integrated · after VP</span>
+    <h3>Playtest rig (dev)</h3>
+    <p>Minimal dev scene that runs a real race loop (sim + car + track + camera).
+       Each S2 visual epic is plugged in &amp; verified in real motion with
+       <code>screenshot-game-view</code> and lean playtest passes.</p>
+  </div>
+  <div class="vt">
+    <span class="tag t3">Formal · near the end</span>
+    <h3>CD-PLAYTEST (MVP gate)</h3>
+    <p>Milestone requires: cockpit camera + engine sound + art-in-motion playtest.
+       Runs on the composed app once UI Menu lands — the final visual sign-off.</p>
+  </div>
+</div>
+
+<h2>5 · Key facts</h2>
+<div class="legend">
+  <span><b>Kernel touchers</b> (S1): VP=step 6 · RSM=9/10 · Grid=7 · AI=12 — never parallel on the same file</span><br>
+  <span><b>Contracts already shipped</b>: FuelState, TireState, GridAssignment, TrackData/CarDefinition keys, 11 Core ADRs accepted</span><br>
+  <span><b>Estimate</b>: 15 epics ≈ 2–3 sprints with 2 sessions (Sprint 3 did 14 stories in ~4–5 days with 1)</span><br>
+  <span><b>Division rule</b>: depends on nothing → S2 · touches the kernel → S1</span>
+</div>
+
+</body>
+</html>
