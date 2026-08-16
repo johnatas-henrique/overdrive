@@ -591,6 +591,46 @@ namespace Overdrive.Settings.Core.Tests
             Assert.That(session.Working.Display.ResolutionWidth, Is.EqualTo(1920), "Accepted factory candidate applied.");
         }
 
+        [Test]
+        public void TD032_RestoreDefaultsConsolidatesWorkingChanged()
+        {
+            var store = new FakeStore();
+            var session = Open(store, new FakeLifecycleContext(), new FakeDisplayGate(), out _);
+            var raised = new List<SettingsCategory>();
+            var workingSeen = new List<GameSettingsData>();
+            session.WorkingChanged += c =>
+            {
+                raised.Add(c);
+                workingSeen.Add(session.Working);
+            };
+
+            // Seed THREE categories away from defaults; leave the other two at defaults.
+            session.SetValue(SettingsCategory.Difficulty, 4);
+            session.SetValue(SettingsCategory.Audio, new AudioData(0.4f, 0.5f, 0.6f, 0.7f, true, true));
+            session.SetValue(SettingsCategory.Camera, new CameraData(0.2f, false, true, true));
+            raised.Clear(); // isolate the RestoreDefaults dispatch
+            workingSeen.Clear();
+
+            session.RestoreDefaults();
+
+            // TD-032: exactly ONE consolidated raise per category that actually changed — the two
+            // already-default categories raise nothing.
+            Assert.That(raised, Is.EqualTo(new[]
+            {
+                SettingsCategory.Difficulty,
+                SettingsCategory.Audio,
+                SettingsCategory.Camera
+            }), "Consolidated raises: one per changed category, in stable order.");
+            // Every raise observes the FULLY-restored Working — no partially-restored state visible.
+            Assert.That(workingSeen.Count, Is.EqualTo(raised.Count));
+            foreach (GameSettingsData seen in workingSeen)
+            {
+                Assert.That(seen.Difficulty.Level, Is.EqualTo(DifficultySelection.Default.Level));
+                Assert.That(seen.Audio, Is.EqualTo(AudioData.Default));
+                Assert.That(seen.Camera, Is.EqualTo(CameraData.Default));
+            }
+        }
+
         // ------------------------------------------------------------------ //
         // AC-E8: Dispose
         // ------------------------------------------------------------------ //
