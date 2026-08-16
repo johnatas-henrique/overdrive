@@ -324,6 +324,14 @@ requirements:
     revised: ""
     status: active
 
+  - id: TR-settings-009
+    system: settings
+    gdd: design/gdd/settings.md
+    requirement: "Rebinding flow: state machine (Open→Listening→Captured/Rejected/Conflict), transactional working override-set with baseline diff, catalog-aware capture (reserved/busy/duplicate classification), and persisted override migration (unknown id / malformed path / duplicate path classification)"
+    created: "2026-08-15"
+    revised: ""
+    status: active
+
   # --- Content Pipeline ---
   - id: TR-content-001
     system: content-pipeline
