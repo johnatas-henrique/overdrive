@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 10 — Animation, Cutscene Assets, and Presentation Separation</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production · Lesson 10</p>
+  <h1>Animation, cutscene assets, and presentation separation</h1>
+  <p class="meta">2026-08-09 · Mission: <a href="../MISSION.md">MISSION.md</a> · ~60 min</p>
+</header>
+
+<h2>The question this lesson answers</h2>
+
+<p>How do you keep runtime vehicle animation, driver animation, validation clips, and cutscene presentation from becoming one tangled asset?</p>
+
+<blockquote><strong>An animation file is not automatically production content. First identify who owns the motion, why it exists, and where it is allowed to run.</strong></blockquote>
+
+<p>Lesson 6 introduced action classification during export validation. This lesson applies that distinction to production structure: the car and driver remain separate asset domains, procedural vehicle motion remains separate from imported clips, and cinematic presentation remains separate from simulation-owned objects.</p>
+
+<h2>1. Four kinds of animation content</h2>
+
+<table>
+  <tr><th>Category</th><th>Purpose</th><th>Example</th><th>Production treatment</th></tr>
+  <tr><td>Runtime car presentation</td><td>Responds continuously to vehicle state</td><td>Wheel rolling, steering, suspension, dashboard</td><td>Own by car visual controllers or deliberately mapped runtime clips</td></tr>
+  <tr><td>Runtime driver presentation</td><td>Responds to steering and gear state</td><td>Driver torso, arms, hands, fingers</td><td>Own by a reusable DriverPrefab and driver controller</td></tr>
+  <tr><td>Validation action</td><td>Proves alignment, pose, or pivot behavior</td><td><code>VAL_*</code> neutral or inspection actions</td><td>Use temporarily, then remove from production assignments</td></tr>
+  <tr><td>Cutscene presentation</td><td>Serves a cinematic camera or scripted moment</td><td>Intro pose, finish presentation, pit service shot</td><td>Keep in a presentation layer or dedicated cutscene asset</td></tr>
+</table>
+
+<p>The same transform channel can be technically valid in all four categories while still being wrong for a particular owner. A steering action applied to the car mesh is not automatically a valid driver action, and a validation pose is not automatically a cutscene animation.</p>
+
+<h2>2. The car and driver are separate asset domains</h2>
+
+<p>The production boundary is:</p>
+
+<pre><code>CarPrefab
+├── Cockpit
+├── SteeringWheel
+├── Dashboard
+├── Wheels
+├── Suspension
+└── Vehicle lights
+
+DriverPrefab
+├── Driver mesh
+├── Driver rig
+├── Arms and hands
+├── Helmet
+└── Clothing</code></pre>
+
+<p>The car owns the steering wheel, dashboard, wheels, suspension, and vehicle lights. The driver owns the body, arms, hands, helmet, and clothing. A source package may place both in one Blender scene for convenience, but that does not make them one production asset.</p>
+
+<p>The Benetton inventory confirms this boundary: the car contains <code>STEER_HR</code>, wheel roots, suspension groups, and dashboard candidates, while no <code>DRIVER:*</code> rig is embedded in the car FBX. The driver is an external reusable asset.</p>
+
+<h2>3. Decide whether motion is procedural or imported</h2>
+
+<p>Imported animation is not automatically better than procedural animation. Choose ownership according to the visual feature.</p>
+
+<table>
+  <tr><th>Feature</th><th>Preferred ownership</th><th>Reason</th></tr>
+  <tr><td>Wheel rolling</td><td>Procedural car controller</td><td>Depends continuously on vehicle speed and wheel radius</td></tr>
+  <tr><td>Front-wheel steering</td><td>Procedural car controller</td><td>Must match the current steering state every frame</td></tr>
+  <tr><td>Suspension travel</td><td>Procedural or mapped car presentation</td><td>Depends on per-corner compression and needs pivot validation</td></tr>
+  <tr><td>Steering wheel rotation</td><td>Procedural car controller</td><td>Must remain synchronized with the vehicle steering angle</td></tr>
+  <tr><td>Dashboard readouts</td><td>Telemetry-driven presentation</td><td>Speed, RPM, gear, and fuel are live values, not fixed clips</td></tr>
+  <tr><td>Driver steering pose</td><td>Driver animation/controller</td><td>Uses steering state but affects the separate driver rig</td></tr>
+  <tr><td>Gear-change gesture</td><td>Imported driver clip or driver state machine</td><td>Discrete presentation event with a clear start and end</td></tr>
+  <tr><td>Rain helmet effect</td><td>Weather/presentation system</td><td>It is an environmental effect, not car animation</td></tr>
+</table>
+
+<p>The Benetton inventory shows why blind conversion fails: suspension clips contain wheel and tire target names, but the measured wheel transforms do not independently change in the sample. The clip contains target names; it does not prove that every target needs an independent runtime animation.</p>
+
+<h2>4. Validation actions must leave production bones</h2>
+
+<p>Validation actions are diagnostic tools. They may place a body, hand, wheel, or suspension assembly in a useful inspection pose, but their assignment must not remain after the check.</p>
+
+<pre><code>Validation action
+  → assign temporarily
+  → inspect alignment or clipping
+  → capture evidence
+  → restore neutral pose
+  → remove validation assignment</code></pre>
+
+<p>Actions with the <code>VAL_</code> prefix belong to this category unless a production decision explicitly promotes one. Leaving them assigned can create clipping, rotation, or pose changes that look like runtime bugs but are actually stale validation state.</p>
+
+<h2>5. Driver fitting has an order</h2>
+
+<p>Driver animation cannot be trusted until the body fits the cockpit. Use this order:</p>
+
+<ol>
+  <li>Place the driver root in the seat.</li>
+  <li>Fit pelvis and torso to the seat and cockpit clearance.</li>
+  <li>Fit head, helmet, legs, and feet.</li>
+  <li>Verify that the car is fully visible and the driver is not intersecting the cockpit.</li>
+  <li>Fit steering-wheel center, depth, tilt, and radius.</li>
+  <li>Only then validate hands, forearms, and gear-change poses.</li>
+</ol>
+
+<p>Animating hands before the body and steering-wheel relationship is stable creates a false result. If the seat or torso moves later, the hand animation must be redone.</p>
+
+<h2>6. Why “export all actions” is not a production plan</h2>
+
+<p>The Ferrari learning export enabled <code>bake_anim_use_all_actions=True</code> and produced 154 Unity AnimationClip subassets from 10 source actions and 283 objects. That proves baking occurred. It does not prove that 154 clips are wanted.</p>
+
+<p>Before export, write the intentional list:</p>
+
+<pre><code>Car production actions:
+  [explicit list]
+
+Driver production actions:
+  [explicit list]
+
+Validation actions:
+  [explicit list; excluded from production]
+
+Cutscene actions:
+  [explicit list; owned by presentation]
+</code></pre>
+
+<p>For the Benetton pilot, external clips such as <code>steer.ksanim</code>, <code>shift_up.ksanim</code>, and <code>shift_dw.ksanim</code> target a driver rig or a specific car presentation domain. They require a mapping layer; blind name matching is not a valid import strategy.</p>
+
+<h2>7. Cutscene presentation is not the production car</h2>
+
+<p>A cutscene may need a special pose, camera-facing steering angle, wheel blur, pit-service configuration, or temporary visibility state. Those requirements should not mutate the canonical gameplay car hierarchy.</p>
+
+<table>
+  <tr><th>Gameplay asset</th><th>Presentation asset or layer</th></tr>
+  <tr><td>Canonical car mesh and runtime hierarchy</td><td>Cutscene duplicate or presentation root</td></tr>
+  <tr><td>Simulation-driven steering and wheel state</td><td>Scripted cinematic pose</td></tr>
+  <tr><td>Reusable DriverPrefab</td><td>Cutscene-specific driver pose or animation track</td></tr>
+  <tr><td>Runtime camera</td><td>Cinematic camera and shot framing</td></tr>
+  <tr><td>Gameplay VFX and audio events</td><td>Presentation timing, emphasis, and shot-specific effects</td></tr>
+</table>
+
+<p>The purpose is not to forbid reuse. It is to make the ownership explicit so a cutscene adjustment cannot silently change the gameplay asset.</p>
+
+<h2>8. Controlled exercise</h2>
+
+<ol>
+  <li>Open the Ferrari or Benetton learning asset and save a working copy.</li>
+  <li>Separate the car hierarchy from the driver hierarchy in the scene or export plan.</li>
+  <li>List the car-owned visual domains: wheels, suspension, steering wheel, dashboard, and lights.</li>
+  <li>List the driver-owned domains: body, arms, hands, helmet, and clothing.</li>
+  <li>Classify every available action as Production, Validation, Duplicate, Unrelated, or Cutscene.</li>
+  <li>Assign one validation action temporarily and capture the alignment evidence.</li>
+  <li>Restore the neutral pose and remove the validation assignment.</li>
+  <li>Fit the driver body before testing the steering and gear-change poses.</li>
+  <li>Write the intentional production action list before exporting.</li>
+  <li>Record which presentation changes must remain outside the canonical gameplay hierarchy.</li>
+</ol>
+
+<details>
+  <summary>Expected reasoning</summary>
+  <div class="answer">
+    <p>A successful result is not “the animation plays.” It is: each motion has an owner, car and driver boundaries are preserved, validation actions do not remain assigned, the driver is fitted before hand animation, and cutscene presentation does not silently mutate the gameplay asset.</p>
+  </div>
+</details>
+
+<h2>Acceptance matrix</h2>
+
+<table>
+  <tr><th>Criterion</th><th>Evidence required</th><th>Status</th></tr>
+  <tr><td>Animation categories understood</td><td>Production, driver, validation, and cutscene categories distinguished</td><td>PASS / FAIL</td></tr>
+  <tr><td>Car/driver boundary mapped</td><td>Car-owned and driver-owned hierarchies recorded</td><td>PASS / FAIL</td></tr>
+  <tr><td>Procedural ownership identified</td><td>Wheel, steering, suspension, dashboard, and driver motions classified</td><td>PASS / FAIL</td></tr>
+  <tr><td>Validation actions controlled</td><td><code>VAL_*</code> actions removed after inspection</td><td>PASS / FAIL</td></tr>
+  <tr><td>Driver fitting order respected</td><td>Body fit verified before hands and gear-change animation</td><td>PASS / FAIL</td></tr>
+  <tr><td>Export action list intentional</td><td>Production actions listed instead of exporting all actions blindly</td><td>PASS / FAIL</td></tr>
+  <tr><td>Cutscene boundary recorded</td><td>Presentation-only changes identified outside the gameplay asset</td><td>PASS / FAIL</td></tr>
+</table>
+
+<h2>Decision rule</h2>
+
+<pre><code>identify the moving domain
+  → assign the owner
+  → classify the action
+  → fit static relationships first
+  → validate temporarily
+  → remove diagnostic state
+  → export only intentional content
+  → keep cutscene presentation separate</code></pre>
+
+<h2>Primary sources</h2>
+
+<ul>
+  <li><a href="overdrive-asset-production-lesson-06-blender-export-validation.html">Lesson 6</a> — Blender export validation and action classification.</li>
+  <li><a href="../../docs/plans/benetton-b189-animation-inventory.md">Benetton B189 Animation Inventory</a> — car-owned visual domains, external clips, and runtime ownership.</li>
+  <li><a href="../../docs/plans/benetton-b189-driver-animation-mapping.md">Benetton B189 Driver Animation Mapping</a> — reusable driver rig boundary and mapping evidence.</li>
+  <li><a href="../../docs/plans/asr-car-import-pipeline.md">ASR Car Import Pipeline</a> — export scope, animation preparation, and Unity post-import validation.</li>
+</ul>
+
+<div class="callout">
+  <strong>Next:</strong> Lesson 11 will run the complete asset acceptance and evidence loop from baseline through reopen, capture, measurement, and final classification.
+</div>
+
+<footer>
+  Overdrive Learning Workspace · Lesson 10 of the asset-production track · <a href="overdrive-asset-production-lesson-09-vehicle-restyling-surface-specification.html">Previous lesson</a> · <a href="overdrive-asset-production-learning-index.html">Learning index</a> · <a href="../MISSION.md">Mission</a>
+</footer>
+
+</body>
+</html>

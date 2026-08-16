@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 11 — Executable Krea2 2D Smoke Test</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production · Lesson 11</p>
+  <h1>Executable Krea2 2D smoke test</h1>
+  <p class="meta">2026-08-10 · Mission: <a href="../MISSION.md">MISSION.md</a> · ~60 min</p>
+</header>
+
+<h2>The purpose of this lesson</h2>
+<p>This lesson does not ask you to search for a model or continue an experimental graph by trial and error. It provides a fixed manual graph specification and a test procedure that proves whether the baseline is technically valid and visually useful.</p>
+<blockquote><strong>Do not send an unapproved image into 3D. First prove that the 2D pipeline is reproducible and obeys the design brief.</strong></blockquote>
+
+<h2>1. The decision already made</h2>
+<p>The first baseline is <strong>Krea2 plus the LoRA that already produced successful Overdrive-related images</strong>. NetaYume is not replacing it. NetaYume remains an optional challenger for a later comparison.</p>
+<table>
+<tr><th>Component</th><th>Fixed baseline</th></tr>
+<tr><td>Diffusion model</td><td><code>krea2\krea2_turbo_int8_convrot.safetensors</code></td></tr>
+<tr><td>Text encoder</td><td><code>qwen3vl_4b_fp8_scaled.safetensors</code>, type <code>krea2</code></td></tr>
+<tr><td>VAE</td><td><code>qwen_image_vae.safetensors</code></td></tr>
+<tr><td>LoRA</td><td><code>krea2\hina_Krea2Turbo_animeEnhance_v1.0.safetensors</code></td></tr>
+<tr><td>LoRA strength</td><td><code>0.0</code> in control variant A; <code>1.0</code> in variants C–E</td></tr>
+<tr><td>LoRA trigger</td><td>Absent in A and C; <code>anime style</code> at the beginning of B, D, and E</td></tr>
+<tr><td>Krea2T Enhancer</td><td>Present but disabled for the clean baseline; strength <code>0.1</code> is tested separately in Run 3</td></tr>
+<tr><td>Resolution</td><td><code>1280 × 720</code></td></tr>
+<tr><td>Sampler</td><td><code>euler</code> / <code>simple</code></td></tr>
+<tr><td>Steps / CFG / denoise</td><td><code>8 / 1 / 1</code></td></tr>
+<tr><td>Seed</td><td><code>5573231954461200</code>, control after generate <code>fixed</code></td></tr>
+</table>
+
+<h2>2. Build the baseline graph manually</h2>
+<p>No workflow file is required. Create the following nodes in ComfyUI and connect them exactly as shown. This keeps the lesson reproducible without depending on a local workflow export.</p>
+<p>Use the native model-only LoRA loader and keep the Enhancer available as a disabled, separately testable branch.</p>
+<p>Its graph contract is:</p>
+<pre><code>UNETLoader → LoraLoaderModelOnly → Krea2T Enhancer (disabled) → KSampler → VAEDecode → SaveImage
+CLIPLoader ───────────────────────────────→ CLIPTextEncode → KSampler
+VAELoader ───────────────────────────────────────────────→ VAEDecode
+EmptySD3LatentImage ────────────────────────────────────→ KSampler
+ConditioningZeroOut ────────────────────────────────────→ KSampler negative</code></pre>
+<p><strong>Important:</strong> Krea2 Turbo uses <code>ConditioningZeroOut</code> rather than a text negative prompt. The positive prompt contains all visual restrictions. Variant A intentionally starts without the LoRA trigger; variants B, D, and E add <code>anime style</code>. The Enhancer is disabled in A–D and enabled only in E.</p>
+
+<h2>3. Before running anything</h2>
+<ol>
+<li>Open ComfyUI.</li>
+<li>Create the graph from the node contract in Section 2.</li>
+<li>Confirm that every model selector resolves without a red or missing-model warning.</li>
+<li>Confirm that <code>LoraLoaderModelOnly</code> resolves the animeEnhance LoRA and that <code>ComfyUI-Krea2T-Enhancer</code> is available for the optional Run 3 variant.</li>
+<li>Run the manually built graph as variant A first: LoRA strength <code>0.0</code>, no <code>anime style</code> prefix, Enhancer disabled. Keep every other setting unchanged.</li>
+<li>Do not add a prompt enhancer, image reference, upscaler, second pass, or extra LoRA.</li>
+</ol>
+
+<h2>4. The fixed Overdrive prompt</h2>
+<p>Every variant uses the same complete prompt for the current canonical specimen: <code>team_tier2_a</code>, May, based on the 1989 March CG891. The exact prompt text is shown below with the optional LoRA trigger at the beginning:</p>
+<pre><code>anime style, 2D hand-painted anime racing illustration, fusion of Kosuke Fujishima and Hino Matsuri visual sensibilities, expressive 1990s Japanese racing anime key art, clean cel-shaded artwork, flat opaque painted colors, delicate thin ink linework, warm golden highlights. Original Overdrive Formula 1 car for team_tier2_a, the fictional May racing team, based strictly on the 1989 March CG891 Formula 1 car and its Leyton House-era silhouette. Dominant pastel Miami Blue or Leyton Blue body color #66C5C5, restrained deep green accents #2E7D32, exposed carbon fiber and matte black only on functional wings, suspension, tires, and mechanical areas. No broad white body panels. Preserve the extremely narrow monocoque, long low nose, open cockpit, no halo, exposed wheels, visible suspension arms, sculpted sidepods, compact engine cover, period-correct front wing, and large rear wing. No words, letters, numbers, sponsor names, logos, emblems, invented lettering, driver, helmet, watermark, extra wheels, duplicated wings, cropped vehicle, PBR, normal maps, photorealism, or unrelated objects. Front three-quarter view, neutral gray background, full vehicle visible, 16:9 composition.</code></pre>
+<p>The Fujishima + Matsuri fusion and the CG891 palette are grounded in <code>design/art/style-anchor-prompt.md</code> and <code>design/art/art-bible.md</code>. For variant A or C, remove only the initial <code>anime style, </code> prefix. Krea2 has no text negative prompt; all restrictions remain in the positive prompt.</p>
+
+<h2>5. Run 1 — revised baseline technical reproduction</h2>
+<p>The previous Run 1 and Run 2 outputs remain historical evidence for the earlier graph. Because the graph contract and validated parameters were corrected, execute this revised graph once before using its output in Run 3.</p>
+<ol>
+<li>Queue the graph once.</li>
+<li>Wait for the image to save.</li>
+<li>Record the output path, dimensions, and whether the image was generated without errors.</li>
+<li>Do not judge the image as production art yet. This run proves that the graph, weights, nodes, and settings work together.</li>
+</ol>
+<p><strong>Technical pass:</strong> the graph loads every required weight, completes without a node error, saves a PNG, and repeats successfully with the same seed.</p>
+
+<h2>6. Run 2 — revised baseline reproducibility</h2>
+<ol>
+<li>Queue the exact same graph again.</li>
+<li>Keep the same seed and all settings.</li>
+<li>Compare Run 1 and Run 2.</li>
+</ol>
+<p>The result should be identical or visually equivalent within the normal precision of the same local pipeline. If it is not, record the difference before changing anything. A non-reproducible baseline cannot be used for controlled learning.</p>
+
+<h2>7. Run 3 — progressive component and trigger attribution</h2>
+<p>After the revised Run 1 and Run 2 pass, continue from the control graph in progressive order. Every run uses the same complete CG891 prompt, model, seed, resolution, sampler, steps, and CFG; change only the named variable.</p>
+<table>
+<tr><th>Run</th><th>LoRA</th><th>Trigger</th><th>Enhancer</th><th>Question</th></tr>
+<tr><td>A</td><td>Off, strength 0.0</td><td>Off</td><td>Off</td><td>Clean control: what does the prompt alone produce?</td></tr>
+<tr><td>B</td><td>Off, strength 0.0</td><td>On</td><td>Off</td><td>What does the trigger contribute by itself?</td></tr>
+<tr><td>C</td><td>On, strength 1.0</td><td>Off</td><td>Off</td><td>What does the LoRA contribute by itself?</td></tr>
+<tr><td>D</td><td>On, strength 1.0</td><td>On</td><td>Off</td><td>What is the combined production baseline?</td></tr>
+<tr><td>E</td><td>On, strength 1.0</td><td>On</td><td>On, strength 0.1</td><td>What does the Enhancer add to the production baseline?</td></tr>
+</table>
+<p>Compare A→B for the trigger, A→C for the LoRA, C→D for the trigger with the LoRA active, and D→E for the Enhancer. Do not decide from one attractive image. Compare silhouette, proportion, linework, palette, unwanted realism, and structural errors.</p>
+
+<h2>8. Six-point visual review</h2>
+<table>
+<tr><th>Criterion</th><th>Pass condition</th></tr>
+<tr><td>Vehicle identity</td><td>Immediately reads as an original Overdrive open-wheel car.</td></tr>
+<tr><td>Large-form silhouette</td><td>Nose, front wing, cockpit, sidepods, rear wing, and four exposed wheels are clear.</td></tr>
+<tr><td>Proportion</td><td>Wheels, cockpit, wings, and body mass have a believable relationship.</td></tr>
+<tr><td>Style conformance</td><td>Fujishima + Matsuri linework, hard cel-shaded clarity, painted textures, and warm palette are present without photorealism.</td></tr>
+<tr><td>Clean surface</td><td>No readable text, logos, watermarks, invented branding, duplicate parts, or unrelated objects.</td></tr>
+<tr><td>Reconstruction potential</td><td>The view exposes enough stable shape information for later multi-view work.</td></tr>
+</table>
+<p>A visually attractive image with a broken silhouette is a failure. A technically successful render with the wrong style is also a failure.</p>
+
+<h2>9. Evidence record</h2>
+<pre><code>Run ID / variant (A–E):
+Graph: manual Krea2 text-to-image baseline from Section 2
+Specimen: team_tier2_a / May / March CG891
+Diffusion model: krea2_turbo_int8_convrot.safetensors
+Text encoder: qwen3vl_4b_fp8_scaled.safetensors
+VAE: qwen_image_vae.safetensors
+LoRA: hina_Krea2Turbo_animeEnhance_v1.0.safetensors
+LoRA strength:
+Trigger state: anime style on / off
+Enhancer state and strength:
+Prompt revision:
+Seed: 5573231954461200 (fixed)
+Resolution: 1280x720
+Sampler / scheduler / steps / CFG: euler / simple / 8 / 1
+Output path:
+Technical result: PASS / FAIL
+Six-point visual result:
+Failure category:
+Next single controlled change:</code></pre>
+
+<h2>10. Advancement gate</h2>
+<p>Do not proceed to multi-view or 3D reconstruction until:</p>
+<ul>
+<li>the manually assembled graph runs and saves successfully twice;</li>
+<li>the same seed produces a reproducible result;</li>
+<li>the vehicle category and large-form silhouette pass;</li>
+<li>the Fujishima + Matsuri visual direction is present;</li>
+<li>there is no accidental text, logo, watermark, or unrelated context;</li>
+<li>the provenance record is complete;</li>
+<li>one controlled A/B change has been measured.</li>
+</ul>
+
+<h2>Acceptance matrix</h2>
+<table>
+<tr><th>Criterion</th><th>Evidence required</th><th>Status</th></tr>
+<tr><td>Manual graph assembled</td><td>All specified nodes and connections resolve without missing weights.</td><td>PASS / FAIL</td></tr>
+<tr><td>Technical reproduction passed</td><td>Run 1 completes and saves an image.</td><td>PASS / FAIL</td></tr>
+<tr><td>Reproducibility passed</td><td>Run 2 uses the same seed and produces an equivalent result.</td><td>PASS / FAIL</td></tr>
+<tr><td>Style anchor is present</td><td>Output demonstrates the Fujishima + Matsuri Overdrive direction.</td><td>PASS / FAIL</td></tr>
+<tr><td>Structural review passed</td><td>All six visual criteria are scored.</td><td>PASS / FAIL</td></tr>
+<tr><td>One-variable test passed</td><td>LoRA and enhancer roles are compared without changing other variables.</td><td>PASS / FAIL</td></tr>
+<tr><td>3D gate respected</td><td>No image is promoted to multi-view or 3D before this matrix passes.</td><td>PASS / FAIL</td></tr>
+</table>
+
+<h2>Decision rule</h2>
+<pre><code>assemble the graph from the node contract
+  → prove the graph runs
+  → prove the seed is reproducible
+  → compare LoRA and enhancer one variable at a time
+  → score the vehicle against the six criteria
+  → record evidence
+  → approve one 2D candidate
+  → only then begin multi-view generation</code></pre>
+
+<h2>Primary sources</h2>
+<ul>
+<li><a href="overdrive-asset-production-lesson-01-style-conformance.html">Lesson 1</a> — style and conformance.</li>
+<li><a href="../MISSION.md">Asset production learning mission</a>.</li>
+<li><a href="../../design/art/style-anchor-prompt.md">Style anchor prompt</a>.</li>
+<li><a href="../../design/art/art-bible.md">Art Bible and team_tier2_a palette definition</a>.</li>
+<li><a href="../../design/assets/specs/team_tier2_a-car-assets.md">May / March CG891 asset specification</a>.</li>
+</ul>
+
+<div class="callout">
+<strong>Next:</strong> Lesson 12 will use only the approved 2D candidate to test front, rear, side, and three-quarter identity preservation.
+</div>
+
+<footer>
+Overdrive Learning Workspace · Lesson 11 of the asset-production track · <a href="overdrive-asset-production-lesson-10-animation-cutscene-presentation-separation.html">Previous lesson</a> · <a href="overdrive-asset-production-learning-index.html">Learning index</a> · <a href="../MISSION.md">Mission</a>
+</footer>
+</body>
+</html>
