@@ -606,7 +606,7 @@ namespace Overdrive.Simulation
     /// When a pause is consumed the context halts the spine immediately (steps 4-14
     /// do not execute on the interrupting tick, ADR-0001).
     /// </summary>
-    public sealed class CountdownStep : ISimulationPipelineStep
+    public sealed class CountdownStep : ISimulationPipelineStep, ICanonicalSpineStep
     {
         /// <summary>
         /// Canonical position of the pause consumption and countdown decrement in the
@@ -615,6 +615,9 @@ namespace Overdrive.Simulation
         /// at index 4).
         /// </summary>
         public const int SpineIndex = 3;
+
+        /// <inheritdoc />
+        public int CanonicalSpineIndex => SpineIndex;
 
         private readonly SimulationStateMachine _machine;
 
@@ -645,10 +648,13 @@ namespace Overdrive.Simulation
     }
 
     /// <summary>Post-physics GO trigger; keep this step thin.</summary>
-    public sealed class GoStep : ISimulationPipelineStep
+    public sealed class GoStep : ISimulationPipelineStep, ICanonicalSpineStep
     {
         /// <summary>Immediately after PhysicsSimulateStep and before snapshot publication.</summary>
         public const int SpineIndex = PhysicsSimulateStep.SpineIndex + 1;
+
+        /// <inheritdoc />
+        public int CanonicalSpineIndex => SpineIndex;
 
         private readonly SimulationStateMachine _machine;
 
@@ -669,10 +675,13 @@ namespace Overdrive.Simulation
     /// records <see cref="SimulationTickContext.PendingFinish"/> when a finish or
     /// retirement is detected. RSM never writes SimulationState directly (ADR-0018).
     /// </summary>
-    public sealed class RsmEvaluationStep : ISimulationPipelineStep
+    public sealed class RsmEvaluationStep : ISimulationPipelineStep, ICanonicalSpineStep
     {
         /// <summary>Canonical position after PitStopSystem (index 9) and before RSM consume (index 10).</summary>
         public const int SpineIndex = 9;
+
+        /// <inheritdoc />
+        public int CanonicalSpineIndex => SpineIndex;
 
         private readonly IRaceSessionManagerEvaluate _rsm;
         private readonly SimulationStateMachine _machine;
@@ -706,10 +715,13 @@ namespace Overdrive.Simulation
     /// resolved order. No PhysX, Fuel, Tire, Pit, collision, or tactical AI runs after
     /// finish (ADR-0001). Duplicate finish detections are ignored — resolution runs once.
     /// </summary>
-    public sealed class RsmConsumeStep : ISimulationPipelineStep
+    public sealed class RsmConsumeStep : ISimulationPipelineStep, ICanonicalSpineStep
     {
         /// <summary>Canonical position immediately after RSM evaluation (GDD step 11).</summary>
         public const int SpineIndex = 10;
+
+        /// <inheritdoc />
+        public int CanonicalSpineIndex => SpineIndex;
 
         private readonly SimulationStateMachine _machine;
         private readonly IFinishOrderResolver _resolver;
@@ -767,10 +779,13 @@ namespace Overdrive.Simulation
     /// resolved (AC-4.8j). The cached-AI clearing seam is observable via
     /// <see cref="SimulationTickContext.CachedAiInput"/>.
     /// </summary>
-    public sealed class AiSkipStep : ISimulationPipelineStep
+    public sealed class AiSkipStep : ISimulationPipelineStep, ICanonicalSpineStep
     {
         /// <summary>Canonical position immediately after snapshot publication (GDD step 13).</summary>
         public const int SpineIndex = 12;
+
+        /// <inheritdoc />
+        public int CanonicalSpineIndex => SpineIndex;
 
         private readonly SimulationStateMachine _machine;
 
