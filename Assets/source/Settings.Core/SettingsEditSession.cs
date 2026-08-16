@@ -33,6 +33,11 @@ namespace Overdrive.Settings.Core
         private bool _isPublishing;
         private bool _inWorkingChangedDispatch;
 
+        /// <summary>TD-032 batch flag: suppresses per-category WorkingChanged during an atomic
+        /// action (RestoreDefaults cascade) so subscribers never observe a partially-restored
+        /// Working. Consolidated raises fire after the cascade with the final state.</summary>
+        private bool _suppressWorkingChanged;
+
         /// <summary>
         /// Opens a settings session. Rejected (no session created, no state change) when the lifecycle
         /// forbids opening (active Countdown → <see cref="SettingsOpenResult.BlockedCountdown"/>, AC-E2)
@@ -260,8 +265,10 @@ namespace Overdrive.Settings.Core
         /// Batch mode (unity-specialist BLOCKING, Story 3-7): RestoreDefaults calls SetValue five times,
         /// which would otherwise publish the value ports five times with partially-updated Working.
         /// Publication is suppressed during the cascade and fired ONCE afterwards (Camera → Accessibility
-        /// → Audio → Vfx), so the accessibility ReducedMotion is always resolved fresh. Legacy per-category
-        /// WorkingChanged events still fire per SetValue (Story 002 behavior untouched).
+        /// → Audio → Vfx), so the accessibility ReducedMotion is always resolved fresh. TD-032 (2026-08-15):
+        /// per-category WorkingChanged is ALSO suppressed during the cascade and re-raised once per
+        /// category that actually changed (vs the pre-session Snapshot) — a subscriber never observes
+        /// a partially-restored Working; categories already at defaults raise nothing.
         /// </remarks>
         public void RestoreDefaults()
         {
@@ -270,11 +277,13 @@ namespace Overdrive.Settings.Core
             if (_inWorkingChangedDispatch) throw new InvalidOperationException("SettingsEditSession cannot be mutated from a WorkingChanged handler (recursion guard, Story 3-7).");
 
             GameSettingsData defaults = GameSettingsData.Defaults;
+            GameSettingsData baseline = Working; // pre-action Working — what consumers know as current
 
             _suppressPortPublishing = true;
+            _suppressWorkingChanged = true;
             try
             {
-                // Apply non-display categories immediately (each raises WorkingChanged).
+                // Apply non-display categories immediately (each would raise WorkingChanged).
                 SetValue(SettingsCategory.Difficulty, defaults.Difficulty.Level);
                 SetValue(SettingsCategory.Controls, defaults.Controls);
                 SetValue(SettingsCategory.Audio, defaults.Audio);
@@ -287,15 +296,36 @@ namespace Overdrive.Settings.Core
             finally
             {
                 _suppressPortPublishing = false;
+                _suppressWorkingChanged = false;
             }
 
-            // A WorkingChanged subscriber may CLOSE the session mid-cascade (Cancel/Apply) — the
-            // remaining SetValue calls are no-ops, but HandleDisplayChange and the final publication
-            // must not run on a closed session (qa-tester R4 BLOCKING 2).
+            // A consolidated WorkingChanged subscriber may CLOSE the session mid-dispatch (Cancel/Apply) —
+            // stop raising and never publish on a closed session (qa-tester R4 BLOCKING 2 pattern).
+            foreach ((SettingsCategory category, object baselineValue) in ConsolidatedChangedCategories(baseline))
+            {
+                if (!IsOpen) return;
+                RaiseWorkingChanged(category);
+            }
             if (!IsOpen) return;
 
             // Publish the ports ONCE with the post-cascade Working (batch mode).
             PublishPorts();
+        }
+
+        /// <summary>
+        /// TD-032: enumerates the non-display categories whose Working differs from the pre-action
+        /// Working (the value consumers knew before the atomic action) — the consolidated raise list
+        /// for <see cref="RestoreDefaults"/>. Display is excluded: its change already routes through
+        /// the gate (accepted candidates raise their own WorkingChanged).</summary>
+        private (SettingsCategory Category, object BaselineValue)[] ConsolidatedChangedCategories(GameSettingsData baseline)
+        {
+            var changed = new System.Collections.Generic.List<(SettingsCategory, object)>();
+            if (!Working.Difficulty.Equals(baseline.Difficulty)) changed.Add((SettingsCategory.Difficulty, baseline.Difficulty));
+            if (!Working.Controls.Equals(baseline.Controls)) changed.Add((SettingsCategory.Controls, baseline.Controls));
+            if (!Working.Audio.Equals(baseline.Audio)) changed.Add((SettingsCategory.Audio, baseline.Audio));
+            if (!Working.Accessibility.Equals(baseline.Accessibility)) changed.Add((SettingsCategory.Accessibility, baseline.Accessibility));
+            if (!Working.Camera.Equals(baseline.Camera)) changed.Add((SettingsCategory.Camera, baseline.Camera));
+            return changed.ToArray();
         }
 
         /// <summary>
@@ -398,6 +428,7 @@ namespace Overdrive.Settings.Core
         private void RaiseWorkingChanged(SettingsCategory category)
         {
             if (WorkingChanged == null) return;
+            if (_suppressWorkingChanged) return; // TD-032 batch flag — consolidated by the atomic action
             _inWorkingChangedDispatch = true;
             try
             {
@@ -543,7 +574,11 @@ namespace Overdrive.Settings.Core
                 case 0: return QualityPresetId.Low;
                 case 1: return QualityPresetId.Medium;
                 case 2: return QualityPresetId.High;
-                default: return QualityPresetId.Ultra;
+                case 3: return QualityPresetId.Ultra;
+                // Unreachable in production: RequireDisplay guards 0-3 before any display mutation (TD-037).
+                default:
+                    throw new ArgumentOutOfRangeException(
+                        nameof(qualityPreset), qualityPreset, "Quality preset id must be in 0-3.");
             }
         }
 
