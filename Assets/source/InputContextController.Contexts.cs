@@ -98,24 +98,7 @@ namespace Overdrive.Input
         /// </summary>
         public void SetFinishedPresentationContext()
         {
-            ConsumePendingPauseEdgeOnTransition();
-            _routingMode = RoutingMode.FinishedPresentation;
-            _asset.Gameplay.Disable();
-            if (CurrentContext != InputContextKind.UI)
-            {
-                // Latch UI digital actions + Navigate actuated at the transition (prevents a held
-                // Confirm from immediately dismissing the presentation, a held Pause toggling the
-                // timer, a held Cancel/arrow leaking — same rule as SetUIContext, Story 006 AC-53).
-                // Defense-in-depth: a held Button does not re-fire 'performed' on action-map enable
-                // (no initial-state check), so the no-repeat behavior is the real protection and the
-                // latch guards the engine edge where a performed arrives with a pre-transition startTime.
-                LatchActuatedUiActions();
-            }
-
-            _asset.UI.Enable();
-            _uiModule.enabled = false;
-            SetContext(InputContextKind.UI);
-            EnforceGlobalSoleOwnership();
+            EnterUiRoutingMode(RoutingMode.FinishedPresentation);
         }
 
         /// <summary>
@@ -126,20 +109,7 @@ namespace Overdrive.Input
         /// </summary>
         public void SetPitServiceContext()
         {
-            ConsumePendingPauseEdgeOnTransition();
-            _routingMode = RoutingMode.PitService;
-            _asset.Gameplay.Disable();
-            if (CurrentContext != InputContextKind.UI)
-            {
-                // Latch UI digital actions actuated at the transition (a held Confirm must not
-                // route to Pit Stop until release+repress, Story 007 AC-64).
-                LatchActuatedUiActions();
-            }
-
-            _asset.UI.Enable();
-            _uiModule.enabled = false;
-            SetContext(InputContextKind.UI);
-            EnforceGlobalSoleOwnership();
+            EnterUiRoutingMode(RoutingMode.PitService);
         }
 
         /// <summary>
@@ -150,13 +120,26 @@ namespace Overdrive.Input
         /// </summary>
         public void SetPitTransitContext()
         {
+            EnterUiRoutingMode(RoutingMode.PitTransit);
+        }
+
+        /// <summary>
+        /// Shared body of the UI-module-disabled routing modes (TD-046): enables the UI map so
+        /// direct-routing callbacks fire, disables the UI module, and latches UI digital actions
+        /// actuated at the transition (prevents a held Confirm from immediately dismissing a
+        /// destination, a held Pause toggling the timer, a held Cancel/arrow leaking — same rule as
+        /// SetUIContext, Story 006 AC-53; defense-in-depth: a held Button does not re-fire
+        /// 'performed' on action-map enable (no initial-state check), so the no-repeat behavior is
+        /// the real protection and the latch guards the engine edge where a performed arrives with
+        /// a pre-transition startTime).
+        /// </summary>
+        private void EnterUiRoutingMode(RoutingMode mode)
+        {
             ConsumePendingPauseEdgeOnTransition();
-            _routingMode = RoutingMode.PitTransit;
+            _routingMode = mode;
             _asset.Gameplay.Disable();
             if (CurrentContext != InputContextKind.UI)
             {
-                // Latch UI digital actions actuated at the transition (held input across entry into
-                // the blocked mode must not emit anything, Story 007 AC-65).
                 LatchActuatedUiActions();
             }
 
