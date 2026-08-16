@@ -3,11 +3,11 @@ using Overdrive.Simulation;
 
 namespace Overdrive.Simulation.UnityAdapters
 {
-    // NOTE: this namespace intentionally reads as "Simulation.UnityAdapters" while the file
-    // lives in the Overdrive.Input assembly (engine-allowed, autoReferenced). The Simulation
-    // assembly has noEngineReferences: true — it cannot host these Unity adapters. This
-    // namespace keeps the adapter family discoverable next to the engine-free contracts they
-    // bridge; the assembly boundary is the Input side of the one-way dependency (Input → Simulation).
+    // NOTE (C6, 2026-08-15): this namespace now matches its hosting assembly
+    // (Overdrive.Simulation.Unity, Assets/source/Simulation.Unity/) — the adapter family
+    // lives next to the engine-free contracts it bridges. The Simulation assembly itself
+    // stays noEngineReferences: true; this assembly is the Unity side of the one-way
+    // dependency (Simulation.Unity → Simulation).
     /// <summary>
     /// Unity adapter for the manual simulation clock. Gameplay timing must use this
     /// unscaled render delta and never Time.deltaTime or Time.fixedDeltaTime.
