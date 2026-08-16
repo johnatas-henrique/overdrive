@@ -1,6 +1,6 @@
 # Epics Index
 
-Last Updated: 2026-08-14
+Last Updated: 2026-08-15
 Engine: Unity 6000.3.22f1 (Unity 6.3 LTS)
 
 | Epic | Layer | System | GDD | Stories | Status |
@@ -19,6 +19,7 @@ Engine: Unity 6000.3.22f1 (Unity 6.3 LTS)
 Input contracts → Kernel contract spine → Content Pipeline (lifecycle contracts) → Kernel lifecycle/replay integration closure, with Settings `DifficultyProfile` schema available before the final closure. Core-epic pipeline integrations (Steps 5a/5b, 6, 9b, 10, 13) are delivered by the owning Core epics per the Simulation Kernel Integration Contract — no retroactive wiring stories.
 
 **Next steps:**
-- Run `/create-stories [epic-slug]` per epic, in processing order
+- Foundation layer COMPLETE (Sprint 3 closed 14/14 on 2026-08-15; retrospective at `production/sprints/sprint-3-retrospective.md`; gate production→polish FAIL advisory — blockers are all post-Core).
+- Sprint 4 = Core epics: run `/create-epics layer: core` then `/sprint-plan` (Vehicle Physics + Camera first by dependency).
 - Pre-Production → Production gate passed 2026-08-09 (user override; report at `production/gate-checks/pre-production-to-production-2026-08-09.md`). Core epics deferred per #1816 until Foundation matures.
 - Known pre-story sign-off resolved 2026-08-06: systems-index.md Progress Tracker updated to Approved for Input / Simulation Architecture / Content Pipeline (evidence: ADR-0003:240 ratification 2026-08-05, ADR-0005:136-140 sanitization, architecture-review v6 2026-08-06 0 conflicts). Tracker now matches GDD headers.
