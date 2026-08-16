@@ -26,6 +26,8 @@ jobs:
         with:
           testMode: editmode
           artifactsPath: test-results/editmode
+          cachePath: ${{ runner.tool_cache }}/unity_cache_edit
+          libraryPath: Library_EditMode
 
       - name: Run Play Mode Tests
         uses: game-ci/unity-test-runner@v4
@@ -36,6 +38,8 @@ jobs:
         with:
           testMode: playmode
           artifactsPath: test-results/playmode
+          cachePath: ${{ runner.tool_cache }}/unity_cache_play
+          libraryPath: Library_PlayMode
 
       - name: Upload Test Results
         if: always()
