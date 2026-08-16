@@ -766,9 +766,53 @@ namespace Overdrive.Simulation
                 playerClassification: detected.PlayerClassification);
 
             ResolvedFinishOrder resolved = _resolver.Resolve(snapshot);
+
+            // TD-019: the per-car classification array was previously always empty. Derive it from
+            // the resolved order (entries carry per-car Classification) and re-publish the snapshot
+            // with the populated array — array order stays aligned with CarState (per-CarId mapping).
+            ResultClassification[] classifications = BuildClassificationArray(context.PostTickCarState, resolved);
+            if (classifications != null)
+            {
+                snapshot = new PostFinishSnapshot(
+                    snapshot.CarState,
+                    snapshot.FuelState,
+                    snapshot.TireState,
+                    snapshot.Rsm,
+                    snapshot.SimulationState,
+                    resultClassification: classifications,
+                    simulationStepCount: snapshot.SimulationStepCount,
+                    activeRaceStepCount: snapshot.ActiveRaceStepCount,
+                    raceTime: snapshot.RaceTime,
+                    raceMode: snapshot.RaceMode,
+                    playerClassification: snapshot.PlayerClassification);
+            }
+
             context.TerminalSnapshot = snapshot;
             context.ResolvedFinishOrder = resolved;
             _machine.ApplyFinish(snapshot, resolved);
+        }
+
+        /// <summary>
+        /// TD-019: maps the resolved finish order to a per-car classification array aligned with
+        /// the car array (index = car position in CarState order). Cars absent from the resolved
+        /// order (forfeit-abandoned cars never reach the resolver, ADR-0018) classify as
+        /// <see cref="ResultClassification.Forfeit"/>. Null when there are no cars to classify.
+        /// </summary>
+        private static ResultClassification[] BuildClassificationArray(
+            IReadOnlyList<CarState> cars,
+            ResolvedFinishOrder resolved)
+        {
+            if (cars == null || cars.Count == 0) return null;
+            var byCarId = new Dictionary<int, ResultClassification>();
+            foreach (FinishOrderEntry entry in resolved.EntriesByPosition)
+                byCarId[entry.CarId] = entry.Classification;
+
+            var result = new ResultClassification[cars.Count];
+            for (int i = 0; i < cars.Count; i++)
+                result[i] = byCarId.TryGetValue(cars[i].CarId, out ResultClassification classification)
+                    ? classification
+                    : ResultClassification.Forfeit;
+            return result;
         }
     }
 

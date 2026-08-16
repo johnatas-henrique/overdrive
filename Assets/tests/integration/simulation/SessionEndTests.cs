@@ -1293,5 +1293,60 @@ namespace Overdrive.Simulation.Tests
                 _machine.EnterPaused(state);
             }
         }
+
+        // ------------------------------------------------------------------ //
+        // TD-019: per-car classification array populated from the resolved order
+        // ------------------------------------------------------------------ //
+
+        /// <summary>Two-car readout (cars 1 and 3) for the TD-019 classification-array test.</summary>
+        private sealed class TwoCarReadoutStep : ISimulationPipelineStep
+        {
+            public void Execute(SimulationTickContext context)
+            {
+                context.PostTickCarState = new[] { new CarState(1, 1000f), new CarState(3, 990f) };
+                context.PostTickFuelState = new[] { new FuelState(0.5f), new FuelState(0.5f) };
+                context.PostTickTireState = new[] { new TireState(0.9f), new TireState(0.9f) };
+            }
+        }
+
+        [Test]
+        public void TD019_PerCarClassificationArrayPopulatedFromResolvedOrder()
+        {
+            var machine = new SimulationStateMachine();
+            var rsm = new SequenceRsm(new FinishDetected(ResultKind.Race, ResultClassification.Finished, 98.5f));
+            // FixedResolver classifies car 1 (Finished) and car 2 (DNF); car 3 is absent from
+            // the resolved order (forfeit-abandoned cars never reach the resolver, ADR-0018).
+            var steps = new ISimulationPipelineStep[SimulationKernel.StepCount];
+            for (int i = 0; i < steps.Length; i++) steps[i] = new NoOpStep();
+            steps[CountdownStep.SpineIndex] = new CountdownStep(machine);
+            steps[PhysicsSimulateStep.SpineIndex] = new PhysicsSimulateStep(new NoOpPhysics());
+            steps[GoStep.SpineIndex] = new GoStep(machine);
+            steps[TestSteps.ReadoutSpineIndex] = new TwoCarReadoutStep();
+            steps[RsmEvaluationStep.SpineIndex] = new RsmEvaluationStep(rsm, machine);
+            steps[RsmConsumeStep.SpineIndex] = new RsmConsumeStep(machine, new FixedResolver());
+            steps[TestSteps.PublishSpineIndex] = new TestSteps.PublishStep();
+            steps[AiSkipStep.SpineIndex] = new AiSkipStep(machine);
+            var driver = new SimulationDriver(
+                new SimulationKernel(new RecordingProcessor(), steps),
+                machine,
+                new FixedCapture(),
+                new FixedDeltaSource(SimulationDriver.FIXED_DT));
+
+            var grid = new GridAssignment(new[] { 1, 3 });
+            machine.StartSingleRace(RaceMode.Race, grid);
+            machine.OnRaceLoadReady(RaceMode.Race, grid);
+            for (int i = 0; i < 300; i++) driver.Update();
+            Assert.AreEqual(SimulationState.Racing, machine.State, "setup must reach Racing");
+            driver.Update(); // finishing tick — resolution runs
+
+            Assert.AreEqual(SimulationState.Finished, machine.State);
+            PostFinishSnapshot terminal = machine.TerminalSnapshot;
+            Assert.IsNotNull(terminal, "terminal snapshot must be captured at finish");
+            Assert.That(terminal.ResultClassification.Count, Is.EqualTo(2),
+                "one classification per car, aligned with the car array (cars 1,3)");
+            Assert.That(terminal.ResultClassification[0], Is.EqualTo(ResultClassification.Finished), "car 1 finished");
+            Assert.That(terminal.ResultClassification[1], Is.EqualTo(ResultClassification.Forfeit),
+                "car 3 absent from the resolved order classifies as Forfeit");
+        }
     }
 }
