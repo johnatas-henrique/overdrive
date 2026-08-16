@@ -34,9 +34,23 @@ namespace Overdrive.Simulation.Tests
         }
 
         /// <summary>
-        /// Test-local publication step: publishes the terminal snapshot if the RSM consume step
-        /// produced one, otherwise fabricates a synthetic Racing terminal so consumers always
-        /// receive a snapshot. Replaced by the production publication path in the kernel/driver.
+        /// Test-local publication step implementing the spine step-12 (Publish, index 11)
+        /// contract, which the RSM epic must uphold when it ships the production step:
+        /// <list type="bullet">
+        /// <item><b>Exactly one snapshot per executed tick</b> — consumers (Camera, VFX,
+        /// Audio, HUD) always receive a <see cref="PublishedSimulationSnapshot"/>; zero
+        /// publications per tick is a contract violation.</item>
+        /// <item><b>Terminal wins</b> — when the RSM consume step produced a
+        /// <see cref="PostFinishSnapshot"/> (context.TerminalSnapshot != null), it is
+        /// published verbatim with its resolved classification.</item>
+        /// <item><b>Fallback keeps consumers fed</b> — while no terminal exists, the step
+        /// publishes the current simulation state (test-local: fabricated Racing). The
+        /// production RSM replaces the fabrication with the true current-state snapshot;
+        /// the published state must always match the tick's actual SimulationState.</item>
+        /// <item><b>Read-only</b> — the step never mutates simulation state; it reads
+        /// the context and publishes.</item>
+        /// </list>
+        /// Reference: ADR-0018 contract note (2026-08-15, improve-codebase-architecture C12).
         /// </summary>
         public sealed class PublishStep : ISimulationPipelineStep
         {
