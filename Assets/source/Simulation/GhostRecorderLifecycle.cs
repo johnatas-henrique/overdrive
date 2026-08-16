@@ -5,8 +5,9 @@ namespace Overdrive.Simulation
     /// <summary>
     /// Owns the MVP ghost-recorder and GO-boundary replay-capture lifecycle for the
     /// simulation driver (GDD ghost-recording: "an in-memory buffer owned by Simulation").
-    /// Concentrates the four integration points (lifecycle discard, pause-edge record,
-    /// GO capture, continuous record) and their state (recorder, provider, observed
+    /// Concentrates the two integration points — the per-frame lifecycle observation
+    /// (<see cref="ObserveTransition"/>) and the per-tick tick-boundary API
+    /// (<see cref="OnTickCommitted"/>) — and their state (recorder, provider, observed
     /// previous state, capture flags) so the driver delegates instead of interleaving
     /// ghost bookkeeping with accumulator/counter logic.
     ///
@@ -17,6 +18,10 @@ namespace Overdrive.Simulation
     ///   race's records and re-arms the replay capture (capture is exactly once PER race).
     /// - ReplayInitialState is captured once at GO, before any continuous record for the
     ///   first Racing tick.
+    /// - The ordering decision (pause edge vs GO capture vs continuous record) lives HERE,
+    ///   not in the driver's call sequence (improve-codebase-architecture C2, 2026-08-15):
+    ///   call-position errors are impossible because <see cref="OnTickCommitted"/> decides
+    ///   internally from the context.
     /// </summary>
     public sealed class GhostRecorderLifecycle
     {
@@ -91,12 +96,50 @@ namespace Overdrive.Simulation
         }
 
         /// <summary>
+        /// Per-tick tick-boundary API: called exactly once per executed tick by the driver.
+        /// Decides internally which ghost/replay action applies, so the ordering contract
+        /// (pause edge → GO capture → continuous record) lives in this module instead of the
+        /// driver's call sequence (C2, 2026-08-15):
+        /// <list type="bullet">
+        /// <item>Pause boundary tick — records the consumed edge with the CURRENT
+        /// (pre-increment) <paramref name="stepCountBeforeIncrement"/>; no continuous sample
+        /// (AC-3.10, ADR-0008).</item>
+        /// <item>GO tick — captures <see cref="ReplayInitialState"/> exactly once, before any
+        /// continuous record for the first Racing tick (AC-3.9).</item>
+        /// <item>Racing tick (<paramref name="startedInRacing"/>) — records exactly one
+        /// continuous sample with the POST-increment index (the tick that just completed;
+        /// each completed tick increments the counter by exactly one) (AC-6.1, ADR-0008).</item>
+        /// </list>
+        /// </summary>
+        /// <param name="context">The executed tick context.</param>
+        /// <param name="startedInRacing">True when the tick began in Racing (continuous record).</param>
+        /// <param name="stepCountBeforeIncrement">The simulationStepCount BEFORE the tick's
+        /// counter increment (equals the count of completed ticks; the pause edge uses it
+        /// verbatim, the continuous record uses it + 1).</param>
+        public void OnTickCommitted(
+            SimulationTickContext context,
+            bool startedInRacing,
+            uint stepCountBeforeIncrement)
+        {
+            if (context.PauseBoundaryReached)
+            {
+                RecordPauseEdge(stepCountBeforeIncrement);
+                return;
+            }
+
+            CaptureAtGo(context);
+            if (startedInRacing)
+                RecordCompletedTick(context.SimulationInput, stepCountBeforeIncrement + 1);
+        }
+
+        /// <summary>
         /// Records a consumed Pause edge in the parallel standalone stream with the CURRENT
         /// (pre-increment) simulation step count — the count of completed ticks. No continuous
-        /// sample is appended for this step (AC-3.10, ADR-0008).
+        /// sample is appended for this step (AC-3.10, ADR-0008). Dispatched internally by
+        /// <see cref="OnTickCommitted"/> on a pause-boundary tick.
         /// </summary>
         /// <param name="tickIndex">The current simulationStepCount at edge consumption.</param>
-        public void RecordPauseEdge(uint tickIndex)
+        private void RecordPauseEdge(uint tickIndex)
         {
             _ghostRecorder?.RecordEdgeEvent(tickIndex, EdgeEventFlags.Pause);
         }
@@ -105,10 +148,10 @@ namespace Overdrive.Simulation
         /// Captures ReplayInitialState exactly once at GO — on the GO tick (which transitions
         /// Countdown -> Racing), BEFORE any continuous record is appended for the first Racing
         /// tick. The snapshot is immutable; the provider's source state may mutate after
-        /// capture without affecting it.
+        /// capture without affecting it. Dispatched internally by <see cref="OnTickCommitted"/>.
         /// </summary>
         /// <param name="context">The tick context; capture fires only when <see cref="SimulationTickContext.IsGoTick"/>.</param>
-        public void CaptureAtGo(SimulationTickContext context)
+        private void CaptureAtGo(SimulationTickContext context)
         {
             if (_replayInitialStateCaptured || !context.IsGoTick)
                 return;
@@ -134,10 +177,11 @@ namespace Overdrive.Simulation
         /// <summary>
         /// Records exactly one continuous record per completed Racing tick with the
         /// POST-increment tick index (the tick that just completed) (AC-6.1, ADR-0008).
+        /// Dispatched internally by <see cref="OnTickCommitted"/> for Racing ticks.
         /// </summary>
         /// <param name="input">The authoritative per-tick SimulationInput.</param>
         /// <param name="tickIndex">The post-increment simulationStepCount of the completed tick.</param>
-        public void RecordCompletedTick(SimulationInput input, uint tickIndex)
+        private void RecordCompletedTick(SimulationInput input, uint tickIndex)
         {
             _ghostRecorder?.RecordTick(input, tickIndex);
         }

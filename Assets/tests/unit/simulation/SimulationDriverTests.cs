@@ -43,8 +43,6 @@ namespace Overdrive.Simulation.Tests
             ISimulationInputProcessor processor = null,
             IPreAccumulatorLifecycleHook hook = null,
             Action<SimulationTickContext> publish = null,
-            Func<bool> pauseEdgeSource = null,
-            Action pauseEdgeConsumer = null,
             TestStateGate gate = null)
         {
             gate = gate ?? new TestStateGate(initialState);
@@ -64,9 +62,7 @@ namespace Overdrive.Simulation.Tests
                 gate,
                 inputCapture,
                 deltaSource,
-                hook,
-                pauseEdgeSource,
-                pauseEdgeConsumer);
+                hook);
         }
 
         [Test]
@@ -698,24 +694,25 @@ namespace Overdrive.Simulation.Tests
         public void PauseEdgeDeliveredExactlyOncePerFrame()
         {
             int edgePolls = 0;
-            int edgeDeliveries = 0;
             var clock = new SequenceDeltaSource(2f * SimulationDriver.FIXED_DT);
             var physics = new RecordingPhysicsSimulator();
+            // Returns true on EVERY poll: if the driver polls the edge for each tick of
+            // the multi-tick frame, consumptions would exceed one and the test fails.
+            var capture = new RecordingCapture(Sample())
+            {
+                EdgeProvider = () => { edgePolls++; return true; }
+            };
             SimulationDriver driver = CreateDriver(
                 SimulationState.Racing,
                 clock,
-                new RecordingCapture(Sample()),
-                physics,
-                // Returns true on EVERY poll: if the driver polls the edge for each tick of
-                // the multi-tick frame, edgeDeliveries would exceed one and the test fails.
-                pauseEdgeSource: () => { edgePolls++; return true; },
-                pauseEdgeConsumer: () => edgeDeliveries++);
+                capture,
+                physics);
 
             driver.Update();
 
             // The edge is delivered to exactly one tick (the first) in a multi-tick frame,
             // even though the source reports true on every subsequent poll.
-            Assert.AreEqual(1, edgeDeliveries);
+            Assert.AreEqual(1, capture.EdgeConsumeCount);
             Assert.AreEqual(2, physics.Calls);
         }
 
@@ -784,6 +781,12 @@ namespace Overdrive.Simulation.Tests
             /// a newer sample arriving on a subsequent frame.</summary>
             public RawInputSample Sample { get; set; }
 
+            /// <summary>Optional pause-edge provider (C4: edge lives on the frame seam).</summary>
+            public Func<bool> EdgeProvider;
+
+            /// <summary>Counts pause-edge consumptions for delivery assertions.</summary>
+            public int EdgeConsumeCount { get; private set; }
+
             public RecordingCapture(RawInputSample sample, List<string> order = null)
             {
                 Sample = sample;
@@ -796,6 +799,10 @@ namespace Overdrive.Simulation.Tests
                 _order?.Add("capture");
                 return Sample;
             }
+
+            public bool HasPendingPauseEdge => EdgeProvider?.Invoke() ?? false;
+
+            public void ConsumePendingPauseEdge() => EdgeConsumeCount++;
         }
 
         private sealed class AccumulatorReadingCapture : IFrameInputCapture
@@ -819,6 +826,10 @@ namespace Overdrive.Simulation.Tests
                 _onCapture(Driver);
                 return _sample;
             }
+
+            public bool HasPendingPauseEdge => false;
+
+            public void ConsumePendingPauseEdge() { }
         }
 
         private sealed class RecordingPhysicsSimulator : IPhysicsSimulator

@@ -587,6 +587,16 @@ namespace Overdrive.Simulation.Tests
             public RawInputSample CaptureLatest()
                 => new RawInputSample(1, ControlScheme.KeyboardMouse, 0.8f, 0.2f, 0.1f,
                     InputAvailability.Available, RawInputValidityFlags.None);
+
+            /// <summary>Optional pause-edge provider (C4: edge lives on the frame seam).</summary>
+            public Func<bool> EdgeProvider;
+
+            /// <summary>Counts pause-edge consumptions for delivery assertions.</summary>
+            public int EdgeConsumeCount { get; private set; }
+
+            public bool HasPendingPauseEdge => EdgeProvider?.Invoke() ?? false;
+
+            public void ConsumePendingPauseEdge() => EdgeConsumeCount++;
         }
 
         private sealed class FixedDeltaSource : IFrameDeltaSource
@@ -655,12 +665,12 @@ namespace Overdrive.Simulation.Tests
 
             IGhostRecorder recorder = buffer;
             var kernel = new SimulationKernel(processor ?? new NoOpInputProcessor(), steps);
+            var capture = new FixedCapture { EdgeProvider = pauseEdgeSource };
             return new SimulationDriver(
                 kernel,
                 machine,
-                new FixedCapture(),
+                capture,
                 new FixedDeltaSource(SimulationDriver.FIXED_DT),
-                pauseEdgeSource: pauseEdgeSource,
                 ghostRecorder: recorder,
                 replayStateProvider: provider);
         }

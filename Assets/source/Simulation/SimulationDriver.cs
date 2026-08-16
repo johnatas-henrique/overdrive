@@ -15,14 +15,25 @@ namespace Overdrive.Simulation
     }
 
     /// <summary>
-    /// Captures the latest platform input once per render frame. The returned sample is
-    /// reused by every simulation tick produced by that frame (ADR-0001).
+    /// The single per-frame input seam the Simulation driver consumes (C4, 2026-08-15 —
+    /// one contract for capture AND pause-edge, Input-owned implementations per
+    /// ADR-0001:41). Captures the latest platform input exactly once per render frame;
+    /// the returned sample is reused by every simulation tick produced by that frame
+    /// (ADR-0001). The pause-edge pair completes the frame contract: the driver queries
+    /// <see cref="HasPendingPauseEdge"/> on the first tick of a frame and consumes it
+    /// exactly once after delivery (ADR-0005).
     /// Example: <c>RawInputSample sample = capture.CaptureLatest();</c>
     /// </summary>
     public interface IFrameInputCapture
     {
         /// <summary>Captures exactly one immutable raw input sample.</summary>
         RawInputSample CaptureLatest();
+
+        /// <summary>Whether Input has a pending gameplay Pause edge (consumed on the first tick of a frame).</summary>
+        bool HasPendingPauseEdge { get; }
+
+        /// <summary>Consumes the pending Pause edge after the first tick that receives it.</summary>
+        void ConsumePendingPauseEdge();
     }
 
     /// <summary>
@@ -31,10 +42,13 @@ namespace Overdrive.Simulation
     /// spine so the kernel itself stays agnostic of physics — the kernel only executes
     /// the steps in array order (ADR-0001: one Physics.Simulate(FIXED_DT) per active tick).
     /// </summary>
-    public sealed class PhysicsSimulateStep : ISimulationPipelineStep
+    public sealed class PhysicsSimulateStep : ISimulationPipelineStep, ICanonicalSpineStep
     {
         /// <summary>The canonical 0-based position of the physics boundary in the 14-step spine (GDD step 7).</summary>
         public const int SpineIndex = 6;
+
+        /// <inheritdoc />
+        public int CanonicalSpineIndex => SpineIndex;
 
         private readonly IPhysicsSimulator _simulator;
 
@@ -68,8 +82,6 @@ namespace Overdrive.Simulation
         private readonly IPreAccumulatorLifecycleHook _lifecycleHook;
         private readonly IFrameInputCapture _inputCapture;
         private readonly IFrameDeltaSource _deltaSource;
-        private readonly Func<bool> _pauseEdgeSource;
-        private readonly Action _pauseEdgeConsumer;
         private readonly PerformanceMonitor _performanceMonitor;
         private readonly GhostRecorderLifecycle _ghostLifecycle;
         private readonly ISimulationPhysicsFailureHandler _physicsFailureHandler;
@@ -96,14 +108,14 @@ namespace Overdrive.Simulation
         /// <param name="physicsFailureHandler">Optional physics-failure handler (Story 003 retry hold);
         /// when null, a tick that throws is rethrown (production composition passes the state machine,
         /// which implements <see cref="ISimulationPhysicsFailureHandler"/>).</param>
+        /// <param name="inputCapture">The single per-frame input seam: capture plus the
+        /// pause-edge pair (C4, 2026-08-15). Input-owned implementation per ADR-0001:41.</param>
         public SimulationDriver(
             SimulationKernel kernel,
             ISimulationStateGate stateGate,
             IFrameInputCapture inputCapture,
             IFrameDeltaSource deltaSource,
             IPreAccumulatorLifecycleHook lifecycleHook = null,
-            Func<bool> pauseEdgeSource = null,
-            Action pauseEdgeConsumer = null,
             PerformanceMonitor performanceMonitor = null,
             IGhostRecorder ghostRecorder = null,
             IReplayInitialStateProvider replayStateProvider = null,
@@ -114,8 +126,6 @@ namespace Overdrive.Simulation
             _inputCapture = inputCapture ?? throw new ArgumentNullException(nameof(inputCapture));
             _deltaSource = deltaSource ?? throw new ArgumentNullException(nameof(deltaSource));
             _lifecycleHook = lifecycleHook;
-            _pauseEdgeSource = pauseEdgeSource;
-            _pauseEdgeConsumer = pauseEdgeConsumer;
             _performanceMonitor = performanceMonitor;
             _ghostLifecycle = new GhostRecorderLifecycle(ghostRecorder, replayStateProvider);
             _physicsFailureHandler = physicsFailureHandler;
@@ -161,27 +171,62 @@ namespace Overdrive.Simulation
         public event Action<PerformanceSignal> PerformanceStatusChanged;
 
         /// <summary>
-        /// Processes one render frame. Capture occurs once before the clock is read and before
-        /// the accumulator is changed. The accumulator is permanently clamped to two ticks.
+        /// Processes one render frame as a fixed sequence of phases (C1, 2026-08-15):
+        /// Boundary → Capture → Lifecycle publish → Gate → Accumulator → Tick loop. The
+        /// ordering invariants are structural — each phase is a named step below and a
+        /// named method above — so a new concern lands in its phase instead of threading
+        /// through the timing path. Capture occurs exactly once before the clock is read
+        /// and before the accumulator is changed (ADR-0001:41); the accumulator is
+        /// permanently clamped to two ticks.
         /// </summary>
         public void Update()
         {
+            // ── Phase 1 · Boundary — pre-accumulator lifecycle observation ──────────────
+            ObserveBoundary(out SimulationState stateAfterHook, out bool enteredPaused);
+
+            // ── Phase 2 · Capture — Input-owned raw sample, exactly once, before the clock
+            //    and accumulator. Unconditional, including paused and zero-tick frames
+            //    (ADR-0001: capture-before-accumulator). ─────────────────────────────────
+            _kernel.CaptureLatestRawSample(_inputCapture.CaptureLatest());
+
+            // ── Phase 3 · Lifecycle publishes — paused snapshot, forfeit snapshot,
+            //    performance monitor, ghost lifecycle observation. All unconditional
+            //    (resets apply even on early-return frames, AC-7.7b/7.7f). ───────────────
+            if (enteredPaused)
+                PublishPausedSnapshot();
+            HandleForfeitSnapshot();
+            float frameDelta = enteredPaused ? 0f : _deltaSource.GetUnscaledDeltaTime();
+            EvaluatePerformanceMonitor(stateAfterHook, frameDelta);
+            _ghostLifecycle.ObserveTransition(stateAfterHook);
+
+            // ── Phase 4 · Gate — a focus/pause boundary or a non-ticking state stops here. ──
+            if (enteredPaused || !_stateGate.CanTick)
+                return;
+
+            // ── Phase 5 · Accumulator — validated platform delta, clamped to two ticks. ──
+            if (!AccumulateFrameDelta(frameDelta))
+                return;
+
+            // ── Phase 6 · Tick loop — drain whole FIXED_DT ticks while time remains. ─────
+            DrainTicks();
+        }
+
+        /// <summary>
+        /// Phase 1: observes the pre-accumulator lifecycle hook (the reliable transition
+        /// signal — a boundary hook may resume inside BeforeAccumulator on the same frame
+        /// the driver first sees the transition). Owns the performance-monitor state
+        /// notification (before/after pair guard: hook-observed transition AND external
+        /// between-frames transition — a resume back to the same state only shows in the
+        /// pair, AC-7.6a), the accumulator reset when content readiness starts a fresh
+        /// timing boundary (Loading → Countdown/Racing discards the Loading remainder),
+        /// and the focus/pause boundary detection.
+        /// </summary>
+        private void ObserveBoundary(out SimulationState stateAfterHook, out bool enteredPaused)
+        {
             SimulationState stateBeforeHook = _stateGate.State;
             _lifecycleHook?.BeforeAccumulator(stateBeforeHook);
-            SimulationState stateAfterHook = _stateGate.State;
+            stateAfterHook = _stateGate.State;
 
-            // Performance monitor state tracking: notify lifecycle transitions. Resets
-            // (Idle/Loading/Finished/Results, non-performance Paused) apply even on
-            // early-return frames (AC-7.7b/7.7f, AC-7.6a). The before/after hook state pair is
-            // the reliable transition signal: a boundary hook may resume (Paused -> Countdown)
-            // inside BeforeAccumulator on the SAME frame the driver first sees the transition.
-            // The guard covers BOTH a hook-observed transition (before != after) and an external
-            // transition between frames (after != lastHooked) — a resume back to the same state
-            // the driver already knew (Countdown -> Paused -> Countdown in one frame) only shows
-            // up in the before/after pair.
-            // The monitor owns the resume decision (producer-only, ADR-0001) — it detects
-            // Paused -> Countdown/Racing internally and consumes the resume-frame FPS in its
-            // Evaluate (AC-7.7a/7.7c).
             if (_performanceMonitor != null &&
                 (stateBeforeHook != stateAfterHook || stateAfterHook != _lastHookedState))
             {
@@ -195,60 +240,45 @@ namespace Overdrive.Simulation
                 (stateAfterHook == SimulationState.Countdown || stateAfterHook == SimulationState.Racing))
                 _accumulator = 0d;
 
-            // A focus/pause boundary is not allowed to contribute the boundary frame's elapsed
-            // time. The sub-tick remainder and counters remain untouched.
-            bool enteredPaused =
+            // A focus/pause boundary is not allowed to contribute the boundary frame's
+            // elapsed time. The sub-tick remainder and counters remain untouched.
+            enteredPaused =
                 (stateBeforeHook == SimulationState.Racing || stateBeforeHook == SimulationState.Countdown) &&
                 stateAfterHook == SimulationState.Paused;
+        }
 
-            // This call is intentionally unconditional, including paused and zero-tick frames.
-            // It is structurally before the clock read and accumulator evaluation.
-            RawInputSample sample = _inputCapture.CaptureLatest();
-            _kernel.CaptureLatestRawSample(sample);
-
-            // The focus-loss lifecycle boundary publishes one immutable non-ticking snapshot
-            // carrying the Simulation-owned resumeState (ADR-0001, AC-7.1/7.1a).
-            if (enteredPaused)
-                PublishPausedSnapshot();
-
-            // A forfeit (Return to Menu from Paused, AC-4.12) happens OUTSIDE the Update loop
-            // (the player acts while Paused), so the driver cannot observe Paused -> Results
-            // via the hook. State-based detection publishes the forfeit Results lifecycle
-            // snapshot exactly once per forfeit entry (no resumed physics tick — CanTick is
-            // false in Results). Reset when the session leaves Results-forfeit.
-            HandleForfeitSnapshot();
-
-            float frameDelta = enteredPaused ? 0f : _deltaSource.GetUnscaledDeltaTime();
-
-            // Performance monitor evaluates once per frame with the SAME delta the accumulator
-            // uses (single-capture semantics, ADR-0001) while in Countdown/Racing. A resume frame
-            // reports its FPS to the monitor for the clear/persist decision (AC-7.7a/7.7c).
-            EvaluatePerformanceMonitor(stateAfterHook, frameDelta);
-
-            // Ghost discard and GO-capture re-arm on lifecycle transitions (see module).
-            _ghostLifecycle.ObserveTransition(stateAfterHook);
-
-            if (enteredPaused || !_stateGate.CanTick)
-                return;
-
-            // Invalid or non-finite platform clock values cannot move authoritative time forward.
-            // Rejects NaN, +Infinity, and negative values.
+        /// <summary>
+        /// Phase 5: validates the platform clock delta (rejects NaN, +Infinity, and
+        /// negative values — invalid clocks cannot move authoritative time forward),
+        /// accumulates it, and clamps to the two-tick maximum. Time above the clamp is
+        /// permanently discarded, never caught up later.
+        /// </summary>
+        private bool AccumulateFrameDelta(float frameDelta)
+        {
             if (!float.IsFinite(frameDelta) || frameDelta <= 0f)
-                return;
+                return false;
             _accumulator += frameDelta;
             // FIXED_DT is float 1/60 ≈ 0.016666668; promotion to double is conservative —
             // slightly less permissive than exact 1/60. No practical impact.
             if (_accumulator > MaximumAccumulator)
                 _accumulator = MaximumAccumulator;
+            return true;
+        }
 
+        /// <summary>
+        /// Phase 6: drains whole accumulated ticks. The pause edge is consumed at most
+        /// once per frame (the first tick of the frame); subsequent ticks reuse the same
+        /// edge-free state. The edge query and consumption live on the frame seam
+        /// (<see cref="IFrameInputCapture"/>, C4).
+        /// </summary>
+        private void DrainTicks()
+        {
             bool pauseEdgeConsumedThisFrame = false;
             while (_accumulator >= FIXED_DT && _stateGate.CanTick)
             {
                 SimulationState tickStartState = _stateGate.State;
                 bool startedInRacing = tickStartState == SimulationState.Racing;
-                bool pauseEdge = !pauseEdgeConsumedThisFrame &&
-                                 _pauseEdgeSource != null &&
-                                 _pauseEdgeSource();
+                bool pauseEdge = !pauseEdgeConsumedThisFrame && _inputCapture.HasPendingPauseEdge;
 
                 ExecuteSingleTick(startedInRacing, pauseEdge, out bool pauseEdgeDelivered);
                 if (pauseEdgeDelivered)
@@ -317,7 +347,17 @@ namespace Overdrive.Simulation
 
             pauseEdgeDelivered = pauseEdge;
             if (pauseEdge)
-                _pauseEdgeConsumer?.Invoke();
+                _inputCapture.ConsumePendingPauseEdge();
+
+            // Per-tick tick-boundary dispatch: the lifecycle decides internally whether this
+            // tick records a pause edge, captures ReplayInitialState at GO, or appends a
+            // continuous Racing record (C2, 2026-08-15 — ordering lives in the module, not
+            // here). stepCountBeforeIncrement is the counter value before this tick's
+            // increment, which the module derives the edge/record indices from.
+            _ghostLifecycle.OnTickCommitted(
+                context,
+                startedInRacing,
+                (uint)_simulationStepCount);
 
             // A pause boundary interrupts the tick at step 4: the edge is consumed and the
             // Paused transition is published, but no fixed duration is subtracted, no counter
@@ -326,11 +366,6 @@ namespace Overdrive.Simulation
             // snapshot carrying resumeState is published (AC-4.6a).
             if (context.PauseBoundaryReached)
             {
-                // AC-3.10: the consumed Pause edge is recorded in the parallel standalone
-                // stream with the CURRENT (pre-increment) simulationStepCount — the count of
-                // completed ticks. No continuous sample is appended for this step (the boundary
-                // path returns before the append).
-                _ghostLifecycle.RecordPauseEdge((uint)_simulationStepCount);
                 PublishPausedSnapshot();
                 return;
             }
@@ -343,17 +378,6 @@ namespace Overdrive.Simulation
             _simulationStepCount++;
             if (startedInRacing)
                 _activeRaceStepCount++;
-
-            // AC-3.9: capture ReplayInitialState exactly once at GO — on the GO tick (which
-            // transitions Countdown -> Racing), BEFORE any continuous record is appended for
-            // the first Racing tick. The snapshot is immutable; the provider's source state
-            // may mutate after capture without affecting it.
-            _ghostLifecycle.CaptureAtGo(context);
-
-            // AC-6.1: exactly one continuous record per completed Racing tick, with the
-            // POST-increment tick index (the tick that just completed).
-            if (startedInRacing)
-                _ghostLifecycle.RecordCompletedTick(context.SimulationInput, (uint)_simulationStepCount);
 
             PublishDecoratedSnapshot(context, startedInRacing);
         }

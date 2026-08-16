@@ -171,8 +171,7 @@ namespace Overdrive.Input.Tests
 
             var driverObject = new GameObject("FakeSimulationDriver");
             FakeSimulationDriver driver = driverObject.AddComponent<FakeSimulationDriver>();
-            var processor = new TickProcessor();
-            driver.FrameDriver = new InputFrameDriver(_controller, processor);
+            driver.FrameCapture = new InputFrameCapture(_controller);
 
             // Let three render updates run; the driver captures exactly once per Update.
             yield return null;
@@ -330,10 +329,10 @@ namespace Overdrive.Input.Tests
         }
 
         /// <summary>Acts as the Simulation driver for AC-59: resolves + captures once per Update via the
-        /// <see cref="InputFrameDriver"/> seam, then feeds the accumulator.</summary>
+        /// frame capture seam (C4), then feeds the accumulator.</summary>
         private sealed class FakeSimulationDriver : MonoBehaviour
         {
-            public InputFrameDriver FrameDriver;
+            public InputFrameCapture FrameCapture;
             public int Frames;
             public readonly List<ulong> CapturedSequences = new List<ulong>();
             public readonly List<ulong> AccumulatedSequences = new List<ulong>();
@@ -341,9 +340,9 @@ namespace Overdrive.Input.Tests
             private void Update()
             {
                 Frames++;
-                // Capture occurs first, at the start of the render update (ADR-0001); the frame driver
-                // resolves the scheme and captures exactly once per frame.
-                RawInputSample sample = FrameDriver.BeginFrame();
+                // Capture occurs first, at the start of the render update (ADR-0001); the frame
+                // capture seam resolves the scheme and captures exactly once per frame.
+                RawInputSample sample = FrameCapture.CaptureLatest();
                 CapturedSequences.Add(sample.CaptureSequence);
                 // The accumulator (Story 004 tick processor) consumes the frame-captured sample.
                 AccumulatedSequences.Add(sample.CaptureSequence);

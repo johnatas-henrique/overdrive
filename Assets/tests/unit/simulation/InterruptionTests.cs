@@ -761,14 +761,20 @@ namespace Overdrive.Simulation.Tests
             steps[PhysicsSimulateStep.SpineIndex] = new PhysicsSimulateStep(physics);
             steps[GoStep.SpineIndex] = new GoStep(machine);
             steps[TestSteps.PublishSpineIndex] = new TestSteps.PublishStep();
+
+            // C4: the edge pair lives on the frame seam (capture). The delegate params are
+            // test sugar that configure the fake capture — the driver ctor no longer takes them.
+            var capture = new FixedCapture
+            {
+                EdgeProvider = pauseEdgeSource,
+                EdgeConsumeAction = pauseEdgeConsumer
+            };
             return new SimulationDriver(
                 new SimulationKernel(processor, steps),
                 machine,
-                new FixedCapture(),
+                capture,
                 clock ?? new FixedDeltaSource(delta),
-                lifecycleHook,
-                pauseEdgeSource,
-                pauseEdgeConsumer);
+                lifecycleHook);
         }
 
         /// <summary>
@@ -941,6 +947,23 @@ namespace Overdrive.Simulation.Tests
             {
                 return new RawInputSample(1, ControlScheme.KeyboardMouse, 0.8f, 0.2f, 0.1f,
                     InputAvailability.Available, RawInputValidityFlags.None);
+            }
+
+            /// <summary>Optional pause-edge provider (C4: edge lives on the frame seam).</summary>
+            public Func<bool> EdgeProvider;
+
+            /// <summary>Optional delivery callback invoked on each consumption (test sugar).</summary>
+            public Action EdgeConsumeAction;
+
+            /// <summary>Counts pause-edge consumptions for delivery assertions.</summary>
+            public int EdgeConsumeCount { get; private set; }
+
+            public bool HasPendingPauseEdge => EdgeProvider?.Invoke() ?? false;
+
+            public void ConsumePendingPauseEdge()
+            {
+                EdgeConsumeCount++;
+                EdgeConsumeAction?.Invoke();
             }
         }
 

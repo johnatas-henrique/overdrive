@@ -338,12 +338,13 @@ namespace Overdrive.Input.Tests
             yield return null;
             Assert.AreEqual(ControlScheme.Gamepad, _controller.ResolveActiveScheme());
 
-            // A fake driver plays the role of the Simulation driver. The InputFrameDriver makes the
-            // AC-60 ordering structural: BeginFrame resolves arbitration, then captures — one call.
+            // A fake driver plays the role of the Simulation driver. The frame capture seam
+            // makes the AC-60 ordering structural: CaptureLatest resolves arbitration, then
+            // captures — one call (C4).
             var processor = new TickProcessor();
             var driverObject = new GameObject("FakeArbitrationDriver");
             FakeArbitrationDriver driver = driverObject.AddComponent<FakeArbitrationDriver>();
-            driver.FrameDriver = new InputFrameDriver(_controller, processor);
+            driver.FrameCapture = new InputFrameCapture(_controller);
 
             // Keyboard meaningful (W) after the trigger is released.
             Set(gamepad.rightTrigger, 0f);
@@ -352,7 +353,7 @@ namespace Overdrive.Input.Tests
             yield return null; // let the fake driver run one full update
 
             Assert.AreEqual(ControlScheme.KeyboardMouse, driver.LastSample.ActiveScheme,
-                "BeginFrame resolves before capture → the sample reflects the current scheme.");
+                "CaptureLatest resolves before capture → the sample reflects the current scheme.");
 
             Object.Destroy(driverObject);
         }
@@ -783,17 +784,17 @@ namespace Overdrive.Input.Tests
             Assert.That(input.AccelerateOut, Is.Not.EqualTo(postDz).Within(0.001f));
         }
 
-        /// <summary>Simulates the Simulation driver's per-frame update via the InputFrameDriver seam:
-        /// BeginFrame resolves arbitration, then captures — ordering is structural (AC-60).</summary>
+        /// <summary>Simulates the Simulation driver's per-frame update via the frame capture seam:
+        /// CaptureLatest resolves arbitration, then captures — ordering is structural (AC-60, C4).</summary>
         private sealed class FakeArbitrationDriver : MonoBehaviour
         {
-            public InputFrameDriver FrameDriver;
+            public InputFrameCapture FrameCapture;
 
             public RawInputSample LastSample { get; private set; }
 
             private void Update()
             {
-                LastSample = FrameDriver.BeginFrame(); // arbitration BEFORE capture (AC-60) — structural
+                LastSample = FrameCapture.CaptureLatest(); // arbitration BEFORE capture (AC-60) — structural
             }
         }
 
