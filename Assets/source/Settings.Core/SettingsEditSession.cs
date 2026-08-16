@@ -226,6 +226,31 @@ namespace Overdrive.Settings.Core
         }
 
         /// <summary>
+        /// Typed-value route for the Difficulty category (C7, 2026-08-15): sets the working
+        /// difficulty level. Equivalent to <see cref="SetValue"/> with the fixed category-to-type
+        /// mapping, but type-safe at the call site — the compiler rejects wrong-type mutations
+        /// that <c>SetValue(SettingsCategory, object)</c> would only catch at runtime. Same
+        /// validations, gate routing, WorkingChanged and port publication as the boxed route.
+        /// </summary>
+        /// <param name="level">The profile index (0-4, Very Easy..Very Hard); out-of-range throws.</param>
+        public void SetDifficulty(int level) => SetValue(SettingsCategory.Difficulty, level);
+
+        /// <summary>Typed-value route for the Controls category (C7, 2026-08-15); see <see cref="SetDifficulty"/>.</summary>
+        public void SetControls(ControlsData value) => SetValue(SettingsCategory.Controls, value);
+
+        /// <summary>Typed-value route for the Audio category (C7, 2026-08-15); see <see cref="SetDifficulty"/>.</summary>
+        public void SetAudio(AudioData value) => SetValue(SettingsCategory.Audio, value);
+
+        /// <summary>Typed-value route for the Display category (C7, 2026-08-15); see <see cref="SetDifficulty"/>.</summary>
+        public void SetDisplay(DisplayData value) => SetValue(SettingsCategory.Display, value);
+
+        /// <summary>Typed-value route for the Accessibility category (C7, 2026-08-15); see <see cref="SetDifficulty"/>.</summary>
+        public void SetAccessibility(AccessibilityData value) => SetValue(SettingsCategory.Accessibility, value);
+
+        /// <summary>Typed-value route for the Camera category (C7, 2026-08-15); see <see cref="SetDifficulty"/>.</summary>
+        public void SetCamera(CameraData value) => SetValue(SettingsCategory.Camera, value);
+
+        /// <summary>
         /// Replaces working values with factory defaults (AC-E9): non-display categories apply
         /// immediately; a display candidate differing from the current Working display routes through
         /// <see cref="IDisplayConfirmGate"/> and only remains in Working when Accepted. Persistence

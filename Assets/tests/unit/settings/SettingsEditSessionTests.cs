@@ -1005,5 +1005,96 @@ namespace Overdrive.Settings.Core.Tests
             Assert.That(session.Working.Audio, Is.EqualTo(AudioData.Default),
                 "Non-display categories restored to factory defaults despite display rejection.");
         }
+
+        // ============================================================
+        // C7 typed-value routes (2026-08-15): the typed surface delegates to the
+        // boxed SetValue pipeline — same validations, gate routing, WorkingChanged
+        // and port publication; the compiler rejects wrong-type mutations.
+        // ============================================================
+
+        [Test]
+        public void C7_SetDifficultyTypedRouteUpdatesWorking()
+        {
+            var session = Open(new FakeStore(), new FakeLifecycleContext(), new FakeDisplayGate(), out _);
+            session.SetDifficulty(4);
+            Assert.That(session.Working.Difficulty.Level, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void C7_SetDifficultyTypedRouteOutOfRangeThrows()
+        {
+            var session = Open(new FakeStore(), new FakeLifecycleContext(), new FakeDisplayGate(), out _);
+            int before = session.Working.Difficulty.Level;
+            Assert.Throws<ArgumentOutOfRangeException>(() => session.SetDifficulty(5));
+            Assert.That(session.Working.Difficulty.Level, Is.EqualTo(before),
+                "Rejected difficulty leaves Working untouched.");
+        }
+
+        [Test]
+        public void C7_SetControlsTypedRouteUpdatesWorking()
+        {
+            var session = Open(new FakeStore(), new FakeLifecycleContext(), new FakeDisplayGate(), out _);
+            var value = new ControlsData(0.3f, 0.4f, 0.2f, 0.9f, 0.8f, "{}");
+            session.SetControls(value);
+            Assert.That(session.Working.Controls, Is.EqualTo(value));
+        }
+
+        [Test]
+        public void C7_SetAudioTypedRouteUpdatesWorkingAndPublishesPort()
+        {
+            var session = Open(new FakeStore(), new FakeLifecycleContext(), new FakeDisplayGate(), out _);
+            var raised = new List<SettingsCategory>();
+            session.WorkingChanged += c => raised.Add(c);
+
+            var value = new AudioData(0.4f, 1f, 1f, 1f, false, false);
+            session.SetAudio(value);
+
+            Assert.That(session.Working.Audio, Is.EqualTo(value));
+            Assert.That(raised, Is.EqualTo(new[] { SettingsCategory.Audio }));
+        }
+
+        [Test]
+        public void C7_SetDisplayTypedRouteNonCandidateAppliesImmediately()
+        {
+            // vsync/quality are not candidates — they apply immediately (same semantics as the
+            // boxed route, AC-AM1 edge).
+            var session = Open(new FakeStore(), new FakeLifecycleContext(), new FakeDisplayGate(), out _);
+            session.SetDisplay(new DisplayData(1920, 1080, 2, 0, 1)); // same res, vsync 0
+            Assert.That(session.Working.Display.Vsync, Is.EqualTo(0));
+            Assert.That(session.HasPendingDisplayConfirm, Is.False, "Non-candidate display change must not route to the gate.");
+        }
+
+        [Test]
+        public void C7_SetDisplayTypedRouteCandidateRoutesThroughGate()
+        {
+            var gate = new FakeDisplayGate();
+            var session = Open(new FakeStore(), new FakeLifecycleContext(), gate, out _);
+
+            // A resolution differing from the current Working is a display candidate — the gate
+            // owns the confirm handshake, not the session (GDD settings.md:110).
+            session.SetDisplay(new DisplayData(2560, 1440, 2, 1, 1));
+
+            Assert.That(session.HasPendingDisplayConfirm, Is.True, "Candidate routes to the gate.");
+            gate.CompleteLatest(DisplayConfirmResult.Accepted);
+            Assert.That(session.Working.Display, Is.EqualTo(new DisplayData(2560, 1440, 2, 1, 1)));
+        }
+
+        [Test]
+        public void C7_SetAccessibilityTypedRouteUpdatesWorking()
+        {
+            var session = Open(new FakeStore(), new FakeLifecycleContext(), new FakeDisplayGate(), out _);
+            var value = new AccessibilityData(2, 1.25f);
+            session.SetAccessibility(value);
+            Assert.That(session.Working.Accessibility, Is.EqualTo(value));
+        }
+
+        [Test]
+        public void C7_SetCameraTypedRouteUpdatesWorking()
+        {
+            var session = Open(new FakeStore(), new FakeLifecycleContext(), new FakeDisplayGate(), out _);
+            var value = new CameraData(0.8f, true, false, true);
+            session.SetCamera(value);
+            Assert.That(session.Working.Camera, Is.EqualTo(value));
+        }
     }
 }
