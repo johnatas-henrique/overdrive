@@ -376,6 +376,20 @@ namespace Overdrive.Simulation
     }
 
     /// <summary>
+    /// Optional identity contract for canonical spine steps: a step that declares its
+    /// canonical 0-based slot enables the kernel to fail fast on construction when a
+    /// canonical step lands in the wrong slot (a silent behavioral bug otherwise — the
+    /// kernel enforces exactly 14 steps but not their identity). Steps that do not
+    /// implement this interface (NoOpStep, test-local fixtures) are exempt; the owning
+    /// Core epics implement it when they deliver the production step.
+    /// </summary>
+    public interface ICanonicalSpineStep
+    {
+        /// <summary>The canonical 0-based slot of this step in the 14-step spine.</summary>
+        int CanonicalSpineIndex { get; }
+    }
+
+    /// <summary>
     /// Mutable internal carrier for a single invocation spine; never published to consumers.
     /// Carries the single latest raw sample (reused across multi-tick frames) and the
     /// resolved per-car inputs produced at Step 14 (ADR-0001).
@@ -539,7 +553,25 @@ namespace Overdrive.Simulation
             _inputProcessor = inputProcessor ?? throw new ArgumentNullException(nameof(inputProcessor));
             if (steps == null || steps.Length != StepCount)
                 throw new ArgumentException("Exactly 14 pipeline steps are required.", nameof(steps));
+            ValidateCanonicalSlots(steps);
             _steps = SnapshotCopies.Copy(steps);
+        }
+
+        /// <summary>
+        /// Fails fast when a step declaring <see cref="ICanonicalSpineStep"/> sits in a slot
+        /// that differs from its canonical index — a canonical step in the wrong slot is a
+        /// silent behavioral bug (the count-only check cannot catch it). Steps without the
+        /// identity contract (NoOpStep, test-local fixtures) pass unchecked.
+        /// </summary>
+        private static void ValidateCanonicalSlots(ISimulationPipelineStep[] steps)
+        {
+            for (int i = 0; i < steps.Length; i++)
+            {
+                if (steps[i] is ICanonicalSpineStep canonical && canonical.CanonicalSpineIndex != i)
+                    throw new ArgumentException(
+                        $"Canonical step {steps[i].GetType().Name} declares spine index " +
+                        $"{canonical.CanonicalSpineIndex} but occupies slot {i}.", nameof(steps));
+            }
         }
 
         /// <summary>Captures once per render frame; subsequent ticks reuse this exact sample.</summary>
