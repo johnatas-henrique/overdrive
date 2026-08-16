@@ -1364,7 +1364,7 @@ namespace Overdrive.Settings.Core.Tests
             Assert.That(vfxCapture.Count, Is.EqualTo(0), "No port publication after closure.");
         }
 
-        private static bool HasState(PaletteCue[] cues, string stateId)
+        private static bool HasState(IReadOnlyList<PaletteCue> cues, string stateId)
         {
             foreach (var cue in cues)
             {

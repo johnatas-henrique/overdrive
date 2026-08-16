@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Overdrive.Settings.Core
 {
     /// <summary>
@@ -149,11 +151,12 @@ namespace Overdrive.Settings.Core
         /// <summary>Selected color-blind mode.</summary>
         public readonly ColorblindMode Mode;
 
-        /// <summary>Per-state palette cues — must cover Critical/Warning/Normal (AC-AC4).</summary>
-        public readonly PaletteCue[] Cues;
+        /// <summary>Per-state palette cues — must cover Critical/Warning/Normal (AC-AC4).
+        /// Read-only list contract (TD-036): consumers cannot mutate the published cues.</summary>
+        public readonly IReadOnlyList<PaletteCue> Cues;
 
         /// <summary>Creates the accessibility update. All arguments required; the struct is immutable.</summary>
-        public AccessibilityUpdate(bool reducedMotion, float textScale, ColorblindMode mode, PaletteCue[] cues)
+        public AccessibilityUpdate(bool reducedMotion, float textScale, ColorblindMode mode, IReadOnlyList<PaletteCue> cues)
         {
             ReducedMotion = reducedMotion;
             TextScale = textScale;
