@@ -49,6 +49,12 @@ namespace Overdrive.Settings.Core
             // out-of-range int (99) would otherwise map to Ultra at load instead of the gate-R5 Medium fallback.
             ValidateNumericOrDefault(obj, "display", "quality_preset", 1, min: 0, max: 3);
 
+            // Persisted difficulty tier must be 0..4 (Very Easy..Very Hard) — a malformed blob with an
+            // out-of-range int (99) would otherwise deserialize into a DifficultySelection outside the
+            // approved domain and only fail later at RequireDifficulty (TD-030). Fallback 2 (Medium —
+            // the codec default, SettingsJsonCodec). Range owned by DifficultySelection.MinLevel/MaxLevel.
+            ValidateNumericOrDefault(obj, "difficulty", "level", 2, min: DifficultySelection.MinLevel, max: DifficultySelection.MaxLevel);
+
             return JsonNode.Serialize(root);
         }
 
