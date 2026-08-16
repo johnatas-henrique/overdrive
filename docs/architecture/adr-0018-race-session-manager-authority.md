@@ -135,3 +135,25 @@ When the player crosses the finish line on `totalLaps` (or retires), Simulation 
 ## GDD Revision Flags
 
 None — this ADR ratifies existing GDD text; no GDD change required.
+
+## Contract Note — Spine Step 12 Publication (2026-08-15)
+
+Codified by improve-codebase-architecture C12 (user-approved) so the RSM epic implements
+the production publish step against an explicit contract instead of test-owned behavior.
+The contract, as enforced by the test-local `PublishStep`
+(`Assets/tests/integration/simulation/TestSteps.cs`, spine index 11):
+
+1. **Exactly one snapshot per executed tick** — `context.PublishSnapshot` is called exactly
+   once per tick; consumers (Camera, VFX, Audio, HUD) always receive a
+   `PublishedSimulationSnapshot`. Zero publications per tick is a contract violation.
+2. **Terminal wins** — when the RSM consume step produced a `PostFinishSnapshot`
+   (`context.TerminalSnapshot != null`), it is published verbatim with its resolved
+   classification; the production step must never drop or replace a resolved terminal.
+3. **Current-state fallback** — while no terminal exists, the published snapshot must
+   reflect the tick's actual `SimulationState` (the test-local step fabricates a Racing
+   terminal; the production RSM publishes the true current-state snapshot instead).
+4. **Read-only** — the step reads context and publishes; it never mutates simulation state.
+
+When the RSM epic ships the production step-12 implementation, it must satisfy 1-4; the
+test-local fabrication is then replaced and the integration suite validates against the
+real publication path.
