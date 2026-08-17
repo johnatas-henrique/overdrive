@@ -4,8 +4,8 @@
 > **GDD**: design/gdd/race-session-manager.md + design/gdd/qualifying.md + design/gdd/grid-start.md
 > **Architecture Module**: Race Session Manager (kernel steps 9/10 — `RsmEvaluationStep`/`RsmConsumeStep`), Qualifying (RaceMode.Qualifying), Grid & Start (GoStep + Perfect Start)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories race-flow`
-> **Estimate**: 5 stories (~13h active — calibrated 0.3×, sprint-3 retrospective)
+> **Stories**: 8 stories created (4 Logic, 4 Integration) — see table below
+> **Estimate**: 8 stories (~12.5h active — calibrated 0.3×, sprint-3 retrospective)
 > **Session**: S1 · Phase 2 (2-orchestrator plan 2026-08-16)
 > **Depends on**: vehicle-physics (dynamics + feel — sim must produce car state for session transitions); Simulation Kernel (steps 9/10 seams, RaceMode authority); ADR-0018 / ADR-0013
 
@@ -64,4 +64,19 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories race-flow` to break this epic into implementable stories.
+Run `/story-readiness` on the first story to begin implementation.
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | RSM Ranking & Lap Authority | Logic | Ready | ADR-0018 |
+| 002 | RSM Finish Resolution | Logic | Ready | ADR-0018 |
+| 003 | RSM Lifecycle Contracts | Integration | Ready | ADR-0018 |
+| 004 | Publication Contract (Step 12) | Integration | Ready | ADR-0018 |
+| 005 | Qualifying Core | Logic | Ready | ADR-0013 |
+| 006 | Qualifying Lifecycle | Integration | Ready | ADR-0013 |
+| 007 | Qualifying Rules — Fuel, Tire, AI Times, Skip | Logic | Ready | ADR-0013 |
+| 008 | Grid & Start — Formation, Perfect Start, Countdown | Integration | Ready | ADR-0018, ADR-0013 |
+
+*Note: 8 stories (not 5) — QL-STORY-READY 2026-08-16 mandated splits (RSM resolver/lifecycle/publication; Qualifying core/lifecycle).*
