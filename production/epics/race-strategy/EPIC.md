@@ -4,8 +4,8 @@
 > **GDD**: design/gdd/fuel-system.md + design/gdd/tire-system.md + design/gdd/pit-stop.md
 > **Architecture Module**: Fuel & Tire runtime state (kernel steps 5a/5b — `TickStartSnapshot` + `PitServiceCommand[carId]` contract); Pit Stop (step 9b — `CarState[].PitPhase` + pit geometry via `TickStartSnapshot`)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories race-strategy`
-> **Estimate**: 4 stories (~11h active — calibrated 0.3×, sprint-3 retrospective)
+> **Stories**: 5 stories created (2 Logic, 3 Integration) — see table below
+> **Estimate**: 5 stories (~8h active — calibrated 0.3×, sprint-3 retrospective)
 > **Session**: S2 · Phase 2 (2-orchestrator plan 2026-08-16)
 > **Depends on**: State contracts only (FuelState/TireState already shipped) — NOT the VP implementation; Simulation Kernel steps 5a/5b and 9b seams; ADR-0006 / ADR-0011
 
@@ -58,4 +58,16 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories race-strategy` to break this epic into implementable stories.
+Run `/story-readiness` on the first story to begin implementation.
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | Fuel System | Logic | Ready | ADR-0006 |
+| 002 | Tire System | Logic | Ready | ADR-0006 |
+| 003 | Pit Service Lifecycle & Command Contract | Integration | Ready | ADR-0011 |
+| 004 | Pit Multi-Car & Mode Policy | Integration | Ready | ADR-0011 |
+| 005 | Pit Advisory & Lifecycle | Integration | Ready | ADR-0011 |
+
+*Note: 5 stories (not 4) — QL-STORY-READY 2026-08-16 mandated splitting pit service/multi-car/advisory; low-fuel discrepancy resolved (ADR-0006 governs: 1.01 below 25%, GDD 0.6% superseded).*
