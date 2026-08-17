@@ -185,7 +185,7 @@
 │   │   └── integration/         # Integration tests (actual files in Assets/tests/integration/)
 │   │       ├── input/           # Input system integration tests (InputIntegrationTests.asmdef)
 │   │       │   ├── InputContextControllerTests.cs
-│   │       │   ├── InputFrameDriverTests.cs
+│   │       │   ├── InputFrameCaptureTests.cs
 │   │       │   ├── RawCaptureDeadZoneTests.cs
 │   │       │   ├── ContextTransitionsTests.cs
 │   │       │   ├── SettingsConfigurationTests.cs
@@ -243,7 +243,7 @@
 │   │   ├── integration/         # Integration tests
 │   │   │   ├── input/           # Input system integration tests (InputIntegrationTests.asmdef)
 │   │   │   │   ├── InputContextControllerTests.cs
-│   │   │   │   ├── InputFrameDriverTests.cs
+│   │       │   │   ├── InputFrameCaptureTests.cs
 │   │   │   │   ├── RawCaptureDeadZoneTests.cs
 │   │   │   │   ├── ContextTransitionsTests.cs
 │   │   │   │   ├── SettingsConfigurationTests.cs
@@ -689,7 +689,7 @@
 - `Assets/tests/unit/settings/`: Settings unit tests (ControlBindingTests.cs, DifficultyProfileTests.cs, DisplaySettingsTests.cs, SettingsEditSessionTests.cs, SettingsPersistenceTests.cs, SettingsValuesContractTests.cs)
 - `Assets/tests/unit/content/`: Content pipeline unit tests (ContentStateMachineTests.cs, LoadingScreenControllerTests.cs, RaceUnloadTests.cs, StartupErrorTests.cs)
 - `Assets/tests/unit/content/raceload/`: Race load unit tests (RaceLoadTests.cs)
-- `Assets/tests/integration/input/`: Input system integration tests (InputContextControllerTests.cs, InputFrameDriverTests.cs, RawCaptureDeadZoneTests.cs, ContextTransitionsTests.cs, SettingsConfigurationTests.cs, SpecialRoutingTests.cs, TickProcessorTests.cs)
+- `Assets/tests/integration/input/`: Input system integration tests (InputContextControllerTests.cs, InputFrameCaptureTests.cs, RawCaptureDeadZoneTests.cs, ContextTransitionsTests.cs, SettingsConfigurationTests.cs, SpecialRoutingTests.cs, TickProcessorTests.cs)
 - `Assets/tests/integration/simulation/`: Simulation integration tests (ContractSpineTests.cs, SessionEndTests.cs, TestSteps.cs)
 - `Assets/tests/integration/settings/`: Settings integration tests (ControlBindingIntegrationTests.cs, DifficultyProfileIntegrationTests.cs, DisplaySettingsIntegrationTests.cs, SettingsLifecycleTests.cs, SettingsPersistenceIntegrationTests.cs, SettingsRuntimeIntegrationTests.cs)
 - `Assets/tests/integration/content/`: Content pipeline integration tests (RaceLoadIntegrationTests.cs, RaceUnloadIntegrationTests.cs, StartupErrorIntegrationTests.cs, QualityProfileIntegrationTests.cs)
@@ -731,7 +731,7 @@
 - `Assets/tests/unit/multiplayer/`: Multiplayer unit tests (MultiplayerIsolationTests.cs — 7 ACs: D2 seam signatures, engine-free assembly, contract types, isolation guardrails, manifest denylist, no provider, deferral)
 - `Assets/tests/unit/content/`: Content pipeline unit tests (ContentStateMachineTests.cs, LoadingScreenControllerTests.cs, RaceUnloadTests.cs, StartupErrorTests.cs; raceload/RaceLoadTests.cs)
 - `Assets/tests/unit/settings/`: Settings unit tests (ControlBindingTests.cs, DifficultyProfileTests.cs, DisplaySettingsTests.cs, SettingsEditSessionTests.cs, SettingsPersistenceTests.cs, SettingsValuesContractTests.cs)
-- `Assets/tests/integration/input/`: Input system integration tests (InputContextControllerTests.cs, InputFrameDriverTests.cs, RawCaptureDeadZoneTests.cs, ContextTransitionsTests.cs, SettingsConfigurationTests.cs, SpecialRoutingTests.cs, TickProcessorTests.cs)
+- `Assets/tests/integration/input/`: Input system integration tests (InputContextControllerTests.cs, InputFrameCaptureTests.cs, RawCaptureDeadZoneTests.cs, ContextTransitionsTests.cs, SettingsConfigurationTests.cs, SpecialRoutingTests.cs, TickProcessorTests.cs)
 - `Assets/tests/integration/simulation/`: Simulation integration tests (ContractSpineTests.cs, SessionEndTests.cs, TestSteps.cs)
 - `Assets/tests/integration/content/`: Content pipeline integration tests (RaceLoadIntegrationTests.cs, RaceUnloadIntegrationTests.cs, StartupErrorIntegrationTests.cs, QualityProfileIntegrationTests.cs)
 - `Assets/tests/integration/settings/`: Settings integration tests (ControlBindingIntegrationTests.cs, DifficultyProfileIntegrationTests.cs, DisplaySettingsIntegrationTests.cs, SettingsLifecycleTests.cs, SettingsPersistenceIntegrationTests.cs, SettingsRuntimeIntegrationTests.cs)

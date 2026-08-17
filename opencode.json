@@ -3,7 +3,8 @@
   "plugin": [
     "./.opencode/plugins/ccgs-hooks.ts",
     "./.opencode/plugins/drift-detector.ts",
-    "./.opencode/plugins/changelog-generator.ts"
+    "./.opencode/plugins/changelog-generator.ts",
+    ["opencode-senses", { "autoInspect": true }]
   ],
   "command": {
     "hybrid-prototype": {

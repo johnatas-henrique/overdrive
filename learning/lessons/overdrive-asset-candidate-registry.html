@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overdrive — Technical Candidate Registry</title>
+<link rel="stylesheet" href="../assets/style.css">
+<style>
+  .status-pass { background: #1f8f4d; color: #fff; }
+  .status-warn { background: #d9a520; color: #111; }
+  .status-block { background: #b2322b; color: #fff; }
+  .status-pending { background: #555; color: #fff; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.registry { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.registry th, table.registry td { border: 1px solid #444; padding: 3px 6px; text-align: left; vertical-align: top; }
+  table.registry thead th { background: #2a2a2a; color: #eee; position: sticky; top: 0; }
+  table.registry tr.audited td:first-child { font-weight: bold; }
+  .verdict { font-weight: bold; }
+  .legend span { display: inline-block; padding: 1px 8px; margin-right: 6px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<header class="lesson-head">
+  <p class="kicker">Overdrive Asset Production · Technical candidate comparison</p>
+  <h1>Technical Candidate Registry — base asset selection</h1>
+  <p class="meta">Audit protocol: <a href="overdrive-asset-production-lesson-12-visual-candidate-discard-gate.html">Lesson 12 — Visual Candidate Discard Gate</a> · Working sheet, populated incrementally</p>
+</header>
+
+<h2>Purpose</h2>
+<p>One table comparing every downloaded car candidate across the 11 audit criteria. Rows are added as each asset is audited (Blender MCP + Unity MCP evidence, ~60 min per candidate). The goal is a defensible choice of the base exterior geometry for the Overdrive car pipeline.</p>
+
+<h2>Status vocabulary</h2>
+<div class="legend">
+  <span class="status-pass">PASS</span> verified, does not block
+  <span class="status-warn">WARNING</span> importable, preparation/conversion required
+  <span class="status-block">BLOCKER</span> cannot proceed without different source/route
+  <span class="status-pending">PENDING</span> not inspected yet — do not infer
+</div>
+
+<h2>Candidate registry</h2>
+
+<table class="registry">
+<thead>
+<tr>
+  <th rowspan="2">Asset (source)</th>
+  <th rowspan="2">Origin</th>
+  <th rowspan="2">1. Format / route</th>
+  <th rowspan="2">2. Hierarchy</th>
+  <th rowspan="2">3. Scale / pivots</th>
+  <th rowspan="2">4. Triangles</th>
+  <th rowspan="2">5. UVs</th>
+  <th rowspan="2">6. Materials</th>
+  <th rowspan="2">7. Animation</th>
+  <th rowspan="2">8. LOD</th>
+  <th rowspan="2">9. Colliders</th>
+  <th rowspan="2">10. Cockpit</th>
+  <th rowspan="2">11. License</th>
+  <th rowspan="2">Verdict / next action</th>
+</tr>
+</thead>
+<tbody>
+
+<!-- ============ AUDITED ============ -->
+
+<tr class="audited">
+  <td><strong>March CG891</strong><br><small>1989/march cg891/source/f1_1989_march_cg891_f.fbx</small></td>
+  <td>1989 pack (AC-derived)</td>
+  <td><span class="status-warn">W</span> FBX opens; 117 obj (90 mesh + 25 empty); 35 imgs; body transparent via AC Alpha-mask (repaired; not geometry loss)</td>
+  <td><span class="status-warn">W</span> 1 Collection; parts separated (WHEEL_LF/RF, SUSP_LF…);<br><b>no car-root object</b></td>
+  <td><span class="status-warn">W</span> object scale 0.01 (~100× larger mesh data); normalize as one unit later; wheel origins at 0,0,0 → no pivots</td>
+  <td><span class="status-pass">P</span> 28,052 tris / 21,956 verts / 90 meshes<br>largest: 2,110<br>→ 16 cars ≈ 449k</td>
+  <td><span class="status-pass">P</span> livery + <span class="status-warn">W</span> overlap: UVChannel_1–4; sidepod 362×731 px; engine-cover 247×592 px (2048); small overlaps in seam areas; UVChannel_2 pending</td>
+  <td><span class="status-pass">P</span> w/ note: 42 mats, 33 tex, 0 missing; Alpha-mask removed; full cockpit visible</td>
+  <td><span class="status-warn">W</span> no armature/actions/shape keys; wheels separated (disc/rim/tyre/blur) but origins at 0,0,0</td>
+  <td><span class="status-pending">—</span></td>
+  <td><span class="status-pending">—</span></td>
+  <td><span class="status-pass">P</span> internal cockpit visible and usable</td>
+  <td><span class="status-block">?</span> not verified (no readme in pack)</td>
+  <td><span class="verdict">APPROVED — first test candidate</span><br>prep: root/scale, wheel pivots, Unity mats, LODs, colliders</td>
+</tr>
+
+<tr class="audited">
+  <td><strong>McLaren MP4/5</strong><br><small>1989/mclaren mp45/source/McLaren MP4_5 (blend3_6).blend</small></td>
+  <td>vecarz.com (GLB + blend)</td>
+  <td><span class="status-warn">W</span> native .blend, 22 textures <b>packed</b> (self-contained); GLB originals beside; Unity round-trip untested; datablock paths broken (.jpg vs .jpeg/@channels=)</td>
+  <td><span class="status-warn">W</span> root is a <b>MESH</b> (no Empty); <b>wheels fused per axle</b> (back/front_wheels = 1 mesh both sides); suspension separate; cockpit nested (wheel + gear lever)</td>
+  <td><span class="status-warn">W</span> scale 1.0 but <b>~1.3–1.7× real F1</b>: L 5.9 m, wheel ∅ 1.13 m, width 3.57 m; disproportions not uniform; <b>forward −Y</b>; wheel pivots at axle center</td>
+  <td><span class="status-warn">W</span> <b>328,961 tris</b> / 168,821 verts;<br>car_body 133,404 (40%); back_wheels 45,992; no modifiers → <b>11.7× the March</b>; → 16 cars ≈ 5.26M</td>
+  <td><span class="status-pass">P</span> partial: 1 layer "UVMap"; body 2044×2004 px (2048); bottom 1784×2026; wheels 2010×1271; overlap not checked (visual)</td>
+  <td><span class="status-warn">W</span> 6 Principled mats (body, bottom, glass, interior, wheels, Dots); 22 tex 4096² packed; glass has Alpha+Emissive; paths broken on disk</td>
+  <td><span class="status-warn">W</span> no armature/actions/shape keys; wheels fused per axle (worse than March) — L/R separation + pivots required</td>
+  <td><span class="status-pending">—</span></td>
+  <td><span class="status-pending">—</span></td>
+  <td><span class="status-pass">P</span> w/ note: dedicated cockpit (wheel z≈0.87, interior 0.695 m) under monocoque; shared module insertable; visual pending</td>
+  <td><span class="status-pass">P</span> verified by user (2026-08-16)</td>
+  <td><span class="verdict">Usable w/ preparation / Reference only</span><br>not first-test (March holds); heavy decimation + re-proportion; visual proportions check pending</td>
+</tr>
+
+<tr class="audited">
+  <td><strong>Minardi M186</strong><br><small>198X/1986-Minardi/source/f1_1986_minardi.fbx (+ GLB via Sketchfab)</small></td>
+  <td>1986 pack (AC-derived)</td>
+  <td><span class="status-warn">W</span> GLB 1.8 Sketchfab (self-contained, textures embedded, derived from f1_1986_minardi.fbx); FBX + ~30 DDS in source/ (canonical); production route needs FBX import (GLB only validates Sketchfab conversion)</td>
+  <td><span class="status-pass">P</span> complete AC pattern: WHEEL_LF/LR/RF/RR &rarr; TYRE/RIM/DISK/BLUR separated; SUSP_* + CALIPER_*; STEER_HR (4 subs); ARROW_RPM/TURBO; MAIN_BODY + 12 per-material subs; MIRRORL/R; cockpit_parts</td>
+  <td><span class="status-pass">P</span> 4.553 &times; 2.348 &times; 1.091 m — <b>real-F1 proportions (best candidate so far)</b>; GLB nodes identity transforms &rarr; wheel/steer pivots pending on FBX</td>
+  <td><span class="status-warn">W</span> 76,073 tris (GLB; Blender-verified)<br>cockpit 11.7k + engine 8.6k + carbody 7.2k (~34% of total)<br>&rarr; 16 cars &asymp; 1.2M; decimate ~35% or structural cut of invisible parts</td>
+  <td><span class="status-pass">P</span> w/ note: 5–6 UV sets; livery in tile (0..1, &minus;1..0) AC V-negative &rarr; repaint = +1 V offset (trivial); livery 1024&sup2; (half of ASR 2048); overlap resets to 0 after V-normalization</td>
+  <td><span class="status-pass">P</span> 31 mats semantic (M186_EXHAUST/COCKPIT/ENGINE/TIRE/…); 15 embedded textures shared; 2 normal maps</td>
+  <td><span class="status-pass">P</span> 0 GLTF anims; separated parts (animatable by Unity script: TYRE/WHEEL/STEER_HR/ARROW)</td>
+  <td><span class="status-warn">W</span> <b>none</b> (Blender-verified; user confirmed)</td>
+  <td><span class="status-pending">—</span></td>
+  <td><span class="status-pass">P</span> structural complete (COCKPIT 11.7k + parts + TACH + needles + SW_OUT); render confirms interior/panel visible; camera usability pending</td>
+  <td><span class="status-block">?</span> not verified (AC 1986 pack; GLB via Sketchfab)</td>
+  <td><span class="verdict">STRONG CANDIDATE — first to close profile</span><br>real proportions + complete hierarchy + repaintable UV; contras: 76k tris (decimate ~35%), no LOD, 1024 livery, license pending</td>
+</tr>
+
+<tr class="audited">
+  <td><strong>Generic F1 1993</strong><br><small>199X/Generic 1993/source/Generic F1/F1.fbx (+ GLB via Sketchfab)</small></td>
+  <td>generic pack (Sketchfab-derived)</td>
+  <td><span class="status-warn">W</span> GLB 1.8 Sketchfab (from F1.fbx); <b>FBX + 2 PNG 1024&sup2; already extracted</b> in source/Generic F1/ (canonical); production route: FBX import</td>
+  <td><span class="status-warn">W</span> wheels separated (WheelBL/BR/FR pivot + 4th unnamed &ldquo;wheel_carbon_fiber&rdquo;); chassis_pivot_carpaint (12.6k); skinned_mesh_carpaint; <b>driver + helmet included</b> (separate domain per car/driver rule &mdash; removable); glasses; no car-level root naming</td>
+  <td><span class="status-block">B</span> scale <b>~100&times; wrong</b>: bounds 433 m long (GLTF Y-up &rarr; ~4.5 m real); normalize to unit (~0.0105) like March; wheel pivot nodes present (OK for animation)</td>
+  <td><span class="status-pass">P</span> 29,634 tris — <b>within budget, no decimation</b>; chassis 12,635; rims 4,286; driver 846; &rarr; 16 cars &asymp; 474k</td>
+  <td><span class="status-warn">W</span> 1 UV set only (16/16); livery 1024&sup2; PNG (F1.png, separated wheels tex); quality for repaint <b>pending</b> (Blender UV check)</td>
+  <td><span class="status-warn">W</span> 5 mats, generic names (material / None / black / New_Material / car_mclaren_mp_48_df); 3 embedded textures; names carry no semantics</td>
+  <td><span class="status-pass">P</span> 0 GLTF anims; wheels separated (rims/tyres per corner)</td>
+  <td><span class="status-pending">—</span></td>
+  <td><span class="status-pending">—</span></td>
+  <td><span class="status-warn">W</span> driver + helmet present (846 tris, removable); cockpit camera usability pending</td>
+  <td><span class="status-block">?</span> not verified; material name references <i>car_mclaren_mp_48_df</i> &rarr; possible parts mashup (license risk)</td>
+  <td><span class="verdict">COMPARE — light (29.6k), wheels separated, no decimation</span><br>contras: ~100&times; scale, generic mats, driver included, 1024 livery, unknown license/origin</td>
+</tr>
+
+<tr class="audited">
+  <td><strong>Zakspeed 891</strong><br><small>AC 1989/cars/f1_1989_Zakspeed_891/unp_f1_1989_zakspeed_891.kn5/f1_1989_zakspeed_891.fbx</small></td>
+  <td>AC 1989 carset</td>
+  <td><span class="status-pass">P</span> FBX binary pre-converted inside unpacked kn5 (same route as Lotus 101 validated); 62 DDS in texture/ (livery 2048&sup2; DXT5); <b>FBX references .backup folder &rarr; paths must be re-pointed at import</b></td>
+  <td><span class="status-pass">P</span> complete AC: TYRE_*+SUB0/1, DISK_*, RIM_*+SUB0-3, RIM_BLUR, RIM_BLACK, SUSP_*+SUSPENTION, STEER_HR+STEER02, ARROW_RPM&times;2; 102 meshes; 24 semantic mats (WCCARBODY/ZAKCPIT/ZAKENGINE/GOODYEAR_88&hellip;); duplicates .001 created by import (dedup pending)</td>
+  <td><span class="status-pass">P</span> <b>4.478 &times; 2.141 &times; 1.073 m — real scale, no normalization</b>; wheel pivots pending check</td>
+  <td><span class="status-pass">P</span> 29,275 tris — <b>within budget, no decimation</b>; large meshes flat (vol_arc 2.2k, tyres 1.6k each); &rarr; 16 cars &asymp; 468k</td>
+  <td><span class="status-pass">P</span> livery tile outside 0-1 (AC V-negative pattern, +1 V offset for repaint); 2048&sup2; DXT5; overlap resets after V-normalization</td>
+  <td><span class="status-pass">P</span> 24 semantic mats; 62 textures DDS; alpha-mask pattern (fixed systemically: unlink Alpha + OPAQUE except RIM_BLUR)</td>
+  <td><span class="status-pass">P</span> 0 actions in FBX (ksanim files separate — Unity script animates separated parts)</td>
+  <td><span class="status-warn">W</span> none in FBX (LODBoxS is AC runtime control only)</td>
+  <td><span class="status-pending">—</span></td>
+  <td><span class="status-pass">P</span> interior + steering (STEER_HR/STEER02) visible after alpha fix; render matches preview (East 34); driver absent from FBX (separate domain)</td>
+  <td><span class="status-block">?</span> not verified (AC 1989 pack &mdash; no explicit authorization like ASR 1991)</td>
+  <td><span class="verdict">STRONG — best profile yet</span><br>real scale + full hierarchy + 29k (no decimation) + livery 2048 + official skins; alpha/path import fix needed (systemic, registered)</td>
+</tr>
+
+<!-- ============ PENDING: 1989 transitional ============ -->
+
+<tr>
+  <td>Lola LC89<br><small>1989/lola lc89/…</small></td>
+  <td>1989 pack</td>
+  <td colspan="11" class="status-pending">not audited</td>
+  <td>—</td>
+</tr>
+
+<tr>
+  <td>Generic F1 1991<br><small>199X/Generic 1991/…</small></td>
+  <td>generic pack</td>
+  <td colspan="11" class="status-pending">not audited</td>
+  <td>—</td>
+</tr>
+
+<!-- ============ PENDING: AC 1989 carset ============ -->
+
+<tr>
+  <td colspan="14" style="background:#333;color:#eee;"><strong>AC 1989 carset</strong> — Assetto Corsa Grand Prix 1989 (f1_1989_*)</td>
+</tr>
+
+<tr><td>AGS JH23B (early)</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Arrows A11</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Benetton B189</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Brabham BT58</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Coloni FC188B</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Coloni FC189</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Dallara 189</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Eurobrun ER189</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Ferrari 640</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Ferrari 640 (final)</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Ligier JS33</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Lola LC89 (Larrousse)</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Lotus 101</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>March CG891</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited as AC carset; blend version audited above</td><td>—</td></tr>
+<tr><td>McLaren MP4/5</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited as AC carset; blend version audited above</td><td>—</td></tr>
+<tr><td>Minardi M189</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Onyx ORE-1</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Osella FA1M</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Rial ARC2</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Tyrrell 018</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Williams FW13</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Williams FW12C</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>AGS (extra)</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Eurobrun ER188B</td><td>AC 1989</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+
+<!-- ============ PENDING: AC 1991 carset (ASR) ============ -->
+
+<tr>
+  <td colspan="14" style="background:#333;color:#eee;"><strong>AC 1991 carset (ASR OWC)</strong> — asr_1991_* (16 cars · authorized by asset author)</td>
+</tr>
+
+<tr><td>Benetton B191</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Brabham BT60Y</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Dallara 191</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Ferrari 643</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Fondmetal Fomet 1</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Footwork FA12</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Jordan 191</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Larrousse LC91</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Leyton House CG911</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Ligier JS35B</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Lotus 102B</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>McLaren MP4/6</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Minardi M191</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Modena 291</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Tyrrell 020</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Williams FW14</td><td>AC 1991 (ASR)</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+
+<!-- ============ PENDING: driver rigs ============ -->
+
+<tr>
+  <td colspan="14" style="background:#333;color:#eee;"><strong>Driver rigs</strong> — reusable driver skeleton assets</td>
+</tr>
+
+<tr><td>Driver rig (generic)<br><small>driver/…</small></td><td>pack</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+<tr><td>Driver rig 80s<br><small>driver-80/source (driver_80.7z)</small></td><td>pack</td><td colspan="11" class="status-pending">not audited</td><td>—</td></tr>
+
+</tbody>
+</table>
+
+<h2>Comparison notes (updated 2026-08-16)</h2>
+<ul>
+  <li><strong>March CG891</strong> is the approved first test candidate (28k tris, usable UVs, separated wheels, visible cockpit). License is the only open blocker.</li>
+  <li><strong>McLaren MP4/5</strong> does not displace March: 11.7× the triangle cost with no LODs, fused wheels per axle, and non-uniform scale (~1.3–1.7× real). Candidate classification: usable only after heavy preparation.</li>
+  <li><strong>Minardi M186</strong> is the strongest candidate so far: real-F1 proportions (4.55 &times; 2.35 &times; 1.09 m), complete AC hierarchy, repaintable UV (AC V-negative tile, +1 V offset), 76k tris (decimate ~35% or structural cut). License and FBX production route pending.</li>
+  <li><strong>Generic F1 1993</strong> is a light contender (29.6k tris, within budget, wheels separated, driver included &amp; removable). Blockers: ~100&times; scale normalization, generic material names, unknown license (material name references a McLaren MP4/8 texture &rarr; possible parts mashup), 1 UV set pending quality check.</li>
+  <li><strong>Zakspeed 891 (AC 1989)</strong> is the strongest audited profile: real scale (4.48 m), complete hierarchy, 24 semantic mats, 29.3k tris (no decimation), 2048&sup2; livery + official skins. Import needs the systemic alpha/path fix (FBX references .backup; DXT5 alpha treated as transparency). License (AC 1989) pending &mdash; the ASR 1991 carset has explicit authorization.</li>
+  <li>Next audits should target the AC 1989 carset (same era family as March, comparable structure) and then the ASR 1991 carset (license already authorized by the asset author — 22.7k tris per Lotus 101, no decimation needed).</li>
+</ul>
+
+<footer>
+  Overdrive Learning Workspace · Technical Candidate Registry · populated via Lesson 12 audit protocol
+</footer>
+
+</body>
+</html>
