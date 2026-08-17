@@ -4,8 +4,8 @@
 > **GDD**: design/gdd/ui-menu.md
 > **Architecture Module**: UI presentation — screen flow and navigation (ADR-0019); production bootstrapper/composition (TD-038 owner)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories ui-menu`
-> **Estimate**: 4 stories (~11h active — calibrated 0.3×, sprint-3 retrospective)
+> **Stories**: 6 stories created (4 UI, 2 Integration) — see table below
+> **Estimate**: 6 stories (~8.5h active — calibrated 0.3×, sprint-3 retrospective)
 > **Session**: S2 · Phase 4 (2-orchestrator plan 2026-08-16)
 > **Depends on**: **Start contract = merged F3 interfaces** (per PR-EPIC 2026-08-16: begins when F3 epics' interfaces are on main, NOT on full integration); all Foundation+C precurs (settings, content, input, HUD/audio/camera data); ADR-0019. End-to-end integration and final menu verification are a joint phase-end activity with Session 1 (bridge: production composition replaces the dev rig).
 
@@ -49,6 +49,11 @@ This epic is complete when:
 - End-to-end smoke + CD-PLAYTEST evidence (cockpit camera + engine sound + art-in-motion) recorded
 - All UI stories have evidence docs with sign-off in `production/qa/evidence/`
 
-## Next Step
+| 001 | Screen Flow & Navigation | UI | Ready | ADR-0019 |
+| 002 | Car Selection Turntable | UI | Ready | ADR-0019 |
+| 003 | Lifecycle Requests & Loading Gate | Integration | Ready | ADR-0019, ADR-0003, ADR-0013 |
+| 004 | Finished Presentation & Pause Routing | Integration | Ready | ADR-0019, ADR-0001, ADR-0005 |
+| 005 | Results Presentation | UI | Ready | ADR-0019, ADR-0018 |
+| 006 | Settings Handoff | Integration | Ready | ADR-0019, ADR-0004 |
 
-Run `/create-stories ui-menu` to break this epic into implementable stories.
+*Note: 6 stories (not 4) — QL-STORY-READY 2026-08-16 mandated lifecycle/terminal/results/settings splits; physical input routing moved to Input epic; focus layouts blocked on UX spec (ui-menu.md In Design).*
