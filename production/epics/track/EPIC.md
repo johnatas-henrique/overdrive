@@ -4,8 +4,8 @@
 > **GDD**: design/gdd/track-system.md
 > **Architecture Module**: Track data pipeline (TrackData Addressable content — AddressableKeys.TrackData already shipped; chordal Catmull-Rom runtime materialization)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories track`
-> **Estimate**: 3 stories (~8h active — calibrated 0.3×, sprint-3 retrospective)
+> **Stories**: 8 stories created (3 Logic, 5 Integration) — see table below
+> **Estimate**: 8 stories (~11.5h active — calibrated 0.3×, sprint-3 retrospective)
 > **Session**: S2 · Phase 1 (2-orchestrator plan 2026-08-16)
 > **Depends on**: Nothing (independent — prototype tracks are 2D; elevation is pending production per prototype findings); ADR-0007. First track ships early to unblock the VP feel rig (bridge 3).
 
@@ -49,4 +49,19 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories track` to break this epic into implementable stories.
+Run `/story-readiness` on the first story to begin implementation.
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | Track JSON Schema & Addressable Loading | Integration | Ready | ADR-0007 |
+| 002 | Runtime Spline Materialization & Surface | Logic | Ready | ADR-0007 |
+| 003 | Pit Geometry & Progress Mapping | Integration | Ready | ADR-0007 |
+| 004 | Lap Boundary Provider | Logic | Ready | ADR-0007, ADR-0018 |
+| 005 | Grid Slot Materialization & Validation | Integration | Ready | ADR-0007 |
+| 006 | Trackside Placement Manifest & Validation | Logic | Ready | ADR-0007 |
+| 007 | Track Authoring Tool | Integration | Ready | ADR-0007, ADR-0003 |
+| 008 | Runtime Trackside Assembly | Integration | Ready | ADR-0007, ADR-0003 |
+
+*Note: 5 stories (not 3) — QL-STORY-READY 2026-08-16 mandated splitting pit/grid/lap support into 3 focused stories (003/004/005). Then 3 more (006/007/008) added 2026-08-16 for trackside placement: manifest/validation (data), authoring tool (editor-only, writes the manifest), runtime assembly (Shared prefab instantiation). The track is data (spline + placement manifest) mounted at runtime in a single generic race scene — no per-track scenes, no tool code in the build (licensing decision 2026-08-16: reference circuits measured, never redistributed as game assets).*
