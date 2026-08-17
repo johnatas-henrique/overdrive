@@ -4,8 +4,8 @@
 > **GDD**: design/gdd/vehicle-physics.md
 > **Architecture Module**: Vehicle Physics (Simulation step 6 — `PhysicsSimulateStep` per Simulation Kernel Integration Contract; `RigidbodyVehicleDriver` implementing `IVehicleDriver`)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories vehicle-physics-dynamics`
-> **Estimate**: 4 stories (~10h active — calibrated 0.3×, sprint-3 retrospective)
+> **Stories**: 5 stories created (3 Logic, 2 Integration) — see table below
+> **Estimate**: 5 stories (~8.5h active — calibrated 0.3×, sprint-3 retrospective)
 > **Session**: S1 · Phase 1 (2-orchestrator plan 2026-08-16)
 > **Depends on**: Simulation Kernel (spine + `CarState` / `ResolvedCarInput[carId]` + `FIXED_DT` seam); Car Definition stat contract (prototype-validated — not the 16 teams); Gameplay & Physics ADR-0002
 
@@ -53,4 +53,16 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories vehicle-physics-dynamics` to break this epic into implementable stories.
+Run `/story-readiness` on the first story to begin implementation.
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | Grip Stack & CarState Contract | Logic | Ready | ADR-0002 |
+| 002 | Vehicle Driver Seam | Integration | Ready | ADR-0002 |
+| 003 | Longitudinal Movement & Step-6 Integration | Integration | Ready | ADR-0002 |
+| 004 | Steering Model (1-state) | Logic | Ready | ADR-0002 |
+| 005 | Wall Contact & Car-to-Car | Integration | Ready | ADR-0002 |
+
+*Note: 5 stories (not 4) — QL-STORY-READY 2026-08-16 mandated splitting the driver/movement story (002/003).*
