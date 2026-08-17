@@ -4,8 +4,8 @@
 > **GDD**: design/gdd/camera.md
 > **Architecture Module**: Camera presentation (reads interpolated snapshot state — `CarState` pose + velocity direction; ADR-0010 rendering budget)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories camera`
-> **Estimate**: 2 stories (~5h active — calibrated 0.3×, sprint-3 retrospective)
+> **Stories**: 4 stories created (3 Visual/Feel, 1 Integration) — see table below
+> **Estimate**: 4 stories (~5.5h active — calibrated 0.3×, sprint-3 retrospective)
 > **Session**: S2 · Phase 3 (2-orchestrator plan 2026-08-16)
 > **Depends on**: vehicle-physics-feel (telemetry readout contract — pose + velocity direction); ADR-0010; render interpolation (kernel story-006). S2 Phase-3 consumer — enters after the VP merge.
 
@@ -42,4 +42,15 @@ This epic is complete when:
 
 ## Next Step
 
-Run `/create-stories camera` to break this epic into implementable stories.
+Run `/story-readiness` on the first story to begin implementation.
+
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | Camera Modes, Blends, FOV & Look-Ahead | Visual/Feel | Ready | ADR-0010 |
+| 002 | Camera Shake & Reduced Motion | Visual/Feel | Ready | ADR-0010 |
+| 003 | Camera Collision Avoidance | Integration | Ready | ADR-0010 |
+| 004 | Pit & Terminal Presentation | Integration | Ready | ADR-0010, ADR-0011 |
+
+*Note: 4 stories (not 2) — QL-STORY-READY 2026-08-16 mandated splitting shake/avoidance/pit-terminal and clarifying timing/seam contracts.*
